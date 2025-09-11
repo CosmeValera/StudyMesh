@@ -2,8 +2,6 @@
   "buildCommand": "cd apps/aquamesh && npm install && npm run build",
   "outputDirectory": "apps/aquamesh/dist",
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/favicon.ico" },
-    { "source": "/logo.svg", "destination": "/logo.svg" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {

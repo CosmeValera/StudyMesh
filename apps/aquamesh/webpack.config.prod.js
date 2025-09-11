@@ -95,14 +95,17 @@ module.exports = (_, argv) => ({
     }),
     new CopyWebpackPlugin({
       patterns: [
+        // Copy favicon and icon files from public root
+        { from: 'public/favicon.ico', to: './favicon.ico', noErrorOnMissing: true },
+        { from: 'public/logo.svg', to: './logo.svg', noErrorOnMissing: true },
+        { from: 'public/logo.ico', to: './logo.ico', noErrorOnMissing: true },
+        { from: 'public/logo192.png', to: './logo192.png', noErrorOnMissing: true },
+        { from: 'public/logo512.png', to: './logo512.png', noErrorOnMissing: true },
+        { from: 'public/robots.txt', to: './robots.txt', noErrorOnMissing: true },
+        { from: 'public/popout.html', to: './popout.html', noErrorOnMissing: true },
+        // Copy config and images
         { from: 'public/config/widgets-prod.json', to: './config/widgets.json', noErrorOnMissing: true },
         { from: 'public/images', to: './images', noErrorOnMissing: true }
-      ],
-    }),
-    // Add a second copy to ensure images are available at both locations
-    new CopyWebpackPlugin({
-      patterns: [
-        { from: 'public/images', to: '/', noErrorOnMissing: true }
       ],
     }),
     new CleanWebpackPlugin(),
