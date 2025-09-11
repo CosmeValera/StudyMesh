@@ -1,17 +1,13 @@
 {
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "cd apps/aquamesh && npm install && npm run build",
+  "outputDirectory": "apps/aquamesh/dist",
   "rewrites": [
     { "source": "/favicon.ico", "destination": "/favicon.ico" },
-    { "source": "/logo.ico", "destination": "/logo.ico" },
     { "source": "/logo.svg", "destination": "/logo.svg" },
-    { "source": "/logo192.png", "destination": "/logo192.png" },
-    { "source": "/logo512.png", "destination": "/logo512.png" },
-    { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {
     "SYSTEM_LENS_URL": "aquamesh_system_lens@https://aquamesh-system-lens.vercel.app/remoteEntry.js",
     "CONTROL_FLOW_URL": "aquamesh_control_flow@https://aquamesh-control-flow.vercel.app/remoteEntry.js"
   }
-} 
+}
