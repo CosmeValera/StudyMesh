@@ -19,7 +19,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 
 const userOptions: Record<string, { id: string, name: string, role: string }> = {
   admin: { id: 'admin', name: 'Admin', role: 'ADMIN_ROLE' },
-  operator: { id: 'operator', name: 'Operator', role: 'OPERATOR_ROLE' },
   viewer: { id: 'viewer', name: 'Viewer', role: 'VIEWER_ROLE' }
 }
 
@@ -117,9 +116,8 @@ const Login: React.FC = () => {
                 }
               }}
             >
-              <MenuItem value="admin">{userOptions.admin.name} ({userOptions.admin.role})</MenuItem>
-              <MenuItem value="operator">{userOptions.operator.name} ({userOptions.operator.role})</MenuItem>
-              <MenuItem value="viewer">{userOptions.viewer.name} ({userOptions.viewer.role})</MenuItem>
+              <MenuItem value="admin">{userOptions.admin.name}</MenuItem>
+              <MenuItem value="viewer">{userOptions.viewer.name}</MenuItem>
             </Select>
           </FormControl>
 
@@ -187,7 +185,7 @@ const Login: React.FC = () => {
                 </span>
               ) : (
                 <span>
-                  For full access to all features like the Widget Editor, select the <strong>Admin</strong> role. Viewers and Operators only have read-only access.
+                  For full access to all features like the Widget Editor, select the <strong>Admin</strong> role. Viewers only have read-only access.
                 </span>
               )}
             </Typography>

@@ -27,32 +27,6 @@ test.describe('User permission tests', () => {
   })
   
   test('non-admin users should not have access to widget editor', async ({ page }) => {
-    // Test with operator role
-    await loginAs(page, 'operator')
-    
-    // Set consistent viewport size
-    await page.setViewportSize({ width: 1280, height: 720 })
-    
-    // Dismiss any dialogs before checking
-    await dismissActiveDialog(page)
-    
-    // The Widget Editor button should not be visible for non-admin roles
-    await expect(page.getByRole('button', { name: 'Widget Editor' })).not.toBeVisible()
-    
-    // Wait before taking screenshot
-    await page.waitForTimeout(50)
-    const screenshotOperator = await page.screenshot()
-    await expect(screenshotOperator).toMatchSnapshot('operator-no-widget-editor.png')
-    
-    // Logout by clicking on profile button first then logout
-    await dismissActiveDialog(page)
-    await page.locator('.MuiAvatar-root').click()
-    await page.waitForSelector('[role="menu"]', { timeout: 5000 })
-    await page.getByRole('menuitem', { name: 'Logout' }).click()
-
-    // Wait before login as viewer
-    await page.waitForTimeout(1000)
-    
     // Test with viewer role
     await loginAs(page, 'viewer')
     

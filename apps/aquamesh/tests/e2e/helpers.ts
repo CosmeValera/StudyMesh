@@ -25,7 +25,7 @@ export async function dismissActiveDialog(page: Page): Promise<boolean> {
 /**
  * Helper function to login with a specific user role
  */
-export async function loginAs(page: Page, role: 'admin' | 'operator' | 'viewer') {
+export async function loginAs(page: Page, role: 'admin' | 'viewer') {
   await page.goto('http://localhost:3000/login')
 
   // Wait for login page to load
@@ -37,8 +37,6 @@ export async function loginAs(page: Page, role: 'admin' | 'operator' | 'viewer')
   // Select the appropriate user role from dropdown
   if (role === 'admin') {
     await page.getByRole('option', { name: 'Admin (ADMIN_ROLE)' }).click()
-  } else if (role === 'operator') {
-    await page.getByRole('option', { name: 'Operator (OPERATOR_ROLE)' }).click()
   } else if (role === 'viewer') {
     await page.getByRole('option', { name: 'Viewer (VIEWER_ROLE)' }).click()
   }
