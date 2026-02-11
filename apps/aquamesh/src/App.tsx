@@ -26,8 +26,14 @@ import './hide-overlay.scss'
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const userData = localStorage.getItem('userData')
   
+  // If no user data exists, automatically set admin user and continue to app
   if (!userData) {
-    return <Navigate to="/login" replace />
+    const defaultAdminUser = {
+      id: 'admin',
+      name: 'Admin',
+      role: 'ADMIN_ROLE'
+    }
+    localStorage.setItem('userData', JSON.stringify(defaultAdminUser))
   }
   
   return <>{children}</>

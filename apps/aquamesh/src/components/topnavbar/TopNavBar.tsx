@@ -156,6 +156,8 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
   const handleLogout = () => {
     handleClose()
+    // Clear user data from localStorage
+    localStorage.removeItem('userData')
     navigate('/login')
   }
 
