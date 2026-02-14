@@ -16,6 +16,7 @@ import DeleteConfirmationDialog from './components/dialogs/DeleteConfirmationDia
 import { CustomWidget } from './WidgetStorage'
 import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
+import FirstRunWidgetQuestDialog from './components/dialogs/FirstRunWidgetQuestDialog'
 
 // Main Widget Editor component
 const WidgetEditor: React.FC<{
@@ -121,6 +122,15 @@ const WidgetEditor: React.FC<{
   // State to control save widget dialog
   const [showSaveDialog, setShowSaveDialog] = React.useState(false)
   const [saveDialogDefaultName, setSaveDialogDefaultName] = React.useState('')
+
+
+  // First-time quest modal to make onboarding in the editor playful and guided
+  const [showQuestDialog, setShowQuestDialog] = React.useState(() => {
+    return (
+      !localStorage.getItem('widget-editor-quest-dismissed') &&
+      localStorage.getItem('widget-editor-quest-completed') !== 'true'
+    )
+  })
 
   // State to track current widget for versioning
   const [currentVersioningWidget, setCurrentVersioningWidget] =
@@ -446,6 +456,50 @@ const WidgetEditor: React.FC<{
     return '2.0'
   }
 
+
+  const hasAnyComponent = widgetData.components.length > 0
+  const hasRenamedWidget = widgetData.name.trim() !== '' && widgetData.name !== 'New Widget'
+  const isWidgetSaved = savedWidgets.some((widget) => widget.name === widgetData.name)
+
+  const questSteps = [
+    { label: 'Add your first component', complete: hasAnyComponent },
+    { label: 'Give your widget a custom name', complete: hasRenamedWidget },
+    { label: 'Save your widget', complete: isWidgetSaved },
+  ]
+
+  React.useEffect(() => {
+    if (!showQuestDialog) {
+      return
+    }
+
+    const questCompleted = questSteps.every((step) => step.complete)
+    if (questCompleted) {
+      localStorage.setItem('widget-editor-quest-completed', 'true')
+      localStorage.setItem('widget-editor-quest-dismissed', 'true')
+      setShowQuestDialog(false)
+      setComponentToast({
+        open: true,
+        message: 'Quest complete! Your first widget is ready for prime time ✨',
+        severity: 'success',
+      })
+    }
+  }, [questSteps, showQuestDialog])
+
+  const handleCloseQuestDialog = () => {
+    setShowQuestDialog(false)
+    localStorage.setItem('widget-editor-quest-dismissed', 'true')
+  }
+
+  const handleQuestAutoRename = () => {
+    const generatedName = `My Widget ${new Date().toLocaleDateString()}`
+    setWidgetData((prev) => ({ ...prev, name: generatedName }))
+    setComponentToast({
+      open: true,
+      message: `Widget renamed to "${generatedName}"`,
+      severity: 'info',
+    })
+  }
+
   // Set up delete confirmation content based on what's being deleted
   const getDeleteConfirmationProps = () => {
     if (componentToDelete) {
@@ -684,6 +738,16 @@ const WidgetEditor: React.FC<{
         onSave={handleSaveWidgetWithName}
         defaultName={saveDialogDefaultName}
         existingWidgets={savedWidgets}
+      />
+
+
+      <FirstRunWidgetQuestDialog
+        open={showQuestDialog}
+        onClose={handleCloseQuestDialog}
+        onAddStarterChart={() => handleDirectAdd('Chart')}
+        onAddStarterLabel={() => handleDirectAdd('Label')}
+        onAutoRename={handleQuestAutoRename}
+        steps={questSteps}
       />
 
       {/* Notification toasts */}
