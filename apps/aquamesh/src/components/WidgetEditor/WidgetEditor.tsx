@@ -569,6 +569,7 @@ const WidgetEditor: React.FC<{
         isLatestVersion={isLatestVersion}
         currentWidgetVersion={currentWidgetVersion}
         showAdvancedInToolbar={showAdvancedInToolbar}
+        onOpenWidgetQuest={() => setShowQuestDialog(true)}
       />
 
       {/* Main editor area */}
