@@ -14,6 +14,7 @@ import {
   useTheme,
   Tooltip,
   Fab,
+  CircularProgress,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 
@@ -94,7 +95,9 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   // Tutorial modal state
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [showTutorialOnStartup, setShowTutorialOnStartup] = useState(() => {
-    return !localStorage.getItem('aquamesh-tutorial-shown')
+    const questCompleted = localStorage.getItem('widget-editor-quest-completed') === 'true'
+    const tutorialAlreadyShown = !!localStorage.getItem('aquamesh-tutorial-shown')
+    return questCompleted && !tutorialAlreadyShown
   })
 
   // Add a state for the FAQ dialog
@@ -103,6 +106,22 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   // State for phone More menu grouping Tutorial and FAQ
   const [moreAnchorEl, setMoreAnchorEl] = useState<null | HTMLElement>(null)
   const [isWidgetEditorOpen, setIsWidgetEditorOpen] = useState(false)
+  const [questProgress, setQuestProgress] = useState<{ completed: number; total: number }>(() => {
+    try {
+      const stored = localStorage.getItem('widget-editor-quest-progress')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return {
+          completed: Number(parsed.completed) || 0,
+          total: Number(parsed.total) || 4,
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse widget-editor-quest-progress', error)
+    }
+
+    return { completed: 0, total: 4 }
+  })
 
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const { ref: layoutRef, addComponent } = useLayout()
@@ -138,7 +157,6 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       }
     }
     
-    // Check if tutorial should be shown
     if (showTutorialOnStartup) {
       setTutorialOpen(true)
     }
@@ -157,6 +175,39 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       window.clearInterval(intervalId)
     }
   }, [])
+
+  useEffect(() => {
+    const handleTutorialFromQuest = () => {
+      setTutorialOpen(true)
+      setShowTutorialOnStartup(false)
+      localStorage.setItem('aquamesh-tutorial-shown', 'true')
+    }
+
+    const handleQuestProgressUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ completed?: number; total?: number }>
+      const completed = Number(customEvent.detail?.completed) || 0
+      const total = Number(customEvent.detail?.total) || 4
+      setQuestProgress({ completed, total })
+    }
+
+    const handleQuestCompleted = () => {
+      setQuestProgress((prev) => ({ ...prev, completed: prev.total }))
+    }
+
+    document.addEventListener('openTutorialFromQuest', handleTutorialFromQuest)
+    document.addEventListener('widgetQuestProgressUpdated', handleQuestProgressUpdated)
+    document.addEventListener('widgetQuestCompleted', handleQuestCompleted)
+
+    return () => {
+      document.removeEventListener('openTutorialFromQuest', handleTutorialFromQuest)
+      document.removeEventListener('widgetQuestProgressUpdated', handleQuestProgressUpdated)
+      document.removeEventListener('widgetQuestCompleted', handleQuestCompleted)
+    }
+  }, [])
+
+  const questProgressPercent = Math.round(
+    (questProgress.completed / Math.max(1, questProgress.total)) * 100,
+  )
 
   const handleOpenWidgetQuest = () => {
     document.dispatchEvent(new CustomEvent('openWidgetQuestDialog'))
@@ -602,21 +653,63 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       </AppBar>
       
       {isWidgetEditorOpen && (
-        <Tooltip title="Widget Quest Progress">
-          <Fab
-            color="secondary"
-            size={isPhone ? 'small' : 'medium'}
-            onClick={handleOpenWidgetQuest}
+        <Tooltip
+          title={`Widget Quest progress: ${questProgress.completed}/${questProgress.total} missions completed`}
+        >
+          <Box
             sx={{
               position: 'fixed',
               top: isPhone ? 78 : 84,
               right: isPhone ? 12 : 20,
               zIndex: 1400,
-              boxShadow: 4,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.2,
+              py: 0.7,
+              borderRadius: 999,
+              bgcolor: 'rgba(15, 23, 42, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              boxShadow: 6,
+              backdropFilter: 'blur(6px)',
             }}
           >
-            <AutoAwesomeIcon />
-          </Fab>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+              <CircularProgress
+                variant="determinate"
+                value={questProgressPercent}
+                size={isPhone ? 34 : 40}
+                thickness={4.5}
+                sx={{ color: 'secondary.main' }}
+              />
+              <Fab
+                color="secondary"
+                size="small"
+                onClick={handleOpenWidgetQuest}
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  minHeight: isPhone ? 26 : 30,
+                  height: isPhone ? 26 : 30,
+                  width: isPhone ? 26 : 30,
+                  boxShadow: 'none',
+                }}
+              >
+                <AutoAwesomeIcon sx={{ fontSize: isPhone ? '0.9rem' : '1rem' }} />
+              </Fab>
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+              <Typography sx={{ fontSize: isPhone ? '0.55rem' : '0.62rem', color: 'rgba(255,255,255,0.7)' }}>
+                QUEST
+              </Typography>
+              <Typography sx={{ fontSize: isPhone ? '0.72rem' : '0.82rem', fontWeight: 700, color: '#fff' }}>
+                {questProgress.completed}/{questProgress.total}
+              </Typography>
+            </Box>
+          </Box>
         </Tooltip>
       )}
 

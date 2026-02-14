@@ -17,6 +17,7 @@ import { CustomWidget } from './WidgetStorage'
 import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
 import FirstRunWidgetQuestDialog from './components/dialogs/FirstRunWidgetQuestDialog'
+import QuestCongratulationsDialog from './components/dialogs/QuestCongratulationsDialog'
 
 // Main Widget Editor component
 const WidgetEditor: React.FC<{
@@ -135,6 +136,8 @@ const WidgetEditor: React.FC<{
     React.useState<string | null>(() =>
       localStorage.getItem('widget-editor-quest-opened-widget-name'),
     )
+  const [showQuestCongratsDialog, setShowQuestCongratsDialog] =
+    React.useState(false)
 
   // State to track current widget for versioning
   const [currentVersioningWidget, setCurrentVersioningWidget] =
@@ -506,16 +509,46 @@ const WidgetEditor: React.FC<{
     isWidgetSaved && openedWidgetFromTopMenuName === widgetData.name
 
   const questSteps = [
-    { label: 'Add your first component', complete: hasAnyComponent },
-    { label: 'Give your widget a custom name', complete: hasRenamedWidget },
-    { label: 'Save your widget', complete: isWidgetSaved },
+    {
+      label: 'Add your first component',
+      complete: hasAnyComponent,
+      helpText:
+        'Use the Components panel on the left and add any item (like Text Label or Pie Chart) to the canvas.',
+    },
+    {
+      label: 'Give your widget a custom name',
+      complete: hasRenamedWidget,
+      helpText:
+        'At the top of the canvas, edit "Widget Name" and replace the default "New Widget" with your own name.',
+    },
+    {
+      label: 'Save your widget',
+      complete: isWidgetSaved,
+      helpText:
+        'Click Save Widget in the editor toolbar. Your widget is stored and becomes available in Custom Widgets.',
+    },
     {
       label: 'Open this saved widget from the top Widgets menu',
       complete: hasOpenedSavedWidgetFromTopMenu,
+      helpText:
+        'Open the top navigation Widgets menu, go to Custom Widgets, and select the widget you just saved.',
     },
   ]
 
-  const questCompleted = questSteps.every((step) => step.complete)
+  const completedQuestSteps = questSteps.filter((step) => step.complete).length
+  const questCompleted = completedQuestSteps === questSteps.length
+
+  React.useEffect(() => {
+    localStorage.setItem(
+      'widget-editor-quest-progress',
+      JSON.stringify({ completed: completedQuestSteps, total: questSteps.length }),
+    )
+    document.dispatchEvent(
+      new CustomEvent('widgetQuestProgressUpdated', {
+        detail: { completed: completedQuestSteps, total: questSteps.length },
+      }),
+    )
+  }, [completedQuestSteps, questSteps.length])
 
   React.useEffect(() => {
     if (!questCompleted) {
@@ -533,23 +566,15 @@ const WidgetEditor: React.FC<{
         message: '🎉 Congratulations! You completed the Widget Quest mission!',
         severity: 'success',
       })
+      setShowQuestCongratsDialog(true)
       localStorage.setItem('widget-editor-quest-congrats-shown', 'true')
+      document.dispatchEvent(new CustomEvent('widgetQuestCompleted'))
     }
   }, [questCompleted])
 
   const handleCloseQuestDialog = () => {
     setShowQuestDialog(false)
     localStorage.setItem('widget-editor-quest-dismissed', 'true')
-  }
-
-  const handleQuestAutoRename = () => {
-    const generatedName = `My Widget ${new Date().toLocaleDateString()}`
-    setWidgetData((prev) => ({ ...prev, name: generatedName }))
-    setComponentToast({
-      open: true,
-      message: `Widget renamed to "${generatedName}"`,
-      severity: 'info',
-    })
   }
 
   // Set up delete confirmation content based on what's being deleted
@@ -796,10 +821,15 @@ const WidgetEditor: React.FC<{
       <FirstRunWidgetQuestDialog
         open={showQuestDialog}
         onClose={handleCloseQuestDialog}
-        onAddStarterChart={() => handleDirectAdd('Chart')}
-        onAddStarterLabel={() => handleDirectAdd('Label')}
-        onAutoRename={handleQuestAutoRename}
         steps={questSteps}
+      />
+
+      <QuestCongratulationsDialog
+        open={showQuestCongratsDialog}
+        onClose={() => setShowQuestCongratsDialog(false)}
+        onOpenTutorial={() => {
+          document.dispatchEvent(new CustomEvent('openTutorialFromQuest'))
+        }}
       />
 
       {/* Notification toasts */}
