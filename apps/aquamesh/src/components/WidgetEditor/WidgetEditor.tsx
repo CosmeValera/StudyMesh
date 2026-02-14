@@ -131,6 +131,10 @@ const WidgetEditor: React.FC<{
       localStorage.getItem('widget-editor-quest-completed') !== 'true'
     )
   })
+  const [openedWidgetFromTopMenuName, setOpenedWidgetFromTopMenuName] =
+    React.useState<string | null>(() =>
+      localStorage.getItem('widget-editor-quest-opened-widget-name'),
+    )
 
   // State to track current widget for versioning
   const [currentVersioningWidget, setCurrentVersioningWidget] =
@@ -192,6 +196,44 @@ const WidgetEditor: React.FC<{
       )
     }
   }, [handleLoadWidget])
+
+  // Allow reopening quest dialog from the global top-right floating button
+  React.useEffect(() => {
+    const handleOpenQuestRequest = () => {
+      setShowQuestDialog(true)
+    }
+
+    document.addEventListener('openWidgetQuestDialog', handleOpenQuestRequest)
+
+    return () => {
+      document.removeEventListener('openWidgetQuestDialog', handleOpenQuestRequest)
+    }
+  }, [])
+
+  // Track when user opens a widget from the top Widgets menu (quest mission #4)
+  React.useEffect(() => {
+    const handleWidgetOpenedFromTopMenu = (event: Event) => {
+      const customEvent = event as CustomEvent<{ widgetName?: string }>
+      const widgetName = customEvent.detail?.widgetName || null
+
+      if (widgetName) {
+        setOpenedWidgetFromTopMenuName(widgetName)
+        localStorage.setItem('widget-editor-quest-opened-widget-name', widgetName)
+      }
+    }
+
+    document.addEventListener(
+      'widgetOpenedFromTopMenu',
+      handleWidgetOpenedFromTopMenu,
+    )
+
+    return () => {
+      document.removeEventListener(
+        'widgetOpenedFromTopMenu',
+        handleWidgetOpenedFromTopMenu,
+      )
+    }
+  }, [])
 
   // Handle initial widget load from customProps
   React.useEffect(() => {
@@ -460,30 +502,40 @@ const WidgetEditor: React.FC<{
   const hasAnyComponent = widgetData.components.length > 0
   const hasRenamedWidget = widgetData.name.trim() !== '' && widgetData.name !== 'New Widget'
   const isWidgetSaved = savedWidgets.some((widget) => widget.name === widgetData.name)
+  const hasOpenedSavedWidgetFromTopMenu =
+    isWidgetSaved && openedWidgetFromTopMenuName === widgetData.name
 
   const questSteps = [
     { label: 'Add your first component', complete: hasAnyComponent },
     { label: 'Give your widget a custom name', complete: hasRenamedWidget },
     { label: 'Save your widget', complete: isWidgetSaved },
+    {
+      label: 'Open this saved widget from the top Widgets menu',
+      complete: hasOpenedSavedWidgetFromTopMenu,
+    },
   ]
 
+  const questCompleted = questSteps.every((step) => step.complete)
+
   React.useEffect(() => {
-    if (!showQuestDialog) {
+    if (!questCompleted) {
       return
     }
 
-    const questCompleted = questSteps.every((step) => step.complete)
-    if (questCompleted) {
-      localStorage.setItem('widget-editor-quest-completed', 'true')
-      localStorage.setItem('widget-editor-quest-dismissed', 'true')
-      setShowQuestDialog(false)
+    localStorage.setItem('widget-editor-quest-completed', 'true')
+    localStorage.setItem('widget-editor-quest-dismissed', 'true')
+    setShowQuestDialog(false)
+
+    const wasToastShown = localStorage.getItem('widget-editor-quest-congrats-shown')
+    if (wasToastShown !== 'true') {
       setComponentToast({
         open: true,
-        message: 'Quest complete! Your first widget is ready for prime time ✨',
+        message: '🎉 Congratulations! You completed the Widget Quest mission!',
         severity: 'success',
       })
+      localStorage.setItem('widget-editor-quest-congrats-shown', 'true')
     }
-  }, [questSteps, showQuestDialog])
+  }, [questCompleted])
 
   const handleCloseQuestDialog = () => {
     setShowQuestDialog(false)
@@ -569,7 +621,6 @@ const WidgetEditor: React.FC<{
         isLatestVersion={isLatestVersion}
         currentWidgetVersion={currentWidgetVersion}
         showAdvancedInToolbar={showAdvancedInToolbar}
-        onOpenWidgetQuest={() => setShowQuestDialog(true)}
       />
 
       {/* Main editor area */}

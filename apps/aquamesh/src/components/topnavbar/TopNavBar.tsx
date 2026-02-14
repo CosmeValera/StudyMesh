@@ -12,6 +12,8 @@ import {
   ListItemIcon,
   useMediaQuery,
   useTheme,
+  Tooltip,
+  Fab,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 
@@ -23,6 +25,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import HelpIcon from '@mui/icons-material/Help'
 import FolderIcon from '@mui/icons-material/Folder'
 import ImportContactsIcon from '@mui/icons-material/ImportContacts'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import { useLayout } from '../Layout/LayoutProvider'
@@ -99,6 +102,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
   // State for phone More menu grouping Tutorial and FAQ
   const [moreAnchorEl, setMoreAnchorEl] = useState<null | HTMLElement>(null)
+  const [isWidgetEditorOpen, setIsWidgetEditorOpen] = useState(false)
 
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const { ref: layoutRef, addComponent } = useLayout()
@@ -139,6 +143,24 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       setTutorialOpen(true)
     }
   }, [showTutorialOnStartup])
+
+  useEffect(() => {
+    const updateEditorOpenState = () => {
+      const hasEditor = !!document.querySelector('[data-component="WidgetEditor"]')
+      setIsWidgetEditorOpen(hasEditor)
+    }
+
+    updateEditorOpenState()
+    const intervalId = window.setInterval(updateEditorOpenState, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
+
+  const handleOpenWidgetQuest = () => {
+    document.dispatchEvent(new CustomEvent('openWidgetQuestDialog'))
+  }
 
   // Handle opening and closing dropdowns
   const handleWidgetsMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -324,6 +346,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                           key={item.name}
                           onClick={() => {
                             ensureDashboardAndAddComponent({ id: `panel-${Date.now()}`, ...item })
+                            document.dispatchEvent(new CustomEvent('widgetOpenedFromTopMenu', { detail: { widgetName: item.name } }))
                             handleClose()
                           }}
                           sx={{ p: 1.5 }}
@@ -379,6 +402,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                               key={item.name}
                               onClick={() => {
                                 ensureDashboardAndAddComponent({ id: `panel-${Date.now()}`, ...item })
+                                document.dispatchEvent(new CustomEvent('widgetOpenedFromTopMenu', { detail: { widgetName: item.name } }))
                                 handleClose()
                               }}
                               sx={{
@@ -577,6 +601,25 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         </Toolbar>
       </AppBar>
       
+      {isWidgetEditorOpen && (
+        <Tooltip title="Widget Quest Progress">
+          <Fab
+            color="secondary"
+            size={isPhone ? 'small' : 'medium'}
+            onClick={handleOpenWidgetQuest}
+            sx={{
+              position: 'fixed',
+              top: isPhone ? 78 : 84,
+              right: isPhone ? 12 : 20,
+              zIndex: 1400,
+              boxShadow: 4,
+            }}
+          >
+            <AutoAwesomeIcon />
+          </Fab>
+        </Tooltip>
+      )}
+
       {/* Tutorial Modal */}
       <TutorialModal 
         open={tutorialOpen}

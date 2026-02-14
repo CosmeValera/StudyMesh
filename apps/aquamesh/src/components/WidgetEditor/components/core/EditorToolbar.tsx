@@ -27,7 +27,6 @@ import ImportExportIcon from '@mui/icons-material/ImportExport'
 import HistoryIcon from '@mui/icons-material/History'
 import SearchIcon from '@mui/icons-material/Search'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import VersionWarningDialog from '../dialogs/VersionWarningDialog'
 import TooltipStyled from '../../../../components/TooltipStyled'
 
@@ -56,7 +55,6 @@ interface EditorToolbarProps {
   isLatestVersion?: boolean
   currentWidgetVersion?: string
   showAdvancedInToolbar?: boolean
-  onOpenWidgetQuest?: () => void
 }
 
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -81,8 +79,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   widgetHasComponents = false,
   isLatestVersion = true,
   currentWidgetVersion = '1.0',
-  showAdvancedInToolbar = false,
-  onOpenWidgetQuest
+  showAdvancedInToolbar = false
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -276,22 +273,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             
             
 
-            {!!onOpenWidgetQuest && (
-              <TooltipStyled title="Open Widget Quest">
-                <IconButton
-                  color="inherit"
-                  onClick={onOpenWidgetQuest}
-                  sx={{
-                    mr: isPhone ? 0.5 : 1,
-                    color: 'secondary.main',
-                    padding: isPhone ? '4px' : '8px'
-                  }}
-                >
-                  <AutoAwesomeIcon sx={{ fontSize: isPhone ? '1.25rem' : '1.5rem' }} />
-                </IconButton>
-              </TooltipStyled>
-            )}
-
             <TooltipStyled title="Editor settings">
               <IconButton 
                 color="inherit" 
@@ -423,31 +404,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   <ListItemText
                     primary="Search Components"
                     secondary="Search available components"
-                    primaryTypographyProps={{ fontSize: isPhone ? '0.6rem' : '0.8rem', fontWeight: 'bold', color: theme.palette.common.white }}
-                    secondaryTypographyProps={{ fontSize: isPhone ? '0.5rem' : '0.65rem', fontWeight: 'light', color: theme.palette.common.white }}
-                  />
-                </MenuItem>
-              )}
-
-              {!!onOpenWidgetQuest && (
-                <MenuItem
-                  onClick={() => {
-                    onOpenWidgetQuest()
-                    handleAdvancedMenuClose()
-                  }}
-                  sx={{
-                    py: 1.5,
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-                  }}
-                >
-                  <ListItemIcon sx={{ color: theme.palette.common.white }}>
-                    <AutoAwesomeIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Widget Quest"
-                    secondary="Check your mission progress"
                     primaryTypographyProps={{ fontSize: isPhone ? '0.6rem' : '0.8rem', fontWeight: 'bold', color: theme.palette.common.white }}
                     secondaryTypographyProps={{ fontSize: isPhone ? '0.5rem' : '0.65rem', fontWeight: 'light', color: theme.palette.common.white }}
                   />
