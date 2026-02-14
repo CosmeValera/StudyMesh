@@ -11,7 +11,35 @@ export interface StateDashboard {
 export interface DashboardLayout {
   type?: string;
   id?: string;
+  name?: string;
+  component?: string;
+  active?: boolean;
+  weight?: number;
   children?: DashboardLayout[];
+}
+
+const DEFAULT_EDITOR_DASHBOARD: StateDashboard = {
+  id: 'default-dashboard',
+  name: 'Dashboard',
+  layout: {
+    type: 'row',
+    id: '#default-dashboard-layout',
+    children: [
+      {
+        type: 'tabset',
+        id: '#default-dashboard-tabset',
+        active: true,
+        children: [
+          {
+            type: 'tab',
+            id: '#default-widget-editor-tab',
+            name: 'Widget Editor',
+            component: 'WidgetEditor',
+          },
+        ],
+      },
+    ],
+  },
 }
 
 interface StoreState {
@@ -27,7 +55,7 @@ export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       selectedDashboard: 0,
-      openDashboards: [],
+      openDashboards: [DEFAULT_EDITOR_DASHBOARD],
       setDashboards: (element) => set({ openDashboards: element }),
       setSelectedDashboard: (index) => set({ selectedDashboard: index }),
       changeWidgetData: (data) => {
