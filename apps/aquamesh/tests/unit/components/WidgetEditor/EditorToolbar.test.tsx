@@ -62,9 +62,10 @@ describe('EditorToolbar Component', () => {
   // Define mock props and handler functions
   const mockProps = {
     editMode: true,
+    viewMode: 'both' as const,
     showSidebar: false,
     toggleSidebar: vi.fn(),
-    toggleEditMode: vi.fn(),
+    setViewMode: vi.fn(),
     handleSaveWidget: vi.fn(),
     setShowWidgetList: vi.fn(),
     setShowSettingsModal: vi.fn(),
@@ -100,8 +101,15 @@ describe('EditorToolbar Component', () => {
 
     // Verify basic elements are rendered
     expect(screen.getByText('Create Widget')).toBeInTheDocument()
+    expect(screen.getByLabelText('Widget editor view mode')).toBeInTheDocument()
     expect(
-      screen.getByLabelText('Toggle edit/preview mode'),
+      screen.getByRole('button', { name: 'Both view' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Edit view' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Preview view' }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Open Saved Widgets')).toBeInTheDocument()
     expect(screen.getByLabelText('Editor settings')).toBeInTheDocument()
@@ -152,17 +160,16 @@ describe('EditorToolbar Component', () => {
     expect(mockProps.toggleSidebar).toHaveBeenCalledTimes(1)
   })
 
-  it('calls toggleEditMode when edit/preview button is clicked', () => {
+  it('changes view mode when a segmented mode button is clicked', () => {
     render(
       <ThemeProvider theme={darkTheme}>
         <EditorToolbar {...mockProps} />
       </ThemeProvider>,
     )
 
-    const editModeButton = screen.getByLabelText('Toggle edit/preview mode')
-    fireEvent.click(editModeButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Preview view' }))
 
-    expect(mockProps.toggleEditMode).toHaveBeenCalledTimes(1)
+    expect(mockProps.setViewMode).toHaveBeenCalledWith('preview')
   })
 
   it('calls handleSaveWidget when save button is clicked', () => {
@@ -366,7 +373,7 @@ describe('EditorToolbar Component', () => {
     // Case 1: Not in edit mode
     render(
       <ThemeProvider theme={darkTheme}>
-        <EditorToolbar {...mockProps} editMode={false} />
+        <EditorToolbar {...mockProps} editMode={false} viewMode="preview" />
       </ThemeProvider>,
     )
 

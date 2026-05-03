@@ -43,9 +43,10 @@ const DashboardWidgetExplanationModal: React.FC<
       PaperProps={{
         sx: {
           borderRadius: 2,
-          bgcolor: '#00A389',
+          bgcolor: 'background.paper',
           overflow: 'hidden',
-          backgroundImage: 'linear-gradient(135deg, #00A389 0%, #00886F 100%)',
+          border: 1,
+          borderColor: 'divider',
         },
       }}
       TransitionComponent={Fade}
@@ -54,10 +55,11 @@ const DashboardWidgetExplanationModal: React.FC<
       <DialogTitle
         id="explanation-dialog-title"
         sx={{
-          bgcolor: '#00BC9A',
-          color: 'white',
+          bgcolor: 'background.paper',
+          color: 'text.primary',
           pb: 1,
-          backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)',
+          borderBottom: 1,
+          borderColor: 'divider',
         }}
       >
         <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -65,14 +67,14 @@ const DashboardWidgetExplanationModal: React.FC<
             variant="h6"
             component="div"
             fontWeight="bold"
-            color="#eee"
+            color="text.primary"
           >
             Widget To Dashboard
           </Typography>
           <IconButton
             aria-label="close"
             onClick={onClose}
-            sx={{ color: '#eee' }}
+            sx={{ color: 'text.secondary' }}
           >
             <CloseIcon />
           </IconButton>
@@ -89,15 +91,15 @@ const DashboardWidgetExplanationModal: React.FC<
                   sx={{
                     p: 3,
                     height: '100%',
-                    bgcolor: '#00886F',
+                    bgcolor: 'background.paper',
                     borderLeft: '4px solid',
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderColor: 'primary.main',
                     borderRadius: 2,
                     transition: 'all 0.2s ease-in-out',
                     '&:hover': {
                       transform: 'translateY(-4px)',
                       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                      borderColor: 'white',
+                      borderColor: 'primary.dark',
                     },
                   }}
                 >
@@ -106,11 +108,15 @@ const DashboardWidgetExplanationModal: React.FC<
                       color="primary"
                       sx={{ fontSize: 32, mr: 2 }}
                     />
-                    <Typography variant="h5" fontWeight="bold" color="#f9f9f9">
+                    <Typography
+                      variant="h5"
+                      fontWeight="bold"
+                      color="text.primary"
+                    >
                       Dashboards
                     </Typography>
                   </Box>
-                  <Typography variant="body1" paragraph color="#f9f9f9">
+                  <Typography variant="body1" paragraph color="text.secondary">
                     Dashboards are where saved widgets become a useful
                     workspace. After creating a widget, add it here, arrange it,
                     and save the layout.
@@ -130,23 +136,23 @@ const DashboardWidgetExplanationModal: React.FC<
                     variant="body1"
                     paragraph
                     sx={{ marginTop: '1rem' }}
-                    color="#f9f9f9"
+                    color="text.primary"
                   >
                     Quick steps:
                   </Typography>
                   <Box component="ul" sx={{ pl: 2 }}>
-                    <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
+                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
                         <strong>Add the saved widget</strong> from Add Widget
                       </Typography>
                     </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
+                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
                         <strong>Arrange the dashboard</strong> around the
                         information you need
                       </Typography>
                     </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
+                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
                         <strong>Save the dashboard</strong> when the view is
                         ready
@@ -164,25 +170,29 @@ const DashboardWidgetExplanationModal: React.FC<
                   sx={{
                     p: 3,
                     height: '100%',
-                    bgcolor: '#00886F',
+                    bgcolor: 'background.paper',
                     borderLeft: '4px solid',
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderColor: 'primary.main',
                     borderRadius: 2,
                     transition: 'all 0.2s ease-in-out',
                     '&:hover': {
                       transform: 'translateY(-4px)',
                       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                      borderColor: 'white',
+                      borderColor: 'primary.dark',
                     },
                   }}
                 >
                   <Box display="flex" alignItems="center" mb={2}>
                     <WidgetsIcon color="primary" sx={{ fontSize: 32, mr: 2 }} />
-                    <Typography variant="h5" fontWeight="bold" color="#f9f9f9">
+                    <Typography
+                      variant="h5"
+                      fontWeight="bold"
+                      color="text.primary"
+                    >
                       Widgets
                     </Typography>
                   </Box>
-                  <Typography variant="body1" paragraph color="#f9f9f9">
+                  <Typography variant="body1" paragraph color="text.secondary">
                     Widgets are reusable dashboard blocks. Build one in Create
                     Widget with text, inputs, buttons, charts, or layout blocks,
                     then reuse it anywhere.
@@ -202,17 +212,17 @@ const DashboardWidgetExplanationModal: React.FC<
                     variant="body1"
                     paragraph
                     sx={{ marginTop: '1rem' }}
-                    color="#f9f9f9"
+                    color="text.primary"
                   >
                     Quick steps:
                   </Typography>
                   <Box component="ul" sx={{ pl: 2 }}>
-                    <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
+                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
                         <strong>Open Create Widget</strong> from the top bar
                       </Typography>
                     </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
+                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
                         <strong>Add building blocks</strong>, preview, and save
                         the widget
@@ -226,7 +236,15 @@ const DashboardWidgetExplanationModal: React.FC<
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, bgcolor: '#00A389' }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: 3,
+          bgcolor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider',
+        }}
+      >
         <Button
           onClick={onClose}
           color="primary"

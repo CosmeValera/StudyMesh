@@ -1,10 +1,10 @@
 import React from 'react'
-import { 
-  DialogTitle, 
-  Typography, 
-  Box, 
+import {
+  DialogTitle,
+  Typography,
+  Box,
   IconButton,
-  useTheme
+  useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 
@@ -23,31 +23,27 @@ const DialogHeader: React.FC<DialogHeaderProps> = ({
   title,
   icon,
   onClose,
-  color = '#00BC9A',
-  textColor = '#191919'
+  color,
+  textColor = '#191919',
 }) => {
   const theme = useTheme()
-  
+  const headerColor = color ?? theme.palette.background.paper
+
   return (
     <DialogTitle
       sx={{
-        bgcolor: color,
-        color: 'white',
+        bgcolor: headerColor,
+        color: textColor,
         pb: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundImage: `linear-gradient(90deg, ${color} 0%, ${theme.palette.mode === 'dark' 
-          ? 'rgba(0, 0, 0, 0.2)' 
-          : 'rgba(255, 255, 255, 0.1)'} 100%)`,
+        borderBottom: '1px solid',
+        borderColor: theme.palette.divider,
       }}
     >
       <Box display="flex" alignItems="center">
-        {icon && (
-          <Box sx={{ mr: 1.5, color: textColor }}>
-            {icon}
-          </Box>
-        )}
+        {icon && <Box sx={{ mr: 1.5, color: textColor }}>{icon}</Box>}
         <Typography
           variant="h6"
           component="div"
@@ -62,11 +58,11 @@ const DialogHeader: React.FC<DialogHeaderProps> = ({
           aria-label="close"
           onClick={onClose}
           size="small"
-          sx={{ 
+          sx={{
             color: textColor,
             '&:hover': {
-              bgcolor: 'rgba(255, 255, 255, 0.1)'
-            }
+              bgcolor: theme.palette.action.hover,
+            },
           }}
         >
           <CloseIcon />
@@ -76,4 +72,4 @@ const DialogHeader: React.FC<DialogHeaderProps> = ({
   )
 }
 
-export default DialogHeader 
+export default DialogHeader

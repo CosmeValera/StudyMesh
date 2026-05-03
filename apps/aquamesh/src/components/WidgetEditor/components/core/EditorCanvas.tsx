@@ -151,7 +151,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
-        bgcolor: 'background.default',
+        bgcolor: '#F8FAFA',
         transition: 'width 0.3s ease',
         width: '100%',
       }}
@@ -349,7 +349,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         variant="caption"
                         sx={{
                           display: 'block',
-                          color: 'primary.light',
+                          color: 'primary.dark',
                           fontWeight: 700,
                           mb: 0.5,
                         }}
@@ -414,7 +414,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       startIcon={<AutoGraphIcon />}
                       onClick={() => onAddStarterComponent?.('Chart')}
                       disabled={!onAddStarterComponent}
-                      sx={{ borderRadius: 1, textTransform: 'none' }}
+                      sx={{
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
                     >
                       Add tickets chart
                     </Button>
@@ -424,7 +429,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       startIcon={<TextFieldsIcon />}
                       onClick={() => onAddStarterComponent?.('Label')}
                       disabled={!onAddStarterComponent}
-                      sx={{ borderRadius: 1, textTransform: 'none' }}
+                      sx={{
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
                     >
                       Add status text
                     </Button>
@@ -434,7 +444,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       startIcon={<InputIcon />}
                       onClick={() => onAddStarterComponent?.('TextField')}
                       disabled={!onAddStarterComponent}
-                      sx={{ borderRadius: 1, textTransform: 'none' }}
+                      sx={{
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
                     >
                       Add team note
                     </Button>
@@ -444,7 +459,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       startIcon={<ViewModuleIcon />}
                       onClick={onUseTemplate}
                       disabled={!onUseTemplate}
-                      sx={{ borderRadius: 1, textTransform: 'none' }}
+                      sx={{
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                      }}
                     >
                       Browse templates
                     </Button>

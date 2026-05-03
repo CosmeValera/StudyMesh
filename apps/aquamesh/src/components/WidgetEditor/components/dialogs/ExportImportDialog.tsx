@@ -20,7 +20,7 @@ import {
   Divider,
   Paper,
   Snackbar,
-  useTheme
+  useTheme,
 } from '@mui/material'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import DownloadIcon from '@mui/icons-material/Download'
@@ -70,7 +70,7 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
   open,
   onClose,
   widgets,
-  onImportComplete
+  onImportComplete,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -88,7 +88,7 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
 
   // Select all widgets for export
   const selectAllWidgets = () => {
-    setSelectedWidgets(widgets.map(w => w.id))
+    setSelectedWidgets(widgets.map((w) => w.id))
   }
 
   // Deselect all widgets for export
@@ -99,7 +99,7 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
   // Toggle selection of a widget for export
   const toggleWidgetSelection = (widgetId: string) => {
     if (selectedWidgets.includes(widgetId)) {
-      setSelectedWidgets(selectedWidgets.filter(id => id !== widgetId))
+      setSelectedWidgets(selectedWidgets.filter((id) => id !== widgetId))
     } else {
       setSelectedWidgets([...selectedWidgets, widgetId])
     }
@@ -107,11 +107,13 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
 
   // Generate export data from selected widgets
   const generateExport = () => {
-    const widgetsToExport = widgets.filter(w => selectedWidgets.includes(w.id))
+    const widgetsToExport = widgets.filter((w) =>
+      selectedWidgets.includes(w.id),
+    )
     const exportObj = {
       exportDate: new Date().toISOString(),
       exportVersion: '1.0',
-      widgets: widgetsToExport
+      widgets: widgetsToExport,
     }
     setExportData(JSON.stringify(exportObj, null, 2))
   }
@@ -121,7 +123,7 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
     if (!exportData) {
       return
     }
-    
+
     const blob = new Blob([exportData], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -136,10 +138,10 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
   // Copy export data to clipboard
   const copyExportToClipboard = () => {
     navigator.clipboard.writeText(exportData)
-    
+
     setToastMessage('Export data copied to clipboard')
     setToastOpen(true)
-    
+
     setTimeout(() => {
       setToastOpen(false)
     }, 3000)
@@ -158,12 +160,12 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
     if (!file) {
       return
     }
-    
+
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
       setImportData(content)
-      
+
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -177,27 +179,27 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
     try {
       // Parse the import data
       const parsedData = JSON.parse(importData)
-      
+
       // Validate format
       if (!parsedData.widgets || !Array.isArray(parsedData.widgets)) {
         setImportResult({
           success: false,
-          message: 'Invalid import format. Missing or invalid widgets array.'
+          message: 'Invalid import format. Missing or invalid widgets array.',
         })
         return
       }
-      
+
       // Import each widget
       const importedWidgets = parsedData.widgets
       let importCount = 0
-      
+
       importedWidgets.forEach((widget: CustomWidget) => {
         // Check if the widget name already exists
-        const existingWidget = widgets.find(w => w.name === widget.name)
-        const widgetName = existingWidget 
+        const existingWidget = widgets.find((w) => w.name === widget.name)
+        const widgetName = existingWidget
           ? `${widget.name} (Imported ${new Date().toLocaleTimeString()})`
           : widget.name
-        
+
         // Preserve metadata but assign new IDs
         WidgetStorage.saveWidget({
           name: widgetName,
@@ -206,29 +208,28 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
           tags: widget.tags || [],
           description: widget.description || '',
           version: widget.version || '1.0',
-          author: widget.author || 'Imported'
+          author: widget.author || 'Imported',
         })
-        
+
         importCount++
       })
-      
+
       // Show success message
       setImportResult({
         success: true,
-        message: `Successfully imported ${importCount} widget(s)`
+        message: `Successfully imported ${importCount} widget(s)`,
       })
-      
+
       // Clear import data
       setImportData('')
-      
+
       // Notify parent component that import is complete
       onImportComplete()
-      
     } catch (error) {
       // Show error message
       setImportResult({
         success: false,
-        message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       })
     }
   }
@@ -250,53 +251,60 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
       maxWidth={isPhone ? 'xs' : 'md'}
       fullWidth
       PaperProps={{
-        sx: dialogStyles.paper
+        sx: dialogStyles.paper,
       }}
     >
-      <DialogTitle sx={{
-        ...dialogStyles.title,
-        px: isPhone ? 2 : dialogStyles.title.px,
-        py: isPhone ? 1 : dialogStyles.title.py
-      }}>
-        <SwapHorizIcon sx={{ mr: 1.5, color: 'white' }} />
-        <Typography variant={isPhone ? 'subtitle1' : 'h6'} sx={{ fontWeight: 500, color: 'white' }}>
+      <DialogTitle
+        sx={{
+          ...dialogStyles.title,
+          px: isPhone ? 2 : dialogStyles.title.px,
+          py: isPhone ? 1 : dialogStyles.title.py,
+        }}
+      >
+        <SwapHorizIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+        <Typography
+          variant={isPhone ? 'subtitle1' : 'h6'}
+          sx={{ fontWeight: 500, color: 'text.primary' }}
+        >
           Export & Import Widgets
         </Typography>
       </DialogTitle>
 
-      <DialogContent sx={{
-        ...dialogStyles.content,
-        p: isPhone ? 1 : 0,
-      }}>
+      <DialogContent
+        sx={{
+          ...dialogStyles.content,
+          p: isPhone ? 1 : 0,
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           variant="fullWidth"
           sx={{
             borderBottom: 1,
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            bgcolor: 'rgba(0, 0, 0, 0.1)',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
             minHeight: isPhone ? 40 : 48,
             '& .MuiTab-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: 'text.secondary',
               minHeight: isPhone ? 40 : 48,
               fontWeight: 500,
               fontSize: isPhone ? '0.85rem' : '0.95rem',
               '&.Mui-selected': {
-                color: 'white',
+                color: 'primary.dark',
               },
             },
             '& .MuiTabs-indicator': {
-              backgroundColor: 'white',
+              backgroundColor: 'primary.main',
             },
           }}
         >
-          <Tab 
-            label={isPhone ? 'Export' : 'Export Widgets'} 
-            icon={<CloudDownloadIcon />} 
-            iconPosition="start" 
+          <Tab
+            label={isPhone ? 'Export' : 'Export Widgets'}
+            icon={<CloudDownloadIcon />}
+            iconPosition="start"
           />
-          <Tab 
+          <Tab
             label={isPhone ? 'Import' : 'Import Widgets'}
             icon={<CloudUploadIcon />}
             iconPosition="start"
@@ -305,56 +313,69 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
 
         <TabPanel value={tabValue} index={0}>
           <Box sx={{ p: isPhone ? 2 : 3 }}>
-            <Typography variant="body1" paragraph color="white">
+            <Typography variant="body1" paragraph color="text.primary">
               Export your widgets to share with others or back up your work.
               Select the widgets you want to export from the list below.
             </Typography>
 
-            <Box sx={{ 
-              mb: isPhone ? 2 : 3, 
-              mt: isPhone ? 1 : 2, 
-              display: 'flex',
-              flexDirection: isPhone ? 'column' : 'row',
-              gap: isPhone ? 1 : 1.5,
-              justifyContent: isPhone ? 'flex-start' : 'space-between',
-              alignItems: 'center'
-            }}>
-              <Typography variant="subtitle1" fontWeight="500" color="white">
-                {widgets.length > 0 
-                  ? `Available Widgets (${widgets.length})` 
+            <Box
+              sx={{
+                mb: isPhone ? 2 : 3,
+                mt: isPhone ? 1 : 2,
+                display: 'flex',
+                flexDirection: isPhone ? 'column' : 'row',
+                gap: isPhone ? 1 : 1.5,
+                justifyContent: isPhone ? 'flex-start' : 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                fontWeight="500"
+                color="text.primary"
+              >
+                {widgets.length > 0
+                  ? `Available Widgets (${widgets.length})`
                   : 'No widgets available to export'}
               </Typography>
 
-              <Box sx={{ display: 'flex', gap: 1, width: isPhone ? '100%' : 'auto', justifyContent: isPhone ? 'space-between' : 'flex-start' }}>
-                <Button 
-                  size="small" 
-                  onClick={selectAllWidgets} 
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1,
+                  width: isPhone ? '100%' : 'auto',
+                  justifyContent: isPhone ? 'space-between' : 'flex-start',
+                }}
+              >
+                <Button
+                  size="small"
+                  onClick={selectAllWidgets}
                   disabled={widgets.length === 0}
                   variant="outlined"
                   fullWidth={isPhone}
                   sx={{
-                    color: 'white',
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    color: 'primary.dark',
+                    borderColor: 'primary.dark',
                     '&:hover': {
-                      borderColor: 'white',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderColor: 'primary.main',
+                      backgroundColor: 'rgba(0, 124, 102, 0.08)',
                     },
                   }}
                 >
                   {isPhone ? 'Select' : 'Select All'}
                 </Button>
-                <Button 
-                  size="small" 
-                  onClick={deselectAllWidgets} 
+                <Button
+                  size="small"
+                  onClick={deselectAllWidgets}
                   disabled={selectedWidgets.length === 0}
                   variant="outlined"
                   fullWidth={isPhone}
                   sx={{
-                    color: 'white',
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    color: 'primary.dark',
+                    borderColor: 'primary.dark',
                     '&:hover': {
-                      borderColor: 'white',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderColor: 'primary.main',
+                      backgroundColor: 'rgba(0, 124, 102, 0.08)',
                     },
                   }}
                 >
@@ -363,68 +384,80 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
               </Box>
             </Box>
 
-            <Paper 
-              elevation={0} 
-              sx={{ 
+            <Paper
+              elevation={0}
+              sx={{
                 maxHeight: isPhone ? 180 : 240,
                 overflow: 'auto',
                 mb: 3,
-                bgcolor: 'rgba(0, 0, 0, 0.15)',
+                bgcolor: 'background.paper',
                 borderRadius: 2,
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                border: '1px solid',
+                borderColor: 'divider',
               }}
             >
               <List dense>
                 {widgets.length === 0 ? (
                   <ListItem>
-                    <ListItemText 
-                      primary="No widgets found" 
-                      primaryTypographyProps={{ 
-                        color: 'rgba(255, 255, 255, 0.5)',
+                    <ListItemText
+                      primary="No widgets found"
+                      primaryTypographyProps={{
+                        color: 'text.secondary',
                         fontStyle: 'italic',
-                      }} 
+                      }}
                     />
                   </ListItem>
                 ) : (
                   widgets.map((widget) => (
-                    <ListItem 
+                    <ListItem
                       key={widget.id}
                       button
                       onClick={() => toggleWidgetSelection(widget.id)}
                       sx={{
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
                         '&:hover': {
-                          bgcolor: 'rgba(255, 255, 255, 0.05)',
+                          bgcolor: 'action.hover',
                         },
                       }}
                     >
                       <ListItemIcon sx={{ minWidth: 40 }}>
-                        <Checkbox 
+                        <Checkbox
                           edge="start"
                           checked={selectedWidgets.includes(widget.id)}
                           tabIndex={-1}
                           disableRipple
-                          inputProps={{ 'aria-labelledby': `widget-${widget.id}` }}
-                          sx={{ 
-                            color: 'rgba(255, 255, 255, 0.5)',
+                          inputProps={{
+                            'aria-labelledby': `widget-${widget.id}`,
+                          }}
+                          sx={{
+                            color: 'text.secondary',
                             '&.Mui-checked': {
-                              color: 'white',
+                              color: 'primary.main',
                             },
                           }}
                         />
                       </ListItemIcon>
-                      <ListItemText 
+                      <ListItemText
                         id={`widget-${widget.id}`}
                         primary={widget.name}
-                        secondary={!isPhone ? widget.description || 'No description available' : undefined}
-                        primaryTypographyProps={{ 
-                          color: 'white',
+                        secondary={
+                          !isPhone
+                            ? widget.description || 'No description available'
+                            : undefined
+                        }
+                        primaryTypographyProps={{
+                          color: 'text.primary',
                           fontWeight: 500,
                         }}
-                        secondaryTypographyProps={!isPhone ? {
-                          color: 'rgba(255, 255, 255, 0.7)',
-                          fontSize: '0.8rem',
-                        } : undefined}
+                        secondaryTypographyProps={
+                          !isPhone
+                            ? {
+                                color: 'text.secondary',
+                                fontSize: '0.8rem',
+                              }
+                            : undefined
+                        }
                       />
                     </ListItem>
                   ))
@@ -445,18 +478,20 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
 
             {exportData && (
               <Box sx={{ mt: 3 }}>
-                <Divider sx={{ 
-                  mb: 3, 
-                  borderColor: 'rgba(255, 255, 255, 0.1)',
-                  '&::before, &::after': {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                  }
-                }}>
-                  <Typography 
-                    variant="caption" 
+                <Divider
+                  sx={{
+                    mb: 3,
+                    borderColor: 'divider',
+                    '&::before, &::after': {
+                      borderColor: 'divider',
+                    },
+                  }}
+                >
+                  <Typography
+                    variant="caption"
                     component="span"
-                    sx={{ 
-                      color: 'rgba(255, 255, 255, 0.7)', 
+                    sx={{
+                      color: 'text.secondary',
                       fontWeight: 'medium',
                       px: 1,
                     }}
@@ -473,29 +508,31 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
                   value={exportData}
                   InputProps={{
                     readOnly: true,
-                    sx: { 
+                    sx: {
                       fontFamily: 'monospace',
                       fontSize: '0.85rem',
-                      color: 'white',
+                      color: 'text.primary',
                       borderRadius: 2,
-                      bgcolor: 'rgba(0, 0, 0, 0.2)',
+                      bgcolor: 'background.paper',
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'divider',
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        borderColor: 'primary.main',
                       },
-                    }
+                    },
                   }}
                   sx={{ mb: 2 }}
                 />
 
-                <Box sx={{ 
-                  display: 'flex',
-                  flexDirection: isPhone ? 'column' : 'row',
-                  gap: 2,
-                  mt: 2
-                }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: isPhone ? 'column' : 'row',
+                    gap: 2,
+                    mt: 2,
+                  }}
+                >
                   <Button
                     variant="contained"
                     onClick={downloadExport}
@@ -522,31 +559,34 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
 
         <TabPanel value={tabValue} index={1}>
           <Box sx={{ p: isPhone ? 2 : 3 }}>
-            <Typography variant="body1" paragraph color="white">
+            <Typography variant="body1" paragraph color="text.primary">
               Import widgets from a file or by pasting exported widget data.
             </Typography>
-            
-            <Box sx={{ 
-              border: '2px dashed',
-              borderColor: 'rgba(255, 255, 255, 0.3)',
-              borderRadius: 2,
-              p: isPhone ? 2 : 4,
-              mb: isPhone ? 2 : 3,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(255, 255, 255, 0.05)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              height: isPhone ? 140 : 180,
-              '&:hover': {
-                borderColor: 'white',
-                bgcolor: 'rgba(255, 255, 255, 0.08)',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              }
-            }} onClick={handleUploadClick}>
+
+            <Box
+              sx={{
+                border: '2px dashed',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: isPhone ? 2 : 4,
+                mb: isPhone ? 2 : 3,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'background.paper',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                height: isPhone ? 140 : 180,
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: 'rgba(0, 124, 102, 0.06)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                },
+              }}
+              onClick={handleUploadClick}
+            >
               <input
                 type="file"
                 ref={fileInputRef}
@@ -554,41 +594,57 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
                 style={{ display: 'none' }}
                 accept=".json"
               />
-              <CloudUploadIcon 
-                sx={{ 
-                  fontSize: 52, 
-                  color: 'white',
+              <CloudUploadIcon
+                sx={{
+                  fontSize: 52,
+                  color: 'primary.main',
                   mb: 2,
                   opacity: 0.9,
-                }} 
+                }}
               />
-              <Typography variant={isPhone?'subtitle2':'h6'} gutterBottom fontWeight="bold" color="white">
+              <Typography
+                variant={isPhone ? 'subtitle2' : 'h6'}
+                gutterBottom
+                fontWeight="bold"
+                color="text.primary"
+              >
                 {isPhone ? 'Upload File' : 'Click to Upload File'}
               </Typography>
-              <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
+              <Typography variant="body2" color="text.secondary">
                 Accepts .json files
               </Typography>
             </Box>
-            
-            <Box sx={{ my: isPhone ? 2 : 3, display: 'flex', alignItems: 'center', width: '100%' }}>
-              <Divider sx={{ 
-                flexGrow: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-              }} />
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  px: 2, 
-                  color: 'rgba(255, 255, 255, 0.7)',
+
+            <Box
+              sx={{
+                my: isPhone ? 2 : 3,
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+              }}
+            >
+              <Divider
+                sx={{
+                  flexGrow: 1,
+                  borderColor: 'divider',
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  px: 2,
+                  color: 'text.secondary',
                   fontWeight: 'medium',
                 }}
               >
                 OR PASTE JSON BELOW
               </Typography>
-              <Divider sx={{ 
-                flexGrow: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-              }} />
+              <Divider
+                sx={{
+                  flexGrow: 1,
+                  borderColor: 'divider',
+                }}
+              />
             </Box>
 
             <TextField
@@ -600,32 +656,34 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
               value={importData}
               onChange={(e) => setImportData(e.target.value)}
               InputProps={{
-                sx: { 
+                sx: {
                   fontFamily: 'monospace',
                   fontSize: '0.85rem',
                   borderRadius: 2,
-                  color: 'white',
-                  bgcolor: 'rgba(0, 0, 0, 0.2)',
+                  color: 'text.primary',
+                  bgcolor: 'background.paper',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: 'divider',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: 'primary.main',
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'white',
-                  }
-                }
+                    borderColor: 'primary.main',
+                  },
+                },
               }}
               sx={{ mb: isPhone ? 2 : 3 }}
             />
-            
+
             {importResult && (
-              <Alert 
-                icon={importResult.success ? <CheckCircleIcon /> : <ErrorIcon />}
-                severity={importResult.success ? "success" : "error"}
+              <Alert
+                icon={
+                  importResult.success ? <CheckCircleIcon /> : <ErrorIcon />
+                }
+                severity={importResult.success ? 'success' : 'error'}
                 variant="filled"
-                sx={{ 
+                sx={{
                   mb: isPhone ? 2 : 3,
                   borderRadius: 2,
                   boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
@@ -634,8 +692,14 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
                 {importResult.message}
               </Alert>
             )}
-            
-            <Box sx={{ display: 'flex', justifyContent: 'center', pt: isPhone ? 1 : 3 }}>
+
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                pt: isPhone ? 1 : 3,
+              }}
+            >
               <Button
                 variant="contained"
                 disabled={!importData.trim()}
@@ -650,16 +714,20 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
           </Box>
         </TabPanel>
       </DialogContent>
-      
-      <DialogActions sx={{
-        px: isPhone ? 1 : 3,
-        py: isPhone ? 1 : 2,
-        bgcolor: '#00A389',
-        display: 'flex',
-        justifyContent: 'flex-end'
-      }}>
-        <Button 
-          onClick={onClose} 
+
+      <DialogActions
+        sx={{
+          px: isPhone ? 1 : 3,
+          py: isPhone ? 1 : 2,
+          bgcolor: 'background.paper',
+          borderTop: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}
+      >
+        <Button
+          onClick={onClose}
           variant="contained"
           sx={{
             bgcolor: '#00D1AB',
@@ -668,7 +736,7 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
             py: isPhone ? 1 : undefined,
             '&:hover': {
               bgcolor: '#00E4BC',
-            }
+            },
           }}
         >
           Close
@@ -682,18 +750,18 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
         onClose={() => setToastOpen(false)}
         message={toastMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ 
+        sx={{
           '& .MuiSnackbarContent-root': {
             bgcolor: '#00BC9A',
             color: 'black',
             fontWeight: 'medium',
             borderRadius: 2,
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          }
+          },
         }}
       />
     </Dialog>
   )
 }
 
-export default ExportImportDialog 
+export default ExportImportDialog

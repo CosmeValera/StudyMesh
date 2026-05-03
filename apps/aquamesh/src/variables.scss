@@ -3,87 +3,87 @@ body {
   --common-white: #ffffff;
   --common-clear: #FFFFFF0;
 
-  --primary-main: #00C49A;
-  --primary-light: #4ADCBE;
-  --primary-dark: #007C66;
+  --primary-main: #007c66;
+  --primary-light: #00c49a;
+  --primary-dark: #005a49;
 
   --secondary-main: #009879;
-  --secondary-light: #00C49A;
-  --secondary-dark: #007C66;
+  --secondary-light: #00c49a;
+  --secondary-dark: #007c66;
 
-  --grey-50: #F9FAFA;
-  --grey-100: #F4F5F6;
-  --grey-200: #ECEEEF;
-  --grey-300: #DEE2E3;
-  --grey-400: #B7C0C2;
-  --grey-500: #96A2A6;
-  --grey-600: #6C7A7F;
+  --grey-50: #f9fafa;
+  --grey-100: #f4f5f6;
+  --grey-200: #eceeef;
+  --grey-300: #dee2e3;
+  --grey-400: #b7c0c2;
+  --grey-500: #96a2a6;
+  --grey-600: #6c7a7f;
   --grey-700: #596569;
-  --grey-800: #3D4548;
+  --grey-800: #3d4548;
   --grey-900: #001026;
-  --grey-a100: #D3D8D9;
-  --grey-a200: #A4AEB2;
+  --grey-a100: #d3d8d9;
+  --grey-a200: #a4aeb2;
   --grey-a400: #596569;
-  --grey-a700: #2D3334;
+  --grey-a700: #2d3334;
 
-  /* common aliases - updated to match green theme */
-  --foreground-primary: rgb(0, 131, 104);
-  --foreground-contrast-primary: #FFFFFFde;
-  --foreground-secondary: #ffffff9a;
-  --foreground-contrast-secondary: #FFFFFF99;
+  /* common aliases */
+  --foreground-primary: #102a2dde;
+  --foreground-contrast-primary: #102a2dde;
+  --foreground-secondary: #3d575cde;
+  --foreground-contrast-secondary: #3d575cde;
   --foreground-disabled: #00102661;
-  --foreground-contrast-disabled: #FFFFFF61;
+  --foreground-contrast-disabled: #00102661;
 
-  /* Background colors - converted to green theme */
-  --background-header: #005A49;
-  --background-bar-dark: #003D31; 
-  --background-bar-medium: #005A49;
-  --background-default: #006B58;
-  --background-light: #FFFFFF14;
-  --background-paper: #008368;
+  /* Background colors */
+  --background-header: #ffffff;
+  --background-bar-dark: #e6ecee;
+  --background-bar-medium: #f4f7f8;
+  --background-default: #f8fafa;
+  --background-light: #ffffff;
+  --background-paper: #ffffff;
 
-  --action-active: #00C49A47;
-  --action-contrast-active: #FFFFFF7a;
-  --action-hover: #4ADCBE48;
-  --action-contrast-hover: #FFFFFF14;
-  --action-selected: #00C49A29;
-  --action-contrast-selected: #FFFFFF29;
+  --action-active: #00c49a33;
+  --action-contrast-active: #ffffff7a;
+  --action-hover: #00c49a1f;
+  --action-contrast-hover: #ffffff14;
+  --action-selected: #00c49a24;
+  --action-contrast-selected: #ffffff29;
   --action-disabled: #00000042;
-  --action-contrast-disabled: #FFFFFF42;
+  --action-contrast-disabled: #ffffff42;
 
-  --other-divider: #0000001F;
-  --other-outlined-border: #0000003B;
+  --other-divider: #0000001f;
+  --other-outlined-border: #0000003b;
   --other-backdrop-overlay: #00000080;
   --other-filled-input-background: #00000017;
-  --other-standard-input-line: #0000006B;
-  --other-snackbar: #2D3334;
+  --other-standard-input-line: #0000006b;
+  --other-snackbar: #2d3334;
 
   /* status & severity - mostly unchanged */
-  --critical-main: #E31B0C;
-  --critical-light: #F88078;
-  --critical-dark: #BA1408;
+  --critical-main: #e31b0c;
+  --critical-light: #f88078;
+  --critical-dark: #ba1408;
 
-  --serious-main: #ED6C02;
-  --serious-light: #FFB547;
-  --serious-dark: #BB5A00;
+  --serious-main: #ed6c02;
+  --serious-light: #ffb547;
+  --serious-dark: #bb5a00;
 
-  --caution-main: #FBE20E;
-  --caution-light: #FDF082;
-  --caution-dark: #B4A203;
+  --caution-main: #fbe20e;
+  --caution-light: #fdf082;
+  --caution-dark: #b4a203;
   --caution-contrast-text: #00000099;
 
-  --normal-main: #299E2E;
-  --normal-light: #7BC67E;
-  --normal-dark: #3B873E;
+  --normal-main: #299e2e;
+  --normal-light: #7bc67e;
+  --normal-dark: #3b873e;
 
   /* Standby also shifted to greenish */
   --standby-main: #009879;
-  --standby-light: #00C49A;
-  --standby-dark: #007C66;
+  --standby-light: #00c49a;
+  --standby-dark: #007c66;
 
-  --off-main: #9EA7AD;
-  --off-light: #D6D9DC;
-  --off-dark: #6A7177;
+  --off-main: #9ea7ad;
+  --off-light: #d6d9dc;
+  --off-dark: #6a7177;
 
-  --tabs-background: #FFFFFF14;
+  --tabs-background: #ffffff14;
 }

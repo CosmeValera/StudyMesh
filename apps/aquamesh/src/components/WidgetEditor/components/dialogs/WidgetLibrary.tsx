@@ -26,8 +26,6 @@ import {
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import WidgetsIcon from '@mui/icons-material/Widgets'
-import EditIcon from '@mui/icons-material/Edit'
-import PreviewIcon from '@mui/icons-material/Visibility'
 import SearchIcon from '@mui/icons-material/Search'
 import SortIcon from '@mui/icons-material/Sort'
 import CloseIcon from '@mui/icons-material/Close'
@@ -57,7 +55,6 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
   open,
   onClose,
   widgets,
-  onPreview,
   onEdit,
   onDelete,
 }) => {
@@ -222,18 +219,20 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
         PaperProps={{
           sx: {
             bgcolor: 'background.paper',
-            backgroundImage: 'linear-gradient(to bottom, #00A389, #00886F)',
             borderRadius: 2,
             overflow: 'hidden',
+            border: 1,
+            borderColor: 'divider',
           },
         }}
       >
         <DialogTitle
           sx={{
-            bgcolor: 'primary.main',
-            color: 'white',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             pb: 1,
-            backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)',
+            borderBottom: 1,
+            borderColor: 'divider',
             position: 'sticky',
             top: 0,
             zIndex: 1200,
@@ -251,8 +250,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 component="div"
                 fontWeight="bold"
                 sx={{
-                  color: '#eee',
-                  textShadow: '0px 1px 2px rgba(255, 255, 255, 0.3)',
+                  color: 'text.primary',
                 }}
               >
                 Saved Widgets
@@ -264,9 +262,9 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 aria-label="close"
                 onClick={onClose}
                 sx={{
-                  color: 'white',
+                  color: 'text.secondary',
                   '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    bgcolor: 'action.hover',
                   },
                 }}
               >
@@ -276,7 +274,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ px: 3, py: 2, bgcolor: '#00A389' }}>
+        <DialogContent sx={{ px: 3, py: 2, bgcolor: 'background.default' }}>
           {/* Search and Sort Controls */}
           <Grid container spacing={2} sx={{ mb: 3, mt: 1 }}>
             <Grid item xs={12} md={6}>
@@ -291,7 +289,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
                     </InputAdornment>
                   ),
                   endAdornment: searchTerm ? (
@@ -299,7 +297,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                       <IconButton
                         size="small"
                         onClick={() => setSearchTerm('')}
-                        sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                        sx={{ color: 'text.secondary' }}
                         disabled={isLoading}
                       >
                         <CloseIcon fontSize="small" />
@@ -307,23 +305,22 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                     </InputAdornment>
                   ) : null,
                   sx: {
-                    bgcolor: 'rgba(0, 0, 0, 0.1)',
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                    color: 'white',
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      borderColor: 'divider',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      borderColor: 'primary.main',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'white',
+                      borderColor: 'primary.main',
                     },
                   },
                 }}
                 sx={{
                   '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: 'text.secondary',
                   },
                 }}
               />
@@ -335,10 +332,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 variant="outlined"
                 disabled={isLoading}
               >
-                <InputLabel
-                  id="sort-by-label"
-                  sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-                >
+                <InputLabel id="sort-by-label" sx={{ color: 'text.secondary' }}>
                   Sort By
                 </InputLabel>
                 <Select
@@ -348,20 +342,20 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                   label="Sort By"
                   startAdornment={
                     <InputAdornment position="start">
-                      <SortIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                      <SortIcon sx={{ color: 'text.secondary' }} />
                     </InputAdornment>
                   }
                   sx={{
-                    bgcolor: 'rgba(0, 0, 0, 0.1)',
-                    color: 'white',
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      borderColor: 'divider',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      borderColor: 'primary.main',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'white',
+                      borderColor: 'primary.main',
                     },
                   }}
                 >
@@ -385,7 +379,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
               alignItems: 'center',
             }}
           >
-            <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
+            <Typography variant="body2" color="text.secondary">
               {sortedWidgets.length === 0
                 ? 'No saved widgets found'
                 : `Showing ${sortedWidgets.length} saved widget${sortedWidgets.length !== 1 ? 's' : ''}`}
@@ -439,7 +433,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 py: 6,
-                color: 'white',
+                color: 'text.secondary',
                 opacity: 0.7,
                 textAlign: 'center',
               }}
@@ -479,16 +473,17 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                     elevation={3}
                     sx={{
                       width: '100%',
-                      bgcolor: 'rgba(0, 0, 0, 0.2)',
-                      backdropFilter: 'blur(10px)',
+                      bgcolor: 'background.paper',
                       borderRadius: 2,
                       overflow: 'hidden',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      border: 1,
+                      borderColor: 'divider',
                       transition: 'transform 0.2s, box-shadow 0.2s',
                       cursor: 'pointer',
                       '&:hover': {
                         transform: 'translateY(-5px)',
-                        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.2)',
+                        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.12)',
+                        borderColor: 'primary.main',
                       },
                     }}
                     onClick={() => onEdit(widget)}
@@ -496,8 +491,8 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                     {/* Widget Header */}
                     <Box
                       sx={{
-                        bgcolor: '#00D1AB',
-                        color: '#191919',
+                        bgcolor: 'rgba(0, 124, 102, 0.08)',
+                        color: 'text.primary',
                         p: { xs: 1, sm: 2 },
                         display: 'flex',
                         alignItems: 'center',
@@ -520,8 +515,8 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                         label={`${widget.components.length} ${widget.components.length === 1 ? 'block' : 'blocks'}`}
                         size="small"
                         sx={{
-                          bgcolor: 'rgba(0, 0, 0, 0.2)',
-                          color: '#191919',
+                          bgcolor: 'rgba(0, 124, 102, 0.12)',
+                          color: 'primary.dark',
                           fontWeight: 'bold',
                           '& .MuiChip-label': {
                             fontSize: { xs: '0.6rem', sm: '0.875rem' },
@@ -531,10 +526,10 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                     </Box>
 
                     {/* Widget Info */}
-                    <Box sx={{ p: { xs: 1, sm: 2 }, color: 'white' }}>
+                    <Box sx={{ p: { xs: 1, sm: 2 }, color: 'text.primary' }}>
                       <Typography
                         variant="body2"
-                        color="rgba(255, 255, 255, 0.7)"
+                        color="text.secondary"
                         sx={{
                           mb: { xs: 0.5, sm: 1 },
                           fontSize: { xs: '0.65rem', sm: '0.875rem' },
@@ -545,7 +540,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
 
                       <Typography
                         variant="body2"
-                        color="rgba(255, 255, 255, 0.7)"
+                        color="text.secondary"
                         sx={{
                           mb: { xs: 0.5, sm: 1 },
                           fontSize: { xs: '0.65rem', sm: '0.875rem' },
@@ -554,7 +549,6 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                         Created: {formatDate(widget.createdAt)}
                       </Typography>
 
-                      {/* Action Buttons */}
                       <Box
                         sx={{
                           display: 'flex',
@@ -562,56 +556,13 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                           justifyContent: 'flex-end',
                         }}
                       >
-                        <Box sx={{ display: 'flex', mr: 1 }}>
-                          <Tooltip title="Preview">
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<PreviewIcon />}
-                              onClick={(e) => {
-                                e.stopPropagation() // Prevent row click handler
-                                onPreview(widget)
-                              }}
-                              sx={{
-                                mr: isPhone ? 0.5 : 1,
-                                color: 'white',
-                                borderColor: 'rgba(255, 255, 255, 0.3)',
-                                fontSize: isPhone ? '0.6rem' : '0.875rem',
-                                padding: isPhone ? '2px 6px' : undefined,
-                                '&:hover': {
-                                  borderColor: 'white',
-                                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                                },
-                              }}
-                            >
-                              Preview
-                            </Button>
-                          </Tooltip>
-
-                          <Tooltip title="Edit">
-                            <Button
-                              variant="contained"
-                              size="small"
-                              startIcon={<EditIcon />}
-                              onClick={(e) => {
-                                e.stopPropagation() // Prevent row click handler
-                                onEdit(widget)
-                              }}
-                              sx={{
-                                mr: isPhone ? 0.5 : 1,
-                                bgcolor: '#00D1AB',
-                                color: '#191919',
-                                fontSize: isPhone ? '0.7rem' : '0.875rem',
-                                padding: isPhone ? '2px 6px' : undefined,
-                                '&:hover': {
-                                  bgcolor: '#00E4BC',
-                                },
-                              }}
-                            >
-                              Edit
-                            </Button>
-                          </Tooltip>
-                        </Box>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ mr: 1 }}
+                        >
+                          Click card to open
+                        </Typography>
                         <Tooltip title="Delete Widget">
                           <IconButton
                             size="small"
@@ -641,7 +592,9 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
           sx={{
             px: 3,
             pb: 3,
-            bgcolor: '#00A389',
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
             display: 'flex',
             justifyContent: 'flex-end',
           }}
@@ -650,10 +603,10 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
             onClick={onClose}
             variant="contained"
             sx={{
-              bgcolor: '#00D1AB',
-              color: '#191919',
+              bgcolor: 'primary.dark',
+              color: 'primary.contrastText',
               '&:hover': {
-                bgcolor: '#00E4BC',
+                bgcolor: 'primary.main',
               },
             }}
             disabled={isLoading}

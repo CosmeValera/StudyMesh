@@ -102,10 +102,8 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     userData.role === 'ADMIN_ROLE' ? 'Builder mode' : 'Viewer mode'
 
   const { topNavBarWidgets } = useTopNavBarWidgets()
-  const {
-    ensureDashboardAndAddComponent,
-    openCreateWidget,
-  } = useWorkspaceActions()
+  const { ensureDashboardAndAddComponent, openCreateWidget } =
+    useWorkspaceActions()
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -136,7 +134,6 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         console.error('Failed to parse user data from localStorage', error)
       }
     }
-
   }, [])
 
   useEffect(() => {
@@ -257,10 +254,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               onClose={handleClose}
               PaperProps={{
                 sx: {
-                  bgcolor: 'background.menu',
-                  color: 'foreground.contrastPrimary',
+                  bgcolor: 'background.paper',
+                  color: 'text.primary',
                   width: '250px',
                   boxShadow: 3,
+                  border: 1,
+                  borderColor: 'divider',
                 },
               }}
             >
@@ -271,14 +270,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                     <ListItemIcon>
                       <FolderIcon
                         fontSize="small"
-                        sx={{ color: 'foreground.contrastPrimary' }}
+                        sx={{ color: 'text.secondary' }}
                       />
                     </ListItemIcon>
                     Saved Widgets
                   </MenuItem>
-                  <Divider
-                    sx={{ my: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}
-                  />
+                  <Divider sx={{ my: 1, borderColor: 'divider' }} />
                 </>
               )}
 
@@ -342,12 +339,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                       py: 1,
                       fontWeight: 'bold',
                       mt: 1,
-                      color: '#000000DE',
+                      color: 'text.primary',
                     }}
                   >
                     Example Operations Widgets
                   </Typography>
-                  <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                  <Divider sx={{ borderColor: 'divider' }} />
                   {topNavBarWidgets
                     .filter((widget) => !widget.name.includes('Custom'))
                     .map((topNavBarWidget) => (
@@ -381,14 +378,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                           py: 1,
                           fontWeight: 'bold',
                           mt: 1,
-                          color: '#000000DE',
+                          color: 'text.primary',
                         }}
                       >
                         My Widgets
                       </Typography>
-                      <Divider
-                        sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
-                      />
+                      <Divider sx={{ borderColor: 'divider' }} />
                       {topNavBarWidgets
                         .filter((widget) => widget.name.includes('Custom'))
                         .map((topNavBarWidget) => (
@@ -526,10 +521,21 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               anchorEl={userAnchorEl}
               open={Boolean(userAnchorEl)}
               onClose={handleClose}
+              PaperProps={{
+                sx: {
+                  bgcolor: 'background.paper',
+                  color: 'text.primary',
+                  border: 1,
+                  borderColor: 'divider',
+                },
+              }}
             >
-              <MenuItem onClick={handleLogout} sx={{ color: 'white' }}>
+              <MenuItem onClick={handleLogout} sx={{ color: 'text.primary' }}>
                 <ListItemIcon>
-                  <LogoutIcon fontSize="small" sx={{ color: 'white' }} />
+                  <LogoutIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
                 </ListItemIcon>
                 Logout
               </MenuItem>

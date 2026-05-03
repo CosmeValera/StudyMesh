@@ -17,7 +17,8 @@
     0px 3px 14px 2px rgba(0, 0, 0, 0.12),
     0px 8px 10px 1px rgba(0, 0, 0, 0.14),
     0px 5px 5px -3px rgba(0, 0, 0, 0.2);
-  border-color: var(--background-paper);
+  border: 1px solid var(--grey-200);
+  border-color: var(--grey-200);
   background-color: var(--background-paper);
 }
 
@@ -43,15 +44,16 @@
 
 .flexlayout__tabset_tabbar_outer_top {
   border-bottom: 0px;
-  background-color: #006B55;
+  background-color: var(--background-bar-medium);
 }
 
 .flexlayout__tabset {
   border-radius: 8px;
-  background-color: rgba(28, 143, 123, 0.895);
+  background-color: var(--background-paper);
+  border: 1px solid var(--grey-200);
 
   & .flexlayout__tabset-selected .flexlayout__tabset_tabbar_inner_tab_container  {
-    background-color: var(--foreground-main);
+    background-color: var(--background-paper);
   }
 
   &.flexlayout__tabset-maximized {
@@ -64,10 +66,10 @@
 }
 
 .flexlayout__splitter {
-  background-color: #28453e29;
+  background-color: var(--grey-200);
 
   &:hover {
-    background-color: #30927e;
+    background-color: var(--primary-light);
   }
 
   &.flexlayout__splitter_drag {
@@ -81,7 +83,7 @@
 }
 
 .flexlayout__tabset_content {
-  background-color: #006B55 ;
+  background-color: var(--background-paper);
   border-radius: 0px 0px 8px 8px;
 }
 
@@ -89,7 +91,7 @@
 
 .flexlayout__tab {
   border-radius: 0px 0px 8px 8px;
-  background-color: #005A49;
+  background-color: var(--background-paper);
 }
 
 .flexlayout__tab_button {
@@ -99,7 +101,7 @@
   min-width: 132px;
   justify-content: space-between;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--foreground-secondary);
 
   &:only-child {
     padding-left: 16px;
@@ -113,8 +115,8 @@
     padding: 4px 4px 4px 8px;
 
     &.flexlayout__tab_button--selected {
-      color: white;
-      background-color: #ffffff24;
+      color: var(--foreground-primary);
+      background-color: var(--action-selected);
       border-bottom: 1px solid var(--primary-main);
     }
 
@@ -133,7 +135,7 @@
 }
 
 .flexlayout__tab_toolbar {
-  background-color: rgba(14, 61, 44, 0.55);
+  background-color: var(--background-bar-medium);
   gap: 8px;
   padding: 0 8px;
 
@@ -146,7 +148,7 @@
     cursor: pointer;
     
     & > svg {
-      color: white;
+      color: var(--foreground-primary);
     }
   }
 }
@@ -157,12 +159,12 @@
 }
 
 .flexlayout__tab_floating {
-  background-color: #006B55;
+  background-color: var(--background-paper);
 }
 
 .flexlayout__tab_button:hover {
   background-color: var(--action-hover) !important;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--foreground-primary);
 }
 
 .flexlayout__tab_toolbar_button:hover {
@@ -172,6 +174,6 @@
 .flexlayout__tab_button_trailing {
   visibility: visible;
   svg {
-    color: white;
+    color: var(--foreground-primary);
   }
 }

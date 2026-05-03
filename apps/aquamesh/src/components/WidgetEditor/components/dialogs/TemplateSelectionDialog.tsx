@@ -38,7 +38,14 @@ import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import Autocomplete from '@mui/material/Autocomplete'
 // Import shared styles
-import { dialogStyles, applyDialogStyles, buttonStyles, cardStyles, chipStyles, TAG_COLOR_MAP } from '../../../shared/DialogStyles'
+import {
+  dialogStyles,
+  applyDialogStyles,
+  buttonStyles,
+  cardStyles,
+  chipStyles,
+  TAG_COLOR_MAP,
+} from '../../../shared/DialogStyles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import theme from '../../../../theme'
 
@@ -57,10 +64,19 @@ const TEMPLATES_STORAGE_KEY = 'aquamesh_custom_templates'
 
 // Define static tag options
 const TAG_OPTIONS = [
-  'form', 'input', 'user data',
-  'dashboard', 'stats', 'chart', 'metrics',
-  'report', 'status', 'system', 'monitoring',
-  'custom', 'template'
+  'form',
+  'input',
+  'user data',
+  'dashboard',
+  'stats',
+  'chart',
+  'metrics',
+  'report',
+  'status',
+  'system',
+  'monitoring',
+  'custom',
+  'template',
 ]
 
 const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
@@ -275,44 +291,44 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
       ? WIDGET_TEMPLATES.filter((t) => !deletedBuiltInTemplates.includes(t.id))
       : []
     const userList = [...userTemplates]
-    
+
     // Apply favorites filter
     const favorites = getFavoriteTemplates()
     let combined = [...builtInList, ...userList]
-    
+
     if (showFavoritesOnly) {
       combined = combined.filter((t) => favorites.includes(t.id))
     }
-    
+
     // Determine sort function
     let sortFn: SortFunction
-    
+
     switch (sortOption) {
-    case 'newest':
-      sortFn = (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      break
-    case 'oldest':
-      sortFn = (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      break
-    case 'name_asc':
-      sortFn = (a, b) => a.name.localeCompare(b.name)
-      break
-    case 'name_desc':
-      sortFn = (a, b) => b.name.localeCompare(a.name)
-      break
-    case 'components_desc':
-      sortFn = (a, b) => b.components.length - a.components.length
-      break
-    case 'components_asc':
-      sortFn = (a, b) => a.components.length - b.components.length
-      break
-    default:
-      sortFn = (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      case 'newest':
+        sortFn = (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        break
+      case 'oldest':
+        sortFn = (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        break
+      case 'name_asc':
+        sortFn = (a, b) => a.name.localeCompare(b.name)
+        break
+      case 'name_desc':
+        sortFn = (a, b) => b.name.localeCompare(a.name)
+        break
+      case 'components_desc':
+        sortFn = (a, b) => b.components.length - a.components.length
+        break
+      case 'components_asc':
+        sortFn = (a, b) => a.components.length - b.components.length
+        break
+      default:
+        sortFn = (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     }
-    
+
     return combined.sort(sortFn)
   }
 
@@ -354,8 +370,11 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
       {saveAsTemplateMode ? (
         <>
           <DialogTitle sx={dialogStyles.title}>
-            <SaveIcon sx={{ mr: 1.5, color: 'white' }} />
-            <Typography variant={isPhone ? 'subtitle1' : 'h6'} sx={{ fontWeight: 500, color: 'white' }}>
+            <SaveIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+            <Typography
+              variant={isPhone ? 'subtitle1' : 'h6'}
+              sx={{ fontWeight: 500, color: 'text.primary' }}
+            >
               Save as Template
             </Typography>
           </DialogTitle>
@@ -380,21 +399,21 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               InputProps={{
                 sx: {
                   borderRadius: 1.5,
-                  color: 'white',
+                  color: 'text.primary',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    borderColor: 'divider',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderColor: 'primary.main',
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'white',
+                    borderColor: 'primary.main',
                   },
                 },
               }}
               InputLabelProps={{
                 sx: {
-                  color: 'rgba(255, 255, 255, 0.7)',
+                  color: 'text.secondary',
                 },
               }}
             />
@@ -412,21 +431,21 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               InputProps={{
                 sx: {
                   borderRadius: 1.5,
-                  color: 'white',
+                  color: 'text.primary',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    borderColor: 'divider',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderColor: 'primary.main',
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'white',
+                    borderColor: 'primary.main',
                   },
                 },
               }}
               InputLabelProps={{
                 sx: {
-                  color: 'rgba(255, 255, 255, 0.7)',
+                  color: 'text.secondary',
                 },
               }}
             />
@@ -463,26 +482,26 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                   InputProps={{
                     ...params.InputProps,
                     sx: {
-                      color: 'white',
+                      color: 'text.primary',
                       '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        borderColor: 'divider',
                       },
                       '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        borderColor: 'primary.main',
                       },
                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'white',
+                        borderColor: 'primary.main',
                       },
                     },
                   }}
                   InputLabelProps={{
                     sx: {
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: 'text.secondary',
                     },
                   }}
                   FormHelperTextProps={{
                     sx: {
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: 'text.secondary',
                     },
                   }}
                 />
@@ -490,8 +509,8 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               sx={{
                 '& .MuiAutocomplete-tag': {
                   bgcolor: 'rgba(255, 255, 255, 0.16)',
-                  color: 'white',
-                }
+                  color: 'text.primary',
+                },
               }}
             />
           </DialogContent>
@@ -520,18 +539,20 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
         </>
       ) : (
         <>
-          <DialogTitle sx={{
-            ...dialogStyles.title,
-            px: isPhone ? 2 : dialogStyles.title.px,
-            py: isPhone ? 1 : dialogStyles.title.py
-          }}>
-            <DashboardIcon sx={{ mr: 1.5, color: 'white' }} />
+          <DialogTitle
+            sx={{
+              ...dialogStyles.title,
+              px: isPhone ? 2 : dialogStyles.title.px,
+              py: isPhone ? 1 : dialogStyles.title.py,
+            }}
+          >
+            <DashboardIcon sx={{ mr: 1.5, color: 'primary.main' }} />
             <Typography
               variant={isPhone ? 'subtitle2' : 'h6'}
               sx={{
                 flexGrow: 1,
                 fontWeight: 500,
-                color: 'white',
+                color: 'text.primary',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -541,21 +562,23 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               Templates
             </Typography>
 
-            <Box sx={{
-              position: 'absolute',
-              right: isPhone ? 4 : 10,
-              top: isPhone ? 8 : '50%',
-              transform: isPhone ? 'none' : 'translateY(-50%)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: isPhone ? 0.5 : 1,
-            }}>
+            <Box
+              sx={{
+                position: 'absolute',
+                right: isPhone ? 4 : 10,
+                top: isPhone ? 8 : '50%',
+                transform: isPhone ? 'none' : 'translateY(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: isPhone ? 0.5 : 1,
+              }}
+            >
               {isPhone ? (
                 <>
                   <IconButton
                     onClick={handleOpenSortMenu}
                     size="small"
-                    sx={{ color: 'white', p: 0.5 }}
+                    sx={{ color: 'text.primary', p: 0.5 }}
                   >
                     <SortIcon fontSize="small" />
                   </IconButton>
@@ -577,7 +600,9 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                     onClick={toggleBuiltInTemplatesVisibility}
                     size="small"
                     sx={{
-                      color: showBuiltInTemplates ? 'white' : 'rgba(255,255,255,0.5)',
+                      color: showBuiltInTemplates
+                        ? 'primary.main'
+                        : 'text.disabled',
                       p: 0.5,
                     }}
                   >
@@ -590,10 +615,10 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                   variant="contained"
                   sx={{
                     boxShadow: 'none',
-                    bgcolor: 'rgba(255,255,255,0.2)',
+                    bgcolor: 'background.paper',
                     borderRadius: 1.5,
                     border: '1px solid',
-                    borderColor: 'rgba(255,255,255,0.3)',
+                    borderColor: 'divider',
                     overflow: 'hidden',
                   }}
                 >
@@ -608,20 +633,26 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                         fontSize: '0.85rem',
                         backgroundColor: 'transparent',
                         px: 2,
-                        color: 'white',
+                        color: 'text.primary',
                         '&:hover': {
-                          backgroundColor: 'rgba(255,255,255,0.15)',
+                          backgroundColor: 'action.hover',
                         },
                       }}
                     >
-                      {!isPhone && (
-                        sortOption === 'newest' ? 'Date (New-Old)' :
-                        sortOption === 'oldest' ? 'Date (Old-New)' :
-                        sortOption === 'name_asc' ? 'Name (A-Z)' :
-                        sortOption === 'name_desc' ? 'Name (Z-A)' :
-                        sortOption === 'components_asc' ? 'Components (Low-High)' :
-                        sortOption === 'components_desc' ? 'Components (High-Low)' : ''
-                      )}
+                      {!isPhone &&
+                        (sortOption === 'newest'
+                          ? 'Date (New-Old)'
+                          : sortOption === 'oldest'
+                            ? 'Date (Old-New)'
+                            : sortOption === 'name_asc'
+                              ? 'Name (A-Z)'
+                              : sortOption === 'name_desc'
+                                ? 'Name (Z-A)'
+                                : sortOption === 'components_asc'
+                                  ? 'Components (Low-High)'
+                                  : sortOption === 'components_desc'
+                                    ? 'Components (High-Low)'
+                                    : '')}
                     </Button>
                   </Tooltip>
 
@@ -635,12 +666,10 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                     <IconButton
                       onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
                       sx={{
-                        color: showFavoritesOnly
-                          ? '#FFD700'
-                          : 'white',
+                        color: showFavoritesOnly ? '#FFD700' : 'white',
                         borderRadius: '0',
                         '&:hover': {
-                          backgroundColor: 'rgba(255,255,255,0.15)',
+                          backgroundColor: 'action.hover',
                         },
                       }}
                     >
@@ -659,11 +688,11 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                       onClick={toggleBuiltInTemplatesVisibility}
                       sx={{
                         color: showBuiltInTemplates
-                          ? 'white'
-                          : 'rgba(255, 255, 255, 0.5)',
+                          ? 'primary.main'
+                          : 'text.disabled',
                         borderRadius: '0 8px 8px 0',
                         '&:hover': {
-                          backgroundColor: 'rgba(255,255,255,0.15)',
+                          backgroundColor: 'action.hover',
                         },
                       }}
                     >
@@ -690,7 +719,10 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
             }}
             sx={{
               '& .MuiPaper-root': {
-                backgroundImage: 'linear-gradient(135deg, #00BC9A 0%, #008C8C 100%)',
+                bgcolor: 'background.paper',
+                color: 'text.primary',
+                border: 1,
+                borderColor: 'divider',
                 borderRadius: 2,
                 mt: 1,
                 '& .MuiList-root': {
@@ -706,7 +738,8 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               onClick={() => handleSortOptionChange('newest')}
               sx={{
                 fontWeight: sortOption === 'newest' ? 'bold' : 'normal',
-                bgcolor: sortOption === 'newest' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
+                bgcolor:
+                  sortOption === 'newest' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
               }}
             >
               <ListItemText>Date (Newest first)</ListItemText>
@@ -715,7 +748,8 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               onClick={() => handleSortOptionChange('oldest')}
               sx={{
                 fontWeight: sortOption === 'oldest' ? 'bold' : 'normal',
-                bgcolor: sortOption === 'oldest' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
+                bgcolor:
+                  sortOption === 'oldest' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
               }}
             >
               <ListItemText>Date (Oldest first)</ListItemText>
@@ -724,7 +758,8 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               onClick={() => handleSortOptionChange('name_asc')}
               sx={{
                 fontWeight: sortOption === 'name_asc' ? 'bold' : 'normal',
-                bgcolor: sortOption === 'name_asc' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
+                bgcolor:
+                  sortOption === 'name_asc' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
               }}
             >
               <ListItemText>Name (A-Z)</ListItemText>
@@ -733,7 +768,10 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               onClick={() => handleSortOptionChange('name_desc')}
               sx={{
                 fontWeight: sortOption === 'name_desc' ? 'bold' : 'normal',
-                bgcolor: sortOption === 'name_desc' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
+                bgcolor:
+                  sortOption === 'name_desc'
+                    ? 'rgba(0, 0, 0, 0.08)'
+                    : 'inherit',
               }}
             >
               <ListItemText>Name (Z-A)</ListItemText>
@@ -741,8 +779,12 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
             <MenuItem
               onClick={() => handleSortOptionChange('components_desc')}
               sx={{
-                fontWeight: sortOption === 'components_desc' ? 'bold' : 'normal',
-                bgcolor: sortOption === 'components_desc' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
+                fontWeight:
+                  sortOption === 'components_desc' ? 'bold' : 'normal',
+                bgcolor:
+                  sortOption === 'components_desc'
+                    ? 'rgba(0, 0, 0, 0.08)'
+                    : 'inherit',
               }}
             >
               <ListItemText>Components (High-Low)</ListItemText>
@@ -751,17 +793,23 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               onClick={() => handleSortOptionChange('components_asc')}
               sx={{
                 fontWeight: sortOption === 'components_asc' ? 'bold' : 'normal',
-                bgcolor: sortOption === 'components_asc' ? 'rgba(0, 0, 0, 0.08)' : 'inherit',
+                bgcolor:
+                  sortOption === 'components_asc'
+                    ? 'rgba(0, 0, 0, 0.08)'
+                    : 'inherit',
               }}
             >
               <ListItemText>Components (Low-High)</ListItemText>
             </MenuItem>
           </Menu>
 
-          <DialogContent sx={{...dialogStyles.content, p: isPhone ? 1 : 3}}>
+          <DialogContent sx={{ ...dialogStyles.content, p: isPhone ? 1 : 3 }}>
             {/* Dialog content */}
-            <Grid container spacing={isPhone ? 1 : 3} sx={{ flexDirection: isPhone ? 'column' : 'row' }}>
-
+            <Grid
+              container
+              spacing={isPhone ? 1 : 3}
+              sx={{ flexDirection: isPhone ? 'column' : 'row' }}
+            >
               {/* Save as Template Card - Only show if there's a current widget */}
               {currentWidget && (
                 <Grid item xs={12} sm={6} md={4}>
@@ -781,7 +829,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                         ...cardStyles.base['&:hover'],
                         borderColor: '#00BC9A',
                         bgcolor: 'rgba(0, 188, 154, 0.25)',
-                      }
+                      },
                     }}
                   >
                     <CardContent sx={{ ...cardStyles.content, flexGrow: 1 }}>
@@ -797,11 +845,21 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                           pb: 3,
                         }}
                       >
-                        <SaveIcon sx={{ fontSize: 45, color: '#00BC9A', mb: 2 }} />
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'white' }}>
+                        <SaveIcon
+                          sx={{ fontSize: 45, color: '#00BC9A', mb: 2 }}
+                        />
+                        <Typography
+                          variant="h6"
+                          gutterBottom
+                          sx={{ fontWeight: 'bold', color: 'text.primary' }}
+                        >
                           Save as Template
                         </Typography>
-                        <Typography variant="body2" color="white" sx={{ opacity: 0.7 }}>
+                        <Typography
+                          variant="body2"
+                          color="text.primary"
+                          sx={{ opacity: 0.7 }}
+                        >
                           Create a reusable template from current widget
                         </Typography>
                       </Box>
@@ -828,7 +886,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                       ...cardStyles.base['&:hover'],
                       borderColor: '#00BC9A',
                       bgcolor: 'rgba(0, 188, 154, 0.25)',
-                    }
+                    },
                   }}
                 >
                   <CardContent sx={{ ...cardStyles.content, flexGrow: 1 }}>
@@ -844,11 +902,21 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                         pb: 3,
                       }}
                     >
-                      <AddIcon sx={{ fontSize: 45, color: 'white', mb: 2 }} />
-                      <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'white' }}>
+                      <AddIcon
+                        sx={{ fontSize: 45, color: 'primary.main', mb: 2 }}
+                      />
+                      <Typography
+                        variant="h6"
+                        gutterBottom
+                        sx={{ fontWeight: 'bold', color: 'text.primary' }}
+                      >
                         Start Empty
                       </Typography>
-                      <Typography variant="body2" color="white" sx={{ opacity: 0.7 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.primary"
+                        sx={{ opacity: 0.7 }}
+                      >
                         Create a new widget from scratch
                       </Typography>
                     </Box>
@@ -871,13 +939,15 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                       transition: 'all 0.3s ease',
                       '&:hover': {
                         ...cardStyles.base['&:hover'],
-                      }
+                      },
                     }}
                   >
                     <Box
                       sx={{
                         height: 8,
-                        bgcolor: WIDGET_TEMPLATES.some((t) => t.id === template.id)
+                        bgcolor: WIDGET_TEMPLATES.some(
+                          (t) => t.id === template.id,
+                        )
                           ? '#9c27b0'
                           : '#00BC9A',
                         borderRadius: '8px 8px 0 0',
@@ -911,10 +981,18 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                         pb: 1,
                         position: 'relative',
                         '&:last-child': { pb: 1 },
-                        pt: WIDGET_TEMPLATES.some((t) => t.id === template.id) ? 2 : 3,
+                        pt: WIDGET_TEMPLATES.some((t) => t.id === template.id)
+                          ? 2
+                          : 3,
                       }}
                     >
-                      <Tooltip title={isFavorite(template.id) ? "Remove from favorites" : "Add to favorites"}>
+                      <Tooltip
+                        title={
+                          isFavorite(template.id)
+                            ? 'Remove from favorites'
+                            : 'Add to favorites'
+                        }
+                      >
                         <IconButton
                           size="small"
                           onClick={(e) => {
@@ -926,22 +1004,23 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                             top: 8,
                             right: 8,
                             transition: 'all 0.2s ease',
-                            color: isFavorite(template.id) 
+                            color: isFavorite(template.id)
                               ? '#FFD700'
                               : 'rgba(255,255,255,0.5)',
                             '&:hover': {
                               transform: 'scale(1.1)',
-                              color: isFavorite(template.id) 
-                                ? '#FFD700' 
-                                : 'rgba(255,255,255,0.8)'
-                            }
+                              color: isFavorite(template.id)
+                                ? '#FFD700'
+                                : 'rgba(255,255,255,0.8)',
+                            },
                           }}
                         >
                           {isFavorite(template.id) ? (
                             <StarIcon
                               fontSize="small"
-                              sx={{ 
-                                filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.2))',
+                              sx={{
+                                filter:
+                                  'drop-shadow(0px 1px 1px rgba(0,0,0,0.2))',
                               }}
                             />
                           ) : (
@@ -963,7 +1042,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                           alignItems: 'center',
                           gap: 1,
                           lineHeight: 1.3,
-                          color: 'white',
+                          color: 'text.primary',
                         }}
                       >
                         {template.name}
@@ -994,7 +1073,8 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                         }}
                       >
                         {template.tags?.map((tag) => {
-                          const color = TAG_COLOR_MAP[tag.toLowerCase()] || 'default'
+                          const color =
+                            TAG_COLOR_MAP[tag.toLowerCase()] || 'default'
                           return (
                             <Chip
                               key={tag}
@@ -1003,10 +1083,10 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                               color={color}
                               sx={{
                                 ...chipStyles.base,
-                                fontSize: '0.7rem', 
-                                height: 22, 
+                                fontSize: '0.7rem',
+                                height: 22,
                                 fontWeight: 'bold',
-                                '& .MuiChip-label': { px: 1 }
+                                '& .MuiChip-label': { px: 1 },
                               }}
                             />
                           )
@@ -1015,19 +1095,25 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                           label={`${template.components?.length || 0} components`}
                           size="small"
                           color="primary"
-                          sx={{ 
+                          sx={{
                             ...chipStyles.base,
-                            fontSize: '0.7rem', 
-                            background: 'linear-gradient(to right,rgb(31, 177, 174),rgb(33, 218, 116))',
-                            height: 22, 
-                            fontWeight: 'medium', 
-                            '& .MuiChip-label': { px: 1 }
+                            fontSize: '0.7rem',
+                            background:
+                              'linear-gradient(to right,rgb(31, 177, 174),rgb(33, 218, 116))',
+                            height: 22,
+                            fontWeight: 'medium',
+                            '& .MuiChip-label': { px: 1 },
                           }}
                         />
                       </Box>
                     </CardContent>
 
-                    <CardActions sx={{...cardStyles.actions, justifyContent: 'space-between'}}>
+                    <CardActions
+                      sx={{
+                        ...cardStyles.actions,
+                        justifyContent: 'space-between',
+                      }}
+                    >
                       <Button
                         size="small"
                         onClick={(e) => {
@@ -1066,12 +1152,12 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                               setShowDeleteConfirm(template.id)
                             }
                           }}
-                          sx={{ 
+                          sx={{
                             ml: 1,
                             bgcolor: alpha(theme.palette.error.main, 0.1),
                             '&:hover': {
                               bgcolor: alpha(theme.palette.error.main, 0.2),
-                            }
+                            },
                           }}
                         >
                           <DeleteIcon fontSize="small" />
@@ -1115,44 +1201,46 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               {/* Show restore button if all built-in templates are deleted AND built-in templates are shown */}
               {deletedBuiltInTemplates.length === WIDGET_TEMPLATES.length &&
                 showBuiltInTemplates && (
-                <Grid item xs={12}>
-                  <Box sx={{ textAlign: 'center', mt: 2 }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={handleRestoreBuiltInTemplates}
-                      startIcon={<RestoreIcon />}
-                      sx={{
-                        borderRadius: 1.5,
-                        textTransform: 'none',
-                        fontWeight: 'medium',
-                        borderColor: alpha(theme.palette.primary.main, 0.8),
-                        color: theme.palette.primary.main,
-                        '&:hover': {
-                          borderColor: theme.palette.primary.main,
-                          backgroundColor: alpha(
-                            theme.palette.primary.main,
-                            0.05,
-                          ),
-                        },
-                      }}
-                    >
-                      Restore Built-in Templates
-                    </Button>
-                  </Box>
-                </Grid>
-              )}
+                  <Grid item xs={12}>
+                    <Box sx={{ textAlign: 'center', mt: 2 }}>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={handleRestoreBuiltInTemplates}
+                        startIcon={<RestoreIcon />}
+                        sx={{
+                          borderRadius: 1.5,
+                          textTransform: 'none',
+                          fontWeight: 'medium',
+                          borderColor: alpha(theme.palette.primary.main, 0.8),
+                          color: theme.palette.primary.main,
+                          '&:hover': {
+                            borderColor: theme.palette.primary.main,
+                            backgroundColor: alpha(
+                              theme.palette.primary.main,
+                              0.05,
+                            ),
+                          },
+                        }}
+                      >
+                        Restore Built-in Templates
+                      </Button>
+                    </Box>
+                  </Grid>
+                )}
             </Grid>
           </DialogContent>
-          <DialogActions sx={{
-            px: isPhone ? 1 : 3,
-            py: isPhone ? 1 : 2,
-            bgcolor: '#00A389',
-            display: 'flex',
-            justifyContent: 'flex-end'
-          }}>
-            <Button 
-              onClick={onClose} 
+          <DialogActions
+            sx={{
+              px: isPhone ? 1 : 3,
+              py: isPhone ? 1 : 2,
+              bgcolor: 'background.paper',
+              display: 'flex',
+              justifyContent: 'flex-end',
+            }}
+          >
+            <Button
+              onClick={onClose}
               variant="contained"
               sx={{
                 bgcolor: '#00D1AB',
@@ -1161,8 +1249,9 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                 py: isPhone ? 1 : undefined,
                 '&:hover': {
                   bgcolor: '#00E4BC',
-                }
-              }}            >
+                },
+              }}
+            >
               Close
             </Button>
           </DialogActions>
@@ -1178,8 +1267,8 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
         PaperProps={{
           sx: {
             ...dialogStyles.paper,
-            bgcolor: '#006B58' // Special background for danger dialog
-          }
+            bgcolor: 'background.paper',
+          },
         }}
       >
         <DialogTitle
@@ -1203,18 +1292,17 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ ...dialogStyles.content, bgcolor: '#006B58', color: 'white' }}>
-          <Typography
-            variant="body1"
-            sx={{ mb: 2, pt: 1.5, fontWeight: 400 }}
-          >
+        <DialogContent
+          sx={{
+            ...dialogStyles.content,
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+          }}
+        >
+          <Typography variant="body1" sx={{ mb: 2, pt: 1.5, fontWeight: 400 }}>
             Are you sure you want to delete this template?
           </Typography>
-          <Typography
-            variant="body2"
-            color="rgba(255, 255, 255, 0.7)"
-            sx={{ mt: 1 }}
-          >
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             This action cannot be undone.
           </Typography>
         </DialogContent>
@@ -1222,7 +1310,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
         <DialogActions
           sx={{
             ...dialogStyles.centeredActions,
-            bgcolor: '#006B58'
+            bgcolor: 'background.paper',
           }}
         >
           <Button

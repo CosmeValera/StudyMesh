@@ -513,10 +513,11 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
         <DialogTitle
           id="tutorial-dialog-title"
           sx={{
-            bgcolor: 'primary.main',
-            color: 'white',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             pb: 1,
-            backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)',
+            borderBottom: 1,
+            borderColor: 'divider',
             position: 'sticky',
             top: 0,
             zIndex: 1200,
@@ -528,14 +529,13 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
             justifyContent="space-between"
           >
             <Box display="flex" alignItems="center">
-              <ImportContactsIcon sx={{ color: '#eee', mr: 1 }} />
+              <ImportContactsIcon sx={{ color: 'primary.main', mr: 1 }} />
               <Typography
                 variant="h5"
                 component="div"
                 fontWeight="bold"
                 sx={{
-                  color: '#eee',
-                  textShadow: '0px 1px 2px rgba(255, 255, 255, 0.3)',
+                  color: 'text.primary',
                   fontSize: isMobile ? '1.2rem' : undefined,
                 }}
               >
@@ -547,9 +547,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                 aria-label="close"
                 onClick={onClose}
                 sx={{
-                  color: 'white',
+                  color: 'text.secondary',
                   '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    bgcolor: 'action.hover',
                   },
                 }}
               >

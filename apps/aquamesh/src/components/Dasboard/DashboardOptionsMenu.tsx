@@ -192,25 +192,24 @@ const DashboardOptionsMenu: React.FC = () => {
         onClose={handleClose}
         PaperProps={{
           sx: {
-            bgcolor: 'background.menu',
-            color: 'foreground.contrastPrimary',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             width: '250px',
             boxShadow: 3,
+            border: 1,
+            borderColor: 'divider',
           },
         }}
       >
         {/* Dashboard Management Section */}
         <MenuItem onClick={handleOpenDashboardLibrary} sx={{ p: 1.5 }}>
           <ListItemIcon>
-            <FolderIcon
-              fontSize="small"
-              sx={{ color: 'foreground.contrastPrimary' }}
-            />
+            <FolderIcon fontSize="small" sx={{ color: 'text.secondary' }} />
           </ListItemIcon>
           Open Saved Dashboards
         </MenuItem>
 
-        <Divider sx={{ my: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+        <Divider sx={{ my: 1, borderColor: 'divider' }} />
 
         {!isPhone && (
           <>
@@ -221,12 +220,12 @@ const DashboardOptionsMenu: React.FC = () => {
                 py: 1,
                 fontWeight: 'bold',
                 mt: 1,
-                color: '#000000DE',
+                color: 'text.primary',
               }}
             >
               Demo Scenarios
             </Typography>
-            <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+            <Divider sx={{ borderColor: 'divider' }} />
             <MenuItem
               onClick={() => {
                 openOperationsExample()
@@ -248,12 +247,12 @@ const DashboardOptionsMenu: React.FC = () => {
                 py: 1,
                 fontWeight: 'bold',
                 mt: 1,
-                color: '#000000DE',
+                color: 'text.primary',
               }}
             >
               My Dashboards
             </Typography>
-            <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+            <Divider sx={{ borderColor: 'divider' }} />
             {[...visibleCustomDashboards].reverse().map((dashboard) => (
               <MenuItem
                 key={dashboard.id}

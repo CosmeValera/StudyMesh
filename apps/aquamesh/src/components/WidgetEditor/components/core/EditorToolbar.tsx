@@ -14,9 +14,13 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import EditIcon from '@mui/icons-material/Edit'
+import PreviewIcon from '@mui/icons-material/Preview'
+import ViewColumnIcon from '@mui/icons-material/ViewColumn'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SaveIcon from '@mui/icons-material/Save'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
@@ -29,12 +33,14 @@ import SearchIcon from '@mui/icons-material/Search'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import VersionWarningDialog from '../dialogs/VersionWarningDialog'
 import TooltipStyled from '../../../../components/TooltipStyled'
+import { WidgetEditorViewMode } from '../../types/types'
 
 interface EditorToolbarProps {
   editMode: boolean
+  viewMode: WidgetEditorViewMode
   showSidebar: boolean
   toggleSidebar: () => void
-  toggleEditMode: () => void
+  setViewMode: (mode: WidgetEditorViewMode) => void
   handleSaveWidget: (isMajorUpdate?: boolean) => void
   setShowWidgetList: (show: boolean) => void
   setShowSettingsModal: (show: boolean) => void
@@ -59,9 +65,10 @@ interface EditorToolbarProps {
 
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
   editMode,
+  viewMode,
   showSidebar,
   toggleSidebar,
-  toggleEditMode,
+  setViewMode,
   handleSaveWidget,
   setShowWidgetList,
   setShowSettingsModal,
@@ -111,6 +118,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     handleSaveWidget(false) // Regular save after warning
   }
 
+  const handleViewModeChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    nextMode: WidgetEditorViewMode | null,
+  ) => {
+    if (nextMode) {
+      setViewMode(nextMode)
+    }
+  }
+
   return (
     <>
       <AppBar
@@ -124,7 +140,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
           bgcolor:
             theme.palette.mode === 'dark'
               ? alpha(theme.palette.background.paper, 0.9)
-              : 'background.paper',
+              : '#FCFDFD',
           minHeight: isPhone ? 48 : 64,
         }}
       >
@@ -135,7 +151,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             padding: isPhone ? '0px 4px' : '0px 16px',
           }}
         >
-          {(editMode || isPhone) && (
+          {editMode && (
             <IconButton
               edge="start"
               color="inherit"
@@ -240,30 +256,50 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               </>
             )}
 
-            <TooltipStyled title="Toggle edit/preview mode">
-              <IconButton
-                color="inherit"
-                onClick={toggleEditMode}
-                sx={{
-                  mr: isPhone ? 0.5 : 1,
-                  color: !editMode
-                    ? 'primary.main'
-                    : 'foreground.contrastSecondary',
-                  bgcolor: !editMode
-                    ? alpha(theme.palette.primary.main, 0.1)
-                    : 'transparent',
-                  padding: isPhone ? '4px' : '8px',
-                  '&:hover': {
-                    bgcolor: !editMode
-                      ? alpha(theme.palette.primary.main, 0.2)
-                      : alpha(theme.palette.action.hover, 0.1),
+            <ToggleButtonGroup
+              exclusive
+              value={viewMode}
+              onChange={handleViewModeChange}
+              aria-label="Widget editor view mode"
+              size="small"
+              sx={{
+                mr: isPhone ? 0.5 : 1,
+                height: isPhone ? 30 : 34,
+                '& .MuiToggleButton-root': {
+                  minWidth: isPhone ? 52 : 86,
+                  px: isPhone ? 0.75 : 1,
+                  py: 0,
+                  gap: 0.5,
+                  color: 'foreground.contrastSecondary',
+                  borderColor: alpha(theme.palette.divider, 0.6),
+                  textTransform: 'none',
+                  fontSize: isPhone ? '0.7rem' : '0.8rem',
+                  lineHeight: 1,
+                  '&.Mui-selected': {
+                    color: 'primary.dark',
+                    bgcolor: alpha(theme.palette.primary.main, 0.12),
                   },
-                }}
-              >
-                <EditIcon sx={{ fontSize: isPhone ? '1.25rem' : '1.5rem' }} />
-              </IconButton>
-            </TooltipStyled>
-
+                  '&.Mui-selected:hover': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.18),
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="both" aria-label="Both view">
+                <ViewColumnIcon
+                  sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }}
+                />
+                Both
+              </ToggleButton>
+              <ToggleButton value="edit" aria-label="Edit view">
+                <EditIcon sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }} />
+                Edit
+              </ToggleButton>
+              <ToggleButton value="preview" aria-label="Preview view">
+                <PreviewIcon sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }} />
+                Preview
+              </ToggleButton>
+            </ToggleButtonGroup>
             {!isPhone && !!handleOpenSearchDialog && (
               <TooltipStyled title="Search building blocks">
                 <span>
@@ -415,10 +451,14 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 elevation: 6,
                 sx: {
                   width: isPhone ? 260 : 300,
+                  bgcolor: 'background.paper',
+                  color: 'text.primary',
                   overflow: 'visible',
                   mt: 1,
                   borderRadius: 2,
                   boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)',
+                  border: 1,
+                  borderColor: 'divider',
                   '&:before': {
                     content: '""',
                     display: 'block',
@@ -431,10 +471,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     zIndex: 0,
                   },
                   '& .MuiListItemText-primary, & .MuiListItemText-secondary': {
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   },
                   '& .MuiListItemIcon-root': {
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.secondary,
                   },
                 },
               }}
@@ -458,7 +498,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     },
                   }}
                 >
-                  <ListItemIcon sx={{ color: theme.palette.common.white }}>
+                  <ListItemIcon sx={{ color: 'text.secondary' }}>
                     <SearchIcon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText
@@ -467,12 +507,12 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     primaryTypographyProps={{
                       fontSize: isPhone ? '0.6rem' : '0.8rem',
                       fontWeight: 'bold',
-                      color: theme.palette.common.white,
+                      color: theme.palette.text.primary,
                     }}
                     secondaryTypographyProps={{
                       fontSize: isPhone ? '0.5rem' : '0.65rem',
                       fontWeight: 'light',
-                      color: theme.palette.common.white,
+                      color: theme.palette.text.primary,
                     }}
                   />
                 </MenuItem>
@@ -491,7 +531,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   },
                 }}
               >
-                <ListItemIcon sx={{ color: theme.palette.common.white }}>
+                <ListItemIcon sx={{ color: 'text.secondary' }}>
                   <TemplateIcon fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
@@ -500,12 +540,12 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   primaryTypographyProps={{
                     fontSize: isPhone ? '0.6rem' : '0.8rem',
                     fontWeight: 'bold',
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   }}
                   secondaryTypographyProps={{
                     fontSize: isPhone ? '0.5rem' : '0.65rem',
                     fontWeight: 'light',
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   }}
                 />
               </MenuItem>
@@ -524,7 +564,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   },
                 }}
               >
-                <ListItemIcon sx={{ color: theme.palette.common.white }}>
+                <ListItemIcon sx={{ color: 'text.secondary' }}>
                   <ImportExportIcon fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
@@ -533,12 +573,12 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   primaryTypographyProps={{
                     fontSize: isPhone ? '0.6rem' : '0.8rem',
                     fontWeight: 'bold',
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   }}
                   secondaryTypographyProps={{
                     fontSize: isPhone ? '0.5rem' : '0.65rem',
                     fontWeight: 'light',
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   }}
                 />
               </MenuItem>
@@ -555,7 +595,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   },
                 }}
               >
-                <ListItemIcon sx={{ color: theme.palette.common.white }}>
+                <ListItemIcon sx={{ color: 'text.secondary' }}>
                   <HistoryIcon fontSize="small" />
                 </ListItemIcon>
                 <ListItemText
@@ -564,12 +604,12 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   primaryTypographyProps={{
                     fontSize: isPhone ? '0.6rem' : '0.8rem',
                     fontWeight: 'bold',
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   }}
                   secondaryTypographyProps={{
                     fontSize: isPhone ? '0.5rem' : '0.65rem',
                     fontWeight: 'light',
-                    color: theme.palette.common.white,
+                    color: theme.palette.text.primary,
                   }}
                 />
               </MenuItem>

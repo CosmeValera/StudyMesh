@@ -160,7 +160,10 @@ const ComponentPalette = ({
     <Box
       sx={{
         width: drawerWidth,
-        bgcolor: 'background.paper',
+        minWidth: drawerWidth,
+        maxWidth: drawerWidth,
+        flex: `0 0 ${drawerWidth}px`,
+        bgcolor: '#FFFFFF',
         borderRight: 1,
         borderColor: 'divider',
         height: '100%',
@@ -202,7 +205,7 @@ const ComponentPalette = ({
             variant="caption"
             sx={{
               display: 'block',
-              color: 'primary.light',
+              color: 'primary.dark',
               fontWeight: 700,
               mb: 0.5,
             }}

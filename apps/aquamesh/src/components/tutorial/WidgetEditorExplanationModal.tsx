@@ -244,10 +244,15 @@ const WidgetEditorExplanationModal: React.FC<
     // Overview tab
     <>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" gutterBottom fontWeight="bold" color="white">
+        <Typography
+          variant="h5"
+          gutterBottom
+          fontWeight="bold"
+          color="text.primary"
+        >
           {sections[0].title}
         </Typography>
-        <Typography variant="body1" paragraph color="white">
+        <Typography variant="body1" paragraph color="text.primary">
           {sections[0].content}
         </Typography>
         <Box
@@ -271,7 +276,12 @@ const WidgetEditorExplanationModal: React.FC<
         </Box>
       </Box>
 
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="white">
+      <Typography
+        variant="h5"
+        gutterBottom
+        fontWeight="bold"
+        color="text.primary"
+      >
         Key Features
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -281,15 +291,15 @@ const WidgetEditorExplanationModal: React.FC<
             sx={{
               p: 2,
               height: '100%',
-              bgcolor: '#00886F',
+              bgcolor: 'background.paper',
               borderLeft: '4px solid',
-              borderColor: 'rgba(255, 255, 255, 0.5)',
+              borderColor: 'primary.main',
               borderRadius: 2,
               transition: 'all 0.2s ease-in-out',
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                borderColor: 'white',
+                borderColor: 'primary.dark',
               },
             }}
           >
@@ -299,8 +309,8 @@ const WidgetEditorExplanationModal: React.FC<
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  bgcolor: 'rgba(255, 255, 255, 0.15)',
-                  color: 'white',
+                  bgcolor: 'rgba(0, 124, 102, 0.1)',
+                  color: 'primary.dark',
                   borderRadius: '50%',
                   width: 36,
                   height: 36,
@@ -309,15 +319,15 @@ const WidgetEditorExplanationModal: React.FC<
               >
                 <BuildIcon />
               </Box>
-              <Typography variant="subtitle1" fontWeight="bold" color="white">
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="text.primary"
+              >
                 1. Create
               </Typography>
             </Box>
-            <Typography
-              variant="body2"
-              color="rgba(255, 255, 255, 0.8)"
-              sx={{ mt: 1 }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Open Create Widget and start with one useful dashboard widget.
             </Typography>
           </Paper>
@@ -328,15 +338,15 @@ const WidgetEditorExplanationModal: React.FC<
             sx={{
               p: 2,
               height: '100%',
-              bgcolor: '#00886F',
+              bgcolor: 'background.paper',
               borderLeft: '4px solid',
-              borderColor: 'rgba(255, 255, 255, 0.5)',
+              borderColor: 'primary.main',
               borderRadius: 2,
               transition: 'all 0.2s ease-in-out',
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                borderColor: 'white',
+                borderColor: 'primary.dark',
               },
             }}
           >
@@ -346,8 +356,8 @@ const WidgetEditorExplanationModal: React.FC<
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  bgcolor: 'rgba(255, 255, 255, 0.15)',
-                  color: 'white',
+                  bgcolor: 'rgba(0, 124, 102, 0.1)',
+                  color: 'primary.dark',
                   borderRadius: '50%',
                   width: 36,
                   height: 36,
@@ -356,15 +366,15 @@ const WidgetEditorExplanationModal: React.FC<
               >
                 <CategoryIcon />
               </Box>
-              <Typography variant="subtitle1" fontWeight="bold" color="white">
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="text.primary"
+              >
                 2. Add Blocks
               </Typography>
             </Box>
-            <Typography
-              variant="body2"
-              color="rgba(255, 255, 255, 0.8)"
-              sx={{ mt: 1 }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Add blocks that match the Daily Operations story: orders today,
               delayed tasks, support tickets, system status, and team notes.
             </Typography>
@@ -376,15 +386,15 @@ const WidgetEditorExplanationModal: React.FC<
             sx={{
               p: 2,
               height: '100%',
-              bgcolor: '#00886F',
+              bgcolor: 'background.paper',
               borderLeft: '4px solid',
-              borderColor: 'rgba(255, 255, 255, 0.5)',
+              borderColor: 'primary.main',
               borderRadius: 2,
               transition: 'all 0.2s ease-in-out',
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                borderColor: 'white',
+                borderColor: 'primary.dark',
               },
             }}
           >
@@ -394,8 +404,8 @@ const WidgetEditorExplanationModal: React.FC<
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  bgcolor: 'rgba(255, 255, 255, 0.15)',
-                  color: 'white',
+                  bgcolor: 'rgba(0, 124, 102, 0.1)',
+                  color: 'primary.dark',
                   borderRadius: '50%',
                   width: 36,
                   height: 36,
@@ -404,15 +414,15 @@ const WidgetEditorExplanationModal: React.FC<
               >
                 <VisibilityIcon />
               </Box>
-              <Typography variant="subtitle1" fontWeight="bold" color="white">
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="text.primary"
+              >
                 3. Save And Use
               </Typography>
             </Box>
-            <Typography
-              variant="body2"
-              color="rgba(255, 255, 255, 0.8)"
-              sx={{ mt: 1 }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Preview, save, then add the saved widget to a dashboard.
             </Typography>
           </Paper>
@@ -422,7 +432,12 @@ const WidgetEditorExplanationModal: React.FC<
 
     // Interface tab
     <>
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="white">
+      <Typography
+        variant="h5"
+        gutterBottom
+        fontWeight="bold"
+        color="text.primary"
+      >
         {sections[1].title}
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -434,15 +449,15 @@ const WidgetEditorExplanationModal: React.FC<
                 sx={{
                   p: 2,
                   height: '100%',
-                  bgcolor: '#00886F',
+                  bgcolor: 'background.paper',
                   borderLeft: '4px solid',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'primary.main',
                   borderRadius: 2,
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white',
+                    borderColor: 'primary.dark',
                   },
                 }}
               >
@@ -452,8 +467,8 @@ const WidgetEditorExplanationModal: React.FC<
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: 'rgba(255, 255, 255, 0.15)',
-                      color: 'white',
+                      bgcolor: 'rgba(0, 124, 102, 0.1)',
+                      color: 'primary.dark',
                       borderRadius: '50%',
                       width: 36,
                       height: 36,
@@ -465,14 +480,14 @@ const WidgetEditorExplanationModal: React.FC<
                   <Typography
                     variant="subtitle1"
                     fontWeight="bold"
-                    color="white"
+                    color="text.primary"
                   >
                     {subsection.title}
                   </Typography>
                 </Box>
                 <Typography
                   variant="body2"
-                  color="rgba(255, 255, 255, 0.8)"
+                  color="text.secondary"
                   sx={{ mt: 1 }}
                 >
                   {subsection.content}
@@ -487,7 +502,7 @@ const WidgetEditorExplanationModal: React.FC<
         variant="h5"
         gutterBottom
         fontWeight="bold"
-        color="white"
+        color="text.primary"
         sx={{ mt: 4 }}
       >
         {sections[2].title}
@@ -501,15 +516,15 @@ const WidgetEditorExplanationModal: React.FC<
                 sx={{
                   p: 2,
                   height: '100%',
-                  bgcolor: '#00886F',
+                  bgcolor: 'background.paper',
                   borderLeft: '4px solid',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'primary.main',
                   borderRadius: 2,
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white',
+                    borderColor: 'primary.dark',
                   },
                 }}
               >
@@ -519,8 +534,8 @@ const WidgetEditorExplanationModal: React.FC<
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: 'rgba(255, 255, 255, 0.15)',
-                      color: 'white',
+                      bgcolor: 'rgba(0, 124, 102, 0.1)',
+                      color: 'primary.dark',
                       borderRadius: '50%',
                       width: 36,
                       height: 36,
@@ -532,14 +547,14 @@ const WidgetEditorExplanationModal: React.FC<
                   <Typography
                     variant="subtitle1"
                     fontWeight="bold"
-                    color="white"
+                    color="text.primary"
                   >
                     {subsection.title}
                   </Typography>
                 </Box>
                 <Typography
                   variant="body2"
-                  color="rgba(255, 255, 255, 0.8)"
+                  color="text.secondary"
                   sx={{ mt: 1 }}
                 >
                   {subsection.content}
@@ -553,7 +568,12 @@ const WidgetEditorExplanationModal: React.FC<
 
     // Components tab
     <>
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="white">
+      <Typography
+        variant="h5"
+        gutterBottom
+        fontWeight="bold"
+        color="text.primary"
+      >
         {sections[4].title}
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -565,15 +585,15 @@ const WidgetEditorExplanationModal: React.FC<
                 sx={{
                   p: 2,
                   height: '100%',
-                  bgcolor: '#00886F',
+                  bgcolor: 'background.paper',
                   borderLeft: '4px solid',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'primary.main',
                   borderRadius: 2,
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white',
+                    borderColor: 'primary.dark',
                   },
                 }}
               >
@@ -583,8 +603,8 @@ const WidgetEditorExplanationModal: React.FC<
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: 'rgba(255, 255, 255, 0.15)',
-                      color: 'white',
+                      bgcolor: 'rgba(0, 124, 102, 0.1)',
+                      color: 'primary.dark',
                       borderRadius: '50%',
                       width: 36,
                       height: 36,
@@ -597,14 +617,14 @@ const WidgetEditorExplanationModal: React.FC<
                   <Typography
                     variant="subtitle1"
                     fontWeight="bold"
-                    color="white"
+                    color="text.primary"
                   >
                     {subsection.title}
                   </Typography>
                 </Box>
                 <Typography
                   variant="body2"
-                  color="rgba(255, 255, 255, 0.8)"
+                  color="text.secondary"
                   sx={{ mt: 1 }}
                 >
                   {subsection.content}
@@ -619,7 +639,7 @@ const WidgetEditorExplanationModal: React.FC<
         variant="h5"
         gutterBottom
         fontWeight="bold"
-        color="white"
+        color="text.primary"
         sx={{ mt: 4 }}
       >
         {sections[5].title}
@@ -633,15 +653,15 @@ const WidgetEditorExplanationModal: React.FC<
                 sx={{
                   p: 2,
                   height: '100%',
-                  bgcolor: '#00886F',
+                  bgcolor: 'background.paper',
                   borderLeft: '4px solid',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'primary.main',
                   borderRadius: 2,
                   transition: 'all 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white',
+                    borderColor: 'primary.dark',
                   },
                 }}
               >
@@ -651,8 +671,8 @@ const WidgetEditorExplanationModal: React.FC<
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: 'rgba(255, 255, 255, 0.15)',
-                      color: 'white',
+                      bgcolor: 'rgba(0, 124, 102, 0.1)',
+                      color: 'primary.dark',
                       borderRadius: '50%',
                       width: 36,
                       height: 36,
@@ -665,14 +685,14 @@ const WidgetEditorExplanationModal: React.FC<
                   <Typography
                     variant="subtitle1"
                     fontWeight="bold"
-                    color="white"
+                    color="text.primary"
                   >
                     {subsection.title}
                   </Typography>
                 </Box>
                 <Typography
                   variant="body2"
-                  color="rgba(255, 255, 255, 0.8)"
+                  color="text.secondary"
                   sx={{ mt: 1 }}
                 >
                   {subsection.content}
@@ -697,30 +717,32 @@ const WidgetEditorExplanationModal: React.FC<
       PaperProps={{
         sx: {
           borderRadius: 2,
-          bgcolor: '#00A389', // Teal background for the entire dialog
+          bgcolor: 'background.paper',
           overflow: 'hidden',
-          backgroundImage: 'linear-gradient(135deg, #00A389 0%, #00886F 100%)',
+          border: 1,
+          borderColor: 'divider',
         },
       }}
     >
       <DialogTitle
         sx={{
-          bgcolor: '#00BC9A',
-          color: 'white',
+          bgcolor: 'background.paper',
+          color: 'primary.dark',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           p: 2,
-          backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)',
+          borderBottom: 1,
+          borderColor: 'divider',
         }}
       >
         <Box display="flex" alignItems="center">
-          <EditIcon sx={{ mr: 1.5, color: '#eee' }} />
-          <Typography variant="h6" fontWeight="bold" color="#eee">
+          <EditIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+          <Typography variant="h6" fontWeight="bold" color="text.primary">
             Create Widget
           </Typography>
         </Box>
-        <IconButton onClick={onClose} sx={{ color: '#eee' }}>
+        <IconButton onClick={onClose} sx={{ color: 'text.secondary' }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -734,19 +756,19 @@ const WidgetEditorExplanationModal: React.FC<
         scrollButtons={isMobile ? 'auto' : false}
         allowScrollButtonsMobile
         sx={{
-          bgcolor: 'rgba(0, 0, 0, 0.1)',
+          bgcolor: 'background.paper',
           '& .MuiTab-root': {
-            color: 'rgba(255, 255, 255, 0.7)',
+            color: 'text.secondary',
             fontWeight: 'bold',
             fontSize: isMobile ? '0.75rem' : '0.875rem',
             minWidth: isMobile ? 'auto' : 90,
             px: isMobile ? 2 : 3,
             '&.Mui-selected': {
-              color: 'white',
+              color: 'primary.dark',
             },
           },
           '& .MuiTabs-indicator': {
-            backgroundColor: 'white',
+            backgroundColor: 'primary.dark',
           },
         }}
       >
@@ -782,7 +804,7 @@ const WidgetEditorExplanationModal: React.FC<
       <DialogActions
         sx={{
           p: 3,
-          bgcolor: '#00A389',
+          bgcolor: 'background.paper',
           display: 'flex',
           flexDirection: 'column',
         }}

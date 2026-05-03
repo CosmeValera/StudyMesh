@@ -502,16 +502,18 @@ const Dashboards = () => {
           sx: {
             borderRadius: 2,
             overflow: 'hidden',
-            bgcolor: '#00A389', // Teal background
+            bgcolor: 'background.paper',
+            border: 1,
+            borderColor: 'divider',
           },
         }}
       >
         <DialogTitle
           sx={{
-            bgcolor: '#00BC9A',
-            color: '#191919',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             borderBottom: 1,
-            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderColor: 'divider',
             pb: 2,
           }}
         >
@@ -526,7 +528,7 @@ const Dashboards = () => {
               </Typography>
               <Typography
                 variant="body2"
-                color="rgba(0, 0, 0, 0.7)"
+                color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
                 Configure your dashboard settings
@@ -535,14 +537,14 @@ const Dashboards = () => {
             <IconButton
               onClick={handleSaveDialogClose}
               aria-label="close"
-              sx={{ color: '#191919' }}
+              sx={{ color: 'text.secondary' }}
             >
               <CloseIcon width={20} height={20} />
             </IconButton>
           </Box>
         </DialogTitle>
 
-        <DialogContent sx={{ bgcolor: '#00A389', pt: 3, pb: 2 }}>
+        <DialogContent sx={{ bgcolor: 'background.default', pt: 3, pb: 2 }}>
           <TextField
             autoFocus
             margin="normal"
@@ -563,20 +565,20 @@ const Dashboards = () => {
             required
             InputLabelProps={{
               shrink: true,
-              sx: { color: 'rgba(255, 255, 255, 0.7)' },
+              sx: { color: 'text.secondary' },
             }}
             InputProps={{
               sx: {
-                bgcolor: 'rgba(0, 0, 0, 0.1)',
-                color: 'white',
+                bgcolor: 'background.paper',
+                color: 'text.primary',
                 '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  borderColor: 'divider',
                 },
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'primary.main',
                 },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'white',
+                  borderColor: 'primary.main',
                 },
               },
               endAdornment: dashboardName.trim() !== '' && (
@@ -584,7 +586,7 @@ const Dashboards = () => {
                   size="small"
                   onClick={() => setDashboardName('')}
                   edge="end"
-                  sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                  sx={{ color: 'text.secondary' }}
                 >
                   <CloseIcon width={16} height={16} />
                 </IconButton>
@@ -608,27 +610,27 @@ const Dashboards = () => {
             }}
             InputLabelProps={{
               shrink: true,
-              sx: { color: 'rgba(255, 255, 255, 0.7)' },
+              sx: { color: 'text.secondary' },
             }}
             InputProps={{
               sx: {
-                bgcolor: 'rgba(0, 0, 0, 0.1)',
-                color: 'white',
+                bgcolor: 'background.paper',
+                color: 'text.primary',
                 '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  borderColor: 'divider',
                 },
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'primary.main',
                 },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'white',
+                  borderColor: 'primary.main',
                 },
               },
             }}
           />
 
           <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" color="white" gutterBottom>
+            <Typography variant="subtitle2" color="text.primary" gutterBottom>
               Tags
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -640,16 +642,16 @@ const Dashboards = () => {
                 onKeyDown={handleTagInputKeyDown}
                 InputProps={{
                   sx: {
-                    bgcolor: 'rgba(0, 0, 0, 0.1)',
-                    color: 'white',
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      borderColor: 'divider',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      borderColor: 'primary.main',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'white',
+                      borderColor: 'primary.main',
                     },
                   },
                 }}
@@ -677,19 +679,19 @@ const Dashboards = () => {
                   label={tag}
                   onDelete={() => handleRemoveTag(tag)}
                   sx={{
-                    bgcolor: 'rgba(255, 255, 255, 0.15)',
-                    color: 'white',
+                    bgcolor: 'rgba(0, 124, 102, 0.1)',
+                    color: 'primary.dark',
                     '& .MuiChip-deleteIcon': {
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: 'primary.dark',
                       '&:hover': {
-                        color: 'white',
+                        color: 'primary.main',
                       },
                     },
                   }}
                 />
               ))}
               {dashboardTags.length === 0 && (
-                <Typography variant="body2" color="rgba(255, 255, 255, 0.5)">
+                <Typography variant="body2" color="text.secondary">
                   No tags added yet
                 </Typography>
               )}
@@ -714,7 +716,7 @@ const Dashboards = () => {
               }
               label="Make dashboard public"
               sx={{
-                color: 'white',
+                color: 'text.primary',
                 mt: 2,
               }}
             />
@@ -725,7 +727,9 @@ const Dashboards = () => {
           sx={{
             px: 3,
             pb: 3,
-            bgcolor: '#00A389',
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
             display: 'flex',
             justifyContent: 'flex-end',
           }}
@@ -734,12 +738,12 @@ const Dashboards = () => {
             onClick={handleSaveDialogClose}
             variant="outlined"
             sx={{
-              color: 'white',
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              color: 'primary.dark',
+              borderColor: 'primary.dark',
               mr: 1,
               '&:hover': {
-                borderColor: 'white',
-                bgcolor: 'rgba(255, 255, 255, 0.05)',
+                borderColor: 'primary.main',
+                bgcolor: 'rgba(0, 124, 102, 0.08)',
               },
             }}
           >
@@ -755,10 +759,10 @@ const Dashboards = () => {
             }
             startIcon={<SaveIcon />}
             sx={{
-              bgcolor: '#00D1AB',
-              color: '#191919',
+              bgcolor: 'primary.dark',
+              color: 'primary.contrastText',
               '&:hover': {
-                bgcolor: '#00E4BC',
+                bgcolor: 'primary.main',
               },
             }}
           >

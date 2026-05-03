@@ -29,7 +29,7 @@ interface FAQ {
 }
 
 const accentText = {
-  color: '#00D1AB',
+  color: '#007C66',
   fontWeight: 'bold',
 }
 
@@ -125,38 +125,51 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       PaperProps={{
         sx: {
           borderRadius: 2,
-          bgcolor: '#00A389',
+          bgcolor: 'background.paper',
           overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'divider',
         },
       }}
     >
       <DialogTitle
         sx={{
-          bgcolor: '#00BC9A',
-          color: 'white',
+          bgcolor: 'background.paper',
+          color: 'text.primary',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
         <Box display="flex" alignItems="center">
-          <QuestionAnswerIcon sx={{ mr: 1, color: '#eee' }} />
+          <QuestionAnswerIcon sx={{ mr: 1, color: 'primary.main' }} />
           <Typography
             variant="h6"
             component="div"
             fontWeight="bold"
-            color="#eee"
+            color="text.primary"
           >
             Quick Start FAQ
           </Typography>
         </Box>
-        <IconButton onClick={onClose} aria-label="close" sx={{ color: '#eee' }}>
+        <IconButton
+          onClick={onClose}
+          aria-label="close"
+          sx={{ color: 'text.secondary' }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, bgcolor: '#00A389' }}>
-        <Typography variant="body1" color="white" paragraph sx={{ mt: 2 }}>
+      <DialogContent sx={{ p: 3, bgcolor: 'background.paper' }}>
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          paragraph
+          sx={{ mt: 2 }}
+        >
           Quick answers for creating a reusable widget and placing it on a
           dashboard.
         </Typography>
@@ -165,11 +178,12 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
           <Box key={category} sx={{ mt: index > 0 ? 3 : 0 }}>
             <Typography
               variant="h6"
-              color="white"
+              color="text.primary"
               sx={{
                 mb: 1,
                 pb: 1,
-                borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
               }}
             >
               {category}
@@ -182,32 +196,35 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
                   key={i}
                   sx={{
                     mb: 1,
-                    bgcolor: 'rgba(0, 0, 0, 0.1)',
-                    color: 'white',
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    border: '1px solid',
+                    borderColor: 'divider',
                     '&.Mui-expanded': {
                       margin: '0 0 8px 0',
                     },
                     '&:before': {
                       display: 'none',
                     },
-                    borderLeft: '3px solid rgba(255, 255, 255, 0.3)',
+                    borderLeft: '3px solid',
+                    borderLeftColor: 'primary.main',
                     '&:hover': {
-                      borderLeft: '3px solid white',
+                      borderColor: 'primary.main',
                     },
                   }}
                 >
                   <AccordionSummary
-                    expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}
+                    expandIcon={
+                      <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
+                    }
                     aria-controls={`panel${i}-content`}
                     id={`panel${i}-header`}
                   >
                     <Typography fontWeight="medium">{faq.question}</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Divider
-                      sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', mb: 1.5 }}
-                    />
-                    <Typography>{faq.answer}</Typography>
+                    <Divider sx={{ borderColor: 'divider', mb: 1.5 }} />
+                    <Typography color="text.secondary">{faq.answer}</Typography>
                   </AccordionDetails>
                 </Accordion>
               ))}
@@ -215,7 +232,7 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
         ))}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, bgcolor: '#00A389' }}>
+      <DialogActions sx={{ px: 3, pb: 3, bgcolor: 'background.paper' }}>
         <Button
           onClick={onClose}
           variant="contained"

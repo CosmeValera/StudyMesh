@@ -6,6 +6,7 @@ import {
   WidgetData,
   DropTarget,
   NotificationSeverity,
+  WidgetEditorViewMode,
 } from '../types/types'
 import { COMPONENT_TYPES } from '../constants/componentTypes'
 import {
@@ -14,7 +15,10 @@ import {
   removeComponentById,
   moveComponent,
 } from '../utils/componentUtils'
-import WidgetStorage, { CustomWidget } from '../WidgetStorage'
+import WidgetStorage, {
+  CustomWidget,
+  WIDGET_STORAGE_UPDATED,
+} from '../WidgetStorage'
 
 // Maximum history states to keep
 const MAX_HISTORY_STATES = 50
@@ -35,14 +39,20 @@ export const useWidgetEditor = () => {
   const [editorId] = useState<string>(() => uuidv4())
 
   // Active container for adding components (null means add to root)
-  const [activeContainerId, setActiveContainerId] = useState<string | null>(null)
+  const [activeContainerId, setActiveContainerId] = useState<string | null>(
+    null,
+  )
 
   // Widget data and editor state
   const [widgetData, setWidgetData] = useState<WidgetData>({
     name: 'New Widget',
     components: [],
   })
-  const [editMode, setEditMode] = useState(true)
+  const [viewMode, setViewMode] = useState<WidgetEditorViewMode>('both')
+  const editMode = viewMode !== 'preview'
+  const setEditMode = React.useCallback((nextEditMode: boolean) => {
+    setViewMode(nextEditMode ? 'edit' : 'preview')
+  }, [])
   const [notification, setNotification] = useState({
     open: false,
     message: '',
@@ -439,11 +449,11 @@ export const useWidgetEditor = () => {
     }
 
     // Add event listener for widget storage updates
-    document.addEventListener('widgetStorageUpdated', handleWidgetUpdate)
+    document.addEventListener(WIDGET_STORAGE_UPDATED, handleWidgetUpdate)
 
     // Clean up event listener on component unmount
     return () => {
-      document.removeEventListener('widgetStorageUpdated', handleWidgetUpdate)
+      document.removeEventListener(WIDGET_STORAGE_UPDATED, handleWidgetUpdate)
     }
   }, [])
 
@@ -453,12 +463,12 @@ export const useWidgetEditor = () => {
       const customEvent = event as CustomEvent
       if (customEvent.detail && customEvent.detail.componentType) {
         const componentType = customEvent.detail.componentType
-        
+
         // Find the component configuration
         const componentConfig = COMPONENT_TYPES.find(
-          (c) => c.type === componentType
+          (c) => c.type === componentType,
         )
-        
+
         if (componentConfig) {
           // Create a new component
           const newComponent: ComponentData = {
@@ -466,42 +476,52 @@ export const useWidgetEditor = () => {
             type: componentType,
             props: { ...componentConfig.defaultProps },
           }
-          
+
           // If we have an active container, add the component to that container
           if (activeContainerId) {
             // Find the container component
-            const container = findComponentById(activeContainerId, widgetData.components)
-            
-            if (container && ['FieldSet', 'FlexBox', 'GridBox'].includes(container.type)) {
+            const container = findComponentById(
+              activeContainerId,
+              widgetData.components,
+            )
+
+            if (
+              container &&
+              ['FieldSet', 'FlexBox', 'GridBox'].includes(container.type)
+            ) {
               // Add to the container's children
               const updatedContainer = {
                 ...container,
                 children: [...(container.children || []), newComponent],
               }
-              
+
               // Update the widget data
               setWidgetData((prev) => ({
                 ...prev,
-                components: updateComponentById(activeContainerId, updatedContainer, prev.components),
+                components: updateComponentById(
+                  activeContainerId,
+                  updatedContainer,
+                  prev.components,
+                ),
               }))
-              
+
               // Show success notification
               setNotification({
                 open: true,
                 message: `Added ${componentConfig.label} to ${container.type}`,
                 severity: 'success',
               })
-              
+
               return
             }
           }
-          
+
           // If no active container or container not found, add to root level
           setWidgetData((prev) => ({
             ...prev,
             components: [...prev.components, newComponent],
           }))
-          
+
           // Show success notification
           setNotification({
             open: true,
@@ -511,10 +531,10 @@ export const useWidgetEditor = () => {
         }
       }
     }
-    
+
     // Add event listener
     document.addEventListener('addComponentDirectly', handleDirectAdd)
-    
+
     // Clean up
     return () => {
       document.removeEventListener('addComponentDirectly', handleDirectAdd)
@@ -1165,12 +1185,12 @@ export const useWidgetEditor = () => {
 
     // Set editor mode based on the passed parameter
     if (shouldEnterEditMode !== undefined) {
-      setEditMode(shouldEnterEditMode)
+      setViewMode(shouldEnterEditMode ? 'both' : 'preview')
     }
 
     setNotification({
       open: true,
-      message: `Widget "${widget.name}" loaded in ${shouldEnterEditMode ? 'edit' : 'preview'} mode`,
+      message: `Widget "${widget.name}" loaded in ${shouldEnterEditMode ? 'both' : 'preview'} mode`,
       severity: 'success',
     })
   }
@@ -1243,9 +1263,9 @@ export const useWidgetEditor = () => {
   const handleDirectAdd = (componentType: string) => {
     // Find the component configuration
     const componentConfig = COMPONENT_TYPES.find(
-      (c) => c.type === componentType
+      (c) => c.type === componentType,
     )
-    
+
     if (componentConfig) {
       // Create a new component
       const newComponent: ComponentData = {
@@ -1253,42 +1273,52 @@ export const useWidgetEditor = () => {
         type: componentType,
         props: { ...componentConfig.defaultProps },
       }
-      
+
       // If we have an active container, add the component to that container
       if (activeContainerId) {
         // Find the container component
-        const container = findComponentById(activeContainerId, widgetData.components)
-        
-        if (container && ['FieldSet', 'FlexBox', 'GridBox'].includes(container.type)) {
+        const container = findComponentById(
+          activeContainerId,
+          widgetData.components,
+        )
+
+        if (
+          container &&
+          ['FieldSet', 'FlexBox', 'GridBox'].includes(container.type)
+        ) {
           // Add to the container's children
           const updatedContainer = {
             ...container,
             children: [...(container.children || []), newComponent],
           }
-          
+
           // Update the widget data
           setWidgetData((prev) => ({
             ...prev,
-            components: updateComponentById(activeContainerId, updatedContainer, prev.components),
+            components: updateComponentById(
+              activeContainerId,
+              updatedContainer,
+              prev.components,
+            ),
           }))
-          
+
           // Show success notification
           setNotification({
             open: true,
             message: `Added ${componentConfig.label} to ${container.type}`,
             severity: 'success',
           })
-          
+
           return
         }
       }
-      
+
       // If no active container or container not found, add to root level
       setWidgetData((prev) => ({
         ...prev,
         components: [...prev.components, newComponent],
       }))
-      
+
       // Show success notification
       setNotification({
         open: true,
@@ -1300,7 +1330,7 @@ export const useWidgetEditor = () => {
 
   // Toggle edit/preview mode
   const toggleEditMode = () => {
-    setEditMode((prev) => !prev)
+    setViewMode((prev) => (prev === 'preview' ? 'edit' : 'preview'))
   }
 
   // Utility function to load saved widgets
@@ -1316,6 +1346,8 @@ export const useWidgetEditor = () => {
     setWidgetData,
     editMode,
     setEditMode,
+    viewMode,
+    setViewMode,
     notification,
     setNotification,
     savedWidgets,

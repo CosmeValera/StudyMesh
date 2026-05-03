@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { useWidgetEditor } from './hooks/useWidgetEditor'
 import EditComponentDialog from './components/dialogs/EditComponentDialog'
 import SavedWidgetsDialog from './components/dialogs/SavedWidgetsDialog'
@@ -11,6 +11,7 @@ import SettingsDialog from './components/dialogs/SettingsDialog'
 import EditorToolbar from './components/core/EditorToolbar'
 import ComponentPalette from './components/core/ComponentPalette'
 import EditorCanvas from './components/core/EditorCanvas'
+import CustomWidgetPreview from './CustomWidget'
 import NotificationSystem from './components/ui/NotificationSystem'
 import DeleteConfirmationDialog from './components/dialogs/DeleteConfirmationDialog'
 import { CustomWidget } from './WidgetStorage'
@@ -34,7 +35,8 @@ const WidgetEditor: React.FC<{
     widgetData,
     setWidgetData,
     editMode,
-    setEditMode,
+    viewMode,
+    setViewMode,
     notification,
     savedWidgets,
     showWidgetList,
@@ -82,7 +84,6 @@ const WidgetEditor: React.FC<{
     handleLoadWidget,
     handleDeleteSavedWidget,
     handleCloseNotification,
-    toggleEditMode,
     handleToggleVisibility,
     handleToggleFieldsetCollapse,
     confirmDeleteComponent,
@@ -147,6 +148,8 @@ const WidgetEditor: React.FC<{
   }
 
   const onboardingActive = editMode && !onboardingDismissed
+  const showEditorPane = viewMode === 'both' || viewMode === 'edit'
+  const showPreviewPane = viewMode === 'both' || viewMode === 'preview'
 
   const handleSkipOnboarding = React.useCallback(() => {
     setOnboardingDismissed(true)
@@ -250,7 +253,11 @@ const WidgetEditor: React.FC<{
     const handleExternalWidgetLoad = (event: Event) => {
       const customEvent = event as CustomEvent
       if (customEvent.detail && customEvent.detail.widget) {
-        handleLoadWidget(customEvent.detail.widget, customEvent.detail.editMode)
+        const nextViewMode =
+          customEvent.detail.viewMode ??
+          (customEvent.detail.editMode ? 'both' : 'preview')
+        setViewMode(nextViewMode)
+        handleLoadWidget(customEvent.detail.widget, nextViewMode !== 'preview')
       }
     }
 
@@ -263,7 +270,7 @@ const WidgetEditor: React.FC<{
         handleExternalWidgetLoad,
       )
     }
-  }, [handleLoadWidget])
+  }, [handleLoadWidget, setViewMode])
 
   // Handle initial widget load from customProps
   React.useEffect(() => {
@@ -276,7 +283,7 @@ const WidgetEditor: React.FC<{
 
       // Set the appropriate edit mode first
       if (customProps.initialEditMode !== undefined) {
-        setEditMode(customProps.initialEditMode)
+        setViewMode(customProps.initialEditMode ? 'both' : 'preview')
       }
 
       // Then load the widget - use a setTimeout to ensure the edit mode is set first
@@ -288,7 +295,7 @@ const WidgetEditor: React.FC<{
         )
       }, 0)
     }
-  }, [customProps, handleLoadWidget, setEditMode])
+  }, [customProps, handleLoadWidget, setViewMode])
 
   // Listen for save widget dialog requests
   React.useEffect(() => {
@@ -412,6 +419,7 @@ const WidgetEditor: React.FC<{
 
   // Load a template as a new widget
   const handleTemplateSelected = (templateWidget: CustomWidget) => {
+    setViewMode('both')
     handleLoadWidget(templateWidget, true)
   }
 
@@ -426,6 +434,7 @@ const WidgetEditor: React.FC<{
       return
     }
 
+    setViewMode('both')
     handleLoadWidget(operationsWidget, true)
     if (onboardingActive) {
       setOnboardingStep('save')
@@ -507,6 +516,7 @@ const WidgetEditor: React.FC<{
     }
 
     // Preview the restored version without modifying storage
+    setViewMode('both')
     handleLoadWidget(restoredWidget, true)
     // Inform the user this version is loaded for editing
     setComponentToast({
@@ -586,6 +596,7 @@ const WidgetEditor: React.FC<{
         position: 'relative',
         minHeight: 0,
         overflow: 'hidden',
+        bgcolor: '#F7FAFA',
       }}
       className="widget-editor-container"
       data-component="WidgetEditor"
@@ -593,9 +604,10 @@ const WidgetEditor: React.FC<{
       {/* Editor Toolbar */}
       <EditorToolbar
         editMode={editMode}
+        viewMode={viewMode}
         showSidebar={showSidebar}
         toggleSidebar={toggleSidebar}
-        toggleEditMode={toggleEditMode}
+        setViewMode={setViewMode}
         handleSaveWidget={handleSaveWidget}
         setShowWidgetList={setShowWidgetList}
         handleUndo={handleUndo}
@@ -622,12 +634,14 @@ const WidgetEditor: React.FC<{
       <Box
         sx={{
           display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
           flex: 1,
           overflow: 'hidden',
+          bgcolor: '#F7FAFA',
         }}
       >
         {/* Component palette sidebar */}
-        {showSidebar && editMode && (
+        {showEditorPane && showSidebar && editMode && (
           <ComponentPalette
             handleDragStart={handleGuidedDragStart}
             showComponentPaletteHelp={showComponentPaletteHelp}
@@ -643,38 +657,92 @@ const WidgetEditor: React.FC<{
         )}
 
         {/* Canvas area */}
-        <EditorCanvas
-          editMode={editMode}
-          widgetData={widgetData}
-          setWidgetData={setWidgetData}
-          dropAreaRef={dropAreaRef}
-          handleDrop={handleGuidedDrop}
-          handleDragOver={handleDragOver}
-          handleDragEnd={handleDragEnd}
-          isDragging={isDragging}
-          dropTarget={dropTarget}
-          handleEditComponent={handleEditComponent}
-          handleDeleteComponent={handleDeleteComponent}
-          handleMoveComponent={handleMoveComponent}
-          handleAddInsideFieldset={handleAddInsideFieldset}
-          handleToggleVisibility={handleToggleVisibility}
-          handleContainerDragEnter={handleContainerDragEnter}
-          handleContainerDragOver={handleContainerDragOver}
-          handleContainerDragLeave={handleContainerDragLeave}
-          handleContainerDrop={handleContainerDrop}
-          handleToggleFieldsetCollapse={handleToggleFieldsetCollapse}
-          showSidebar={showSidebar}
-          handleWidgetNameChange={handleWidgetNameChange}
-          activeContainerId={activeContainerId}
-          onSelectContainer={setActiveContainerId}
-          onAddStarterComponent={handleGuidedDirectAdd}
-          onStartOperationsWidget={handleStartOperationsWidget}
-          onUseTemplate={() => setShowTemplateDialog(true)}
-          onboardingActive={onboardingActive}
-          onboardingStep={onboardingStep}
-          onRestartOnboarding={handleRestartOnboarding}
-          onSkipOnboarding={handleSkipOnboarding}
-        />
+        {showEditorPane && (
+          <Box
+            sx={{
+              flex: viewMode === 'both' ? '1 1 50%' : '1 1 auto',
+              minWidth: 0,
+              minHeight: 0,
+              display: 'flex',
+            }}
+          >
+            <EditorCanvas
+              editMode={editMode}
+              widgetData={widgetData}
+              setWidgetData={setWidgetData}
+              dropAreaRef={dropAreaRef}
+              handleDrop={handleGuidedDrop}
+              handleDragOver={handleDragOver}
+              handleDragEnd={handleDragEnd}
+              isDragging={isDragging}
+              dropTarget={dropTarget}
+              handleEditComponent={handleEditComponent}
+              handleDeleteComponent={handleDeleteComponent}
+              handleMoveComponent={handleMoveComponent}
+              handleAddInsideFieldset={handleAddInsideFieldset}
+              handleToggleVisibility={handleToggleVisibility}
+              handleContainerDragEnter={handleContainerDragEnter}
+              handleContainerDragOver={handleContainerDragOver}
+              handleContainerDragLeave={handleContainerDragLeave}
+              handleContainerDrop={handleContainerDrop}
+              handleToggleFieldsetCollapse={handleToggleFieldsetCollapse}
+              showSidebar={showSidebar}
+              handleWidgetNameChange={handleWidgetNameChange}
+              activeContainerId={activeContainerId}
+              onSelectContainer={setActiveContainerId}
+              onAddStarterComponent={handleGuidedDirectAdd}
+              onStartOperationsWidget={handleStartOperationsWidget}
+              onUseTemplate={() => setShowTemplateDialog(true)}
+              onboardingActive={onboardingActive}
+              onboardingStep={onboardingStep}
+              onRestartOnboarding={handleRestartOnboarding}
+              onSkipOnboarding={handleSkipOnboarding}
+            />
+          </Box>
+        )}
+
+        {showPreviewPane && (
+          <Box
+            data-testid="widget-preview-pane"
+            sx={{
+              flex: viewMode === 'both' ? '1 1 50%' : '1 1 auto',
+              minWidth: 0,
+              minHeight: viewMode === 'both' ? { xs: 360, md: 0 } : 0,
+              borderLeft: { xs: 0, md: viewMode === 'both' ? 1 : 0 },
+              borderTop: { xs: viewMode === 'both' ? 1 : 0, md: 0 },
+              borderColor: 'divider',
+              bgcolor: '#F8FAFA',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                borderBottom: 1,
+                borderColor: 'divider',
+                bgcolor: '#FFFFFF',
+              }}
+            >
+              <Typography variant="subtitle2" color="text.primary">
+                Live Preview
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflow: 'auto',
+                p: { xs: 1.5, md: 2 },
+                bgcolor: '#FAFBFB',
+              }}
+            >
+              <CustomWidgetPreview components={widgetData.components} />
+            </Box>
+          </Box>
+        )}
       </Box>
 
       {/* Dialogs */}
@@ -693,7 +761,8 @@ const WidgetEditor: React.FC<{
           // If useEditMode is explicitly provided (from preview/edit buttons), use that
           // Otherwise default to false (preview mode) as handled in WidgetManagementModal
           // This fixes the issue where widgets were always opening in edit mode
-          const targetMode = useEditMode !== undefined ? useEditMode : false
+          const targetMode = useEditMode !== undefined ? useEditMode : true
+          setViewMode(targetMode ? 'both' : 'preview')
           handleLoadWidget(widget, targetMode)
           setShowWidgetList(false)
         }}
