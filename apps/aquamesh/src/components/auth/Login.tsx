@@ -48,8 +48,8 @@ const Login: React.FC = () => {
     const userData = userOptions[selectedUser]
     localStorage.setItem('userData', JSON.stringify(userData))
     
-    // Navigate back to the main dashboard
-    navigate('/')
+    // Navigate back to the main workspace
+    navigate('/workspace')
   }
 
   return (

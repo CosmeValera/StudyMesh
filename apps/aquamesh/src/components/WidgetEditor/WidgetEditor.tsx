@@ -16,6 +16,11 @@ import DeleteConfirmationDialog from './components/dialogs/DeleteConfirmationDia
 import { CustomWidget } from './WidgetStorage'
 import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
+import { cloneTemplate } from './constants/templateWidgets'
+
+type OnboardingStep = 'choose' | 'drop' | 'save'
+
+const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 
 // Main Widget Editor component
 const WidgetEditor: React.FC<{
@@ -122,6 +127,16 @@ const WidgetEditor: React.FC<{
   const [showSaveDialog, setShowSaveDialog] = React.useState(false)
   const [saveDialogDefaultName, setSaveDialogDefaultName] = React.useState('')
 
+  const [onboardingStep, setOnboardingStep] =
+    React.useState<OnboardingStep>('choose')
+  const [onboardingDismissed, setOnboardingDismissed] = React.useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.localStorage.getItem(WIDGET_EDITOR_ONBOARDING_KEY) === 'true'
+  })
+
   // State to track current widget for versioning
   const [currentVersioningWidget, setCurrentVersioningWidget] =
     React.useState<CustomWidget | null>(null)
@@ -130,6 +145,53 @@ const WidgetEditor: React.FC<{
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar)
   }
+
+  const onboardingActive = editMode && !onboardingDismissed
+
+  const handleSkipOnboarding = React.useCallback(() => {
+    setOnboardingDismissed(true)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
+    }
+  }, [])
+
+  const handleRestartOnboarding = React.useCallback(() => {
+    setOnboardingDismissed(false)
+    setOnboardingStep(widgetData.components.length > 0 ? 'save' : 'choose')
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(WIDGET_EDITOR_ONBOARDING_KEY)
+    }
+  }, [widgetData.components.length])
+
+  const handleGuidedDragStart = React.useCallback(
+    (event: React.DragEvent<HTMLDivElement>, type: string) => {
+      handleDragStart(event, type)
+      if (onboardingActive && widgetData.components.length === 0) {
+        setOnboardingStep('drop')
+      }
+    },
+    [handleDragStart, onboardingActive, widgetData.components.length],
+  )
+
+  const handleGuidedDrop = React.useCallback(
+    (event: React.DragEvent) => {
+      handleDrop(event)
+      if (onboardingActive) {
+        setOnboardingStep('save')
+      }
+    },
+    [handleDrop, onboardingActive],
+  )
+
+  const handleGuidedDirectAdd = React.useCallback(
+    (componentType: string) => {
+      handleDirectAdd(componentType)
+      if (onboardingActive) {
+        setOnboardingStep('save')
+      }
+    },
+    [handleDirectAdd, onboardingActive],
+  )
 
   // Toast state for component interactions
   const [componentToast, setComponentToast] = React.useState<{
@@ -162,6 +224,26 @@ const WidgetEditor: React.FC<{
       document.removeEventListener('showWidgetToast', handleComponentToast)
     }
   }, [])
+
+  React.useEffect(() => {
+    if (!onboardingActive) {
+      return
+    }
+
+    if (widgetData.components.length > 0) {
+      setOnboardingStep('save')
+      return
+    }
+
+    if (!isDragging && onboardingStep === 'drop') {
+      setOnboardingStep('choose')
+    }
+  }, [
+    isDragging,
+    onboardingActive,
+    onboardingStep,
+    widgetData.components.length,
+  ])
 
   // Listen for loadWidgetInEditor events from widget management
   React.useEffect(() => {
@@ -333,6 +415,23 @@ const WidgetEditor: React.FC<{
     handleLoadWidget(templateWidget, true)
   }
 
+  const handleStartOperationsWidget = () => {
+    const operationsWidget = cloneTemplate('template-operations-dashboard')
+    if (!operationsWidget) {
+      setComponentToast({
+        open: true,
+        message: 'Daily Operations widget template is not available',
+        severity: 'error',
+      })
+      return
+    }
+
+    handleLoadWidget(operationsWidget, true)
+    if (onboardingActive) {
+      setOnboardingStep('save')
+    }
+  }
+
   // Handler for when import is complete
   const handleImportComplete = () => {
     loadSavedWidgets()
@@ -431,7 +530,9 @@ const WidgetEditor: React.FC<{
     // Show success message
     setComponentToast({
       open: true,
-      message: `Updated to major version ${getNextMajorVersion(widget.version || '1.0')}`,
+      message: `Updated to major version ${getNextMajorVersion(
+        widget.version || '1.0',
+      )}`,
       severity: 'success',
     })
   }
@@ -528,13 +629,16 @@ const WidgetEditor: React.FC<{
         {/* Component palette sidebar */}
         {showSidebar && editMode && (
           <ComponentPalette
-            handleDragStart={handleDragStart}
+            handleDragStart={handleGuidedDragStart}
             showComponentPaletteHelp={showComponentPaletteHelp}
             showTooltips={showTooltips}
-            handleDirectAdd={handleDirectAdd}
+            handleDirectAdd={handleGuidedDirectAdd}
             activeContainerId={activeContainerId}
             setActiveContainerId={setActiveContainerId}
             widgetData={widgetData}
+            onboardingActive={onboardingActive}
+            onboardingStep={onboardingStep}
+            onSkipOnboarding={handleSkipOnboarding}
           />
         )}
 
@@ -544,7 +648,7 @@ const WidgetEditor: React.FC<{
           widgetData={widgetData}
           setWidgetData={setWidgetData}
           dropAreaRef={dropAreaRef}
-          handleDrop={handleDrop}
+          handleDrop={handleGuidedDrop}
           handleDragOver={handleDragOver}
           handleDragEnd={handleDragEnd}
           isDragging={isDragging}
@@ -563,6 +667,13 @@ const WidgetEditor: React.FC<{
           handleWidgetNameChange={handleWidgetNameChange}
           activeContainerId={activeContainerId}
           onSelectContainer={setActiveContainerId}
+          onAddStarterComponent={handleGuidedDirectAdd}
+          onStartOperationsWidget={handleStartOperationsWidget}
+          onUseTemplate={() => setShowTemplateDialog(true)}
+          onboardingActive={onboardingActive}
+          onboardingStep={onboardingStep}
+          onRestartOnboarding={handleRestartOnboarding}
+          onSkipOnboarding={handleSkipOnboarding}
         />
       </Box>
 

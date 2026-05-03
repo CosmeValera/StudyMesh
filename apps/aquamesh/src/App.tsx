@@ -1,7 +1,13 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Box, CssBaseline } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useSearchParams,
+} from 'react-router-dom'
 
 import TopNavBar from './components/topnavbar/TopNavBar'
 import Main from './components/Main'
@@ -9,6 +15,8 @@ import Dashboards from './components/Dasboard/Dashboard'
 import DashboardProvider from './components/Dasboard/DashboardProvider'
 import LayoutProvider from './components/Layout/LayoutProvider'
 import Login from './components/auth/Login'
+import AquaMeshLanding from './components/landing/AquaMeshLanding'
+import { useWorkspaceActions } from './customHooks/useWorkspaceActions'
 
 import theme from './theme'
 import { PrimeReactProvider } from 'primereact/api'
@@ -39,8 +47,38 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
-const MainPage = () => {
+const WorkspacePage = () => {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { openCreateWidget, openOperationsExample, openWidgetMenu } =
+    useWorkspaceActions()
+  const handledActionRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+
+    if (!action || handledActionRef.current === action) {
+      return
+    }
+
+    handledActionRef.current = action
+
+    if (action === 'create-widget') {
+      openCreateWidget()
+    } else if (action === 'open-operations-example') {
+      openOperationsExample()
+    } else if (action === 'add-widget') {
+      openWidgetMenu()
+    }
+
+    setSearchParams({}, { replace: true })
+  }, [
+    openCreateWidget,
+    openOperationsExample,
+    openWidgetMenu,
+    searchParams,
+    setSearchParams,
+  ])
   
   return (
     <Box sx={{ overflowX: 'hidden', height: '100dvh' }}>
@@ -66,9 +104,10 @@ const App = () => {
               <CssBaseline />
               <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/" element={
+                <Route path="/" element={<AquaMeshLanding />} />
+                <Route path="/workspace" element={
                   <ProtectedRoute>
-                    <MainPage />
+                    <WorkspacePage />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<Navigate to="/" replace />} />

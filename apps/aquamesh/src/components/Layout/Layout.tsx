@@ -54,13 +54,22 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps>= ({ layout, update
     const { width, height } = node.getRect()
     const name = node.getName()
     const component = node.getComponent()
+    const config = node.getConfig() as
+      | { customProps?: Record<string, unknown> }
+      | undefined
 
     if (!component) {
       return <EmptyWidget />
     }
 
     return (
-      <DynamicMicrofrontend name={name} component={component} width={width} height={height}/>
+      <DynamicMicrofrontend
+        name={name}
+        component={component}
+        width={width}
+        height={height}
+        customProps={config?.customProps}
+      />
     )
   }
 

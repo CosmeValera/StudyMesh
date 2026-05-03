@@ -19,17 +19,25 @@ const LayoutProvider: React.FC<LayoutProviderProps> = (props) => {
   const layoutRef = useRef<FlexLayout>(null)
 
   const addComponent = useCallback((item: any) => {
-    const { name, component } = item
-    layoutRef.current?.addTabToActiveTabSet({ component, name })
+    const { name, component, customProps } = item
+    layoutRef.current?.addTabToActiveTabSet({
+      component,
+      name,
+      config: customProps ? { customProps } : undefined,
+    })
   }, [])
 
   const dragComponent = useCallback((item:any, ev: React.DragEvent<HTMLLIElement>) => {
-    const { name, component } = item
+    const { name, component, customProps } = item
 
     // NOTE prevent default dragging behavior
     ev.preventDefault()
 
-    layoutRef.current?.addTabWithDragAndDrop(name, { component, name })
+    layoutRef.current?.addTabWithDragAndDrop(name, {
+      component,
+      name,
+      config: customProps ? { customProps } : undefined,
+    })
   }, [])
 
   return (

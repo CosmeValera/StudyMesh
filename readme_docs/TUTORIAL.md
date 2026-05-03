@@ -1,5 +1,5 @@
-
 ## 🔍 Tutorial
+
 When you first use the app, a **Tutorial** will automatically appear, explaining **Dashboards**, **Widgets**, and the **Widget Editor** features. You can revisit this tutorial anytime from the help menu. For specific questions, there's also a **FAQ** section available.
 
 **Tutorial:**
@@ -21,7 +21,7 @@ The top navigation bar provides quick access to all platform capabilities:
 - **❓ Help**: Get support through the tutorial and FAQ sections
 - **👤 User**: Select and manage user profiles (only admin can create new widgets)
 
-All our pre-built widgets load as microfrontends using Module Federation. Want to customize what's available? Just update the `apps/aquamesh/public/config/widgets.json` file.
+The current demo focuses on AquaMesh-owned no-code widgets. Start in **Create Widget** to build a reusable Daily Operations widget for orders, delayed tasks, support tickets, and system status, or open the Daily Operations example to see what a finished dashboard can look like.
 
 ### 📊 Dashboards
 
@@ -74,6 +74,7 @@ AquaMesh's most powerful feature is its **Widget Editor**, which enables users t
 ![Settings](./readme_images/settings.png)
 
 **Widget Editor Advanced Features:**
+
 - **Templates**: Templates are predefined widget configurations that you can use to quickly create new widgets.
 
 ![Templates](./readme_images/templates.png)
@@ -89,9 +90,11 @@ AquaMesh's most powerful feature is its **Widget Editor**, which enables users t
 ![Import & Export](./readme_images/import_export2.png)
 
 ### 📱💻🖥️ Responsive
+
 Aquamesh is responsive and can be used with your phone, tablet or computer. However, computer is the most recommended especially to build complex layouts.
 
 #### 📱 Phone
+
 <img src="./readme_images/phone/phone_empty.jpg" width="200" />
 <img src="./readme_images/phone/phone_templates.jpg" width="200" />
 <img src="./readme_images/phone/phone_widget_history.jpg" width="200" />

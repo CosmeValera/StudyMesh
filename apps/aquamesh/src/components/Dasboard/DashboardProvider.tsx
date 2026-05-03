@@ -5,22 +5,23 @@ import { nanoid } from 'nanoid'
 
 import { DEFAULT_DASHBOARD, DefaultDashboard } from './fixture'
 
-import { useStore, StateDashboard } from '../../state/store'
+import { useStore, StateDashboard, DashboardLayout } from '../../state/store'
 
 import { Model } from 'flexlayout-react'
 
 interface DashboardProviderProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 interface DashboardContextType {
-  openDashboards: StateDashboard[];
-  selectedDashboard: number;
-  setSelectedDashboard: (index: number) => void;
-  removeDashboard: (id: string) => void;
-  addDashboard: (dashboard?: DefaultDashboard) => void;
-  updateLayout: (model: Model) => void;
-  renameDashboard: (id: string, newName: string) => void;
+  openDashboards: StateDashboard[]
+  selectedDashboard: number
+  setSelectedDashboard: (index: number) => void
+  removeDashboard: (id: string) => void
+  addDashboard: (dashboard?: DefaultDashboard) => void
+  updateLayout: (model: Model) => void
+  updateDashboardLayout: (index: number, layout: DashboardLayout) => void
+  renameDashboard: (id: string, newName: string) => void
 }
 
 const DashboardContext = React.createContext<DashboardContextType | null>(null)
@@ -42,7 +43,9 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
   }
 
   const addDashboard = (dashboard = DEFAULT_DASHBOARD) => {
-    const newDashboard = openDashboards.concat(Object.assign({ id: nanoid() }, dashboard))
+    const newDashboard = openDashboards.concat(
+      Object.assign({ id: nanoid() }, dashboard),
+    )
     const newSelectedDashboard = openDashboards.length
 
     setDashboards(newDashboard)
@@ -58,18 +61,35 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     }
     setDashboards(newOpenDashboards)
   }
-  
+
+  const updateDashboardLayout = (index: number, layout: DashboardLayout) => {
+    const dashboard = openDashboards[index]
+
+    if (!dashboard) {
+      return
+    }
+
+    const newOpenDashboards = [...openDashboards]
+    newOpenDashboards[index] = {
+      ...dashboard,
+      layout,
+    }
+
+    setDashboards(newOpenDashboards)
+    setSelectedDashboard(index)
+  }
+
   const renameDashboard = (id: string, newName: string) => {
-    const newOpenDashboards = openDashboards.map(dashboard => {
+    const newOpenDashboards = openDashboards.map((dashboard) => {
       if (dashboard.id === id) {
         return { ...dashboard, name: newName }
       }
       return dashboard
     })
-    
+
     setDashboards(newOpenDashboards)
   }
-  
+
   return (
     <DashboardContext.Provider
       {...props}
@@ -80,6 +100,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         removeDashboard,
         addDashboard,
         updateLayout,
+        updateDashboardLayout,
         renameDashboard,
       }}
     />
@@ -88,8 +109,8 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
 
 export const useDashboards = () => {
   const context = useContext(DashboardContext)
-  if(!context) {
-    throw new Error("useDashboards must be used within a DashboardProvider")
+  if (!context) {
+    throw new Error('useDashboards must be used within a DashboardProvider')
   }
   return context
 }

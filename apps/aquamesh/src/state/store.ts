@@ -1,61 +1,50 @@
-import { create } from "zustand"
+import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 export interface StateDashboard {
-  id: string;
-  name: string;
-  layout?: DashboardLayout;
-  aquamesh?: string;
+  id: string
+  name: string
+  layout?: DashboardLayout
+  aquamesh?: string
 }
 
 export interface DashboardLayout {
-  type?: string;
-  id?: string;
-  name?: string;
-  component?: string;
-  active?: boolean;
-  weight?: number;
-  children?: DashboardLayout[];
+  type?: string
+  id?: string
+  name?: string
+  component?: string
+  config?: {
+    customProps?: Record<string, unknown>
+  }
+  active?: boolean
+  weight?: number
+  children?: DashboardLayout[]
 }
 
-const DEFAULT_EDITOR_DASHBOARD: StateDashboard = {
+const DEFAULT_DASHBOARD: StateDashboard = {
   id: 'default-dashboard',
   name: 'Dashboard',
   layout: {
     type: 'row',
     id: '#default-dashboard-layout',
-    children: [
-      {
-        type: 'tabset',
-        id: '#default-dashboard-tabset',
-        active: true,
-        children: [
-          {
-            type: 'tab',
-            id: '#default-widget-editor-tab',
-            name: 'Widget Editor',
-            component: 'WidgetEditor',
-          },
-        ],
-      },
-    ],
+    children: [],
   },
 }
 
 interface StoreState {
-  selectedDashboard: number;
-  openDashboards: StateDashboard[];
-  setDashboards: (element: StateDashboard[]) => void;
-  setSelectedDashboard: (index: number) => void;
-  changeWidgetData: (data: Partial<StateDashboard>) => void;
-  getCurrentDashboard: () => StateDashboard | undefined;
+  selectedDashboard: number
+  openDashboards: StateDashboard[]
+  setDashboards: (element: StateDashboard[]) => void
+  setSelectedDashboard: (index: number) => void
+  changeWidgetData: (data: Partial<StateDashboard>) => void
+  getCurrentDashboard: () => StateDashboard | undefined
 }
 
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       selectedDashboard: 0,
-      openDashboards: [DEFAULT_EDITOR_DASHBOARD],
+      openDashboards: [DEFAULT_DASHBOARD],
       setDashboards: (element) => set({ openDashboards: element }),
       setSelectedDashboard: (index) => set({ selectedDashboard: index }),
       changeWidgetData: (data) => {
@@ -77,6 +66,6 @@ export const useStore = create<StoreState>()(
     {
       name: 'aquamesh-storage',
       storage: createJSONStorage(() => localStorage),
-    }
-  )
+    },
+  ),
 )

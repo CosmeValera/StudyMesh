@@ -12,7 +12,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
-  Fade
+  Fade,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -23,7 +23,9 @@ interface DashboardWidgetExplanationModalProps {
   onClose: () => void
 }
 
-const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalProps> = ({ open, onClose }) => {
+const DashboardWidgetExplanationModal: React.FC<
+  DashboardWidgetExplanationModalProps
+> = ({ open, onClose }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -32,10 +34,10 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
   const widgetImage = `/images/understanding_widgets.png`
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
       fullWidth
       aria-labelledby="explanation-dialog-title"
       PaperProps={{
@@ -43,21 +45,29 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
           borderRadius: 2,
           bgcolor: '#00A389',
           overflow: 'hidden',
-          backgroundImage: 'linear-gradient(135deg, #00A389 0%, #00886F 100%)'
-        }
+          backgroundImage: 'linear-gradient(135deg, #00A389 0%, #00886F 100%)',
+        },
       }}
       TransitionComponent={Fade}
       transitionDuration={500}
     >
-      <DialogTitle id="explanation-dialog-title" sx={{ 
-        bgcolor: '#00BC9A', 
-        color: 'white', 
-        pb: 1,
-        backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)'
-      }}>
+      <DialogTitle
+        id="explanation-dialog-title"
+        sx={{
+          bgcolor: '#00BC9A',
+          color: 'white',
+          pb: 1,
+          backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)',
+        }}
+      >
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6" component="div" fontWeight="bold" color="#eee">
-            Understanding Dashboards & Widgets
+          <Typography
+            variant="h6"
+            component="div"
+            fontWeight="bold"
+            color="#eee"
+          >
+            Widget To Dashboard
           </Typography>
           <IconButton
             aria-label="close"
@@ -68,83 +78,104 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
           </IconButton>
         </Box>
       </DialogTitle>
-      
+
       <DialogContent sx={{ p: 3 }}>
         <Box my={4}>
           <Grid container spacing={4}>
             <Fade in={open} style={{ transitionDelay: '100ms' }}>
               <Grid item xs={12} md={6}>
-                <Paper elevation={3} sx={{ 
-                  p: 3, 
-                  height: '100%',
-                  bgcolor: '#00886F',
-                  borderLeft: '4px solid',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  borderRadius: 2,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white'
-                  }
-                }}>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 3,
+                    height: '100%',
+                    bgcolor: '#00886F',
+                    borderLeft: '4px solid',
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderRadius: 2,
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+                      borderColor: 'white',
+                    },
+                  }}
+                >
                   <Box display="flex" alignItems="center" mb={2}>
-                    <DashboardIcon color="primary" sx={{ fontSize: 32, mr: 2 }} />
+                    <DashboardIcon
+                      color="primary"
+                      sx={{ fontSize: 32, mr: 2 }}
+                    />
                     <Typography variant="h5" fontWeight="bold" color="#f9f9f9">
                       Dashboards
                     </Typography>
                   </Box>
                   <Typography variant="body1" paragraph color="#f9f9f9">
-                    Dashboards are container layouts that organize multiple widgets into a cohesive view. 
-                    Think of them as the canvas where you arrange your widgets.
+                    Dashboards are where saved widgets become a useful
+                    workspace. After creating a widget, add it here, arrange it,
+                    and save the layout.
                   </Typography>
                   <Box mt={3} display="flex" justifyContent="center">
-                    <img 
-                      src={dashboardImage} 
+                    <img
+                      src={dashboardImage}
                       alt="Dashboard example"
-                      style={{ maxWidth: '100%', border: '1px solid #eee', borderRadius: '4px' }}
+                      style={{
+                        maxWidth: '100%',
+                        border: '1px solid #eee',
+                        borderRadius: '4px',
+                      }}
                     />
                   </Box>
-                  <Typography variant="body1" paragraph sx={{marginTop: '1rem'}} color="#f9f9f9">
-                    In regards to dashboards you can:
+                  <Typography
+                    variant="body1"
+                    paragraph
+                    sx={{ marginTop: '1rem' }}
+                    color="#f9f9f9"
+                  >
+                    Quick steps:
                   </Typography>
-                  <Box component="ul" sx={{ pl: 2 }} >
+                  <Box component="ul" sx={{ pl: 2 }}>
                     <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
                       <Typography variant="body1">
-                        <strong>Use predefined dashboards</strong> with preset layouts
+                        <strong>Add the saved widget</strong> from Add Widget
                       </Typography>
                     </Box>
                     <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
                       <Typography variant="body1">
-                        <strong>Create custom dashboard layouts</strong> to fit your needs
+                        <strong>Arrange the dashboard</strong> around the
+                        information you need
                       </Typography>
                     </Box>
                     <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
                       <Typography variant="body1">
-                        <strong>Save your dashboard configurations</strong> for future use
+                        <strong>Save the dashboard</strong> when the view is
+                        ready
                       </Typography>
                     </Box>
                   </Box>
                 </Paper>
               </Grid>
             </Fade>
-            
+
             <Fade in={open} style={{ transitionDelay: '300ms' }}>
               <Grid item xs={12} md={6}>
-                <Paper elevation={3} sx={{ 
-                  p: 3, 
-                  height: '100%',
-                  bgcolor: '#00886F',
-                  borderLeft: '4px solid',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  borderRadius: 2,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white'
-                  }
-                }}>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 3,
+                    height: '100%',
+                    bgcolor: '#00886F',
+                    borderLeft: '4px solid',
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderRadius: 2,
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+                      borderColor: 'white',
+                    },
+                  }}
+                >
                   <Box display="flex" alignItems="center" mb={2}>
                     <WidgetsIcon color="primary" sx={{ fontSize: 32, mr: 2 }} />
                     <Typography variant="h5" fontWeight="bold" color="#f9f9f9">
@@ -152,28 +183,39 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
                     </Typography>
                   </Box>
                   <Typography variant="body1" paragraph color="#f9f9f9">
-                    Widgets are individual components that display specific data, visualizations, or controls. 
-                    Each widget serves a distinct purpose and can be added to dashboards.
+                    Widgets are reusable dashboard blocks. Build one in Create
+                    Widget with text, inputs, buttons, charts, or layout blocks,
+                    then reuse it anywhere.
                   </Typography>
                   <Box mt={3} display="flex" justifyContent="center">
-                    <img 
-                      src={widgetImage} 
+                    <img
+                      src={widgetImage}
                       alt="Widget example"
-                      style={{ maxWidth: '100%', border: '1px solid #eee', borderRadius: '4px' }}
+                      style={{
+                        maxWidth: '100%',
+                        border: '1px solid #eee',
+                        borderRadius: '4px',
+                      }}
                     />
                   </Box>
-                  <Typography variant="body1" paragraph sx={{marginTop: '1rem'}} color="#f9f9f9">
-                  In regards to widgets you have:
+                  <Typography
+                    variant="body1"
+                    paragraph
+                    sx={{ marginTop: '1rem' }}
+                    color="#f9f9f9"
+                  >
+                    Quick steps:
                   </Typography>
                   <Box component="ul" sx={{ pl: 2 }}>
                     <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
                       <Typography variant="body1">
-                        <strong>Predefined widgets</strong> like Control Flow and System Lens
+                        <strong>Open Create Widget</strong> from the top bar
                       </Typography>
                     </Box>
                     <Box component="li" sx={{ mb: 1 }} color="#f9f9f9">
                       <Typography variant="body1">
-                        <strong>Custom widget creation</strong> with the Widget Editor
+                        <strong>Add building blocks</strong>, preview, and save
+                        the widget
                       </Typography>
                     </Box>
                   </Box>
@@ -183,13 +225,13 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
           </Grid>
         </Box>
       </DialogContent>
-      
+
       <DialogActions sx={{ px: 3, pb: 3, bgcolor: '#00A389' }}>
-        <Button 
-          onClick={onClose} 
+        <Button
+          onClick={onClose}
           color="primary"
           variant="contained"
-          sx={{ 
+          sx={{
             bgcolor: '#00D1AB',
             color: '#191919',
             px: 3,
@@ -197,11 +239,11 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
             '&:hover': {
               bgcolor: '#00E4BC',
               transform: 'translateY(-3px)',
-              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
             },
             transition: 'all 0.2s ease',
             fontWeight: 'bold',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
           }}
         >
           Got it!
@@ -211,4 +253,4 @@ const DashboardWidgetExplanationModal: React.FC<DashboardWidgetExplanationModalP
   )
 }
 
-export default DashboardWidgetExplanationModal 
+export default DashboardWidgetExplanationModal

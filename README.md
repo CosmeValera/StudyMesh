@@ -1,6 +1,16 @@
 # 🌊 AquaMesh
 
-🌊 AquaMesh is a no-code dashboard creation platform that enables users to build, customize, and manage interactive dashboards through an intuitive drag-and-drop interface.
+🌊 AquaMesh is a no-code custom widget builder for dashboards. It helps people create reusable dashboard widgets from visual blocks, save them locally, and place them into dashboards without writing React, configuration files, or layout code.
+
+Many dashboards begin as a developer request: someone needs a form, chart, controls, status view, or operational workspace, and engineering has to wire the interface together. AquaMesh turns that workflow into a visual product where non-programmers can build the widget they need first, then reuse it inside a dashboard.
+
+## 🤔 What you can do
+
+- **Create widgets without code:** Design reusable dashboard blocks from text, forms, buttons, charts, controls, and layout containers.
+- **Build dashboards visually:** Add, drag, resize, and arrange saved widgets in flexible layouts.
+- **Reuse saved work:** Save widgets and dashboards so they can be added to future dashboard projects.
+- **Share and back up widgets:** Import and export widget definitions between environments.
+- **Recover earlier versions:** Use widget version history when you need to restore previous work.
 
 ## ✨ Key Features
 - **No-Code Widget Editor:** Build custom widgets without programming knowledge
@@ -21,7 +31,7 @@
 # Clone the repository
 git clone https://github.com/CosmeValera/AquaMesh.git
 
-# Install dependencies (just one command for the entire monorepo!)
+# Install dependencies for the full monorepo
 npm install
 
 # Launch AquaMesh

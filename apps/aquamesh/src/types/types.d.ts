@@ -32,6 +32,9 @@ interface Tab {
   type: 'tab';
   name: string;
   component?: unknown;
+  config?: {
+    customProps?: Record<string, unknown>;
+  };
 }
 ///// END: LAYOUT /////
 ///////////////////////

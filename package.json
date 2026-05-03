@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo build",
+    "bashunit": "bashunit",
     "start": "turbo start",
     "test": "turbo test",
     "lint": "turbo lint",
@@ -23,6 +24,7 @@
   ],
   "dependencies": {
     "@types/uuid": "^10.0.0",
+    "bashunit": "^0.35.0",
     "date-fns": "^4.1.0",
     "uuid": "^11.1.0"
   }

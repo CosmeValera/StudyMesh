@@ -15,7 +15,7 @@ import {
   Tab,
   Tabs,
   useMediaQuery,
-  useTheme
+  useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import EditIcon from '@mui/icons-material/Edit'
@@ -48,15 +48,15 @@ interface TabPanelProps {
 
 // Add interfaces for the sections data structure
 interface EditorSubsection {
-  title: string;
-  icon: React.ReactElement;
-  content: string;
+  title: string
+  icon: React.ReactElement
+  content: string
 }
 
 interface EditorSection {
-  title: string;
-  content?: string;
-  subsections?: EditorSubsection[];
+  title: string
+  content?: string
+  subsections?: EditorSubsection[]
 }
 
 function TabPanel(props: TabPanelProps) {
@@ -80,147 +80,164 @@ function TabPanel(props: TabPanelProps) {
   )
 }
 
-const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> = ({ 
-  open, 
-  onClose, 
-  onCloseTutorial 
-}) => {
+const WidgetEditorExplanationModal: React.FC<
+  WidgetEditorExplanationModalProps
+> = ({ open, onClose, onCloseTutorial }) => {
   const [tabValue, setTabValue] = useState(0)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
   }
-  
+
   // Handler for opening the widget editor
   const handleOpenWidgetEditor = () => {
     // Close this modal
     onClose()
-    
+
     // Close the tutorial modal if the prop is provided
     if (onCloseTutorial) {
       onCloseTutorial()
     }
-    
+
     // Programmatically click the widget editor button
-    const createWidgetButton = document.querySelector('[data-tutorial-id="create-widget-button"]')
+    const createWidgetButton = document.querySelector(
+      '[data-tutorial-id="create-widget-button"]',
+    )
     if (createWidgetButton) {
-      (createWidgetButton as HTMLElement).click()
+      ;(createWidgetButton as HTMLElement).click()
     }
   }
-  
+
   // Section data
   const sections: EditorSection[] = [
     {
-      title: 'Widget Editor Overview',
-      content: 'The Widget Editor allows you to create custom widgets by combining various UI and layout components. A widget is essentially a collection of components arranged in a specific layout that provides a specific visualization or functionality.'
+      title: 'Create Widget Quick Start',
+      content:
+        'Create one reusable widget first: name it, add building blocks, preview it, save it, then add it to a dashboard from Add Widget.',
     },
     {
-      title: 'Editor Interface',
+      title: 'Build The Widget',
       subsections: [
         {
-          title: 'Toolbar',
+          title: 'Name It',
           icon: <EditIcon />,
-          content: 'Contains buttons for various editor functions such as saving, previewing, and accessing the widget library.'
-        }, 
-        {
-          title: 'Components Panel',
-          icon: <WidgetsIcon />,
-          content: 'Located on the left side, this panel contains all available components grouped by category. You can drag and drop these components into your widget design.'
+          content:
+            'Give the widget a clear name so it is easy to find later in Saved Widgets.',
         },
         {
-          title: 'Widget Canvas',
+          title: 'Add Building Blocks',
+          icon: <WidgetsIcon />,
+          content:
+            'Drag text, inputs, buttons, charts, and layout blocks from the left panel onto the canvas.',
+        },
+        {
+          title: 'Arrange The Canvas',
           icon: <GridViewIcon />,
-          content: 'The central area where you arrange and configure components. Components can be rearranged, edited, or deleted here.'
-        }
-      ]
+          content:
+            'Move and configure the blocks until the widget is ready to reuse in dashboards.',
+        },
+      ],
     },
     {
-      title: 'Toolbar Controls',
+      title: 'Save And Reuse',
       subsections: [
         {
-          title: 'Edit/Preview Mode',
+          title: 'Preview',
           icon: <PreviewIcon />,
-          content: 'Toggle between editing your widget (making changes) and previewing how it will look when deployed.'
+          content:
+            'Check how the widget will look before it appears on a dashboard.',
         },
         {
-          title: 'Save/Update',
+          title: 'Save',
           icon: <SaveIcon />,
-          content: 'Save your widget to the library. If you\'re editing an existing widget, this button will update it instead.'
+          content:
+            'Save the widget to the library. Saved widgets are available from Add Widget.',
         },
         {
-          title: 'Browse Widgets',
+          title: 'Use In Dashboard',
           icon: <WidgetsIcon />,
-          content: 'Open the widget library to view, edit, or delete your saved widgets.'
-        }
-      ]
+          content:
+            'Open Add Widget, choose your saved widget, and place it on the current dashboard.',
+        },
+      ],
     },
     {
-      title: 'Component Types',
+      title: 'Building Block Types',
       subsections: [
         {
-          title: 'UI Components',
+          title: 'Inputs and Controls',
           icon: <InputIcon />,
-          content: 'Basic user interface elements such as buttons, text fields, sliders, checkboxes, and select menus.'
+          content:
+            'Basic dashboard controls such as buttons, text fields, sliders, checkboxes, and select menus.',
         },
         {
-          title: 'Layout Components',
+          title: 'Layout Containers',
           icon: <GridViewIcon />,
-          content: 'Components that help organize the structure of your widget, such as containers, grids, tabs, and fieldsets.'
-        }
-      ]
+          content:
+            'Containers that organize the structure of your widget, such as grids, tabs, and fieldsets.',
+        },
+      ],
     },
     {
-      title: 'UI Components',
+      title: 'Inputs and Controls',
       subsections: [
         {
           title: 'Text Label',
           icon: <TextFieldsIcon />,
-          content: 'A static text display element for showing information. Can be configured with different styles, sizes, and colors.'
+          content:
+            'A static text display element for showing information. Can be configured with different styles, sizes, and colors.',
         },
         {
           title: 'Text Field',
           icon: <InputIcon />,
-          content: 'An input field for text entry. Supports single-line, multi-line, validation, and various styling options.'
+          content:
+            'An input field for text entry. Supports single-line, multi-line, validation, and various styling options.',
         },
         {
           title: 'Button',
           icon: <SmartButtonIcon />,
-          content: 'A clickable button element that triggers actions. Configurable properties include button text, variant, colors, and ability to show toast notifications when clicked.'
+          content:
+            'A clickable button element that triggers actions. Configurable properties include button text, variant, colors, and ability to show toast notifications when clicked.',
         },
         {
           title: 'Switch',
           icon: <ToggleOnIcon />,
-          content: 'A toggle switch that allows users to choose between on/off states for boolean values. Can be configured with custom labels and default states.'
+          content:
+            'A toggle switch that allows users to choose between on/off states for boolean values. Can be configured with custom labels and default states.',
         },
         {
           title: 'Pie Chart',
           icon: <PieChartIcon />,
-          content: 'A data visualization component that displays proportional data using a circular chart. Supports custom colors, labels, and data values.'
-        }
-      ]
+          content:
+            'A data visualization component that displays proportional data using a circular chart. Supports custom colors, labels, and data values.',
+        },
+      ],
     },
     {
-      title: 'Layout Components',
+      title: 'Layout Containers',
       subsections: [
         {
           title: 'Fieldset',
           icon: <ViewQuiltIcon />,
-          content: 'A collapsible container that can group related components. Users can toggle the visibility of its contents, making it useful for organizing complex widgets.'
+          content:
+            'A collapsible container that can group related blocks. Users can toggle the visibility of its contents, making it useful for organizing complex widgets.',
         },
         {
           title: 'Grid Layout',
           icon: <GridViewIcon />,
-          content: 'Arranges components in a table-like grid with rows and columns. Useful for creating structured, tabular layouts with precise alignment.'
+          content:
+            'Arranges blocks in a table-like grid with rows and columns. Useful for creating structured layouts with precise alignment.',
         },
         {
           title: 'Flex Layout',
           icon: <FlexibleIcon />,
-          content: 'A more dynamic layout system that allows components to grow, shrink, and reposition based on available space. Ideal for responsive designs that need to adapt to different screen sizes.'
-        }
-      ]
-    }
+          content:
+            'A more dynamic layout system that allows blocks to grow, shrink, and reposition based on available space. Ideal for responsive widgets that adapt to different screen sizes.',
+        },
+      ],
+    },
   ]
 
   const tabContent = [
@@ -233,21 +250,23 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
         <Typography variant="body1" paragraph color="white">
           {sections[0].content}
         </Typography>
-        <Box sx={{ 
-          width: '100%', 
-          display: 'flex', 
-          justifyContent: 'center', 
-          my: 3 
-        }}>
-          <img 
-            src="/images/widget_editor.png" 
-            alt="Widget Editor Interface" 
-            style={{ 
-              maxWidth: '90%', 
+        <Box
+          sx={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            my: 3,
+          }}
+        >
+          <img
+            src="/images/widget_editor.png"
+            alt="Create Widget interface"
+            style={{
+              maxWidth: '90%',
               border: '2px solid rgba(255, 255, 255, 0.2)',
               borderRadius: '8px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-            }} 
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            }}
           />
         </Box>
       </Box>
@@ -257,10 +276,10 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }}>
         <Grid item xs={12} md={4}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 2, 
+          <Paper
+            elevation={3}
+            sx={{
+              p: 2,
               height: '100%',
               bgcolor: '#00886F',
               borderLeft: '4px solid',
@@ -270,40 +289,44 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                borderColor: 'white'
-              }
+                borderColor: 'white',
+              },
             }}
           >
             <Box display="flex" alignItems="center" mb={1}>
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   bgcolor: 'rgba(255, 255, 255, 0.15)',
                   color: 'white',
                   borderRadius: '50%',
                   width: 36,
                   height: 36,
-                  mr: 1.5
+                  mr: 1.5,
                 }}
               >
                 <BuildIcon />
               </Box>
               <Typography variant="subtitle1" fontWeight="bold" color="white">
-                Component Customization
+                1. Create
               </Typography>
             </Box>
-            <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
-              Edit component properties like labels, styles, colors, and behaviors with the intuitive property editor.
+            <Typography
+              variant="body2"
+              color="rgba(255, 255, 255, 0.8)"
+              sx={{ mt: 1 }}
+            >
+              Open Create Widget and start with one useful dashboard widget.
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 2, 
+          <Paper
+            elevation={3}
+            sx={{
+              p: 2,
               height: '100%',
               bgcolor: '#00886F',
               borderLeft: '4px solid',
@@ -313,40 +336,45 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                borderColor: 'white'
-              }
+                borderColor: 'white',
+              },
             }}
           >
             <Box display="flex" alignItems="center" mb={1}>
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   bgcolor: 'rgba(255, 255, 255, 0.15)',
                   color: 'white',
                   borderRadius: '50%',
                   width: 36,
                   height: 36,
-                  mr: 1.5
+                  mr: 1.5,
                 }}
               >
                 <CategoryIcon />
               </Box>
               <Typography variant="subtitle1" fontWeight="bold" color="white">
-                Component Library
+                2. Add Blocks
               </Typography>
             </Box>
-            <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
-              Choose from a growing library of UI and layout components to build any widget you need.
+            <Typography
+              variant="body2"
+              color="rgba(255, 255, 255, 0.8)"
+              sx={{ mt: 1 }}
+            >
+              Add blocks that match the Daily Operations story: orders today,
+              delayed tasks, support tickets, system status, and team notes.
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 2, 
+          <Paper
+            elevation={3}
+            sx={{
+              p: 2,
               height: '100%',
               bgcolor: '#00886F',
               borderLeft: '4px solid',
@@ -356,38 +384,42 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                borderColor: 'white'
-              }
+                borderColor: 'white',
+              },
             }}
           >
             <Box display="flex" alignItems="center" mb={1}>
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   bgcolor: 'rgba(255, 255, 255, 0.15)',
                   color: 'white',
                   borderRadius: '50%',
                   width: 36,
                   height: 36,
-                  mr: 1.5
+                  mr: 1.5,
                 }}
               >
                 <VisibilityIcon />
               </Box>
               <Typography variant="subtitle1" fontWeight="bold" color="white">
-                Live Preview
+                3. Save And Use
               </Typography>
             </Box>
-            <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
-              See your widget come to life with the live preview mode as you build and customize it.
+            <Typography
+              variant="body2"
+              color="rgba(255, 255, 255, 0.8)"
+              sx={{ mt: 1 }}
+            >
+              Preview, save, then add the saved widget to a dashboard.
             </Typography>
           </Paper>
         </Grid>
       </Grid>
     </>,
-    
+
     // Interface tab
     <>
       <Typography variant="h5" gutterBottom fontWeight="bold" color="white">
@@ -397,10 +429,10 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
         {sections[1]?.subsections?.map((subsection, i) => (
           <Grid item xs={12} md={4} key={i}>
             <Zoom in={true} style={{ transitionDelay: `${i * 100}ms` }}>
-              <Paper 
-                elevation={3} 
-                sx={{ 
-                  p: 2, 
+              <Paper
+                elevation={3}
+                sx={{
+                  p: 2,
                   height: '100%',
                   bgcolor: '#00886F',
                   borderLeft: '4px solid',
@@ -410,31 +442,39 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white'
-                  }
+                    borderColor: 'white',
+                  },
                 }}
               >
                 <Box display="flex" alignItems="center" mb={1}>
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'center',
                       bgcolor: 'rgba(255, 255, 255, 0.15)',
                       color: 'white',
                       borderRadius: '50%',
                       width: 36,
                       height: 36,
-                      mr: 1.5
+                      mr: 1.5,
                     }}
                   >
                     {subsection.icon}
                   </Box>
-                  <Typography variant="subtitle1" fontWeight="bold" color="white">
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    color="white"
+                  >
                     {subsection.title}
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="rgba(255, 255, 255, 0.8)"
+                  sx={{ mt: 1 }}
+                >
                   {subsection.content}
                 </Typography>
               </Paper>
@@ -442,18 +482,24 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
           </Grid>
         ))}
       </Grid>
-      
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="white" sx={{ mt: 4 }}>
+
+      <Typography
+        variant="h5"
+        gutterBottom
+        fontWeight="bold"
+        color="white"
+        sx={{ mt: 4 }}
+      >
         {sections[2].title}
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }}>
         {sections[2]?.subsections?.map((subsection, i) => (
           <Grid item xs={12} md={4} key={i}>
             <Zoom in={true} style={{ transitionDelay: `${i * 100 + 300}ms` }}>
-              <Paper 
-                elevation={3} 
-                sx={{ 
-                  p: 2, 
+              <Paper
+                elevation={3}
+                sx={{
+                  p: 2,
                   height: '100%',
                   bgcolor: '#00886F',
                   borderLeft: '4px solid',
@@ -463,31 +509,39 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white'
-                  }
+                    borderColor: 'white',
+                  },
                 }}
               >
                 <Box display="flex" alignItems="center" mb={1}>
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'center',
                       bgcolor: 'rgba(255, 255, 255, 0.15)',
                       color: 'white',
                       borderRadius: '50%',
                       width: 36,
                       height: 36,
-                      mr: 1.5
+                      mr: 1.5,
                     }}
                   >
                     {subsection.icon}
                   </Box>
-                  <Typography variant="subtitle1" fontWeight="bold" color="white">
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    color="white"
+                  >
                     {subsection.title}
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="rgba(255, 255, 255, 0.8)"
+                  sx={{ mt: 1 }}
+                >
                   {subsection.content}
                 </Typography>
               </Paper>
@@ -496,7 +550,7 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
         ))}
       </Grid>
     </>,
-    
+
     // Components tab
     <>
       <Typography variant="h5" gutterBottom fontWeight="bold" color="white">
@@ -506,10 +560,10 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
         {sections[4]?.subsections?.map((subsection, i) => (
           <Grid item xs={12} md={4} key={i}>
             <Zoom in={true} style={{ transitionDelay: `${i * 80}ms` }}>
-              <Paper 
-                elevation={3} 
-                sx={{ 
-                  p: 2, 
+              <Paper
+                elevation={3}
+                sx={{
+                  p: 2,
                   height: '100%',
                   bgcolor: '#00886F',
                   borderLeft: '4px solid',
@@ -519,15 +573,15 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white'
-                  }
+                    borderColor: 'white',
+                  },
                 }}
               >
                 <Box display="flex" alignItems="center" mb={1}>
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'center',
                       bgcolor: 'rgba(255, 255, 255, 0.15)',
                       color: 'white',
@@ -535,16 +589,24 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
                       width: 36,
                       height: 36,
                       mr: 1.5,
-                      cursor: 'grab'
+                      cursor: 'grab',
                     }}
                   >
                     {subsection.icon}
                   </Box>
-                  <Typography variant="subtitle1" fontWeight="bold" color="white">
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    color="white"
+                  >
                     {subsection.title}
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="rgba(255, 255, 255, 0.8)"
+                  sx={{ mt: 1 }}
+                >
                   {subsection.content}
                 </Typography>
               </Paper>
@@ -552,18 +614,24 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
           </Grid>
         ))}
       </Grid>
-      
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="white" sx={{ mt: 4 }}>
+
+      <Typography
+        variant="h5"
+        gutterBottom
+        fontWeight="bold"
+        color="white"
+        sx={{ mt: 4 }}
+      >
         {sections[5].title}
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }}>
         {sections[5]?.subsections?.map((subsection, i) => (
           <Grid item xs={12} md={4} key={i}>
             <Zoom in={true} style={{ transitionDelay: `${i * 80 + 400}ms` }}>
-              <Paper 
-                elevation={3} 
-                sx={{ 
-                  p: 2, 
+              <Paper
+                elevation={3}
+                sx={{
+                  p: 2,
                   height: '100%',
                   bgcolor: '#00886F',
                   borderLeft: '4px solid',
@@ -573,15 +641,15 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                    borderColor: 'white'
-                  }
+                    borderColor: 'white',
+                  },
                 }}
               >
                 <Box display="flex" alignItems="center" mb={1}>
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'center',
                       bgcolor: 'rgba(255, 255, 255, 0.15)',
                       color: 'white',
@@ -589,16 +657,24 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
                       width: 36,
                       height: 36,
                       mr: 1.5,
-                      cursor: 'grab'
+                      cursor: 'grab',
                     }}
                   >
                     {subsection.icon}
                   </Box>
-                  <Typography variant="subtitle1" fontWeight="bold" color="white">
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    color="white"
+                  >
                     {subsection.title}
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="rgba(255, 255, 255, 0.8)" sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="rgba(255, 255, 255, 0.8)"
+                  sx={{ mt: 1 }}
+                >
                   {subsection.content}
                 </Typography>
               </Paper>
@@ -606,7 +682,7 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
           </Grid>
         ))}
       </Grid>
-    </>
+    </>,
   ]
 
   return (
@@ -623,8 +699,8 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
           borderRadius: 2,
           bgcolor: '#00A389', // Teal background for the entire dialog
           overflow: 'hidden',
-          backgroundImage: 'linear-gradient(135deg, #00A389 0%, #00886F 100%)'
-        }
+          backgroundImage: 'linear-gradient(135deg, #00A389 0%, #00886F 100%)',
+        },
       }}
     >
       <DialogTitle
@@ -635,13 +711,13 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
           alignItems: 'center',
           justifyContent: 'space-between',
           p: 2,
-          backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)'
+          backgroundImage: 'linear-gradient(90deg, #00BC9A 0%, #00A389 100%)',
         }}
       >
         <Box display="flex" alignItems="center">
           <EditIcon sx={{ mr: 1.5, color: '#eee' }} />
           <Typography variant="h6" fontWeight="bold" color="#eee">
-            Understanding the Widget Editor
+            Create Widget
           </Typography>
         </Box>
         <IconButton onClick={onClose} sx={{ color: '#eee' }}>
@@ -654,8 +730,8 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
         onChange={handleTabChange}
         aria-label="widget editor explanation tabs"
         centered
-        variant={isMobile ? "scrollable" : "standard"}
-        scrollButtons={isMobile ? "auto" : false}
+        variant={isMobile ? 'scrollable' : 'standard'}
+        scrollButtons={isMobile ? 'auto' : false}
         allowScrollButtonsMobile
         sx={{
           bgcolor: 'rgba(0, 0, 0, 0.1)',
@@ -666,17 +742,29 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
             minWidth: isMobile ? 'auto' : 90,
             px: isMobile ? 2 : 3,
             '&.Mui-selected': {
-              color: 'white'
-            }
+              color: 'white',
+            },
           },
           '& .MuiTabs-indicator': {
-            backgroundColor: 'white'
-          }
+            backgroundColor: 'white',
+          },
         }}
       >
-        <Tab label="Overview" id="widget-editor-tab-0" aria-controls="widget-editor-tabpanel-0" />
-        <Tab label="Interface" id="widget-editor-tab-1" aria-controls="widget-editor-tabpanel-1" />
-        <Tab label="Components" id="widget-editor-tab-2" aria-controls="widget-editor-tabpanel-2" />
+        <Tab
+          label="Quick Start"
+          id="widget-editor-tab-0"
+          aria-controls="widget-editor-tabpanel-0"
+        />
+        <Tab
+          label="Build"
+          id="widget-editor-tab-1"
+          aria-controls="widget-editor-tabpanel-1"
+        />
+        <Tab
+          label="Blocks"
+          id="widget-editor-tab-2"
+          aria-controls="widget-editor-tabpanel-2"
+        />
       </Tabs>
 
       <DialogContent sx={{ p: 3 }}>
@@ -691,13 +779,20 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
         </TabPanel>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, bgcolor: '#00A389', display: 'flex', flexDirection: 'column' }}>
-        <Button 
+      <DialogActions
+        sx={{
+          p: 3,
+          bgcolor: '#00A389',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Button
           onClick={handleOpenWidgetEditor}
-          variant="contained" 
+          variant="contained"
           size="large"
           startIcon={<EditIcon />}
-          sx={{ 
+          sx={{
             bgcolor: '#00D1AB',
             color: '#191919',
             px: 3,
@@ -705,14 +800,14 @@ const WidgetEditorExplanationModal: React.FC<WidgetEditorExplanationModalProps> 
             '&:hover': {
               bgcolor: '#00E4BC',
               transform: 'translateY(-3px)',
-              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
             },
             transition: 'all 0.2s ease',
             fontWeight: 'bold',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
           }}
         >
-          Open Widget Editor
+          Open Create Widget
         </Button>
       </DialogActions>
     </Dialog>

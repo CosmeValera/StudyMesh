@@ -36,16 +36,16 @@ export async function loginAs(page: Page, role: 'admin' | 'viewer') {
   
   // Select the appropriate user role from dropdown
   if (role === 'admin') {
-    await page.getByRole('option', { name: 'Admin (ADMIN_ROLE)' }).click()
+    await page.getByRole('option', { name: /Admin/ }).click()
   } else if (role === 'viewer') {
-    await page.getByRole('option', { name: 'Viewer (VIEWER_ROLE)' }).click()
+    await page.getByRole('option', { name: /Viewer/ }).click()
   }
   
   // Click the login button
   await page.getByRole('button', { name: 'Login' }).click()
 
   // Wait for main page to load
-  await page.waitForURL('http://localhost:3000/')
+  await page.waitForURL('http://localhost:3000/workspace')
   await page.waitForSelector('.loader', { state: 'hidden' })
   
   // Dismiss any welcome/tutorial dialog that might appear
