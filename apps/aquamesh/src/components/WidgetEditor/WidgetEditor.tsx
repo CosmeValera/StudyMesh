@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, useMediaQuery, useTheme } from '@mui/material'
 import { useWidgetEditor } from './hooks/useWidgetEditor'
 import EditComponentDialog from './components/dialogs/EditComponentDialog'
 import SavedWidgetsDialog from './components/dialogs/SavedWidgetsDialog'
@@ -30,6 +30,8 @@ const WidgetEditor: React.FC<{
     initialEditMode?: boolean // Whether to start in edit mode
   }
 }> = ({ customProps }) => {
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const {
     // State
     widgetData,
@@ -148,8 +150,15 @@ const WidgetEditor: React.FC<{
   }
 
   const onboardingActive = editMode && !onboardingDismissed
+  const defaultEditViewMode = isPhone ? 'edit' : 'both'
   const showEditorPane = viewMode === 'both' || viewMode === 'edit'
   const showPreviewPane = viewMode === 'both' || viewMode === 'preview'
+
+  React.useEffect(() => {
+    if (isPhone && viewMode === 'both') {
+      setViewMode('edit')
+    }
+  }, [isPhone, setViewMode, viewMode])
 
   const handleSkipOnboarding = React.useCallback(() => {
     setOnboardingDismissed(true)
@@ -240,9 +249,11 @@ const WidgetEditor: React.FC<{
     const handleExternalWidgetLoad = (event: Event) => {
       const customEvent = event as CustomEvent
       if (customEvent.detail && customEvent.detail.widget) {
-        const nextViewMode =
+        const requestedViewMode =
           customEvent.detail.viewMode ??
-          (customEvent.detail.editMode ? 'both' : 'preview')
+          (customEvent.detail.editMode ? defaultEditViewMode : 'preview')
+        const nextViewMode =
+          isPhone && requestedViewMode === 'both' ? 'edit' : requestedViewMode
         setViewMode(nextViewMode)
         handleLoadWidget(customEvent.detail.widget, nextViewMode !== 'preview')
       }
@@ -257,7 +268,7 @@ const WidgetEditor: React.FC<{
         handleExternalWidgetLoad,
       )
     }
-  }, [handleLoadWidget, setViewMode])
+  }, [defaultEditViewMode, handleLoadWidget, isPhone, setViewMode])
 
   // Handle initial widget load from customProps
   React.useEffect(() => {
@@ -270,7 +281,7 @@ const WidgetEditor: React.FC<{
 
       // Set the appropriate edit mode first
       if (customProps.initialEditMode !== undefined) {
-        setViewMode(customProps.initialEditMode ? 'both' : 'preview')
+        setViewMode(customProps.initialEditMode ? defaultEditViewMode : 'preview')
       }
 
       // Then load the widget - use a setTimeout to ensure the edit mode is set first
@@ -282,7 +293,7 @@ const WidgetEditor: React.FC<{
         )
       }, 0)
     }
-  }, [customProps, handleLoadWidget, setViewMode])
+  }, [customProps, defaultEditViewMode, handleLoadWidget, setViewMode])
 
   // Listen for save widget dialog requests
   React.useEffect(() => {
@@ -406,7 +417,7 @@ const WidgetEditor: React.FC<{
 
   // Load a template as a new widget
   const handleTemplateSelected = (templateWidget: CustomWidget) => {
-    setViewMode('both')
+    setViewMode(defaultEditViewMode)
     handleLoadWidget(templateWidget, true)
   }
 
@@ -421,7 +432,7 @@ const WidgetEditor: React.FC<{
       return
     }
 
-    setViewMode('both')
+    setViewMode(defaultEditViewMode)
     handleLoadWidget(operationsWidget, true)
     if (onboardingActive) {
       setOnboardingStep('save')
@@ -503,7 +514,7 @@ const WidgetEditor: React.FC<{
     }
 
     // Preview the restored version without modifying storage
-    setViewMode('both')
+    setViewMode(defaultEditViewMode)
     handleLoadWidget(restoredWidget, true)
     // Inform the user this version is loaded for editing
     setComponentToast({
@@ -648,7 +659,7 @@ const WidgetEditor: React.FC<{
             sx={{
               flex: viewMode === 'both' ? '1 1 50%' : '1 1 auto',
               minWidth: 0,
-              minHeight: 0,
+              minHeight: { xs: viewMode === 'both' ? 360 : 0, md: 0 },
               display: 'flex',
             }}
           >
@@ -693,7 +704,7 @@ const WidgetEditor: React.FC<{
             sx={{
               flex: viewMode === 'both' ? '1 1 50%' : '1 1 auto',
               minWidth: 0,
-              minHeight: viewMode === 'both' ? { xs: 360, md: 0 } : 0,
+              minHeight: viewMode === 'both' ? { xs: 260, md: 0 } : 0,
               borderLeft: { xs: 0, md: viewMode === 'both' ? 1 : 0 },
               borderTop: { xs: viewMode === 'both' ? 1 : 0, md: 0 },
               borderColor: 'divider',

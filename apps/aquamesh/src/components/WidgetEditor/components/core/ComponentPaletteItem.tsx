@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
-import { 
-  Box, 
-  Typography, 
+import {
+  Box,
+  Typography,
   Paper,
   IconButton,
   useMediaQuery
@@ -27,41 +27,41 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
   // Create the icon element dynamically from the component's icon property
   const IconComponent = component.icon
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  
+
   // Touch handling state
   const [isTouching, setIsTouching] = useState(false)
   const touchTimeoutRef = useRef<number | null>(null)
   const touchStartPositionRef = useRef({ x: 0, y: 0 })
   const itemRef = useRef<HTMLDivElement>(null)
-  
+
   // Handle touch start
   const handleTouchStart = (e: React.TouchEvent) => {
     // Store initial touch position
-    touchStartPositionRef.current = { 
-      x: e.touches[0].clientX, 
-      y: e.touches[0].clientY 
+    touchStartPositionRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
     }
-    
+
     // Set a timeout to determine if it's a touch-and-hold gesture
     touchTimeoutRef.current = window.setTimeout(() => {
       // After the timeout, mark as "touching" to create a draggable state
       setIsTouching(true)
-      
+
       // Create and dispatch a custom drag start event
       if (itemRef.current) {
         const dataTransfer = new DataTransfer()
         dataTransfer.setData('componentType', component.type)
-        
+
         // Create a synthetic drag event
-        const dragEvent = new DragEvent('dragstart', { 
+        const dragEvent = new DragEvent('dragstart', {
           bubbles: true,
           cancelable: true,
-          dataTransfer 
+          dataTransfer
         })
-        
+
         // Dispatch the event on the element
         itemRef.current.dispatchEvent(dragEvent)
-        
+
         // Call the handler with the created event
         // Use a cast that preserves type safety better than 'any'
         const syntheticDragEvent = dragEvent as unknown as React.DragEvent<HTMLDivElement>
@@ -69,7 +69,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
       }
     }, 300) // 300ms is a good balance for touch-and-hold
   }
-  
+
   // Handle touch move
   const handleTouchMove = (e: React.TouchEvent) => {
     // Calculate movement distance
@@ -77,7 +77,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
     const currentY = e.touches[0].clientY
     const deltaX = Math.abs(currentX - touchStartPositionRef.current.x)
     const deltaY = Math.abs(currentY - touchStartPositionRef.current.y)
-    
+
     // If user moved more than 10px in any direction before the touch timeout,
     // cancel the timeout to allow scrolling
     if ((deltaX > 10 || deltaY > 10) && touchTimeoutRef.current) {
@@ -85,7 +85,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
       touchTimeoutRef.current = null
     }
   }
-  
+
   // Handle touch end
   const handleTouchEnd = () => {
     // Clear timeout if touch ends
@@ -93,22 +93,39 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
       window.clearTimeout(touchTimeoutRef.current)
       touchTimeoutRef.current = null
     }
-    
+
     // Reset touching state
     setIsTouching(false)
   }
 
   // Handle direct add click
-  const handleAddClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-    
+  const addComponent = () => {
     if (onDirectAdd) {
       onDirectAdd(component.type)
     }
   }
-  
+
+  const handleAddClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+
+    addComponent()
+  }
+
+  const handleItemClick = () => {
+    if (!isTouching) {
+      addComponent()
+    }
+  }
+
   return (
-    <Box key={component.type} sx={{ mb: isPhone ? 0.5 : 1 }}>
+    <Box
+      key={component.type}
+      sx={{
+        mb: isPhone ? 0 : 1,
+        flex: isPhone ? '0 0 112px' : 'initial',
+        scrollSnapAlign: isPhone ? 'start' : 'none',
+      }}
+    >
       <TooltipStyled
         title={showTooltips ? component.tooltip || '' : ''}
         placement="right"
@@ -118,6 +135,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
           ref={itemRef}
           elevation={1}
           draggable
+          onClick={onDirectAdd ? handleItemClick : undefined}
           onDragStart={(e) => handleDragStart(e, component.type)}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -125,17 +143,18 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
           onTouchCancel={handleTouchEnd}
           sx={{
             p: isPhone ? 0.75 : 1.5,
+            minHeight: isPhone ? 44 : 'auto',
             display: 'flex',
             alignItems: 'center',
-            cursor: 'grab',
+            cursor: onDirectAdd ? 'pointer' : 'grab',
             transition: 'all 0.2s',
             '&:hover': {
               bgcolor: 'background.paper',
               transform: 'translateY(-2px)',
               boxShadow: 2,
             },
-            bgcolor: isTouching 
-              ? 'rgba(25, 118, 210, 0.12)' 
+            bgcolor: isTouching
+              ? 'rgba(25, 118, 210, 0.12)'
               : 'rgba(255, 255, 255, 0.05)',
             borderRadius: 1,
             position: 'relative',
@@ -154,17 +173,18 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
           </Box>
           <Typography
             variant={isPhone ? "caption" : "body2"}
-            sx={{ 
-              fontWeight: 'medium', 
+            sx={{
+              fontWeight: 'medium',
               color: 'foreground.contrastPrimary',
               flexGrow: 1,
-              pr: isPhone ? 2 : 0, // Add padding if there's an add button
+              pr: onDirectAdd ? (isPhone ? 2.5 : 3.5) : 0,
               fontSize: isPhone ? '0.7rem' : undefined,
+              lineHeight: isPhone ? 1.15 : undefined,
             }}
           >
             {component.label}
           </Typography>
-          
+
           {/* Add button for mobile devices */}
           {onDirectAdd && (
             <IconButton
@@ -177,8 +197,8 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
                 transform: 'translateY(-50%)',
                 color: 'primary.main',
                 bgcolor: 'background.paper',
-                width: isPhone ? 18 : 24,
-                height: isPhone ? 18 : 24,
+                width: isPhone ? 24 : 28,
+                height: isPhone ? 24 : 28,
                 '&:hover': {
                   bgcolor: 'primary.light',
                   color: 'white',
@@ -194,4 +214,4 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
   )
 }
 
-export default ComponentPaletteItem 
+export default ComponentPaletteItem

@@ -91,7 +91,7 @@ export const useWidgetEditor = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showTooltips, setShowTooltips] = useState<boolean>(() => {
     const savedValue = localStorage.getItem('widget-editor-show-tooltips')
-    return savedValue ? JSON.parse(savedValue) : true
+    return savedValue ? JSON.parse(savedValue) : false
   })
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(
     () => {
@@ -111,7 +111,7 @@ export const useWidgetEditor = () => {
   const [showComponentPaletteHelp, setShowComponentPaletteHelp] =
     useState<boolean>(() => {
       const savedValue = localStorage.getItem('widget-editor-show-palette-help')
-      return savedValue ? JSON.parse(savedValue) : true
+      return savedValue ? JSON.parse(savedValue) : false
     })
 
   // Dashboard deletion confirmation setting

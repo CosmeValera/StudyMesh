@@ -148,17 +148,21 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
           variant={isPhone ? 'dense' : 'regular'}
           sx={{
             minHeight: isPhone ? 48 : 64,
-            padding: isPhone ? '0px 4px' : '0px 16px',
+            padding: isPhone ? '0px 2px' : '0px 16px',
+            gap: isPhone ? 0.25 : 0,
+            overflow: 'hidden',
           }}
         >
           {editMode && (
             <IconButton
-              edge="start"
+              edge={isPhone ? false : 'start'}
               color="inherit"
               aria-label="menu"
               onClick={toggleSidebar}
               sx={{
-                mr: 2,
+                mr: isPhone ? 0.25 : 2,
+                ml: isPhone ? 0.5 : 0,
+                p: isPhone ? 0.5 : 1,
                 color: showSidebar
                   ? 'primary.main'
                   : 'foreground.contrastSecondary',
@@ -168,7 +172,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               <MenuIcon
                 sx={{
                   fontSize: isPhone ? '1.25rem' : '1.5rem',
-                  ml: isPhone ? '1rem' : '0rem',
+                  ml: 0,
                 }}
               />
             </IconButton>
@@ -194,7 +198,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </Typography>
           )}
 
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
             {/* Undo/Redo buttons */}
             {!!handleUndo && !!handleRedo && (
               <>
@@ -266,8 +270,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 mr: isPhone ? 0.5 : 1,
                 height: isPhone ? 30 : 34,
                 '& .MuiToggleButton-root': {
-                  minWidth: isPhone ? 52 : 86,
-                  px: isPhone ? 0.75 : 1,
+                  minWidth: isPhone ? 34 : 86,
+                  px: isPhone ? 0.5 : 1,
                   py: 0,
                   gap: 0.5,
                   color: 'foreground.contrastSecondary',
@@ -285,19 +289,19 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 },
               }}
             >
-              <ToggleButton value="both" aria-label="Both view">
-                <ViewColumnIcon
-                  sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }}
-                />
-                Both
-              </ToggleButton>
+              {!isPhone && (
+                <ToggleButton value="both" aria-label="Both view">
+                  <ViewColumnIcon sx={{ fontSize: '1.15rem' }} />
+                  Both
+                </ToggleButton>
+              )}
               <ToggleButton value="edit" aria-label="Edit view">
                 <EditIcon sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }} />
-                Edit
+                {!isPhone && 'Edit'}
               </ToggleButton>
               <ToggleButton value="preview" aria-label="Preview view">
                 <PreviewIcon sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }} />
-                Preview
+                {!isPhone && 'Preview'}
               </ToggleButton>
             </ToggleButtonGroup>
             {!isPhone && !!handleOpenSearchDialog && (
@@ -432,15 +436,17 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               </TooltipStyled>
             )}
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{
-                mr: isPhone ? 1 : 2,
-                height: isPhone ? '20px' : '24px',
-                alignSelf: 'center',
-              }}
-            />
+            {!isPhone && (
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{
+                  mr: 2,
+                  height: '24px',
+                  alignSelf: 'center',
+                }}
+              />
+            )}
 
             {/* Advanced Features Menu */}
             <Menu

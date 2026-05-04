@@ -72,9 +72,9 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        minWidth: '48px',
-        mx: 0.5,
-        px: 1,
+        minWidth: '44px',
+        mx: 0.25,
+        px: 0.5,
         ...sx,
       }}
       {...props}
@@ -191,34 +191,39 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
           height: isPhone ? '72px' : '64px',
         }}
       >
-        <Toolbar sx={{ height: isPhone ? '72px' : '64px' }}>
+        <Toolbar
+          sx={{
+            height: isPhone ? '72px' : '64px',
+            px: isPhone ? 0.5 : 2,
+            gap: isPhone ? 0.25 : 0,
+          }}
+        >
           {/* Logo and Brand */}
-          {!isPhone && (
-            <Button
-              variant="text"
-              onClick={() => navigate('/')}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                fontWeight: isDesktop ? 'bold' : 'normal',
-                mr: isDesktop ? 4 : 1,
-                color: 'foreground.contrastPrimary',
-                textTransform: 'none',
-                minWidth: 'auto',
-                px: 0,
-              }}
-            >
-              <Logo
-                height="32px"
-                width="32px"
-                style={{ marginRight: isDesktop ? '12px' : '0' }}
-              />
-              {isDesktop && 'AquaMesh'}
-            </Button>
-          )}
+          <Button
+            variant="text"
+            onClick={() => navigate('/')}
+            aria-label="Go to AquaMesh home and tutorial"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              fontWeight: isDesktop ? 'bold' : 'normal',
+              mr: isPhone ? 0.25 : isDesktop ? 4 : 1,
+              color: 'foreground.contrastPrimary',
+              textTransform: 'none',
+              minWidth: 'auto',
+              px: isPhone ? 0.5 : 0,
+            }}
+          >
+            <Logo
+              height={isPhone ? '28px' : '32px'}
+              width={isPhone ? '28px' : '32px'}
+              style={{ marginRight: isDesktop ? '12px' : '0' }}
+            />
+            {isDesktop && 'AquaMesh'}
+          </Button>
 
           {/* Main Navigation Items */}
-          <Box sx={{ flexGrow: 1, display: 'flex' }}>
+          <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
             {/* Dashboard Options Menu */}
             {isPhone || isTablet ? (
               <DashboardOptionsMenu />
