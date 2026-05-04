@@ -14,6 +14,8 @@ import {
   Chip,
   Paper,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import TooltipStyled from '../TooltipStyled'
@@ -43,6 +45,53 @@ interface SavedDashboard {
   isPublic?: boolean
   createdAt: string
   updatedAt: string
+}
+
+type DashboardOnboardingStep = 'layout' | 'save' | 'done'
+
+const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step'
+
+const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
+  if (!layout) {
+    return false
+  }
+
+  if (layout.component === 'CustomWidget') {
+    return true
+  }
+
+  return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
+}
+
+const countPlacedWidgets = (layout?: DashboardLayout): number => {
+  if (!layout) {
+    return 0
+  }
+
+  const current = layout.component ? 1 : 0
+  const children = layout.children?.reduce(
+    (total, child) => total + countPlacedWidgets(child),
+    0,
+  )
+
+  return current + (children || 0)
+}
+
+const countWidgetPanels = (layout?: DashboardLayout): number => {
+  if (!layout) {
+    return 0
+  }
+
+  if (layout.type === 'tabset') {
+    return hasPlacedSavedWidget(layout) ? 1 : 0
+  }
+
+  return (
+    layout.children?.reduce(
+      (total, child) => total + countWidgetPanels(child),
+      0,
+    ) || 0
+  )
 }
 
 // Dashboard Storage utilities
@@ -212,7 +261,96 @@ const DashboardEmptyState = ({
   </Box>
 )
 
+interface DashboardOnboardingCoachProps {
+  step: Exclude<DashboardOnboardingStep, 'done'>
+  hasUnsavedChanges: boolean
+  hasMultipleWidgets: boolean
+  hasSplitDashboard: boolean
+  isPhone: boolean
+  onNext: () => void
+  onDone: () => void
+}
+
+const DashboardOnboardingCoach = ({
+  step,
+  hasUnsavedChanges,
+  hasMultipleWidgets,
+  hasSplitDashboard,
+  isPhone,
+  onNext,
+  onDone,
+}: DashboardOnboardingCoachProps) => {
+  const isLayoutStep = step === 'layout'
+
+  return (
+    <Paper
+      data-testid={`dashboard-onboarding-coach-${step}`}
+      elevation={6}
+      sx={{
+        position: 'absolute',
+        top: { xs: 8, sm: 12 },
+        right: { xs: 8, sm: 12 },
+        left: { xs: 8, sm: 'auto' },
+        zIndex: 10,
+        width: { xs: 'auto', sm: 420 },
+        p: { xs: 1.25, sm: 1.5 },
+        borderRadius: 2,
+        border: '1px solid rgba(0, 188, 162, 0.36)',
+        bgcolor: 'rgba(0, 66, 50, 0.96)',
+        color: 'primary.contrastText',
+      }}
+    >
+      <Stack spacing={1}>
+        <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
+          Step {isLayoutStep ? '4' : '5'}
+        </Typography>
+        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+          {isLayoutStep ? 'Shape your dashboard' : 'Save this dashboard'}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
+        >
+          {isLayoutStep
+            ? `To build a multi-widget dashboard, ${hasMultipleWidgets ? 'drag a widget tab to another side of the dashboard' : `open ${isPhone ? 'Add' : 'Add Widget'} and add another saved widget, then drag a widget tab to another side of the dashboard`}. Use the thin separator line between widgets to make one bigger or smaller.`
+            : hasUnsavedChanges
+              ? 'Click the dashboard tab at the top, then click the small save button on that tab to save the whole multi-widget dashboard.'
+              : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
+        </Typography>
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          {isLayoutStep ? (
+            <Button
+              size="small"
+              variant="contained"
+              onClick={onNext}
+              disabled={!hasSplitDashboard}
+              sx={{ textTransform: 'none' }}
+            >
+              {hasSplitDashboard
+                ? 'Next: save dashboard'
+                : hasMultipleWidgets
+                  ? 'Drag a tab to split first'
+                  : 'Add another widget first'}
+            </Button>
+          ) : (
+            <Button
+              size="small"
+              variant="contained"
+              onClick={onDone}
+              sx={{ textTransform: 'none' }}
+            >
+              Got it
+            </Button>
+          )}
+        </Stack>
+      </Stack>
+    </Paper>
+  )
+}
+
 const Dashboards = () => {
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const {
     openDashboards,
     selectedDashboard,
@@ -232,10 +370,40 @@ const Dashboards = () => {
   const [currentTabIndex, setCurrentTabIndex] = useState<number | null>(null)
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
   const [isAdmin, setIsAdmin] = useState(false)
+  const [dashboardOnboardingStep, setDashboardOnboardingStep] =
+    useState<DashboardOnboardingStep>(() => {
+      if (typeof window === 'undefined') {
+        return 'layout'
+      }
+
+      const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
+      return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
+    })
   const navigate = useNavigate()
   const { openCreateWidget, openOperationsExample, openWidgetMenu } =
     useWorkspaceActions()
   const openQuickGuide = () => navigate('/')
+
+  const completeDashboardOnboarding = () => {
+    setDashboardOnboardingStep('done')
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'done')
+    }
+  }
+
+  const advanceDashboardOnboarding = () => {
+    setDashboardOnboardingStep('save')
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'save')
+    }
+  }
+
+  const returnDashboardOnboardingToLayout = () => {
+    setDashboardOnboardingStep('layout')
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'layout')
+    }
+  }
 
   // Check if user is admin on component mount
   useEffect(() => {
@@ -266,6 +434,29 @@ const Dashboards = () => {
 
     setHasChanges(changes)
   }, [openDashboards])
+
+  useEffect(() => {
+    const currentLayout = openDashboards[selectedDashboard]?.layout
+    const hasSplitLayout = countWidgetPanels(currentLayout) > 1
+
+    if (dashboardOnboardingStep === 'layout' && hasSplitLayout) {
+      advanceDashboardOnboarding()
+      return
+    }
+
+    if (dashboardOnboardingStep === 'save' && !hasSplitLayout) {
+      returnDashboardOnboardingToLayout()
+      return
+    }
+
+    if (dashboardOnboardingStep !== 'save') {
+      return
+    }
+
+    if (hasChanges[selectedDashboard] === false) {
+      completeDashboardOnboarding()
+    }
+  }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 
   const handleSaveDialogOpen = (index: number) => {
     const currentDashboard = openDashboards[index]
@@ -395,6 +586,8 @@ const Dashboards = () => {
                 {hasChanges[index] && (
                   <TooltipStyled title="Save Dashboard">
                     <IconButton
+                      aria-label={`Save dashboard ${dashboard.name}`}
+                      data-testid={`save-dashboard-${index}`}
                       size="small"
                       onClick={(ev) => {
                         ev.stopPropagation()
@@ -472,10 +665,16 @@ const Dashboards = () => {
             onClick={() => addDashboard()}
           />
         </TabList>
-        {openDashboards.map((dashboard) => {
+        {openDashboards.map((dashboard, index) => {
           const isEmptyDashboard =
             !dashboard.layout?.children ||
             dashboard.layout.children.length === 0
+          const showDashboardOnboarding =
+            index === selectedDashboard &&
+            dashboardOnboardingStep !== 'done' &&
+            hasPlacedSavedWidget(dashboard.layout)
+          const hasMultipleWidgets = countPlacedWidgets(dashboard.layout) > 1
+          const hasSplitDashboard = countWidgetPanels(dashboard.layout) > 1
 
           return (
             <TabPanel key={dashboard.id}>
@@ -488,6 +687,17 @@ const Dashboards = () => {
                 }}
               >
                 <Box sx={{ position: 'relative', flex: '1' }}>
+                  {showDashboardOnboarding && (
+                    <DashboardOnboardingCoach
+                      step={dashboardOnboardingStep}
+                      hasUnsavedChanges={Boolean(hasChanges[index])}
+                      hasMultipleWidgets={hasMultipleWidgets}
+                      hasSplitDashboard={hasSplitDashboard}
+                      isPhone={isPhone}
+                      onNext={advanceDashboardOnboarding}
+                      onDone={completeDashboardOnboarding}
+                    />
+                  )}
                   {isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}
