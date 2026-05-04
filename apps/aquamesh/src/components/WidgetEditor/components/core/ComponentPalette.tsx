@@ -30,8 +30,7 @@ interface ComponentPaletteProps {
   setActiveContainerId?: (id: string | null) => void
   widgetData?: any // To lookup container name
   onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'drop' | 'save' | null
-  onSkipOnboarding?: () => void
+  onboardingStep?: 'choose' | 'save' | null
 }
 
 // Helper function to group components by category
@@ -73,7 +72,6 @@ const ComponentPalette = ({
   widgetData,
   onboardingActive = false,
   onboardingStep = null,
-  onSkipOnboarding,
 }: ComponentPaletteProps) => {
   // Responsive width based on screen size
   const theme = useTheme()
@@ -223,26 +221,6 @@ const ComponentPalette = ({
             Grab a block below and drag it into the Daily Operations widget
             canvas.
           </Typography>
-          {onSkipOnboarding && (
-            <Typography
-              component="button"
-              type="button"
-              onClick={onSkipOnboarding}
-              sx={{
-                mt: 0.75,
-                p: 0,
-                border: 0,
-                bgcolor: 'transparent',
-                color: 'foreground.contrastSecondary',
-                cursor: 'pointer',
-                fontSize: isPhone ? '0.66rem' : '0.72rem',
-                textDecoration: 'underline',
-                fontFamily: 'inherit',
-              }}
-            >
-              Skip guide
-            </Typography>
-          )}
         </Box>
       )}
 

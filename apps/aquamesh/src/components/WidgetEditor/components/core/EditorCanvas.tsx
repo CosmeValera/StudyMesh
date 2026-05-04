@@ -62,7 +62,7 @@ interface EditorCanvasProps {
   onStartOperationsWidget?: () => void
   onUseTemplate?: () => void
   onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'drop' | 'save' | null
+  onboardingStep?: 'choose' | 'save' | null
   onRestartOnboarding?: () => void
   onSkipOnboarding?: () => void
 }
@@ -102,11 +102,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
 
-  const showOnboardingDropPrompt =
+  const showOnboardingChoosePrompt =
     editMode &&
     onboardingActive &&
     widgetData.components.length === 0 &&
-    (onboardingStep === 'choose' || onboardingStep === 'drop')
+    onboardingStep === 'choose'
 
   const showOnboardingSavePrompt =
     editMode &&
@@ -238,7 +238,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   mb: 0.25,
                 }}
               >
-                Step 3: tune it, then save it
+                Step 2: tune it, then save it
               </Typography>
               <Typography
                 variant="body2"
@@ -247,22 +247,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   fontSize: isPhone ? '0.78rem' : undefined,
                 }}
               >
-                Select the block to change its label, data, colors, or layout.
-                Save the Daily Operations widget when it is ready to reuse in
+                Select the blue pen in a block to change its label, data, colors, or layout.
+                Save the Daily Operations widget when it is ready to be used in
                 dashboards.
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
-              {onRestartOnboarding && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={onRestartOnboarding}
-                  sx={{ borderRadius: 1, textTransform: 'none' }}
-                >
-                  Show again
-                </Button>
-              )}
               {onSkipOnboarding && (
                 <Button
                   variant="contained"
@@ -293,7 +283,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
           border: editMode
             ? '2px dashed rgba(0, 188, 162, 0.3)'
             : '1px solid rgba(255, 255, 255, 0.1)',
-          outline: showOnboardingDropPrompt
+          outline: showOnboardingChoosePrompt
             ? '3px solid rgba(0, 188, 162, 0.36)'
             : 'none',
           outlineOffset: 3,
@@ -335,40 +325,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                 }}
               >
                 <Stack spacing={isPhone ? 1.25 : 1.5}>
-                  {showOnboardingDropPrompt && (
-                    <Box
-                      data-testid="widget-editor-drop-coach"
-                      sx={{
-                        p: isPhone ? 1 : 1.25,
-                        border: '1px solid rgba(0, 188, 162, 0.42)',
-                        borderRadius: 1,
-                        bgcolor: 'rgba(0, 188, 162, 0.12)',
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          display: 'block',
-                          color: 'primary.dark',
-                          fontWeight: 700,
-                          mb: 0.5,
-                        }}
-                      >
-                        {onboardingStep === 'drop' ? 'Step 2' : 'Your target'}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: 'foreground.contrastPrimary',
-                          fontSize: isPhone ? '0.78rem' : undefined,
-                        }}
-                      >
-                        {onboardingStep === 'drop'
-                          ? 'Release the block inside this panel to place it in your Daily Operations widget.'
-                          : 'This is the widget canvas. Drag one block from the left to start the Daily Operations summary.'}
-                      </Typography>
-                    </Box>
-                  )}
                   <Box>
                     <Typography
                       variant={isPhone ? 'subtitle1' : 'h6'}
@@ -482,9 +438,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
               >
                 {editMode
                   ? isDragging
-                    ? onboardingActive && onboardingStep === 'drop'
-                      ? 'Release it here to add your first Daily Operations block'
-                      : 'Drop it into your widget'
+                    ? 'Drop it into your widget'
                     : showSidebar
                       ? 'Add text, inputs, buttons, charts, and layout containers. Save it to reuse in any dashboard.'
                       : 'Open the building blocks panel to add text, inputs, buttons, charts, and layout containers.'

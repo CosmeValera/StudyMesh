@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom" />
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import WidgetEditor from '../../../../src/components/WidgetEditor/WidgetEditor'
 
 const hookStateRef = vi.hoisted(() => ({
@@ -36,7 +36,24 @@ vi.mock(
   '../../../../src/components/WidgetEditor/components/core/ComponentPalette',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="component-palette" />,
+    default: ({
+      handleDragStart,
+      onboardingStep,
+    }: {
+      handleDragStart: (
+        event: React.DragEvent<HTMLDivElement>,
+        type: string,
+      ) => void
+      onboardingStep: string | null
+    }) => (
+      <div data-testid="component-palette" data-onboarding-step={onboardingStep}>
+        <div
+          data-testid="palette-drag-source"
+          draggable
+          onDragStart={(event) => handleDragStart(event, 'Label')}
+        />
+      </div>
+    ),
   }),
 )
 
@@ -204,5 +221,28 @@ describe('WidgetEditor view modes', () => {
     expect(screen.queryByTestId('component-palette')).not.toBeInTheDocument()
     expect(screen.queryByTestId('editor-canvas')).not.toBeInTheDocument()
     expect(screen.getByTestId('custom-widget-preview')).toBeInTheDocument()
+  })
+
+  it('keeps step 1 mounted when starting a guided drag', () => {
+    hookStateRef.current = {
+      ...createHookState(),
+      widgetData: {
+        name: 'Operations',
+        components: [],
+      },
+    }
+
+    render(<WidgetEditor />)
+
+    fireEvent.dragStart(screen.getByTestId('palette-drag-source'))
+
+    expect(hookStateRef.current.handleDragStart).toHaveBeenCalledWith(
+      expect.anything(),
+      'Label',
+    )
+    expect(screen.getByTestId('component-palette')).toHaveAttribute(
+      'data-onboarding-step',
+      'choose',
+    )
   })
 })

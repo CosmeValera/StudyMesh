@@ -19,7 +19,7 @@ import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
 import { cloneTemplate } from './constants/templateWidgets'
 
-type OnboardingStep = 'choose' | 'drop' | 'save'
+type OnboardingStep = 'choose' | 'save'
 
 const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 
@@ -169,11 +169,8 @@ const WidgetEditor: React.FC<{
   const handleGuidedDragStart = React.useCallback(
     (event: React.DragEvent<HTMLDivElement>, type: string) => {
       handleDragStart(event, type)
-      if (onboardingActive && widgetData.components.length === 0) {
-        setOnboardingStep('drop')
-      }
     },
-    [handleDragStart, onboardingActive, widgetData.components.length],
+    [handleDragStart],
   )
 
   const handleGuidedDrop = React.useCallback(
@@ -235,18 +232,8 @@ const WidgetEditor: React.FC<{
 
     if (widgetData.components.length > 0) {
       setOnboardingStep('save')
-      return
     }
-
-    if (!isDragging && onboardingStep === 'drop') {
-      setOnboardingStep('choose')
-    }
-  }, [
-    isDragging,
-    onboardingActive,
-    onboardingStep,
-    widgetData.components.length,
-  ])
+  }, [onboardingActive, widgetData.components.length])
 
   // Listen for loadWidgetInEditor events from widget management
   React.useEffect(() => {
@@ -652,7 +639,6 @@ const WidgetEditor: React.FC<{
             widgetData={widgetData}
             onboardingActive={onboardingActive}
             onboardingStep={onboardingStep}
-            onSkipOnboarding={handleSkipOnboarding}
           />
         )}
 

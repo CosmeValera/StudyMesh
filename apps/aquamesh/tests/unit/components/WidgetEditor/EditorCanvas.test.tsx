@@ -156,30 +156,30 @@ describe('EditorCanvas first-widget guide', () => {
     expect(screen.getByText('Drop it into your widget')).toBeInTheDocument()
   })
 
-  it('guides the user to drag a block into the canvas', () => {
+  it('keeps the canvas ready without duplicating the choose-step guidance', () => {
     renderEditorCanvas({
       onboardingActive: true,
       onboardingStep: 'choose',
     })
 
-    expect(screen.getByTestId('widget-editor-drop-coach')).toHaveTextContent(
-      'This is the widget canvas',
-    )
+    expect(
+      screen.queryByTestId('widget-editor-drop-coach'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('This is the widget canvas'),
+    ).not.toBeInTheDocument()
     expect(screen.getByTestId('widget-editor-drop-area')).toBeInTheDocument()
   })
 
-  it('changes the canvas prompt while the guided drag is active', () => {
+  it('uses the standard canvas prompt while the guided drag is active', () => {
     renderEditorCanvas({
       isDragging: true,
       onboardingActive: true,
-      onboardingStep: 'drop',
+      onboardingStep: 'choose',
     })
 
-    expect(
-      screen.getByText(
-        'Release it here to add your first Daily Operations block',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Drop it into your widget')).toBeInTheDocument()
+    expect(screen.queryByText(/^Step 2$/)).not.toBeInTheDocument()
   })
 
   it('shows the edit and save guidance after the first component exists', () => {
@@ -199,8 +199,11 @@ describe('EditorCanvas first-widget guide', () => {
     })
 
     expect(screen.getByTestId('widget-editor-save-coach')).toHaveTextContent(
-      'Step 3: tune it, then save it',
+      'Step 2: tune it, then save it',
     )
+    expect(
+      screen.queryByRole('button', { name: /show again/i }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /got it/i }))
     expect(props.onSkipOnboarding).toHaveBeenCalledTimes(1)
