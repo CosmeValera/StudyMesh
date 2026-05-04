@@ -10,12 +10,12 @@ import { ComponentType } from '../types/types'
 
 // Building blocks that can be added to a widget.
 export const COMPONENT_TYPES: ComponentType[] = [
-  // Content and Controls
+  // UI Components
   {
     type: 'Label',
     label: 'Display Text',
     defaultProps: { text: 'Display Text' },
-    category: 'Content and Controls',
+    category: 'UI Components',
     icon: TextFieldsIcon,
     tooltip: 'Shows a short piece of text, such as a title, status, or note.'
   },
@@ -23,7 +23,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
     type: 'TextField',
     label: 'Answer Box',
     defaultProps: { label: 'Answer Box', placeholder: 'Enter text...', defaultValue: '' },
-    category: 'Content and Controls',
+    category: 'UI Components',
     icon: InputIcon,
     tooltip: 'Lets someone type a value, note, or answer into the widget.'
   },
@@ -31,7 +31,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
     type: 'Button',
     label: 'Button',
     defaultProps: { text: 'Button', variant: 'contained', showToast: true, toastMessage: 'Action completed!', toastSeverity: 'info' },
-    category: 'Content and Controls',
+    category: 'UI Components',
     icon: SmartButtonIcon,
     tooltip: 'Adds a button for actions like confirming a step, opening a link, or showing a message.'
   },
@@ -39,7 +39,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
     type: 'SwitchEnable',
     label: 'Switch',
     defaultProps: { label: 'Switch', defaultChecked: false },
-    category: 'Content and Controls',
+    category: 'UI Components',
     icon: ToggleOnIcon,
     tooltip: 'Adds a simple on/off choice, such as Enabled, Open, or Needs review.'
   },
@@ -68,17 +68,17 @@ export const COMPONENT_TYPES: ComponentType[] = [
         ]
       }`
     },
-    category: 'Content and Controls',
+    category: 'UI Components',
     icon: PieChartIcon,
     tooltip: 'Shows a pie chart for simple breakdowns, such as ticket types or incident causes.'
   },
   
-  // Layout Helpers
+  // Layout Containers
   {
     type: 'FieldSet',
     label: 'Grouped Section',
     defaultProps: { legend: 'Grouped Section', collapsed: false },
-    category: 'Layout Helpers',
+    category: 'Layout Containers',
     icon: ViewQuiltIcon,
     tooltip: 'Groups related items under one heading. It can be opened or collapsed.'
   },
@@ -92,7 +92,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
       spacing: 0,
       wrap: 'wrap'
     },
-    category: 'Layout Helpers',
+    category: 'Layout Containers',
     icon: FlexibleIcon,
     tooltip: 'Places items next to each other or stacks them, with simple spacing controls.'
   },
@@ -104,7 +104,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
       rows: 1,
       spacing: 2
     },
-    category: 'Layout Helpers',
+    category: 'Layout Containers',
     icon: GridViewIcon,
     tooltip: 'Arranges items into clear columns, like cards on a dashboard.'
   },

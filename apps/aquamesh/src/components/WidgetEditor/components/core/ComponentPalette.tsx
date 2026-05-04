@@ -55,8 +55,8 @@ const PALETTE_GROUPS = [
   'Chart Components',
 ]
 const PALETTE_GROUP_LABELS: Record<string, string> = {
-  'UI Components': 'Inputs and Controls',
-  'Layout Containers': 'Layout Containers',
+  'UI Components': 'Content and Controls',
+  'Layout Containers': 'Layout Helpers',
   'Chart Components': 'Charts',
 }
 
