@@ -69,6 +69,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   const isActiveContainer = activeContainerId === component.id
   const isContainer = ['FieldSet', 'FlexBox', 'GridBox'].includes(component.type)
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
+  const actionButtonSize = isPhone ? 32 : 28
+  const actionIconSize = isPhone ? '1.15rem' : '1.3rem'
 
   // Get the component icon for display
   const ComponentIcon = getComponentIcon(component.type) as IconType
@@ -130,7 +132,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         const legendColor = useCustomLegendColor ? (component.props.legendColor as string || '#00C49A') : '#00C49A';
         const iconPosition = component.props.iconPosition as string || 'start';
         const animated = component.props.animated !== false;
-        
+
         return (
           <Box
             sx={{
@@ -149,9 +151,9 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             onDrop={(e) => handleContainerDrop(e, component.id)}
           >
             {/* Legend */}
-            <Box sx={{ 
-              position: 'absolute', 
-              top: -10, 
+            <Box sx={{
+              position: 'absolute',
+              top: -10,
               left: 10,
               bgcolor: 'background.paper',
               px: 1,
@@ -159,34 +161,34 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               alignItems: 'center'
             }}>
               {iconPosition === 'start' && (
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    cursor: 'pointer', 
+                <Box
+                  component="span"
+                  sx={{
+                    cursor: 'pointer',
                     color: legendColor,
                     display: 'inline-flex',
                     alignItems: 'center'
                   }}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (onToggleCollapse) {
-                      onToggleCollapse(component.id); 
+                      onToggleCollapse(component.id);
                     }
                   }}
                 >
                   {isCollapsed ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowUpIcon fontSize="small" />}
                 </Box>
               )}
-              
-              <Typography 
-                variant="subtitle2" 
-                sx={{ 
+
+              <Typography
+                variant="subtitle2"
+                sx={{
                   color: legendColor,
                   fontWeight: 'bold',
                   mx: 0.5,
                   cursor: 'pointer'
                 }}
-                onClick={(e) => { 
+                onClick={(e) => {
                   e.stopPropagation();
                   if (onToggleCollapse) {
                     onToggleCollapse(component.id);
@@ -195,20 +197,20 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               >
                 {component.props.legend as string || 'Field Set'}
               </Typography>
-              
+
               {iconPosition === 'end' && (
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    cursor: 'pointer', 
+                <Box
+                  component="span"
+                  sx={{
+                    cursor: 'pointer',
                     color: legendColor,
                     display: 'inline-flex',
                     alignItems: 'center'
                   }}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (onToggleCollapse) {
-                      onToggleCollapse(component.id); 
+                      onToggleCollapse(component.id);
                     }
                   }}
                 >
@@ -216,7 +218,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 </Box>
               )}
             </Box>
-            
+
             {/* Content area */}
             <Collapse in={!isCollapsed} timeout={animated ? 300 : 0}>
               {component.children && component.children.length > 0 ? (
@@ -328,14 +330,14 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   borderColor: component.props.customColor as string,
                   color: customTextColor ?? (component.props.variant === 'contained' ? '#fff' : component.props.customColor as string),
                   '&:hover': {
-                    backgroundColor: component.props.variant === 'contained' 
-                      ? component.props.customHoverColor || component.props.customColor 
+                    backgroundColor: component.props.variant === 'contained'
+                      ? component.props.customHoverColor || component.props.customColor
                       : 'rgba(25, 118, 210, 0.04)',
                     borderColor: component.props.customHoverColor || component.props.customColor
                   }
                 } : {}),
-                ...(component.props.clickAction === 'openUrl' ? { 
-                  '&::after': { 
+                ...(component.props.clickAction === 'openUrl' ? {
+                  '&::after': {
                     content: '""',
                     display: 'inline-block',
                     width: '1em',
@@ -344,7 +346,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z\'/%3E%3C/svg%3E")',
                     backgroundSize: 'contain',
                     verticalAlign: 'middle',
-                  } 
+                  }
                 } : {})
               }}
               startIcon={component.props.showStartIcon ? (() => {
@@ -438,7 +440,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         const padding = (component.props.padding as number) || 1;
         const useCustomColor = Boolean(component.props.useCustomColor);
         const backgroundColor = useCustomColor ? (component.props.backgroundColor as string || 'transparent') : 'transparent';
-        
+
         return (
           <Box
             sx={{
@@ -487,9 +489,9 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 />
               ))
             ) : (
-              <Box sx={{ 
-                width: '100%', 
-                textAlign: 'center', 
+              <Box sx={{
+                width: '100%',
+                textAlign: 'center',
                 color: 'text.secondary',
                 display: 'flex',
                 justifyContent: 'center',
@@ -509,7 +511,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         const useCustomColor = Boolean(component.props.useCustomColor);
         const backgroundColor = useCustomColor ? (component.props.backgroundColor as string) : 'transparent';
         const borderColor = useCustomColor ? (component.props.borderColor as string) : '#e0e0e0';
-        
+
         return (
           <Box
             sx={{
@@ -563,13 +565,13 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 </Box>
               ))
             ) : (
-              <Box sx={{ 
-                width: '100%', 
+              <Box sx={{
+                width: '100%',
                 height: '100%',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                textAlign: 'center', 
+                textAlign: 'center',
                 color: 'text.secondary',
                 gridColumn: `span ${columns}`,
                 minHeight: '40px'
@@ -583,7 +585,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
       case 'Chart': {
         const chartType = component.props.chartType as string || 'pie'
         const title = component.props.title as string || ''
-        
+
         // Parse data for the preview from the actual component data
         let chartData: {
           labels: string[]
@@ -596,7 +598,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
           labels: [],
           datasets: []
         }
-        
+
         try {
           const dataString = component.props.data as string || '{}'
           if (dataString.trim().startsWith('<')) {
@@ -688,23 +690,23 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   }
 
   return (
-    <Paper 
+    <Paper
       elevation={editMode ? 1 : 0}
-      sx={{ 
-        p: editMode ? (isPhone ? 1 : 2) : 0, 
+      sx={{
+        p: editMode ? (isPhone ? 1 : 2) : 0,
         mb: editMode ? (isPhone ? 1 : 2) : (isPhone ? 0.5 : 1),
         position: 'relative',
         borderRadius: 1,
-        bgcolor: isActiveContainer 
-          ? 'rgba(0, 188, 162, 0.1)' 
-          : isCurrentTarget 
-            ? 'rgba(25, 118, 210, 0.05)' 
+        bgcolor: isActiveContainer
+          ? 'rgba(0, 188, 162, 0.1)'
+          : isCurrentTarget
+            ? 'rgba(25, 118, 210, 0.05)'
             : (isHidden && editMode ? 'rgba(0, 0, 0, 0.3)' : (editMode ? 'background.paper' : 'transparent')),
         border: isActiveContainer
           ? '2px solid #00C49A'
-          : (isCurrentTarget 
-              ? '1px dashed #1976d2' 
-              : editMode 
+          : (isCurrentTarget
+              ? '1px dashed #1976d2'
+              : editMode
                 ? (isHidden ? '1px solid rgba(255, 0, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)')
                 : 'none'),
         opacity: isHidden && editMode ? 0.5 : 1,
@@ -721,36 +723,38 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
     >
       {/* Render the component controls in edit mode */}
       {editMode && (
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            top: isPhone ? 2 : 4, 
-            right: isPhone ? 2 : 4, 
-            display: 'flex', 
+        <Box
+          sx={{
+            position: 'absolute',
+            top: isPhone ? 2 : 4,
+            right: isPhone ? 2 : 4,
+            display: 'flex',
             zIndex: 10,
             bgcolor: 'background.paper',
             borderRadius: 1,
             boxShadow: 1,
             '& .MuiIconButton-root': {
-              padding: isPhone ? '2px' : '4px',
-              fontSize: isPhone ? '0.75rem' : '1.3rem'
+              padding: isPhone ? '6px' : '4px',
+              minWidth: actionButtonSize,
+              minHeight: actionButtonSize,
+              fontSize: actionIconSize
             }
           }}
         >
           {/* Visibility toggle button */}
           <TooltipStyled title={isHidden ? "Show component" : "Hide component"}>
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={() => onToggleVisibility && onToggleVisibility(component.id)}
               sx={{ color: isHidden ? 'error.light' : 'success.light' }}
             >
-              {isHidden ? 
-                <VisibilityOffIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} /> : 
-                <VisibilityIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} />
+              {isHidden ?
+                <VisibilityOffIcon fontSize="small" sx={{ fontSize: actionIconSize }} /> :
+                <VisibilityIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
               }
             </IconButton>
           </TooltipStyled>
-          
+
           {/* If this is a container component, add a button to select it as the active target for mobile */}
           {isContainer && onSelectContainer && (
             <TooltipStyled title={isActiveContainer ? "Active target container" : "Make this the active target container"}>
@@ -763,50 +767,50 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     onSelectContainer(component.id)
                   }
                 }}
-                sx={{ 
+                sx={{
                   color: isActiveContainer ? 'success.main' : 'info.main',
                   bgcolor: isActiveContainer ? 'rgba(0, 188, 162, 0.1)' : 'transparent'
                 }}
               >
-                <TargetIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} />
+                <TargetIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
               </IconButton>
             </TooltipStyled>
           )}
-          
-          <IconButton 
-            size="small" 
+
+          <IconButton
+            size="small"
             onClick={() => onEdit(component.id)}
             sx={{ color: 'info.light' }}
           >
-            <EditIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} />
+            <EditIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
           </IconButton>
-          
+
           {!isFirst && (
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={() => onMoveUp(component.id)}
               sx={{ color: 'warning.light' }}
             >
-              <KeyboardArrowUpIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} />
+              <KeyboardArrowUpIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
             </IconButton>
           )}
-          
+
           {!isLast && (
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={() => onMoveDown(component.id)}
               sx={{ color: 'warning.light' }}
             >
-              <KeyboardArrowDownIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} />
+              <KeyboardArrowDownIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
             </IconButton>
           )}
-          
-          <IconButton 
-            size="small" 
+
+          <IconButton
+            size="small"
             onClick={() => onDelete(component.id)}
             sx={{ color: 'error.main' }}
           >
-            <DeleteIcon fontSize="small" sx={{ fontSize: isPhone ? '0.875rem' : '1.3rem' }} />
+            <DeleteIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
           </IconButton>
         </Box>
       )}
@@ -815,19 +819,19 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
       {editMode && (
         <Box sx={{ display: 'flex', alignItems: 'center', mb: isPhone ? 0.5 : 1 }}>
           {ComponentIcon && (
-            <Box 
-              component={ComponentIcon} 
-              sx={{ 
-                mr: isPhone ? 0.5 : 1, 
-                opacity: 0.7, 
-                fontSize: isPhone ? '0.75rem' : '1.3rem' 
-              }} 
+            <Box
+              component={ComponentIcon}
+              sx={{
+                mr: isPhone ? 0.5 : 1,
+                opacity: 0.7,
+                fontSize: isPhone ? '0.75rem' : '1.3rem'
+              }}
             />
           )}
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              color: 'text.secondary', 
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
               fontFamily: 'monospace',
               fontSize: isPhone ? '0.65rem' : undefined
             }}
@@ -845,4 +849,4 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   )
 }
 
-export default ComponentPreview 
+export default ComponentPreview

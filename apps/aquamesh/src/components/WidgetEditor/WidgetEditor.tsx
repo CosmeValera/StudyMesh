@@ -240,9 +240,10 @@ const WidgetEditor: React.FC<{
     const handleExternalWidgetLoad = (event: Event) => {
       const customEvent = event as CustomEvent
       if (customEvent.detail && customEvent.detail.widget) {
-        const nextViewMode =
+        const requestedViewMode =
           customEvent.detail.viewMode ??
-          (customEvent.detail.editMode ? 'both' : 'preview')
+          (customEvent.detail.editMode ? 'edit' : 'preview')
+        const nextViewMode = requestedViewMode === 'both' ? 'edit' : requestedViewMode
         setViewMode(nextViewMode)
         handleLoadWidget(customEvent.detail.widget, nextViewMode !== 'preview')
       }
@@ -270,7 +271,7 @@ const WidgetEditor: React.FC<{
 
       // Set the appropriate edit mode first
       if (customProps.initialEditMode !== undefined) {
-        setViewMode(customProps.initialEditMode ? 'both' : 'preview')
+        setViewMode(customProps.initialEditMode ? 'edit' : 'preview')
       }
 
       // Then load the widget - use a setTimeout to ensure the edit mode is set first
@@ -406,7 +407,7 @@ const WidgetEditor: React.FC<{
 
   // Load a template as a new widget
   const handleTemplateSelected = (templateWidget: CustomWidget) => {
-    setViewMode('both')
+    setViewMode('edit')
     handleLoadWidget(templateWidget, true)
   }
 
@@ -421,7 +422,7 @@ const WidgetEditor: React.FC<{
       return
     }
 
-    setViewMode('both')
+    setViewMode('edit')
     handleLoadWidget(operationsWidget, true)
     if (onboardingActive) {
       setOnboardingStep('save')
@@ -503,7 +504,7 @@ const WidgetEditor: React.FC<{
     }
 
     // Preview the restored version without modifying storage
-    setViewMode('both')
+    setViewMode('edit')
     handleLoadWidget(restoredWidget, true)
     // Inform the user this version is loaded for editing
     setComponentToast({

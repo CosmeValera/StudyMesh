@@ -20,7 +20,6 @@ import {
 import MenuIcon from '@mui/icons-material/Menu'
 import EditIcon from '@mui/icons-material/Edit'
 import PreviewIcon from '@mui/icons-material/Preview'
-import ViewColumnIcon from '@mui/icons-material/ViewColumn'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SaveIcon from '@mui/icons-material/Save'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
@@ -288,12 +287,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 },
               }}
             >
-              <ToggleButton value="both" aria-label="Both view">
-                <ViewColumnIcon
-                  sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }}
-                />
-                {!isPhone && 'Both'}
-              </ToggleButton>
               <ToggleButton value="edit" aria-label="Edit view">
                 <EditIcon sx={{ fontSize: isPhone ? '1rem' : '1.15rem' }} />
                 {!isPhone && 'Edit'}

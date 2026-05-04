@@ -220,8 +220,9 @@ const ComponentPalette = ({
               lineHeight: 1.35,
             }}
           >
-            Grab a block below and drag it into the Daily Operations widget
-            canvas.
+            {isPhone
+              ? 'Tap the + button on any block below to add it to your widget.'
+              : 'Grab a block below and drag it into the Daily Operations widget canvas.'}
           </Typography>
         </Box>
       )}

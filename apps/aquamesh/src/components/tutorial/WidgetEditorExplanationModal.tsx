@@ -129,8 +129,9 @@ const WidgetEditorExplanationModal: React.FC<
         {
           title: 'Add Building Blocks',
           icon: <WidgetsIcon />,
-          content:
-            'Drag text, answer boxes, buttons, charts, and groups from the left panel into your widget.',
+          content: isMobile
+            ? 'Tap the + button on text, answer boxes, buttons, charts, and groups to add them to your widget.'
+            : 'Drag text, answer boxes, buttons, charts, and groups from the left panel into your widget.',
         },
         {
           title: 'Arrange The Canvas',
