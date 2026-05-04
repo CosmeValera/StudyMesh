@@ -365,7 +365,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                               )}
                               <Chip
                                 size="small"
-                                label={`${version.components.length} components`}
+                                label={`${version.components.length} items`}
                                 variant="outlined"
                                 sx={{ height: 20, fontSize: '0.7rem', borderColor: alpha(theme.palette.divider, 0.6), color: 'text.secondary' }}
                               />
@@ -407,7 +407,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                         <Typography variant={isPhone ? 'h6' : 'h5'} fontWeight="bold" color="#00C49A" sx={{ fontSize: isPhone ? '1rem' : undefined }}>
                           Version {selectedVersion.version}
                           {selectedVersion.isCurrent && (
-                            <Chip size="small" label="Current Version" color="primary" variant="filled" sx={{ ml: 1.5, fontWeight: 'bold', fontSize: '0.75rem' }}/>
+                            <Chip size="small" label="Current Saved Version" color="primary" variant="filled" sx={{ ml: 1.5, fontWeight: 'bold', fontSize: '0.75rem' }}/>
                           )}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -518,7 +518,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                               {widget.components.length}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              Current Version
+                              Current Saved Version
                             </Typography>
                           </Box>
                         </Box>

@@ -55,8 +55,8 @@ const PALETTE_GROUPS = [
   'Chart Components',
 ]
 const PALETTE_GROUP_LABELS: Record<string, string> = {
-  'UI Components': 'Inputs and Controls',
-  'Layout Containers': 'Layout Containers',
+  'UI Components': 'Content and Controls',
+  'Layout Containers': 'Layout Helpers',
   'Chart Components': 'Charts',
 }
 
@@ -374,8 +374,8 @@ const ComponentPalette = ({
             }}
           >
             {isPhone
-              ? 'Tap + to add a block'
-              : 'Drag blocks onto the widget canvas'}
+              ? 'Tap + to add an item'
+              : 'Drag items into your widget'}
           </Typography>
           <Typography
             variant="caption"
@@ -386,10 +386,10 @@ const ComponentPalette = ({
             }}
           >
             {!showTooltips
-              ? 'Enable tooltips in settings for descriptions'
+              ? 'Turn on helpful tips in settings for short explanations'
               : isPhone
-                ? 'Long press blocks for descriptions'
-                : 'Hover over blocks for descriptions'}
+                ? 'Long press items for short explanations'
+                : 'Hover over items for short explanations'}
           </Typography>
         </Box>
       )}

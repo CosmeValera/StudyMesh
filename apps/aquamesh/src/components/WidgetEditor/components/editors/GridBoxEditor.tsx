@@ -126,7 +126,7 @@ const GridBoxEditor: React.FC<GridBoxEditorProps> = ({ props, onChange }) => {
               {cellPadding > 0 && (
                 <>
                   <span>•</span>
-                  <span>Cell Padding: {cellPadding}</span>
+                  <span>Inside space: {cellPadding}</span>
                 </>
               )}
             </Typography>
@@ -138,7 +138,7 @@ const GridBoxEditor: React.FC<GridBoxEditorProps> = ({ props, onChange }) => {
         <Grid item xs={12} sm={6}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <TextField
-              label="Columns"
+              label="Number of Columns"
               type="number"
               fullWidth
               size={isMobile ? "small" : "medium"}
@@ -161,7 +161,7 @@ const GridBoxEditor: React.FC<GridBoxEditorProps> = ({ props, onChange }) => {
                 }
               }}
             />
-            <Tooltip title="Enter a value between 1 and 12">
+            <Tooltip title="Choose how many columns to show, from 1 to 12.">
               <InfoOutlinedIcon 
                 fontSize={isMobile ? "small" : "medium"} 
                 sx={{ ml: 0.5, mb: isMobile ? 2 : 3.5 }} 
@@ -176,9 +176,9 @@ const GridBoxEditor: React.FC<GridBoxEditorProps> = ({ props, onChange }) => {
               gutterBottom
               sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
             >
-              Cell Padding
+              Space Inside Each Box
             </Typography>
-            <Tooltip title="Padding adds space inside each cell, around the content">
+            <Tooltip title="Adds breathing room around the content inside each box.">
               <InfoOutlinedIcon 
                 fontSize={isMobile ? "small" : "medium"} 
                 sx={{ ml: 1 }} 

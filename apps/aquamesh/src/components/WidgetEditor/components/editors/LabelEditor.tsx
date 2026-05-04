@@ -239,7 +239,7 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ props, onChange }) => {
         <Grid container spacing={isMobile ? 1 : 2}>
           <Grid item xs={12}>
             <TextField
-              label="Label Text"
+              label="Text to Show"
               fullWidth
               onFocus={(e) => { e.target.select() }}
               value={(props.text as string) || ''}
@@ -268,7 +268,7 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ props, onChange }) => {
               customColor={customColor}
               onColorChange={handleColorChange}
               onToggleCustomColor={handleCustomColorToggle}
-              label="Use Custom Color"
+              label="Choose Text Color"
             />
           </Grid>
           
@@ -286,7 +286,7 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ props, onChange }) => {
                   <Typography sx={{ fontSize: isMobile ? '0.75rem' : undefined }}>
                     No Text Wrapping
                   </Typography>
-                  <TooltipStyled title="When enabled, text will not wrap to a new line and will be truncated with an ellipsis if it exceeds available space.">
+                  <TooltipStyled title="Keeps the text on one line and shortens it with “…” if it gets too long.">
                     <InfoOutlinedIcon fontSize={isMobile ? "small" : "medium"} sx={{ ml: 0.5 }} />
                   </TooltipStyled>
                 </Box>
@@ -307,10 +307,10 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ props, onChange }) => {
         <Grid container spacing={isMobile ? 1 : 2}>
           <Grid item xs={12}>
             <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Text Variant</InputLabel>
+              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Text Style</InputLabel>
               <Select
                 value={variant}
-                label="Text Variant"
+                label="Text Style"
                 onChange={(e) => {
                   setVariant(e.target.value)
                   handleChange('variant', e.target.value)
@@ -327,10 +327,10 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ props, onChange }) => {
                 <MenuItem value="h4" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Heading 4</MenuItem>
                 <MenuItem value="h5" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Heading 5</MenuItem>
                 <MenuItem value="h6" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Heading 6</MenuItem>
-                <MenuItem value="subtitle1" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Subtitle 1</MenuItem>
-                <MenuItem value="subtitle2" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Subtitle 2</MenuItem>
-                <MenuItem value="body1" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Body 1</MenuItem>
-                <MenuItem value="body2" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Body 2</MenuItem>
+                <MenuItem value="subtitle1" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Large Subtitle</MenuItem>
+                <MenuItem value="subtitle2" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Small Subtitle</MenuItem>
+                <MenuItem value="body1" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Normal Text</MenuItem>
+                <MenuItem value="body2" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Small Text</MenuItem>
               </Select>
             </FormControl>
           </Grid>

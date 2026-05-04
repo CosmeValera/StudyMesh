@@ -130,13 +130,13 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Add Building Blocks',
           icon: <WidgetsIcon />,
           content:
-            'Drag text, inputs, buttons, charts, and layout blocks from the left panel onto the canvas.',
+            'Drag text, answer boxes, buttons, charts, and groups from the left panel into your widget.',
         },
         {
           title: 'Arrange The Canvas',
           icon: <GridViewIcon />,
           content:
-            'Move and configure the blocks until the widget is ready to reuse in dashboards.',
+            'Move each item and adjust its wording or display options until the widget is ready to reuse in dashboards.',
         },
       ],
     },
@@ -164,77 +164,77 @@ const WidgetEditorExplanationModal: React.FC<
       ],
     },
     {
-      title: 'Building Block Types',
+      title: 'Building Blocks You Can Use',
       subsections: [
         {
-          title: 'Inputs and Controls',
+          title: 'Content and Controls',
           icon: <InputIcon />,
           content:
-            'Basic dashboard controls such as buttons, text fields, sliders, checkboxes, and select menus.',
+            'Everyday dashboard items such as text, answer boxes, buttons, switches, and charts.',
         },
         {
-          title: 'Layout Containers',
+          title: 'Layout Helpers',
           icon: <GridViewIcon />,
           content:
-            'Containers that organize the structure of your widget, such as grids, tabs, and fieldsets.',
+            'Helpers that keep related information together or arrange items into rows and columns.',
         },
       ],
     },
     {
-      title: 'Inputs and Controls',
+      title: 'Content and Controls',
       subsections: [
         {
-          title: 'Text Label',
+          title: 'Display Text',
           icon: <TextFieldsIcon />,
           content:
-            'A static text display element for showing information. Can be configured with different styles, sizes, and colors.',
+            'Shows helpful text such as a heading, status, instruction, or note. You can choose its size and color.',
         },
         {
-          title: 'Text Field',
+          title: 'Answer Box',
           icon: <InputIcon />,
           content:
-            'An input field for text entry. Supports single-line, multi-line, validation, and various styling options.',
+            'Lets someone type a value, note, or answer. You can choose the expected answer type and helper message.',
         },
         {
           title: 'Button',
           icon: <SmartButtonIcon />,
           content:
-            'A clickable button element that triggers actions. Configurable properties include button text, variant, colors, and ability to show toast notifications when clicked.',
+            'A button someone can press to show a message or open a link. You can choose the label, style, color, and message.',
         },
         {
           title: 'Switch',
           icon: <ToggleOnIcon />,
           content:
-            'A toggle switch that allows users to choose between on/off states for boolean values. Can be configured with custom labels and default states.',
+            'A simple on/off choice for statuses like Enabled, Open, or Needs review. You can choose its label and starting state.',
         },
         {
           title: 'Pie Chart',
           icon: <PieChartIcon />,
           content:
-            'A data visualization component that displays proportional data using a circular chart. Supports custom colors, labels, and data values.',
+            'Shows a simple breakdown, such as ticket categories or incident causes, in a circular chart.',
         },
       ],
     },
     {
-      title: 'Layout Containers',
+      title: 'Layout Helpers',
       subsections: [
         {
-          title: 'Fieldset',
+          title: 'Grouped Section',
           icon: <ViewQuiltIcon />,
           content:
-            'A collapsible container that can group related blocks. Users can toggle the visibility of its contents, making it useful for organizing complex widgets.',
+            'Groups related items under one heading. People can open or close the section to keep a busy widget tidy.',
         },
         {
-          title: 'Grid Layout',
+          title: 'Grid Group',
           icon: <GridViewIcon />,
           content:
-            'Arranges blocks in a table-like grid with rows and columns. Useful for creating structured layouts with precise alignment.',
+            'Arranges items into clear columns, like dashboard cards or summary boxes.',
         },
         {
-          title: 'Flex Layout',
+          title: 'Flexible Group',
           icon: <FlexibleIcon />,
           content:
-            'A more dynamic layout system that allows blocks to grow, shrink, and reposition based on available space. Ideal for responsive widgets that adapt to different screen sizes.',
+            'Places items next to each other or stacks them, while adapting to the space available on the screen.',
         },
       ],
     },

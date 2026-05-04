@@ -117,7 +117,7 @@ const WidgetMetadataDialog: React.FC<WidgetMetadataDialogProps> = ({
       }}
     >
       <DialogTitle>
-        <Typography variant="h6">Widget Properties</Typography>
+        <Typography variant="h6">Widget Details</Typography>
       </DialogTitle>
       
       <DialogContent dividers>
@@ -131,7 +131,7 @@ const WidgetMetadataDialog: React.FC<WidgetMetadataDialogProps> = ({
             required
             variant="outlined"
             error={!formData.name}
-            helperText={!formData.name ? 'Name is required' : ''}
+            helperText={!formData.name ? 'Please add a widget name' : ''}
           />
           
           {/* Widget Category */}
@@ -175,7 +175,7 @@ const WidgetMetadataDialog: React.FC<WidgetMetadataDialogProps> = ({
                 variant="outlined"
                 label="Tags"
                 placeholder="Add tags..."
-                helperText="Press Enter to add a new tag"
+                helperText="Press Enter after each keyword"
               />
             )}
             onKeyDown={(e) => {
@@ -204,7 +204,7 @@ const WidgetMetadataDialog: React.FC<WidgetMetadataDialogProps> = ({
             multiline
             rows={3}
             variant="outlined"
-            placeholder="Enter a description for this widget..."
+            placeholder="Explain what this widget helps someone do..."
           />
           
           {/* Other metadata */}

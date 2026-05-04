@@ -326,7 +326,7 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
         <Grid container spacing={isMobile ? 1 : 2}>
           <Grid item xs={12}>
             <TextField
-              label="Label Text"
+              label="Switch Label"
               fullWidth
               onFocus={(e) => { e.target.select() }}
               value={(props.label as string) || ''}
@@ -386,10 +386,10 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
 
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
             <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Label Placement</InputLabel>
+              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Label Position</InputLabel>
               <Select
                 value={labelPlacement}
-                label="Label Placement"
+                label="Label Position"
                 onChange={(e) => {
                   setLabelPlacement(e.target.value)
                   handleChange('labelPlacement', e.target.value)
@@ -400,8 +400,8 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
                   }
                 }}
               >
-                <MenuItem value="end" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>End (Right)</MenuItem>
-                <MenuItem value="start" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Start (Left)</MenuItem>
+                <MenuItem value="end" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Right Side</MenuItem>
+                <MenuItem value="start" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Left Side</MenuItem>
                 <MenuItem value="top" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Top</MenuItem>
                 <MenuItem value="bottom" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Bottom</MenuItem>
               </Select>
@@ -447,9 +447,9 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>
-                    Use Custom Track Color
+                    Use Custom Switch Track Color
                   </Typography>
-                  <Tooltip title="Toggle custom track color for the switch">
+                  <Tooltip title="Choose a custom color for the switch track.">
                     <InfoOutlinedIcon fontSize={isMobile ? "small" : "medium"} sx={{ ml: 0.5 }} />
                   </Tooltip>
                 </Box>
@@ -464,7 +464,7 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
           {useCustomColor && (
             <Grid item xs={12}>
               <TextField
-                label="Track Color"
+                label="Switch Track Color"
                 fullWidth
                 value={customTrackColor}
                 onChange={(e) => {
@@ -497,7 +497,7 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
               customColor={customLabelColor}
               onToggleCustomColor={handleLabelColorToggle}
               onColorChange={handleLabelColorChange}
-              label="Use Custom Label Color"
+              label="Choose Label Color"
             />
           </Grid>
         </Grid>
@@ -535,11 +535,11 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
             <>
               <Grid item xs={12}>
                 <TextField
-                  label="On Message"
+                  label="Message When On"
                   fullWidth
                   value={(props.onMessage as string) || 'Switch turned ON'}
                   onChange={(e) => handleChange('onMessage', e.target.value)}
-                  placeholder="Message when turned ON"
+                  placeholder="Message to show when switched on"
                   size={isMobile ? "small" : "medium"}
                   InputLabelProps={{
                     style: { fontSize: isMobile ? '0.875rem' : undefined }
@@ -552,11 +552,11 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
               
               <Grid item xs={12}>
                 <TextField
-                  label="Off Message"
+                  label="Message When Off"
                   fullWidth
                   value={(props.offMessage as string) || 'Switch turned OFF'}
                   onChange={(e) => handleChange('offMessage', e.target.value)}
-                  placeholder="Message when turned OFF"
+                  placeholder="Message to show when switched off"
                   size={isMobile ? "small" : "medium"}
                   InputLabelProps={{
                     style: { fontSize: isMobile ? '0.875rem' : undefined }
@@ -569,10 +569,10 @@ const SwitchEditor: React.FC<SwitchEditorProps> = ({ props, onChange }) => {
               
               <Grid item xs={12}>
                 <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-                  <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Toast Severity</InputLabel>
+                  <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Message Type</InputLabel>
                   <Select
                     value={(props.toastSeverity as string) || 'info'}
-                    label="Toast Severity"
+                    label="Message Type"
                     onChange={(e) => handleChange('toastSeverity', e.target.value)}
                     sx={{
                       '.MuiSelect-select': {

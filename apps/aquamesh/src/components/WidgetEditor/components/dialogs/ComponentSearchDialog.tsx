@@ -208,7 +208,7 @@ const ComponentSearchDialog: React.FC<ComponentSearchDialogProps> = ({
         <TextField
           autoFocus
           fullWidth
-          placeholder="Search components by type or properties..."
+          placeholder="Search building blocks by name or what they do..."
           value={searchTerm}
           onChange={handleSearchChange}
           margin="normal"
