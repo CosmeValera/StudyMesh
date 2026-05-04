@@ -122,7 +122,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
       key={component.type}
       sx={{
         mb: isPhone ? 0 : 1,
-        flex: isPhone ? '0 0 128px' : 'initial',
+        flex: isPhone ? '0 0 112px' : 'initial',
         scrollSnapAlign: isPhone ? 'start' : 'none',
       }}
     >

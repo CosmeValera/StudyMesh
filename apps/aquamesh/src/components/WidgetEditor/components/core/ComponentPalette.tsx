@@ -287,8 +287,12 @@ const ComponentPalette = ({
           width: '100%',
           overflowY: 'auto',
           flexGrow: 1,
-          pt: 0,
-          overflowX: isPhone ? 'auto' : 'hidden',
+          pt: isPhone ? 0.5 : 0,
+          px: isPhone ? 0.75 : 0,
+          display: isPhone ? 'flex' : 'block',
+          gap: isPhone ? 0.75 : 0,
+          alignItems: isPhone ? 'flex-start' : 'stretch',
+          overflowX: 'hidden',
           pb: isPhone ? 0.5 : 0,
           '& .MuiListSubheader-root': {
             py: isPhone ? 0.5 : 1,
@@ -303,7 +307,18 @@ const ComponentPalette = ({
           }
 
           return (
-            <Box key={category} sx={{ mb: isPhone ? 1 : 2 }}>
+            <Box
+              key={category}
+              sx={{
+                mb: isPhone ? 0 : 2,
+                flex: isPhone ? '1 1 0' : 'initial',
+                minWidth: isPhone ? 0 : undefined,
+                border: isPhone ? 1 : 0,
+                borderColor: 'divider',
+                borderRadius: isPhone ? 1 : 0,
+                overflow: 'hidden',
+              }}
+            >
               <ListSubheader
                 sx={{
                   display: 'flex',
@@ -314,18 +329,23 @@ const ComponentPalette = ({
                   color: 'foreground.contrastSecondary',
                   fontWeight: 'bold',
                   cursor: 'pointer',
-                  py: isPhone ? 0.5 : 1,
-                  fontSize: isPhone ? '0.7rem' : undefined,
+                  py: isPhone ? 0.4 : 1,
+                  px: isPhone ? 0.5 : 2,
+                  minHeight: isPhone ? 30 : undefined,
+                  fontSize: isPhone ? '0.66rem' : undefined,
                   lineHeight: isPhone ? 1.3 : undefined,
                 }}
                 onClick={() => toggleCategory(category)}
               >
-                {PALETTE_GROUP_LABELS[category] || category}
+                <Box component="span" sx={{ minWidth: 0, mr: 0.25 }}>
+                  {PALETTE_GROUP_LABELS[category] || category}
+                </Box>
                 <IconButton
                   size="small"
                   sx={{
                     color: 'foreground.contrastSecondary',
                     padding: isPhone ? 0.25 : '4px',
+                    flexShrink: 0,
                   }}
                 >
                   {expandedCategories[category] ? (
@@ -345,6 +365,7 @@ const ComponentPalette = ({
                   sx={{
                     px: isPhone ? 0.5 : 1,
                     pt: isPhone ? 0.5 : 1,
+                    pb: isPhone ? 0.5 : 0,
                     display: isPhone ? 'flex' : 'block',
                     gap: isPhone ? 0.75 : 0,
                     overflowX: isPhone ? 'auto' : 'visible',

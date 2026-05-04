@@ -154,12 +154,13 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         >
           {editMode && (
             <IconButton
-              edge="start"
+              edge={isPhone ? false : 'start'}
               color="inherit"
               aria-label="menu"
               onClick={toggleSidebar}
               sx={{
                 mr: isPhone ? 0.25 : 2,
+                ml: isPhone ? 0.5 : 0,
                 p: isPhone ? 0.5 : 1,
                 color: showSidebar
                   ? 'primary.main'
