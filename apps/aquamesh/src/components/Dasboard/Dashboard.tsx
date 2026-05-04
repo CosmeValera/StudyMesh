@@ -49,7 +49,7 @@ interface SavedDashboard {
 
 type DashboardOnboardingStep = 'layout' | 'save' | 'done'
 
-const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step'
+const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
 
 const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
   if (!layout) {
@@ -447,14 +447,6 @@ const Dashboards = () => {
     if (dashboardOnboardingStep === 'save' && !hasSplitLayout) {
       returnDashboardOnboardingToLayout()
       return
-    }
-
-    if (dashboardOnboardingStep !== 'save') {
-      return
-    }
-
-    if (hasChanges[selectedDashboard] === false) {
-      completeDashboardOnboarding()
     }
   }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 

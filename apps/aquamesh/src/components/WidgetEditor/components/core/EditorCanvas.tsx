@@ -62,7 +62,7 @@ interface EditorCanvasProps {
   onStartOperationsWidget?: () => void
   onUseTemplate?: () => void
   onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | null
+  onboardingStep?: 'choose' | 'save' | 'place' | null
   onRestartOnboarding?: () => void
   onSkipOnboarding?: () => void
 }
@@ -113,6 +113,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     onboardingActive &&
     widgetData.components.length > 0 &&
     onboardingStep === 'save'
+
+  const showOnboardingPlacePrompt =
+    editMode &&
+    onboardingActive &&
+    widgetData.components.length > 0 &&
+    onboardingStep === 'place'
 
   // Render the component hierarchy
   const renderComponents = (components: ComponentData[]) => {
@@ -211,7 +217,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         </Typography>
       )}
 
-      {showOnboardingSavePrompt && (
+      {(showOnboardingSavePrompt || showOnboardingPlacePrompt) && (
         <Paper
           data-testid="widget-editor-save-coach"
           sx={{
@@ -238,7 +244,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   mb: 0.25,
                 }}
               >
-                Step 2: tune it, then save it
+                {showOnboardingPlacePrompt
+                  ? 'Step 3: add it to your dashboard'
+                  : 'Step 2: tune it, then save it'}
               </Typography>
               <Typography
                 variant="body2"
@@ -247,9 +255,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   fontSize: isPhone ? '0.78rem' : undefined,
                 }}
               >
-                Select the blue pen in a block to change its label, data, colors, or layout.
-                Save the Daily Operations widget when it is ready to be used in
-                dashboards.
+                {showOnboardingPlacePrompt
+                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget you just saved, and click it to place it on the dashboard.`
+                  : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the Daily Operations widget when it is ready to be used in dashboards.'}
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>

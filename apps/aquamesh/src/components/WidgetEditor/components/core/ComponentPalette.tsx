@@ -30,7 +30,7 @@ interface ComponentPaletteProps {
   setActiveContainerId?: (id: string | null) => void
   widgetData?: any // To lookup container name
   onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | null
+  onboardingStep?: 'choose' | 'save' | 'place' | null
 }
 
 // Helper function to group components by category
@@ -408,9 +408,7 @@ const ComponentPalette = ({
               fontSize: isPhone ? '0.5rem' : '0.65rem',
             }}
           >
-            {isPhone
-              ? 'Tap + to add an item'
-              : 'Drag items into your widget'}
+            {isPhone ? 'Tap + to add an item' : 'Drag items into your widget'}
           </Typography>
           <Typography
             variant="caption"

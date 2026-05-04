@@ -19,7 +19,7 @@ import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
 import { cloneTemplate } from './constants/templateWidgets'
 
-type OnboardingStep = 'choose' | 'save'
+type OnboardingStep = 'choose' | 'save' | 'place'
 
 const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 
@@ -239,10 +239,10 @@ const WidgetEditor: React.FC<{
       return
     }
 
-    if (widgetData.components.length > 0) {
+    if (widgetData.components.length > 0 && onboardingStep === 'choose') {
       setOnboardingStep('save')
     }
-  }, [onboardingActive, widgetData.components.length])
+  }, [onboardingActive, onboardingStep, widgetData.components.length])
 
   // Listen for loadWidgetInEditor events from widget management
   React.useEffect(() => {
@@ -281,7 +281,9 @@ const WidgetEditor: React.FC<{
 
       // Set the appropriate edit mode first
       if (customProps.initialEditMode !== undefined) {
-        setViewMode(customProps.initialEditMode ? defaultEditViewMode : 'preview')
+        setViewMode(
+          customProps.initialEditMode ? defaultEditViewMode : 'preview',
+        )
       }
 
       // Then load the widget - use a setTimeout to ensure the edit mode is set first
@@ -377,6 +379,24 @@ const WidgetEditor: React.FC<{
     // Otherwise, compare current components to saved
     return savedJson !== currentJson
   }, [widgetData, savedWidgets, isUpdating])
+
+  React.useEffect(() => {
+    if (
+      onboardingActive &&
+      onboardingStep === 'save' &&
+      widgetData.components.length > 0 &&
+      isUpdating &&
+      !hasChanges
+    ) {
+      setOnboardingStep('place')
+    }
+  }, [
+    hasChanges,
+    isUpdating,
+    onboardingActive,
+    onboardingStep,
+    widgetData.components.length,
+  ])
 
   // Check if the current widget (including any loaded preview) is the latest version
   const isLatestVersion = React.useMemo(() => {
