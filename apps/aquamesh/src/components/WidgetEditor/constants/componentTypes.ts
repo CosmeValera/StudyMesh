@@ -84,7 +84,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
   },
   {
     type: 'FlexBox',
-    label: 'Row or Column Group',
+    label: 'Flexible Group',
     defaultProps: { 
       direction: 'row', 
       justifyContent: 'flex-start', 

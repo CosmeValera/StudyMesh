@@ -231,7 +231,7 @@ const WidgetEditorExplanationModal: React.FC<
             'Arranges items into clear columns, like dashboard cards or summary boxes.',
         },
         {
-          title: 'Row or Column Group',
+          title: 'Flexible Group',
           icon: <FlexibleIcon />,
           content:
             'Places items next to each other or stacks them, while adapting to the space available on the screen.',
