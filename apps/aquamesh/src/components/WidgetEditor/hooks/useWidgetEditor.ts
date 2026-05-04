@@ -48,7 +48,7 @@ export const useWidgetEditor = () => {
     name: 'New Widget',
     components: [],
   })
-  const [viewMode, setViewMode] = useState<WidgetEditorViewMode>('edit')
+  const [viewMode, setViewMode] = useState<WidgetEditorViewMode>('both')
   const editMode = viewMode !== 'preview'
   const setEditMode = React.useCallback((nextEditMode: boolean) => {
     setViewMode(nextEditMode ? 'edit' : 'preview')
