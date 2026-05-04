@@ -498,11 +498,11 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
         PaperProps={{
           sx: {
             bgcolor: 'background.paper',
-            boxShadow: 24,
+            boxShadow: '0 12px 32px rgba(16, 42, 45, 0.16)',
             borderRadius: 2,
             overflow: 'hidden',
-            backgroundImage:
-              'linear-gradient(135deg, rgba(0, 196, 154, 0.05) 0%, rgba(0, 188, 162, 0.1) 100%)',
+            border: '1px solid',
+            borderColor: 'divider',
             height: 'auto',
             margin: isMobile ? 0 : undefined,
           },
@@ -569,8 +569,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
         >
           <DialogContent
             sx={{
-              backgroundImage:
-                'radial-gradient(circle at 90% 10%, rgba(0, 188, 162, 0.1) 0%, transparent 60%)',
+              bgcolor: 'background.default',
               position: 'relative',
               overflowY: 'auto', // Ensure scrolling works
               maxHeight: 'calc(100dvh - 220px)', // Set max height to allow scrolling
@@ -598,8 +597,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                       alignItems: 'center',
                       textAlign: 'center',
                       mt: isMobile ? 1 : 2,
-                      background:
-                        'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(25, 25, 25, 0.2) 100%)',
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
                       '&::before': {
                         content: '""',
                         position: 'absolute',
@@ -623,21 +623,14 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                         variant={isMobile ? 'subtitle1' : 'h6'}
                         fontWeight="bold"
                         gutterBottom
-                        color="#f9f9f9"
-                        sx={{
-                          background:
-                            'linear-gradient(90deg, #FFC107, #FF9800)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          textShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
-                        }}
+                        color="text.primary"
                       >
                         Builder Mode Required
                       </Typography>
                       <Typography
                         variant={isMobile ? 'body2' : 'body1'}
                         paragraph
-                        color="#f9f9f9"
+                        color="text.secondary"
                         sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
                       >
                         Creating reusable widgets is available in Builder mode.
@@ -676,13 +669,12 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                             transform: isMobile ? 'none' : 'translateY(-8px)',
                             boxShadow: isMobile
                               ? undefined
-                              : '0 12px 24px rgba(0, 0, 0, 0.2)',
+                              : '0 12px 24px rgba(16, 42, 45, 0.14)',
                           },
                           mb: isMobile ? 2 : 3,
                           position: 'relative',
                           overflow: 'hidden',
-                          backgroundImage:
-                            'linear-gradient(135deg, rgba(0, 166, 137, 0.1) 0%, rgba(25, 25, 25, 0.2) 100%)',
+                          bgcolor: 'background.paper',
                           '&::before': {
                             content: '""',
                             position: 'absolute',
@@ -697,7 +689,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                           border:
                             currentSlide === index
                               ? '2px solid #00BC9A'
-                              : '2px solid transparent',
+                              : '2px solid rgba(0, 0, 0, 0.06)',
                           boxShadow:
                             currentSlide === index
                               ? '0 0 20px rgba(0, 188, 162, 0.4)'
@@ -735,21 +727,14 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                             variant={isMobile ? 'subtitle1' : 'h6'}
                             fontWeight="bold"
                             gutterBottom
-                            color="#f9f9f9"
-                            sx={{
-                              background:
-                                'linear-gradient(90deg, #00BC9A, #00D1AB)',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                              textShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
-                            }}
+                            color="text.primary"
                           >
                             {option.title}
                           </Typography>
                           <Typography
                             variant={isMobile ? 'body2' : 'body1'}
                             paragraph
-                            color="#f9f9f9"
+                            color="text.secondary"
                             sx={{
                               minHeight: isMobile ? '36px' : '48px',
                               fontSize: isMobile ? '0.875rem' : undefined,
@@ -846,10 +831,12 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                                   size={isMobile ? 'small' : 'medium'}
                                   sx={{
                                     color:
-                                      btnIndex === 0 ? '#00BC9A' : '#191919',
+                                      btnIndex === 0
+                                        ? 'primary.dark'
+                                        : '#191919',
                                     borderColor:
                                       btnIndex === 0
-                                        ? '#00BC9A'
+                                        ? 'primary.dark'
                                         : 'transparent',
                                     boxShadow:
                                       btnIndex === 0
@@ -866,7 +853,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                                           : '0 4px 12px rgba(0, 188, 162, 0.5)',
                                       backgroundColor:
                                         btnIndex === 0
-                                          ? 'transparent'
+                                          ? 'rgba(0, 124, 102, 0.08)'
                                           : '#00D1AB',
                                     },
                                     transition: 'all 0.2s ease',
@@ -920,7 +907,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
               position: 'sticky',
               bottom: 0,
               bgcolor: 'background.paper',
-              borderTop: '1px solid rgba(0, 188, 162, 0.2)',
+              borderTop: '1px solid',
+              borderColor: 'divider',
               zIndex: 1100,
               flexDirection: isMobile ? 'column' : 'row',
             }}
@@ -976,8 +964,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                   variant="text"
                   size={isMobile ? 'small' : 'medium'}
                   sx={{
-                    color: '#191919',
-                    ':hover': { background: '#00C49A99' },
+                    color: 'text.primary',
+                    ':hover': { background: 'action.hover' },
                     fontSize: isMobile ? '0.8rem' : undefined,
                   }}
                 >
@@ -995,8 +983,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                   variant="text"
                   size={isMobile ? 'small' : 'medium'}
                   sx={{
-                    color: '#191919',
-                    ':hover': { background: '#00C49A99' },
+                    color: 'text.primary',
+                    ':hover': { background: 'action.hover' },
                     fontSize: isMobile ? '0.8rem' : undefined,
                   }}
                 >

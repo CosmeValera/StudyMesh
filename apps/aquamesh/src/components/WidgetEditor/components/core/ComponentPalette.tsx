@@ -186,7 +186,7 @@ const ComponentPalette = ({
           fontSize: isPhone ? '0.875rem' : undefined,
         }}
       >
-        Building Blocks
+        Edit Building Blocks
       </Typography>
 
       {onboardingActive && onboardingStep === 'choose' && (

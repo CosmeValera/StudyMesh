@@ -1006,12 +1006,12 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                             transition: 'all 0.2s ease',
                             color: isFavorite(template.id)
                               ? '#FFD700'
-                              : 'rgba(255,255,255,0.5)',
+                              : 'text.secondary',
                             '&:hover': {
                               transform: 'scale(1.1)',
                               color: isFavorite(template.id)
                                 ? '#FFD700'
-                                : 'rgba(255,255,255,0.8)',
+                                : 'primary.main',
                             },
                           }}
                         >
@@ -1050,7 +1050,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
 
                       <Typography
                         variant="body2"
-                        color="rgba(255,255,255,0.7)"
+                        color="text.secondary"
                         sx={{
                           display: '-webkit-box',
                           overflow: 'hidden',

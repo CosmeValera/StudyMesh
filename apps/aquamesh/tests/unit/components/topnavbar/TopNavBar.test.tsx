@@ -1,11 +1,12 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import TopNavBar from '../../../../src/components/topnavbar/TopNavBar'
 import * as useTopNavBarWidgetsModule from '../../../../src/customHooks/useTopNavBarWidgets'
 import * as LayoutProviderModule from '../../../../src/components/Layout/LayoutProvider'
 import * as DashboardProviderModule from '../../../../src/components/Dasboard/DashboardProvider'
+import { OPEN_WIDGET_MENU_EVENT } from '../../../../src/customHooks/useWorkspaceActions'
 
 // Mock custom hooks and providers
 vi.mock('../../../../src/customHooks/useTopNavBarWidgets', () => ({
@@ -207,6 +208,23 @@ describe('TopNavBar Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /add widget/i }))
 
     // Check if the menu items appear
+    await waitFor(() => {
+      expect(screen.getByText('Saved Widgets')).toBeInTheDocument()
+      expect(screen.getByText('Example Operations Widgets')).toBeInTheDocument()
+    })
+  })
+
+  it('opens add widget menu from global workspace event', async () => {
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(OPEN_WIDGET_MENU_EVENT))
+    })
+
     await waitFor(() => {
       expect(screen.getByText('Saved Widgets')).toBeInTheDocument()
       expect(screen.getByText('Example Operations Widgets')).toBeInTheDocument()

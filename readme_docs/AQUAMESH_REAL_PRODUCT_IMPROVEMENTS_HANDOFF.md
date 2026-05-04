@@ -13,6 +13,16 @@ The main remaining work is to finish the light theme conversion for dialogs, mod
 - Added `readme_docs/AQUAMESH_REAL_PRODUCT_IMPROVEMENTS_PLAN.md`.
 - This handoff file tracks progress and remaining work.
 
+### Continuation Update - No Dashboard Empty State And Dialog Polish
+
+Implemented in the follow-up session:
+
+- Extracted the Daily Operations dashboard empty state in `apps/aquamesh/src/components/Dasboard/Dashboard.tsx`.
+- Reused that empty state when `openDashboards.length === 0`, so closing every dashboard still shows the same Create Daily Operations widget / View example / Add saved widget actions.
+- Added focused coverage in `apps/aquamesh/tests/unit/components/dashboard/Dashboard.test.tsx`.
+- Converted the main `TutorialModal` cards and body away from dark/gradient surfaces to light paper/default backgrounds with dark text and teal accents.
+- Fixed `TemplateSelectionDialog` template card description and favorite icon colors that were still styled for dark cards.
+
 ### Light Workspace Theme
 
 Mostly completed for the main workspace shell:

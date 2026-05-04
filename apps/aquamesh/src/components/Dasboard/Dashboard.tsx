@@ -119,6 +119,99 @@ const DashboardStorage = {
   },
 }
 
+interface DashboardEmptyStateProps {
+  isAdmin: boolean
+  onCreateWidget: () => void
+  onOpenOperationsExample: () => void
+  onOpenWidgetMenu: () => void
+  onOpenQuickGuide: () => void
+}
+
+const DashboardEmptyState = ({
+  isAdmin,
+  onCreateWidget,
+  onOpenOperationsExample,
+  onOpenWidgetMenu,
+  onOpenQuickGuide,
+}: DashboardEmptyStateProps) => (
+  <Box
+    sx={{
+      minHeight: 'calc(100dvh - 130px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      p: { xs: 2, md: 4 },
+      bgcolor: 'background.default',
+    }}
+  >
+    <Paper
+      elevation={0}
+      sx={{
+        width: 'min(720px, 100%)',
+        p: { xs: 2.5, sm: 4 },
+        borderRadius: 2,
+        border: '1px solid rgba(0, 188, 162, 0.24)',
+        bgcolor: 'rgba(0, 188, 162, 0.06)',
+        color: 'foreground.contrastPrimary',
+        textAlign: 'center',
+      }}
+    >
+      <DashboardCustomizeIcon
+        sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
+      />
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        Build your Daily Operations dashboard
+      </Typography>
+      <Typography
+        variant="body1"
+        sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
+      >
+        Imagine a small operations team tracking orders, delayed tasks, support
+        tickets, and system status. Start by creating one reusable Daily
+        Operations widget, then place it on this dashboard.
+      </Typography>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        justifyContent="center"
+        sx={{ mb: 2 }}
+      >
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<CreateIcon />}
+            onClick={onCreateWidget}
+          >
+            Create your own widget
+          </Button>
+        )}
+        <Button
+          variant="outlined"
+          startIcon={<DashboardCustomizeIcon />}
+          onClick={onOpenOperationsExample}
+        >
+          View Daily Operations example
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<WidgetsIcon />}
+          onClick={onOpenWidgetMenu}
+        >
+          Add saved widget
+        </Button>
+      </Stack>
+      <Button
+        variant="text"
+        startIcon={<ImportContactsIcon />}
+        onClick={onOpenQuickGuide}
+        sx={{ color: 'foreground.contrastPrimary' }}
+      >
+        Open quick guide
+      </Button>
+    </Paper>
+  </Box>
+)
+
 const Dashboards = () => {
   const {
     openDashboards,
@@ -142,6 +235,7 @@ const Dashboards = () => {
   const navigate = useNavigate()
   const { openCreateWidget, openOperationsExample, openWidgetMenu } =
     useWorkspaceActions()
+  const openQuickGuide = () => navigate('/')
 
   // Check if user is admin on component mount
   useEffect(() => {
@@ -395,83 +489,13 @@ const Dashboards = () => {
               >
                 <Box sx={{ position: 'relative', flex: '1' }}>
                   {isEmptyDashboard ? (
-                    <Box
-                      sx={{
-                        minHeight: 'calc(100dvh - 130px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: { xs: 2, md: 4 },
-                        bgcolor: 'background.default',
-                      }}
-                    >
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          width: 'min(720px, 100%)',
-                          p: { xs: 2.5, sm: 4 },
-                          borderRadius: 2,
-                          border: '1px solid rgba(0, 188, 162, 0.24)',
-                          bgcolor: 'rgba(0, 188, 162, 0.06)',
-                          color: 'foreground.contrastPrimary',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <DashboardCustomizeIcon
-                          sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
-                        />
-                        <Typography variant="h5" fontWeight="bold" gutterBottom>
-                          Build your Daily Operations dashboard
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
-                        >
-                          Imagine a small operations team tracking orders,
-                          delayed tasks, support tickets, and system status.
-                          Start by creating one reusable Daily Operations
-                          widget, then place it on this dashboard.
-                        </Typography>
-                        <Stack
-                          direction={{ xs: 'column', sm: 'row' }}
-                          spacing={1.5}
-                          justifyContent="center"
-                          sx={{ mb: 2 }}
-                        >
-                          {isAdmin && (
-                            <Button
-                              variant="contained"
-                              startIcon={<CreateIcon />}
-                              onClick={openCreateWidget}
-                            >
-                              Create Daily Operations widget
-                            </Button>
-                          )}
-                          <Button
-                            variant="outlined"
-                            startIcon={<DashboardCustomizeIcon />}
-                            onClick={openOperationsExample}
-                          >
-                            View Daily Operations example
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            startIcon={<WidgetsIcon />}
-                            onClick={openWidgetMenu}
-                          >
-                            Add saved widget
-                          </Button>
-                        </Stack>
-                        <Button
-                          variant="text"
-                          startIcon={<ImportContactsIcon />}
-                          onClick={() => navigate('/')}
-                          sx={{ color: 'foreground.contrastPrimary' }}
-                        >
-                          Open quick guide
-                        </Button>
-                      </Paper>
-                    </Box>
+                    <DashboardEmptyState
+                      isAdmin={isAdmin}
+                      onCreateWidget={openCreateWidget}
+                      onOpenOperationsExample={openOperationsExample}
+                      onOpenWidgetMenu={openWidgetMenu}
+                      onOpenQuickGuide={openQuickGuide}
+                    />
                   ) : (
                     <DashboardLayoutView
                       layout={dashboard.layout}
@@ -491,6 +515,16 @@ const Dashboards = () => {
           )
         })}
       </Tabs>
+
+      {openDashboards.length === 0 && (
+        <DashboardEmptyState
+          isAdmin={isAdmin}
+          onCreateWidget={openCreateWidget}
+          onOpenOperationsExample={openOperationsExample}
+          onOpenWidgetMenu={openWidgetMenu}
+          onOpenQuickGuide={openQuickGuide}
+        />
+      )}
 
       {/* Save Dashboard Dialog */}
       <Dialog

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   AppBar,
   Box,
@@ -49,6 +49,7 @@ interface ButtonWithLabelProps {
   icon: React.ReactNode
   label: string
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void
+  buttonRef?: React.Ref<HTMLButtonElement>
   sx?: React.CSSProperties | Record<string, unknown>
   'data-tutorial-id'?: string
   title?: string
@@ -58,11 +59,13 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   icon,
   label,
   onClick,
+  buttonRef,
   sx,
   ...props
 }) => {
   return (
     <Button
+      ref={buttonRef}
       onClick={onClick}
       sx={{
         color: 'foreground.contrastPrimary',
@@ -92,6 +95,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const [widgetsAnchorEl, setWidgetsAnchorEl] = useState<null | HTMLElement>(
     null,
   )
+  const widgetsButtonRef = useRef<HTMLButtonElement | null>(null)
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [userData, setUserData] = useState<UserData>({
     id: 'admin',
@@ -138,7 +142,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
   useEffect(() => {
     const handleOpenWidgetMenu = () => {
-      setWidgetsAnchorEl(document.body)
+      setWidgetsAnchorEl(widgetsButtonRef.current)
     }
 
     window.addEventListener(OPEN_WIDGET_MENU_EVENT, handleOpenWidgetMenu)
@@ -228,10 +232,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 icon={<WidgetsIcon />}
                 label={isPhone ? 'Add' : 'Add Widget'}
                 onClick={handleWidgetsMenuOpen}
+                buttonRef={widgetsButtonRef}
                 data-tutorial-id="widgets-button"
               />
             ) : (
               <Button
+                ref={widgetsButtonRef}
                 onClick={handleWidgetsMenuOpen}
                 sx={{
                   color: 'foreground.contrastPrimary',

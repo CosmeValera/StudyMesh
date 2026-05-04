@@ -180,7 +180,7 @@ const AquaMeshLanding = () => {
                 onClick={() => openWorkspace('create-widget')}
                 sx={{ borderRadius: 1, textTransform: 'none' }}
               >
-                Create Daily Operations widget
+                Create your own widget
               </Button>
               <Button
                 variant="outlined"
