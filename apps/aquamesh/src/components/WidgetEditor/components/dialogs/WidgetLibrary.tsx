@@ -280,7 +280,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                placeholder="Search saved widgets by name..."
+                placeholder="Search saved widgets by name or purpose..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 variant="outlined"
@@ -333,13 +333,13 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 disabled={isLoading}
               >
                 <InputLabel id="sort-by-label" sx={{ color: 'text.secondary' }}>
-                  Sort By
+                  Sort Widgets
                 </InputLabel>
                 <Select
                   labelId="sort-by-label"
                   value={sortBy}
                   onChange={handleSortChange}
-                  label="Sort By"
+                  label="Sort Widgets"
                   startAdornment={
                     <InputAdornment position="start">
                       <SortIcon sx={{ color: 'text.secondary' }} />
@@ -361,10 +361,10 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 >
                   <MenuItem value="nameAsc">Name (A-Z)</MenuItem>
                   <MenuItem value="nameDesc">Name (Z-A)</MenuItem>
-                  <MenuItem value="dateNewest">Date (Newest First)</MenuItem>
-                  <MenuItem value="dateOldest">Date (Oldest First)</MenuItem>
-                  <MenuItem value="mostComponents">Most Blocks</MenuItem>
-                  <MenuItem value="fewestComponents">Fewest Blocks</MenuItem>
+                  <MenuItem value="dateNewest">Newest First</MenuItem>
+                  <MenuItem value="dateOldest">Oldest First</MenuItem>
+                  <MenuItem value="mostComponents">Most Items</MenuItem>
+                  <MenuItem value="fewestComponents">Fewest Items</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

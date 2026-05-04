@@ -242,17 +242,17 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
                 fontSize: isMobile ? '0.65rem' : undefined 
               }}
             >
-              <span>Style: {borderStyle}</span>
+              <span>Outline: {borderStyle}</span>
               {Boolean(padding) && (
                 <>
                   <span>•</span>
-                  <span>Padding: {padding}</span>
+                  <span>Inside space: {padding}</span>
                 </>
               )}
               {Boolean(collapsed) && (
                 <>
                   <span>•</span>
-                  <span>Initially Collapsed</span>
+                  <span>Starts closed</span>
                 </>
               )}
             </Typography>
@@ -279,8 +279,8 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
               onChange={(e) => handleChange('legend', e.target.value)}
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  Legend
-                  <Tooltip title="Text label that appears at the top of the fieldset">
+                  Group Title
+                  <Tooltip title="Heading shown at the top of this group.">
                     <InfoOutlinedIcon fontSize={isMobile ? "small" : "medium"} sx={{ ml: 0.5 }} />
                   </Tooltip>
                 </Box>
@@ -298,14 +298,14 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
           
           <Grid item xs={12}>
             <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Icon Position</InputLabel>
+              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Icon Side</InputLabel>
               <Select
                 value={iconPosition}
                 onChange={(e) => {
                   setIconPosition(e.target.value)
                   handleChange('iconPosition', e.target.value)
                 }}
-                label="Icon Position"
+                label="Icon Side"
                 sx={{
                   '& .MuiSelect-select': { 
                     fontSize: isMobile ? '0.875rem' : undefined 
@@ -332,7 +332,7 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
               }
               label={
                 <Typography sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>
-                  Initially Collapsed
+                  Starts closed
                 </Typography>
               }
             />
@@ -352,7 +352,7 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
               }
               label={
                 <Typography sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>
-                  Use Animation
+                  Animate Open and Close
                 </Typography>
               }
             />
@@ -365,14 +365,14 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
         <Grid container spacing={isMobile ? 1 : 2}>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Border Style</InputLabel>
+              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Outline Style</InputLabel>
               <Select
                 value={borderStyle}
                 onChange={(e) => {
                   setBorderStyle(e.target.value)
                   handleChange('borderStyle', e.target.value)
                 }}
-                label="Border Style"
+                label="Outline Style"
                 sx={{
                   '& .MuiSelect-select': { 
                     fontSize: isMobile ? '0.875rem' : undefined 
@@ -393,7 +393,7 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
               gutterBottom
               sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
             >
-              Border Radius
+              Corner Roundness
             </Typography>
             <Slider
               value={borderRadius}
@@ -426,7 +426,7 @@ const FieldSetEditor: React.FC<FieldSetEditorProps> = ({ props, onChange }) => {
               gutterBottom
               sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
             >
-              Padding
+              Space Around the Inside
             </Typography>
             <Slider
               value={padding}

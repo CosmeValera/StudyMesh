@@ -8,40 +8,40 @@ import GridViewIcon from '@mui/icons-material/GridView'
 import PieChartIcon from '@mui/icons-material/PieChart'
 import { ComponentType } from '../types/types'
 
-// Types of components that can be added to the widget
+// Building blocks that can be added to a widget.
 export const COMPONENT_TYPES: ComponentType[] = [
-  // UI Components
+  // Content and Controls
   {
     type: 'Label',
-    label: 'Text Label',
-    defaultProps: { text: 'Label Text' },
-    category: 'UI Components',
+    label: 'Display Text',
+    defaultProps: { text: 'Display Text' },
+    category: 'Content and Controls',
     icon: TextFieldsIcon,
-    tooltip: 'Adds a static text label to display information'
+    tooltip: 'Shows a short piece of text, such as a title, status, or note.'
   },
   {
     type: 'TextField',
-    label: 'Text Field',
-    defaultProps: { label: 'Text Field', placeholder: 'Enter text...', defaultValue: '' },
-    category: 'UI Components',
+    label: 'Answer Box',
+    defaultProps: { label: 'Answer Box', placeholder: 'Enter text...', defaultValue: '' },
+    category: 'Content and Controls',
     icon: InputIcon,
-    tooltip: 'Adds an input field for user text entry'
+    tooltip: 'Lets someone type a value, note, or answer into the widget.'
   },
   {
     type: 'Button',
     label: 'Button',
-    defaultProps: { text: 'Button', variant: 'contained', showToast: true, toastMessage: 'Button clicked!', toastSeverity: 'info' },
-    category: 'UI Components',
+    defaultProps: { text: 'Button', variant: 'contained', showToast: true, toastMessage: 'Action completed!', toastSeverity: 'info' },
+    category: 'Content and Controls',
     icon: SmartButtonIcon,
-    tooltip: 'Adds a clickable button that can trigger actions like showing notifications'
+    tooltip: 'Adds a button for actions like confirming a step, opening a link, or showing a message.'
   },
   {
     type: 'SwitchEnable',
     label: 'Switch',
     defaultProps: { label: 'Switch', defaultChecked: false },
-    category: 'UI Components',
+    category: 'Content and Controls',
     icon: ToggleOnIcon,
-    tooltip: 'Adds an on/off toggle switch for boolean settings'
+    tooltip: 'Adds a simple on/off choice, such as Enabled, Open, or Needs review.'
   },
   {
     type: 'Chart',
@@ -68,23 +68,23 @@ export const COMPONENT_TYPES: ComponentType[] = [
         ]
       }`
     },
-    category: 'UI Components',
+    category: 'Content and Controls',
     icon: PieChartIcon,
-    tooltip: 'Adds a pie chart visualization with JSON data'
+    tooltip: 'Shows a pie chart for simple breakdowns, such as ticket types or incident causes.'
   },
   
-  // Layout Containers
+  // Layout Helpers
   {
     type: 'FieldSet',
-    label: 'Field Set',
-    defaultProps: { legend: 'Field Set', collapsed: false },
-    category: 'Layout Containers',
+    label: 'Grouped Section',
+    defaultProps: { legend: 'Grouped Section', collapsed: false },
+    category: 'Layout Helpers',
     icon: ViewQuiltIcon,
-    tooltip: 'Creates a collapsible container that can be toggled open/closed to organize related components'
+    tooltip: 'Groups related items under one heading. It can be opened or collapsed.'
   },
   {
     type: 'FlexBox',
-    label: 'Flex Container',
+    label: 'Row or Column Group',
     defaultProps: { 
       direction: 'row', 
       justifyContent: 'flex-start', 
@@ -92,21 +92,21 @@ export const COMPONENT_TYPES: ComponentType[] = [
       spacing: 0,
       wrap: 'wrap'
     },
-    category: 'Layout Containers',
+    category: 'Layout Helpers',
     icon: FlexibleIcon,
-    tooltip: 'Creates a flexible layout container using CSS Flexbox for responsive positioning of components'
+    tooltip: 'Places items next to each other or stacks them, with simple spacing controls.'
   },
   {
     type: 'GridBox',
-    label: 'Grid Container',
+    label: 'Grid Group',
     defaultProps: { 
       columns: 2, 
       rows: 1,
       spacing: 2
     },
-    category: 'Layout Containers',
+    category: 'Layout Helpers',
     icon: GridViewIcon,
-    tooltip: 'Creates a grid layout container for organizing components in rows and columns'
+    tooltip: 'Arranges items into clear columns, like cards on a dashboard.'
   },
 ]
 

@@ -427,7 +427,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               value={templateDescription}
               onChange={(e) => setTemplateDescription(e.target.value)}
               sx={{ mb: 3 }}
-              placeholder="Describe what this template is for or how it should be used (e.g., 'A dashboard layout with three metric panels and a chart')"
+              placeholder="Describe what this template is for or how it should be used (e.g., 'A support queue overview with tickets, status, and a chart')"
               InputProps={{
                 sx: {
                   borderRadius: 1.5,
@@ -649,9 +649,9 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                               : sortOption === 'name_desc'
                                 ? 'Name (Z-A)'
                                 : sortOption === 'components_asc'
-                                  ? 'Components (Low-High)'
+                                  ? 'Fewest Items'
                                   : sortOption === 'components_desc'
-                                    ? 'Components (High-Low)'
+                                    ? 'Most Items'
                                     : '')}
                     </Button>
                   </Tooltip>
@@ -787,7 +787,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                     : 'inherit',
               }}
             >
-              <ListItemText>Components (High-Low)</ListItemText>
+              <ListItemText>Most Items</ListItemText>
             </MenuItem>
             <MenuItem
               onClick={() => handleSortOptionChange('components_asc')}
@@ -799,7 +799,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                     : 'inherit',
               }}
             >
-              <ListItemText>Components (Low-High)</ListItemText>
+              <ListItemText>Fewest Items</ListItemText>
             </MenuItem>
           </Menu>
 
@@ -1092,7 +1092,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                           )
                         })}
                         <Chip
-                          label={`${template.components?.length || 0} components`}
+                          label={`${template.components?.length || 0} items`}
                           size="small"
                           color="primary"
                           sx={{

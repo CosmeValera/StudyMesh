@@ -84,14 +84,14 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
           p: isMobile ? 1 : 2
         }}>
           <TextField
-            label={props.label as string || 'Label'}
-            placeholder={props.placeholder as string || 'Placeholder'}
+            label={props.label as string || 'Field Label'}
+            placeholder={props.placeholder as string || 'Example answer'}
             defaultValue={props.defaultValue as string || ''}
             variant={(props.variant as 'outlined' | 'filled' | 'standard') || 'outlined'}
             size={(props.size as 'small' | 'medium') || 'medium'}
             required={Boolean(props.required)}
             error={Boolean(props.error)}
-            helperText={props.error ? (props.errorText as string || 'Error text') : (props.helperText as string || '')}
+            helperText={props.error ? (props.errorText as string || 'Problem message') : (props.helperText as string || '')}
             fullWidth
             disabled={Boolean(props.disabled)}
             type={props.type as string || 'text'}
@@ -220,7 +220,7 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
         <Grid container spacing={isMobile ? 1 : 2}>
           <Grid item xs={12}>
             <TextField
-              label="Field Label"
+              label="Question or Field Name"
               fullWidth
               size={isMobile ? "small" : "medium"}
               onFocus={(e) => { e.target.select() }}
@@ -239,7 +239,7 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
           
           <Grid item xs={12} sm={6}>
             <TextField
-              label="Placeholder Text"
+              label="Example Text"
               fullWidth
               size={isMobile ? "small" : "medium"}
               onFocus={(e) => { e.target.select() }}
@@ -258,7 +258,7 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
           
           <Grid item xs={12} sm={6}>
             <TextField
-              label="Default Value"
+              label="Pre-filled Answer"
               fullWidth
               size={isMobile ? "small" : "medium"}
               onFocus={(e) => { e.target.select() }}
@@ -277,10 +277,10 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
           
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Input Type</InputLabel>
+              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Expected Answer Type</InputLabel>
               <Select
                 value={type}
-                label="Input Type"
+                label="Expected Answer Type"
                 onChange={(e) => {
                   setType(e.target.value)
                   handleChange('type', e.target.value)
@@ -306,10 +306,10 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
         <Grid container spacing={isMobile ? 1 : 2}>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Variant</InputLabel>
+              <InputLabel sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Display Style</InputLabel>
               <Select
                 value={variant}
-                label="Variant"
+                label="Display Style"
                 onChange={(e) => {
                   setVariant(e.target.value)
                   handleChange('variant', e.target.value)
@@ -318,9 +318,9 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
                   '& .MuiSelect-select': { fontSize: isMobile ? '0.875rem' : undefined }
                 }}
               >
-                <MenuItem value="outlined" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Outlined</MenuItem>
-                <MenuItem value="filled" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Filled</MenuItem>
-                <MenuItem value="standard" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Standard</MenuItem>
+                <MenuItem value="outlined" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Box Outline</MenuItem>
+                <MenuItem value="filled" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Filled Background</MenuItem>
+                <MenuItem value="standard" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Simple Line</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -412,7 +412,7 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
               <Grid item xs={12} sm={6}>
                 {Boolean(props.error) && (
                   <TextField
-                    label="Error Text"
+                    label="Problem Message"
                     fullWidth
                     value={(props.errorText as string) || ''}
                     onChange={(e) => handleChange('errorText', e.target.value)}
@@ -467,7 +467,7 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
             
             {hasStartAdornment && (
               <TextField
-                label="Start Adornment Text"
+                label="Text Before the Answer"
                 fullWidth
                 value={(props.startAdornmentText as string) || '$'}
                 onChange={(e) => handleChange('startAdornmentText', e.target.value)}
@@ -509,7 +509,7 @@ const TextFieldEditor: React.FC<TextFieldEditorProps> = ({ props, onChange }) =>
             
             {hasEndAdornment && (
               <TextField
-                label="End Adornment Text"
+                label="Text After the Answer"
                 fullWidth
                 value={(props.endAdornmentText as string) || 'kg'}
                 onChange={(e) => handleChange('endAdornmentText', e.target.value)}

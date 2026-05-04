@@ -291,7 +291,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                   fontSize: isMobile ? '0.65rem' : undefined
                 }}
               >
-                Click Action:
+                What Happens When Clicked:
               </Typography>
               {props.clickAction === 'toast' && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -309,7 +309,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               {props.clickAction === 'openUrl' && props.url && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ fontSize: isMobile ? '0.65rem' : undefined }}>
-                    Open URL: {props.url}
+                    Open Link: {props.url}
                   </Typography>
                   <OpenInNewIcon sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem', color: 'text.secondary' }} />
                 </Box>
@@ -407,7 +407,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Button Text"
+              label="Button Label"
               onFocus={(e) => { e.target.select() }}
               value={props.text || ''}
               onChange={(e) => handleChange('text', e.target.value)}
@@ -440,12 +440,12 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
           
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
             <FormControl fullWidth margin="dense" size={isMobile ? "small" : "medium"} variant="outlined">
-              <InputLabel id="button-variant-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Variant</InputLabel>
+              <InputLabel id="button-variant-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Button Style</InputLabel>
               <Select
                 labelId="button-variant-label"
                 value={props.variant || 'contained'}
                 onChange={(e) => handleChange('variant', e.target.value)}
-                label="Variant"
+                label="Button Style"
                 sx={{
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'rgba(0, 0, 0, 0.23)',
@@ -466,8 +466,8 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                   },
                 }}
               >
-                <MenuItem value="contained" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Contained</MenuItem>
-                <MenuItem value="outlined" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Outlined</MenuItem>
+                <MenuItem value="contained" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Filled</MenuItem>
+                <MenuItem value="outlined" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Outline</MenuItem>
                 <MenuItem value="text" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Text</MenuItem>
               </Select>
             </FormControl>
@@ -662,7 +662,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                     onChange={(e) => handleChange('showStartIcon', e.target.checked)}
                   />
                 }
-                label="Show Start Icon"
+                label="Show Icon Before Text"
                 sx={{ color: '#191919' }}
               />
               </Box>
@@ -677,7 +677,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                     onChange={(e) => handleChange('showEndIcon', e.target.checked)}
                   />
                 }
-                label="Show End Icon"
+                label="Show Icon After Text"
                 sx={{ color: '#191919' }}
               />
             </Box>
@@ -718,12 +718,12 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <FormControl fullWidth margin="dense" size="small" variant="outlined">
-              <InputLabel id="click-action-label">Click Action</InputLabel>
+              <InputLabel id="click-action-label">What Happens When Clicked</InputLabel>
               <Select
                 labelId="click-action-label"
                 value={props.clickAction || 'none'}
                 onChange={(e) => handleChange('clickAction', e.target.value)}
-                label="Click Action"
+                label="What Happens When Clicked"
                 sx={{
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'rgba(0, 0, 0, 0.23)',
@@ -742,8 +742,8 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                   },
                 }}
               >
-                <MenuItem value="toast">Show Toast</MenuItem>
-                <MenuItem value="openUrl">Open URL</MenuItem>
+                <MenuItem value="toast">Show Message</MenuItem>
+                <MenuItem value="openUrl">Open Link</MenuItem>
                 <MenuItem value="none">None</MenuItem>
               </Select>
             </FormControl>
@@ -754,13 +754,13 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Toast Message"
+                  label="Message to Show"
                   value={props.toastMessage || ''}
                   onChange={(e) => handleChange('toastMessage', e.target.value)}
                   variant="outlined"
                   margin="dense"
                   size={isMobile ? "small" : "medium"}
-                  placeholder="Button clicked successfully!"
+                  placeholder="Action completed successfully!"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '& fieldset': {
@@ -786,12 +786,12 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               </Grid>
               <Grid item xs={12}>
                 <FormControl fullWidth margin="dense" size={isMobile ? "small" : "medium"} variant="outlined">
-                  <InputLabel id="toast-severity-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Toast Severity</InputLabel>
+                  <InputLabel id="toast-severity-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Message Type</InputLabel>
                   <Select
                     labelId="toast-severity-label"
                     value={props.toastSeverity || 'info'}
                     onChange={(e) => handleChange('toastSeverity', e.target.value)}
-                    label="Toast Severity"
+                    label="Message Type"
                     sx={{
                       '& .MuiOutlinedInput-notchedOutline': {
                         borderColor: 'rgba(0, 0, 0, 0.23)',
@@ -826,7 +826,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="URL"
+                label="Link to Open"
                 value={props.url || ''}
                 onChange={(e) => handleChange('url', e.target.value)}
                 variant="outlined"
