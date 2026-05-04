@@ -77,7 +77,7 @@ const ComponentPalette = ({
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
-  const drawerWidth = isPhone ? 130 : isTablet ? 220 : 250
+  const drawerWidth = isPhone ? '100%' : isTablet ? 220 : 250
 
   // Group component types by category - memoized to prevent recalculation on each render
   const groupedComponents = useMemo(() => groupByCategory(COMPONENT_TYPES), [])
@@ -158,14 +158,16 @@ const ComponentPalette = ({
     <Box
       sx={{
         width: drawerWidth,
-        minWidth: drawerWidth,
+        minWidth: isPhone ? 0 : drawerWidth,
         maxWidth: drawerWidth,
-        flex: `0 0 ${drawerWidth}px`,
+        flex: isPhone ? '0 0 auto' : `0 0 ${drawerWidth}px`,
         bgcolor: '#FFFFFF',
-        borderRight: 1,
+        borderRight: { xs: 0, sm: 1 },
+        borderBottom: { xs: 1, sm: 0 },
         borderColor: 'divider',
-        height: '100%',
-        overflow: 'auto',
+        height: { xs: 'auto', sm: '100%' },
+        maxHeight: { xs: 236, sm: 'none' },
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -285,7 +287,8 @@ const ComponentPalette = ({
           overflowY: 'auto',
           flexGrow: 1,
           pt: 0,
-          overflowX: 'hidden',
+          overflowX: isPhone ? 'auto' : 'hidden',
+          pb: isPhone ? 0.5 : 0,
           '& .MuiListSubheader-root': {
             py: isPhone ? 0.5 : 1,
           },
@@ -337,7 +340,17 @@ const ComponentPalette = ({
               </ListSubheader>
 
               <Collapse in={expandedCategories[category]} timeout="auto">
-                <Box sx={{ px: isPhone ? 0.5 : 1, pt: isPhone ? 0.5 : 1 }}>
+                <Box
+                  sx={{
+                    px: isPhone ? 0.5 : 1,
+                    pt: isPhone ? 0.5 : 1,
+                    display: isPhone ? 'flex' : 'block',
+                    gap: isPhone ? 0.75 : 0,
+                    overflowX: isPhone ? 'auto' : 'visible',
+                    scrollSnapType: isPhone ? 'x proximity' : 'none',
+                    WebkitOverflowScrolling: 'touch',
+                  }}
+                >
                   {components.map((component) => (
                     <ComponentPaletteItem
                       key={component.type}

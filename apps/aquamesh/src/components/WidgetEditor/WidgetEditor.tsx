@@ -648,7 +648,7 @@ const WidgetEditor: React.FC<{
             sx={{
               flex: viewMode === 'both' ? '1 1 50%' : '1 1 auto',
               minWidth: 0,
-              minHeight: 0,
+              minHeight: { xs: viewMode === 'both' ? 360 : 0, md: 0 },
               display: 'flex',
             }}
           >
@@ -693,7 +693,7 @@ const WidgetEditor: React.FC<{
             sx={{
               flex: viewMode === 'both' ? '1 1 50%' : '1 1 auto',
               minWidth: 0,
-              minHeight: viewMode === 'both' ? { xs: 360, md: 0 } : 0,
+              minHeight: viewMode === 'both' ? { xs: 260, md: 0 } : 0,
               borderLeft: { xs: 0, md: viewMode === 'both' ? 1 : 0 },
               borderTop: { xs: viewMode === 'both' ? 1 : 0, md: 0 },
               borderColor: 'divider',

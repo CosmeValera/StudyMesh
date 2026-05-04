@@ -108,7 +108,14 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
   }
   
   return (
-    <Box key={component.type} sx={{ mb: isPhone ? 0.5 : 1 }}>
+    <Box
+      key={component.type}
+      sx={{
+        mb: isPhone ? 0 : 1,
+        flex: isPhone ? '0 0 128px' : 'initial',
+        scrollSnapAlign: isPhone ? 'start' : 'none',
+      }}
+    >
       <TooltipStyled
         title={showTooltips ? component.tooltip || '' : ''}
         placement="right"
@@ -125,6 +132,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
           onTouchCancel={handleTouchEnd}
           sx={{
             p: isPhone ? 0.75 : 1.5,
+            minHeight: isPhone ? 44 : 'auto',
             display: 'flex',
             alignItems: 'center',
             cursor: 'grab',
@@ -160,6 +168,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
               flexGrow: 1,
               pr: isPhone ? 2 : 0, // Add padding if there's an add button
               fontSize: isPhone ? '0.7rem' : undefined,
+              lineHeight: isPhone ? 1.15 : undefined,
             }}
           >
             {component.label}
