@@ -91,16 +91,16 @@ describe('EditorCanvas first-widget guide', () => {
       screen.getByText('Build a Daily Operations widget'),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /start from daily operations/i }),
+      screen.getByRole('button', { name: /daily operations template/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add tickets chart/i }),
+      screen.getByRole('button', { name: /tickets chart/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add status text/i }),
+      screen.getByRole('button', { name: /status text/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add team note/i }),
+      screen.getByRole('button', { name: /team note/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /browse templates/i }),
@@ -111,11 +111,11 @@ describe('EditorCanvas first-widget guide', () => {
     const props = renderEditorCanvas()
 
     fireEvent.click(
-      screen.getByRole('button', { name: /start from daily operations/i }),
+      screen.getByRole('button', { name: /daily operations template/i }),
     )
-    fireEvent.click(screen.getByRole('button', { name: /add tickets chart/i }))
-    fireEvent.click(screen.getByRole('button', { name: /add status text/i }))
-    fireEvent.click(screen.getByRole('button', { name: /add team note/i }))
+    fireEvent.click(screen.getByRole('button', { name: /tickets chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /status text/i }))
+    fireEvent.click(screen.getByRole('button', { name: /team note/i }))
     fireEvent.click(screen.getByRole('button', { name: /browse templates/i }))
 
     expect(props.onStartOperationsWidget).toHaveBeenCalledTimes(1)

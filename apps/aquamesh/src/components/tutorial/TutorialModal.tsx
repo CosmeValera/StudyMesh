@@ -34,7 +34,7 @@ const placeholderImages = {
   dashboardWidgetExplanation: '/images/understanding_dashboards.png',
   predefinedDashboards: `/images/dashboards_topnavbar.png`,
   predefinedWidgets: `/images/widgets_topnavbar.png`,
-  customWidgetCreation: `/images/widget_editor.png`,
+  customWidgetCreation: `/images/widget_builder_overview.svg`,
 }
 
 // Define interfaces for the tutorial options
@@ -132,29 +132,17 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
       description:
         'Open Create Widget and build a reusable summary for orders today, delayed tasks, support tickets, and system status.',
       icon: <CreateIcon fontSize="large" color="primary" />,
-      buttonText: 'Open Create Widget',
+      buttonText: 'Start building',
       image: placeholderImages.customWidgetCreation,
-      hasMultipleButtons: true,
-      buttons: [
-        {
-          text: 'Quick Start',
-          action: () => {
-            setWidgetEditorModalOpen(true)
-          },
-        },
-        {
-          text: 'Open Create Widget',
-          action: () => {
-            onClose()
-            const createWidgetButton = document.querySelector(
-              '[data-tutorial-id="create-widget-button"]',
-            )
-            if (createWidgetButton) {
-              ;(createWidgetButton as HTMLElement).click()
-            }
-          },
-        },
-      ],
+      action: () => {
+        onClose()
+        const createWidgetButton = document.querySelector(
+          '[data-tutorial-id="create-widget-button"]',
+        )
+        if (createWidgetButton) {
+          ;(createWidgetButton as HTMLElement).click()
+        }
+      },
     })
   } else {
     options.push({
@@ -240,16 +228,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   )
 
   // Determine which slides to display based on device and user role
-  let displayOptions = options
-  if (isMobile) {
-    if (isAdmin) {
-      // On mobile for admin: show only the first and last slides
-      displayOptions = [options[0], options[options.length - 1]]
-    } else {
-      // On mobile for non-admin: show only the first slide
-      displayOptions = [options[0]]
-    }
-  }
+  const displayOptions = [options[0]]
 
   // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
