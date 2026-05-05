@@ -159,8 +159,9 @@ const DashboardEmptyState = ({
         width: 'min(720px, 100%)',
         p: { xs: 2.5, sm: 4 },
         borderRadius: 2,
-        border: '1px solid rgba(0, 188, 162, 0.24)',
-        bgcolor: 'rgba(0, 188, 162, 0.06)',
+        border: '1px solid',
+        borderColor: 'primary.light',
+        bgcolor: 'background.accentSurface',
         color: 'foreground.contrastPrimary',
         textAlign: 'center',
       }}
@@ -231,9 +232,10 @@ const DashboardOnboardingCoach = ({
         width: { xs: 'auto', sm: 420 },
         p: { xs: 1.25, sm: 1.5 },
         borderRadius: 2,
-        border: '1px solid rgba(0, 188, 162, 0.36)',
-        bgcolor: 'rgba(0, 66, 50, 0.96)',
-        color: 'primary.contrastText',
+        border: '1px solid',
+        borderColor: 'primary.light',
+        bgcolor: 'background.accentSoft',
+        color: 'text.primary',
       }}
     >
       <Stack spacing={1}>
@@ -251,7 +253,7 @@ const DashboardOnboardingCoach = ({
         </Typography>
         <Typography
           variant="body2"
-          sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
+          sx={{ color: 'text.secondary', lineHeight: 1.45 }}
         >
           {isCompleteStep
             ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards. You’ll be able to find your saved dashboard “${dashboardName}” inside the ${dashboardMenuName} menu.`

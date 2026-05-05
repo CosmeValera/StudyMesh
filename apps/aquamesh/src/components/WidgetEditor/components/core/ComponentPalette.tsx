@@ -196,10 +196,11 @@ const ComponentPalette = ({
           sx={{
             m: isPhone ? 0.75 : 1,
             p: isPhone ? 1 : 1.25,
-            border: '1px solid rgba(0, 188, 162, 0.45)',
+            border: '1px solid',
+            borderColor: 'primary.light',
             borderRadius: 1,
-            bgcolor: 'rgba(0, 188, 162, 0.12)',
-            boxShadow: '0 0 0 3px rgba(0, 188, 162, 0.08)',
+            bgcolor: 'background.accentSoft',
+            boxShadow: (theme) => `0 0 0 3px ${theme.palette.action.hover}`,
           }}
         >
           <Typography
@@ -233,7 +234,7 @@ const ComponentPalette = ({
         <Box
           sx={{
             p: isPhone ? 0.75 : 1,
-            bgcolor: 'rgba(0, 188, 162, 0.1)',
+            bgcolor: 'background.accentSurface',
             borderBottom: 1,
             borderColor: 'divider',
             display: 'flex',
@@ -255,7 +256,7 @@ const ComponentPalette = ({
             <TargetIcon
               fontSize="small"
               sx={{
-                color: '#00C49A',
+                color: 'primary.light',
                 fontSize: isPhone ? '0.875rem' : undefined,
               }}
             />

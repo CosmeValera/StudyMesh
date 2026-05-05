@@ -41,6 +41,12 @@ describe('accent color tokens', () => {
       document.documentElement.style.getPropertyValue('--primary-light'),
     ).toBe(accent.light)
     expect(
+      document.documentElement.style.getPropertyValue('--accent-soft'),
+    ).toBe(accent.soft)
+    expect(
+      document.documentElement.style.getPropertyValue('--accent-surface'),
+    ).toBe(accent.surface)
+    expect(
       document.documentElement.style.getPropertyValue('--action-hover'),
     ).toBe(`${accent.light}1F`)
   })

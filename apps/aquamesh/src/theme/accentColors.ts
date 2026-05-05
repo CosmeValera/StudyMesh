@@ -13,6 +13,8 @@ export interface AccentColorOption {
   light: string
   dark: string
   contrastText: string
+  soft: string
+  surface: string
 }
 
 export const ACCENT_COLOR_STORAGE_KEY = 'aquamesh-accent-color'
@@ -25,6 +27,8 @@ export const accentColorOptions: AccentColorOption[] = [
     light: '#00C49A',
     dark: '#005A49',
     contrastText: '#FFFFFF',
+    soft: '#E2F7F2',
+    surface: '#F0FBF8',
   },
   {
     id: 'blue',
@@ -33,6 +37,8 @@ export const accentColorOptions: AccentColorOption[] = [
     light: '#42A5F5',
     dark: '#0D47A1',
     contrastText: '#FFFFFF',
+    soft: '#E3F2FD',
+    surface: '#F1F8FF',
   },
   {
     id: 'purple',
@@ -41,6 +47,8 @@ export const accentColorOptions: AccentColorOption[] = [
     light: '#BA68C8',
     dark: '#4A148C',
     contrastText: '#FFFFFF',
+    soft: '#F3E5F5',
+    surface: '#FBF4FC',
   },
   {
     id: 'orange',
@@ -49,6 +57,8 @@ export const accentColorOptions: AccentColorOption[] = [
     light: '#FFB74D',
     dark: '#E65100',
     contrastText: '#FFFFFF',
+    soft: '#FFF3E0',
+    surface: '#FFF9F0',
   },
   {
     id: 'rose',
@@ -57,6 +67,8 @@ export const accentColorOptions: AccentColorOption[] = [
     light: '#F06292',
     dark: '#880E4F',
     contrastText: '#FFFFFF',
+    soft: '#FCE4EC',
+    surface: '#FFF3F7',
   },
   {
     id: 'slate',
@@ -65,6 +77,8 @@ export const accentColorOptions: AccentColorOption[] = [
     light: '#90A4AE',
     dark: '#263238',
     contrastText: '#FFFFFF',
+    soft: '#ECEFF1',
+    surface: '#F7F9FA',
   },
 ]
 
@@ -106,6 +120,8 @@ export const applyAccentCssVariables = (accent: AccentColorOption) => {
   root.style.setProperty('--secondary-main', accent.main)
   root.style.setProperty('--secondary-light', accent.light)
   root.style.setProperty('--secondary-dark', accent.dark)
+  root.style.setProperty('--accent-soft', accent.soft)
+  root.style.setProperty('--accent-surface', accent.surface)
   root.style.setProperty('--action-active', `${accent.light}33`)
   root.style.setProperty('--action-hover', `${accent.light}1F`)
   root.style.setProperty('--action-selected', `${accent.light}24`)
