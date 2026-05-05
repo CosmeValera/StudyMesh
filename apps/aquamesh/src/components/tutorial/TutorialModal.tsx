@@ -128,9 +128,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   // Create Widget is the primary path for builder users.
   if (isAdmin) {
     options.push({
-      title: 'Create a Daily Operations widget',
+      title: 'Create your first reusable widget',
       description:
-        'Open Create Widget and build a reusable summary for orders today, delayed tasks, support tickets, and system status.',
+        'Open Create Widget and build something concrete: an operations summary, architecture site review, lab observation log, or task tracker.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'Start building',
       image: placeholderImages.customWidgetCreation,
@@ -146,9 +146,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     })
   } else {
     options.push({
-      title: 'Create a Daily Operations widget',
+      title: 'Create your first reusable widget',
       description:
-        'The recommended path is to create a reusable Daily Operations widget first, then add it to a dashboard. Builder mode is required to save widgets.',
+        'The recommended path is to create one reusable widget for a real use case, then add it to a dashboard. Builder mode is required to save widgets.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'View Quick Start',
       image: placeholderImages.customWidgetCreation,
@@ -162,7 +162,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     {
       title: 'Use the widget in a dashboard',
       description:
-        'After saving, open Add Widget, choose the saved Daily Operations widget, and place it into the current dashboard.',
+        'After saving, open Add Widget, choose your saved widget, and place it into the current dashboard.',
       icon: <DashboardIcon fontSize="large" color="primary" />,
       image: placeholderImages.predefinedWidgets,
       hasMultipleButtons: true,
@@ -190,7 +190,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     {
       title: 'View an example dashboard',
       description:
-        'Use the dashboard menu only when you want inspiration from a finished layout. The recommended first step is still Create Widget.',
+        'Use the dashboard menu when you want inspiration from a finished layout. Daily Operations is one example, not the only kind of workspace AquaMesh can organize.',
       icon: <InfoIcon fontSize="large" color="primary" />,
       hasMultipleImages: true,
       images: [

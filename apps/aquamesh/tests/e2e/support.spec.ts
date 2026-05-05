@@ -10,18 +10,18 @@ test.describe('Landing tutorial page', () => {
       page.getByRole('heading', { name: 'AquaMesh' }).first(),
     ).toBeVisible()
     await expect(
-      page.getByText('Create operational dashboard widgets without code.'),
+      page.getByText('Create reusable workspace widgets without code.'),
     ).toBeVisible()
-    await expect(page.getByText('Build one widget, then reuse it')).toBeVisible()
-    await expect(page.getByText('Made for daily operations')).toBeVisible()
+    await expect(
+      page.getByText('Build one widget, then reuse it'),
+    ).toBeVisible()
+    await expect(page.getByText('Use AquaMesh for real work')).toBeVisible()
 
     await expect(page.getByText('What should I do first?')).toBeVisible()
   })
 
   test('should open the workspace from the landing CTA', async ({ page }) => {
-    await page
-      .getByRole('button', { name: 'Create Daily Operations widget' })
-      .click()
+    await page.getByRole('button', { name: 'Enter workspace' }).first().click()
 
     await page.waitForURL('http://localhost:3000/workspace')
     await expect(page.getByText('Building Blocks')).toBeVisible({

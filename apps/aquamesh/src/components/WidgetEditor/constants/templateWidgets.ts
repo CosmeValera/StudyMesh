@@ -264,9 +264,9 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
   },
   {
     id: 'template-operations-dashboard',
-    name: 'Daily Operations Dashboard Template',
+    name: 'Daily Operations Example Template',
     description:
-      'A ready-made daily operations dashboard for tracking orders, delayed tasks, support tickets, system status, team notes, and handoff actions.',
+      'One concrete starter example for tracking orders, delayed tasks, support tickets, system status, team notes, and handoff actions. Use it as inspiration, then adapt AquaMesh to your own domain.',
     category: 'Dashboard',
     components: [
       {

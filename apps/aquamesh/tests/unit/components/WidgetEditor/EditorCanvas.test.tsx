@@ -88,19 +88,19 @@ describe('EditorCanvas first-widget guide', () => {
     renderEditorCanvas()
 
     expect(
-      screen.getByText('Build a Daily Operations widget'),
+      screen.getByText('Build your first reusable widget'),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /daily operations template/i }),
+      screen.getByRole('button', { name: /example operations template/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /tickets chart/i }),
+      screen.getByRole('button', { name: /chart block/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /status text/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /team note/i }),
+      screen.getByRole('button', { name: /notes field/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /browse templates/i }),
@@ -111,11 +111,11 @@ describe('EditorCanvas first-widget guide', () => {
     const props = renderEditorCanvas()
 
     fireEvent.click(
-      screen.getByRole('button', { name: /daily operations template/i }),
+      screen.getByRole('button', { name: /example operations template/i }),
     )
-    fireEvent.click(screen.getByRole('button', { name: /tickets chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /chart block/i }))
     fireEvent.click(screen.getByRole('button', { name: /status text/i }))
-    fireEvent.click(screen.getByRole('button', { name: /team note/i }))
+    fireEvent.click(screen.getByRole('button', { name: /notes field/i }))
     fireEvent.click(screen.getByRole('button', { name: /browse templates/i }))
 
     expect(props.onStartOperationsWidget).toHaveBeenCalledTimes(1)
@@ -140,7 +140,7 @@ describe('EditorCanvas first-widget guide', () => {
     })
 
     expect(
-      screen.queryByText('Build a Daily Operations widget'),
+      screen.queryByText('Build your first reusable widget'),
     ).not.toBeInTheDocument()
     expect(screen.getByTestId('component-preview')).toHaveTextContent('Label')
   })
@@ -149,7 +149,7 @@ describe('EditorCanvas first-widget guide', () => {
     renderEditorCanvas({ isDragging: true })
 
     expect(
-      screen.queryByText('Build a Daily Operations widget'),
+      screen.queryByText('Build your first reusable widget'),
     ).not.toBeInTheDocument()
     expect(screen.getByText('Drop it into your widget')).toBeInTheDocument()
   })

@@ -169,15 +169,15 @@ const DashboardEmptyState = ({
         sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
       />
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Build your Daily Operations dashboard
+        Start a workspace dashboard
       </Typography>
       <Typography
         variant="body1"
         sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
       >
-        Imagine a small operations team tracking orders, delayed tasks, support
-        tickets, and system status. Start by creating one reusable Daily
-        Operations widget, then place it on this dashboard.
+        Pick one real workflow: daily operations, architecture review notes, lab
+        observations, project tasks, or image-rich research. Create one reusable
+        widget first, then place it on this dashboard.
       </Typography>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}

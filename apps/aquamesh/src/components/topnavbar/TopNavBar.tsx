@@ -337,7 +337,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                       }}
                     >
                       {userData.role === 'ADMIN_ROLE'
-                        ? 'No saved widgets yet. Create a Daily Operations widget, then add it to this dashboard.'
+                        ? 'No saved widgets yet. Create a widget for your work, then add it to this dashboard.'
                         : 'Switch to Builder mode to create your own reusable widgets.'}
                     </Typography>
                   </MenuItem>
@@ -353,7 +353,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                       color: 'text.primary',
                     }}
                   >
-                    Example Operations Widgets
+                    Example Starter Widgets
                   </Typography>
                   <Divider sx={{ borderColor: 'divider' }} />
                   {topNavBarWidgets

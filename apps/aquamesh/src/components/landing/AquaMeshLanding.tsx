@@ -15,8 +15,9 @@ import SaveAltIcon from '@mui/icons-material/SaveAlt'
 import WidgetsIcon from '@mui/icons-material/Widgets'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import SupportAgentIcon from '@mui/icons-material/SupportAgent'
-import LocalShippingIcon from '@mui/icons-material/LocalShipping'
-import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest'
+import ArchitectureIcon from '@mui/icons-material/Architecture'
+import BiotechIcon from '@mui/icons-material/Biotech'
+import ImageIcon from '@mui/icons-material/Image'
 import NotesIcon from '@mui/icons-material/Notes'
 
 import { ReactComponent as Logo } from '../../../public/logo.svg'
@@ -24,7 +25,7 @@ import { ReactComponent as Logo } from '../../../public/logo.svg'
 const workflow = [
   {
     title: 'Create Widget',
-    body: 'Name a Daily Operations widget and start from visual building blocks.',
+    body: 'Name a widget for your work: an operations snapshot, site review, lab log, or task tracker.',
     icon: <WidgetsIcon />,
   },
   {
@@ -46,24 +47,29 @@ const workflow = [
 
 const useCases = [
   {
-    title: 'Orders today',
-    body: 'Track intake, fulfillment, and handoff status.',
-    icon: <LocalShippingIcon />,
-  },
-  {
-    title: 'Delayed tasks',
-    body: 'Surface blocked work before it misses the day.',
-    icon: <TaskAltIcon />,
-  },
-  {
-    title: 'Support tickets',
-    body: 'Show ticket mix, priority, and follow-up notes.',
+    title: 'Operations hub',
+    body: 'Track orders, delayed work, tickets, status, and handoffs.',
     icon: <SupportAgentIcon />,
   },
   {
-    title: 'System status',
-    body: 'Keep health indicators visible beside team actions.',
-    icon: <SettingsSuggestIcon />,
+    title: 'Architecture review',
+    body: 'Collect site notes, material choices, images, and decisions.',
+    icon: <ArchitectureIcon />,
+  },
+  {
+    title: 'Biology field log',
+    body: 'Record observations, sample counts, charts, and next steps.',
+    icon: <BiotechIcon />,
+  },
+  {
+    title: 'Task workspace',
+    body: 'Organize priorities, blockers, owners, and follow-up actions.',
+    icon: <TaskAltIcon />,
+  },
+  {
+    title: 'Image and notes board',
+    body: 'Pair visual references with structured text and controls.',
+    icon: <ImageIcon />,
   },
   {
     title: 'Team handoff',
@@ -76,17 +82,17 @@ const quickAnswers = [
   {
     question: 'What should I do first?',
     answer:
-      'Start with Create Widget. Build one reusable Daily Operations widget first, then add it to a dashboard.',
+      'Start with Create Widget. Pick one concrete use case, such as an operations summary, architecture site review, lab observation log, or task tracker. Save it, then reuse it in a dashboard.',
   },
   {
     question: 'Which blocks should I start with?',
     answer:
-      'Use a chart for support tickets, a status label for system health, or a note field for team handoff.',
+      'Use a chart for trends, a label for status, an image for visual context, or a note field for follow-up.',
   },
   {
     question: 'Where does my saved widget go?',
     answer:
-      'Saved widgets appear in Add Widget so you can reuse them in dashboards.',
+      'Saved widgets appear in Add Widget so you can reuse them across dashboards and workspaces.',
   },
 ]
 
@@ -166,12 +172,13 @@ const AquaMeshLanding = () => {
               component="p"
               sx={{ fontWeight: 700, color: '#005A49', mb: 2 }}
             >
-              Create operational dashboard widgets without code.
+              Create reusable workspace widgets without code.
             </Typography>
             <Typography variant="body1" sx={{ color: '#425c57', mb: 3 }}>
-              Build reusable widgets for orders, delayed tasks, support tickets,
-              system status, team notes, and handoff actions, then place them
-              into dashboards.
+              Build reusable widgets from text, inputs, buttons, charts, images,
+              and layout blocks. Use them for operations, architecture reviews,
+              biology notes, project planning, or any workspace you need to
+              organize.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
@@ -250,7 +257,7 @@ const AquaMeshLanding = () => {
 
         <Box sx={{ py: 5 }}>
           <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
-            Made for daily operations
+            Use AquaMesh for real work
           </Typography>
           <Grid container spacing={2}>
             {useCases.map((useCase) => (
@@ -321,11 +328,12 @@ const AquaMeshLanding = () => {
           }}
         >
           <Typography variant="h4" component="h2" fontWeight={850} mb={1}>
-            Ready to build your first dashboard?
+            Ready to build your first workspace?
           </Typography>
           <Typography sx={{ color: 'rgba(255,255,255,0.82)', mb: 3 }}>
-            Enter the workspace, create one reusable widget, and place it on a
-            dashboard.
+            Enter the workspace, create one reusable widget, and place it
+            wherever it helps: a dashboard, review board, lab log, or task
+            space.
           </Typography>
           <Button
             variant="contained"
