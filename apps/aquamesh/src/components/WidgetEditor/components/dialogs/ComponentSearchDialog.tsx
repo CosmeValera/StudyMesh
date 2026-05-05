@@ -199,7 +199,7 @@ const ComponentSearchDialog: React.FC<ComponentSearchDialogProps> = ({
               fontSize: isMobile ? '1.1rem' : undefined,
             }}
           >
-            Search Components
+            Search Blocks
           </Typography>
         </Box>
       </DialogTitle>
@@ -250,7 +250,7 @@ const ComponentSearchDialog: React.FC<ComponentSearchDialogProps> = ({
               color="text.secondary"
               sx={{ fontSize: isMobile ? '0.75rem' : undefined }}
             >
-              Found {searchResults.length} component
+              Found {searchResults.length} block
               {searchResults.length !== 1 ? 's' : ''} matching "{searchTerm}"
             </Typography>
           )}
@@ -268,7 +268,7 @@ const ComponentSearchDialog: React.FC<ComponentSearchDialogProps> = ({
               },
             }}
           >
-            No components found matching your search.
+            No blocks found matching your search.
           </Alert>
         ) : (
           <List

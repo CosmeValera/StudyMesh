@@ -258,7 +258,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     minHeight: editMode ? '60px' : 'auto'
                   }}
                 >
-                  {isDragging ? 'Drop component here' : (editMode ? 'Drag and drop components here' : 'Content will appear here')}
+                  {isDragging ? 'Drop block here' : (editMode ? (isPhone ? 'Tap blocks in Building Blocks to add them here' : 'Drag and drop blocks here') : 'Content will appear here')}
                 </Box>
               )}
             </Collapse>
@@ -498,7 +498,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 alignItems: 'center',
                 minHeight: '40px'
               }}>
-                {isDragging ? 'Drop component here' : 'Empty Flex Container'}
+                {isDragging ? 'Drop block here' : 'Empty Flex Container'}
               </Box>
             )}
           </Box>
@@ -576,7 +576,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 gridColumn: `span ${columns}`,
                 minHeight: '40px'
               }}>
-                {isDragging ? 'Drop component here' : 'Empty Grid Container'}
+                {isDragging ? 'Drop block here' : 'Empty Grid Container'}
               </Box>
             )}
           </Box>
@@ -742,7 +742,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
           }}
         >
           {/* Visibility toggle button */}
-          <TooltipStyled title={isHidden ? "Show component" : "Hide component"}>
+          <TooltipStyled title={isHidden ? "Show block" : "Hide block"}>
             <IconButton
               size="small"
               onClick={() => onToggleVisibility && onToggleVisibility(component.id)}

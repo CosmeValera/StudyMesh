@@ -468,8 +468,7 @@ const WidgetEditor: React.FC<{
       // Show a message if there are no components to search
       setComponentToast({
         open: true,
-        message:
-          'No components to search. Add components to your widget first.',
+        message: 'No blocks to search. Add blocks to your widget first.',
         severity: 'info',
       })
       return
@@ -486,7 +485,7 @@ const WidgetEditor: React.FC<{
     // Show a success message
     setComponentToast({
       open: true,
-      message: 'Component found and selected for editing',
+      message: 'Block found and selected for editing',
       severity: 'success',
     })
   }
@@ -551,8 +550,8 @@ const WidgetEditor: React.FC<{
   const getDeleteConfirmationProps = () => {
     if (componentToDelete) {
       return {
-        title: 'Delete Component?',
-        content: 'Are you sure you want to delete this component?',
+        title: 'Delete Block?',
+        content: 'Are you sure you want to delete this block?',
         onConfirm: confirmDeleteComponent,
         onCancel: cancelDeleteComponent,
       }

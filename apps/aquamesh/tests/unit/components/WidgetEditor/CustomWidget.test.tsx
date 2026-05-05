@@ -108,9 +108,7 @@ describe('CustomWidget live storage refresh', () => {
     })
 
     await waitFor(() => {
-      expect(
-        screen.getByText('This widget has no components'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('This widget has no blocks')).toBeInTheDocument()
     })
   })
 })

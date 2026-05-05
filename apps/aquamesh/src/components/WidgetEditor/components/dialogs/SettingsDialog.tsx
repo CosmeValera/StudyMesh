@@ -246,8 +246,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   color="text.secondary"
                   sx={{ ml: 5, mb: 1 }}
                 >
-                  Show short explanations when hovering over building blocks in the
-                  palette.
+                  Show short explanations when hovering over building blocks in
+                  the palette.
                 </Typography>
               </Box>
             </Box>
@@ -264,7 +264,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <HelpOutlineIcon sx={{ mr: 1.5, color: 'primary.main' }} />
                   <Typography fontWeight="medium" color="text.primary">
-                    Show Component Palette Help
+                    Show Building Blocks Help
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
@@ -280,7 +280,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   color="text.secondary"
                   sx={{ ml: 5, mb: 1 }}
                 >
-                  Show the help text at the bottom of the component palette.
+                  Show the help text at the bottom of the Building Blocks panel.
                 </Typography>
               </Box>
             </Box>

@@ -222,7 +222,7 @@ const ComponentPalette = ({
             }}
           >
             {isPhone
-              ? 'Tap the + button on any block below to add it to your widget.'
+              ? 'Tap any block below to add it to your widget.'
               : 'Grab a block below and drag it into the Daily Operations widget canvas.'}
           </Typography>
         </Box>
@@ -454,7 +454,7 @@ const ComponentPalette = ({
               fontSize: isPhone ? '0.5rem' : '0.65rem',
             }}
           >
-            {isPhone ? 'Tap + to add an item' : 'Drag items into your widget'}
+            {isPhone ? 'Tap a block to add it' : 'Drag blocks into your widget'}
           </Typography>
           <Typography
             variant="caption"
@@ -467,8 +467,8 @@ const ComponentPalette = ({
             {!showTooltips
               ? 'Turn on helpful tips in settings for short explanations'
               : isPhone
-                ? 'Long press items for short explanations'
-                : 'Hover over items for short explanations'}
+                ? 'Long press blocks for short explanations'
+                : 'Hover over blocks for short explanations'}
           </Typography>
         </Box>
       )}

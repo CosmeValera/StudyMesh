@@ -939,7 +939,7 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
             variant="body2"
             sx={{ opacity: 0.7, fontStyle: 'italic' }}
           >
-            No components found for this widget.
+            No blocks found for this widget.
           </Typography>
         </Paper>
       )
@@ -968,7 +968,7 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
         }}
       >
         <Typography color="text.secondary">
-          This widget has no components
+          This widget has no blocks
         </Typography>
         {widgetId && (
           <Typography variant="caption" sx={{ mt: 1 }}>

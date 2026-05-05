@@ -60,8 +60,8 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       answer: (
         <>
           Click <span style={accentText}>Create Widget</span> in the top bar,
-          name the widget, drag building blocks onto the canvas, preview it,
-          then save it as a reusable Daily Operations widget.
+          name the widget, add building blocks to the canvas, preview it, then
+          save it as a reusable Daily Operations widget.
         </>
       ),
     },

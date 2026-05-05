@@ -130,7 +130,7 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Add Building Blocks',
           icon: <WidgetsIcon />,
           content: isMobile
-            ? 'Tap the + button on text, answer boxes, buttons, charts, and groups to add them to your widget.'
+            ? 'Tap text, answer boxes, buttons, charts, and groups to add them to your widget.'
             : 'Drag text, answer boxes, buttons, charts, and groups from the left panel into your widget.',
         },
         {

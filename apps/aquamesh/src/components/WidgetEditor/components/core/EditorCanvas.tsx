@@ -338,7 +338,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       }}
                     >
                       {showOnboardingChoosePrompt
-                        ? 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
+                        ? isPhone
+                          ? 'Tap any block in Building Blocks to add it here. You can experiment and adjust it after it lands here.'
+                          : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
                         : isPhone
                           ? 'Use a quick shortcut, then save it for dashboards.'
                           : 'Use these shortcuts to create a reusable widget faster, or drag any block from the palette.'}
