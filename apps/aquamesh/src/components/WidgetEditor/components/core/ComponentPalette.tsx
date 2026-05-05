@@ -9,7 +9,6 @@ import {
   useTheme,
   useMediaQuery,
   Chip,
-  Divider,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
@@ -381,7 +380,10 @@ const ComponentPalette = ({
                     px: isPhone ? 0.5 : 1,
                     pt: isPhone ? 0.5 : 1,
                     pb: isPhone ? 0.5 : 0,
-                    display: 'block',
+                    display: isPhone ? 'flex' : 'block',
+                    gap: isPhone ? 0.75 : 0,
+                    overflowX: isPhone ? 'auto' : 'visible',
+                    scrollSnapType: isPhone ? 'x proximity' : 'none',
                     WebkitOverflowScrolling: 'touch',
                   }}
                 >
@@ -396,15 +398,21 @@ const ComponentPalette = ({
                     return (
                       <React.Fragment key={groupCategory}>
                         {isPhone && groupIndex > 0 && (
-                          <Divider sx={{ my: 0.5, opacity: 0.65 }} />
+                          <Box
+                            sx={{
+                              flex: '0 0 22px',
+                              alignSelf: 'center',
+                              borderTop: '1px solid',
+                              borderColor: 'divider',
+                              opacity: 0.8,
+                            }}
+                            aria-hidden="true"
+                          />
                         )}
                         <Box
                           sx={{
                             display: isPhone ? 'flex' : 'block',
                             gap: isPhone ? 0.75 : 0,
-                            overflowX: isPhone ? 'auto' : 'visible',
-                            scrollSnapType: isPhone ? 'x proximity' : 'none',
-                            WebkitOverflowScrolling: 'touch',
                           }}
                         >
                           {groupComponents.map((component) => (

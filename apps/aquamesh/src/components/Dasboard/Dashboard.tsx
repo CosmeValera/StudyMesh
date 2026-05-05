@@ -14,8 +14,6 @@ import {
   Chip,
   Paper,
   Stack,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material'
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import TooltipStyled from '../TooltipStyled'
@@ -61,20 +59,6 @@ const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
   }
 
   return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
-}
-
-const countPlacedWidgets = (layout?: DashboardLayout): number => {
-  if (!layout) {
-    return 0
-  }
-
-  const current = layout.component ? 1 : 0
-  const children = layout.children?.reduce(
-    (total, child) => total + countPlacedWidgets(child),
-    0,
-  )
-
-  return current + (children || 0)
 }
 
 const countWidgetPanels = (layout?: DashboardLayout): number => {
@@ -264,9 +248,7 @@ const DashboardEmptyState = ({
 interface DashboardOnboardingCoachProps {
   step: Exclude<DashboardOnboardingStep, 'done'>
   hasUnsavedChanges: boolean
-  hasMultipleWidgets: boolean
   hasSplitDashboard: boolean
-  isPhone: boolean
   onNext: () => void
   onDone: () => void
 }
@@ -274,9 +256,7 @@ interface DashboardOnboardingCoachProps {
 const DashboardOnboardingCoach = ({
   step,
   hasUnsavedChanges,
-  hasMultipleWidgets,
   hasSplitDashboard,
-  isPhone,
   onNext,
   onDone,
 }: DashboardOnboardingCoachProps) => {
@@ -288,7 +268,8 @@ const DashboardOnboardingCoach = ({
       elevation={6}
       sx={{
         position: 'absolute',
-        top: { xs: 8, sm: 12 },
+        top: { xs: 'auto', sm: 12 },
+        bottom: { xs: 8, sm: 'auto' },
         right: { xs: 8, sm: 12 },
         left: { xs: 8, sm: 'auto' },
         zIndex: 10,
@@ -312,11 +293,9 @@ const DashboardOnboardingCoach = ({
           sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
         >
           {isLayoutStep
-            ? hasMultipleWidgets
-              ? 'Drag one widget tab to another side of the dashboard. As soon as the dashboard splits, you can save it.'
-              : `Open ${isPhone ? 'Add' : 'Add Widget'} and add one more saved widget, then drag one tab to another side of the dashboard.`
+            ? 'Drag the widget tab to another side of the dashboard. As soon as the dashboard splits, you can save it.'
             : hasUnsavedChanges
-              ? 'Click the dashboard tab at the top, then click the small save button on that tab to save the whole multi-widget dashboard.'
+              ? 'Save the dashboard using the disk icon on the Dashboard tab.'
               : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
         </Typography>
         <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -330,9 +309,7 @@ const DashboardOnboardingCoach = ({
             >
               {hasSplitDashboard
                 ? 'Next: save dashboard'
-                : hasMultipleWidgets
-                  ? 'Drag a tab to split first'
-                  : 'Add another widget first'}
+                : 'Split the dashboard first'}
             </Button>
           ) : (
             <Button
@@ -351,8 +328,6 @@ const DashboardOnboardingCoach = ({
 }
 
 const Dashboards = () => {
-  const theme = useTheme()
-  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const {
     openDashboards,
     selectedDashboard,
@@ -667,7 +642,6 @@ const Dashboards = () => {
             index === selectedDashboard &&
             dashboardOnboardingStep !== 'done' &&
             hasPlacedSavedWidget(dashboard.layout)
-          const hasMultipleWidgets = countPlacedWidgets(dashboard.layout) > 1
           const hasSplitDashboard = countWidgetPanels(dashboard.layout) > 1
 
           return (
@@ -685,9 +659,7 @@ const Dashboards = () => {
                     <DashboardOnboardingCoach
                       step={dashboardOnboardingStep}
                       hasUnsavedChanges={Boolean(hasChanges[index])}
-                      hasMultipleWidgets={hasMultipleWidgets}
                       hasSplitDashboard={hasSplitDashboard}
-                      isPhone={isPhone}
                       onNext={advanceDashboardOnboarding}
                       onDone={completeDashboardOnboarding}
                     />
