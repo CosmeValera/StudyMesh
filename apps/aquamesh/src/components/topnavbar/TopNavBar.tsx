@@ -32,6 +32,7 @@ import {
   OPEN_WIDGET_MENU_EVENT,
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
+import ThemeModeToggle from '../shared/ThemeModeToggle'
 
 // Define user data type
 interface UserData {
@@ -465,7 +466,8 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
           </Box>
 
           {/* Right Side Elements */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ThemeModeToggle compact={isPhone} />
             <Divider
               orientation="vertical"
               flexItem

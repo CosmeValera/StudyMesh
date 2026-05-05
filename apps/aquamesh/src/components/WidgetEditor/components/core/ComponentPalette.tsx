@@ -162,7 +162,7 @@ const ComponentPalette = ({
         minWidth: isPhone ? 0 : drawerWidth,
         maxWidth: drawerWidth,
         flex: isPhone ? '0 0 auto' : `0 0 ${drawerWidth}px`,
-        bgcolor: '#FFFFFF',
+        bgcolor: 'background.paper',
         borderRight: 0,
         borderBottom: { xs: 1, sm: 0 },
         borderColor: 'divider',
@@ -180,7 +180,7 @@ const ComponentPalette = ({
         sx={{
           px: isPhone ? 1 : 2,
           py: isPhone ? 0.75 : 1,
-          color: 'foreground.contrastPrimary',
+          color: 'text.primary',
           fontWeight: 'bold',
           borderBottom: 1,
           borderColor: 'divider',
@@ -217,7 +217,7 @@ const ComponentPalette = ({
           <Typography
             variant="body2"
             sx={{
-              color: 'foreground.contrastPrimary',
+              color: 'text.primary',
               fontSize: isPhone ? '0.72rem' : '0.82rem',
               lineHeight: 1.35,
             }}

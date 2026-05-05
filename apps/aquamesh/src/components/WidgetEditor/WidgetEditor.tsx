@@ -697,7 +697,7 @@ const WidgetEditor: React.FC<{
               borderLeft: { xs: 0, md: viewMode === 'both' ? 1 : 0 },
               borderTop: { xs: viewMode === 'both' ? 1 : 0, md: 0 },
               borderColor: 'divider',
-              bgcolor: '#F8FAFA',
+              bgcolor: 'background.default',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -709,7 +709,7 @@ const WidgetEditor: React.FC<{
                 py: 1,
                 borderBottom: 1,
                 borderColor: 'divider',
-                bgcolor: '#FFFFFF',
+                bgcolor: 'background.paper',
               }}
             >
               <Typography variant="subtitle2" color="text.primary">
@@ -722,7 +722,7 @@ const WidgetEditor: React.FC<{
                 minHeight: 0,
                 overflow: 'auto',
                 p: { xs: 1.5, md: 2 },
-                bgcolor: '#FAFBFB',
+                bgcolor: 'background.default',
               }}
             >
               <CustomWidgetPreview components={widgetData.components} />

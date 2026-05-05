@@ -7,7 +7,9 @@ import {
   Paper,
   Stack,
   Typography,
+  useTheme,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router-dom'
 import AddchartIcon from '@mui/icons-material/Addchart'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
@@ -21,6 +23,7 @@ import ImageIcon from '@mui/icons-material/Image'
 import NotesIcon from '@mui/icons-material/Notes'
 
 import { ReactComponent as Logo } from '../../../public/logo.svg'
+import ThemeModeToggle from '../shared/ThemeModeToggle'
 
 const workflow = [
   {
@@ -98,6 +101,7 @@ const quickAnswers = [
 
 const AquaMeshLanding = () => {
   const navigate = useNavigate()
+  const theme = useTheme()
 
   const openWorkspace = (action?: string) => {
     navigate(action ? `/workspace?action=${action}` : '/workspace')
@@ -107,16 +111,18 @@ const AquaMeshLanding = () => {
     <Box
       sx={{
         minHeight: '100dvh',
-        bgcolor: '#f6fbf9',
-        color: '#12352f',
+        bgcolor: 'background.default',
+        color: 'text.primary',
         overflowX: 'hidden',
       }}
     >
       <Box
         component="header"
         sx={{
-          borderBottom: '1px solid rgba(0, 90, 73, 0.12)',
-          bgcolor: 'rgba(246, 251, 249, 0.92)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: alpha(theme.palette.background.default, 0.92),
+          backdropFilter: 'blur(14px)',
           position: 'sticky',
           top: 0,
           zIndex: 10,
@@ -137,13 +143,16 @@ const AquaMeshLanding = () => {
               AquaMesh
             </Typography>
           </Stack>
-          <Button
-            variant="outlined"
-            onClick={() => openWorkspace()}
-            sx={{ borderRadius: 1, textTransform: 'none' }}
-          >
-            Enter workspace
-          </Button>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ThemeModeToggle />
+            <Button
+              variant="outlined"
+              onClick={() => openWorkspace()}
+              sx={{ borderRadius: 1, textTransform: 'none' }}
+            >
+              Enter workspace
+            </Button>
+          </Stack>
         </Container>
       </Box>
 
@@ -174,7 +183,7 @@ const AquaMeshLanding = () => {
             >
               Create reusable workspace widgets without code.
             </Typography>
-            <Typography variant="body1" sx={{ color: '#425c57', mb: 3 }}>
+            <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
               Build reusable widgets from text, inputs, buttons, charts, images,
               and layout blocks. Use them for operations, architecture reviews,
               biology notes, project planning, or any workspace you need to
@@ -196,10 +205,14 @@ const AquaMeshLanding = () => {
               elevation={0}
               sx={{
                 borderRadius: 2,
-                border: '1px solid rgba(0, 90, 73, 0.16)',
+                border: '1px solid',
+                borderColor: 'divider',
                 overflow: 'hidden',
-                bgcolor: '#ffffff',
-                boxShadow: '0 22px 60px rgba(0, 61, 49, 0.14)',
+                bgcolor: 'background.paper',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? `0 22px 60px ${alpha(theme.palette.common.black, 0.42)}`
+                    : `0 22px 60px ${alpha(theme.palette.primary.dark, 0.14)}`,
               }}
             >
               <Box
@@ -231,22 +244,23 @@ const AquaMeshLanding = () => {
                     height: '100%',
                     p: 2.5,
                     borderRadius: 1,
-                    border: '1px solid rgba(0, 90, 73, 0.14)',
-                    bgcolor: '#ffffff',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
                   }}
                 >
                   <Stack direction="row" spacing={1} alignItems="center" mb={1}>
                     <Box sx={{ color: 'primary.main', display: 'flex' }}>
                       {step.icon}
                     </Box>
-                    <Typography variant="caption" color="#667c78">
+                    <Typography variant="caption" color="text.secondary">
                       Step {index + 1}
                     </Typography>
                   </Stack>
                   <Typography variant="h6" fontWeight={800} mb={1}>
                     {step.title}
                   </Typography>
-                  <Typography variant="body2" color="#425c57">
+                  <Typography variant="body2" color="text.secondary">
                     {step.body}
                   </Typography>
                 </Paper>
@@ -268,8 +282,9 @@ const AquaMeshLanding = () => {
                     height: '100%',
                     p: 2.5,
                     borderRadius: 1,
-                    border: '1px solid rgba(0, 90, 73, 0.14)',
-                    bgcolor: '#ffffff',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
                   }}
                 >
                   <Box sx={{ color: 'primary.main', display: 'flex', mb: 1 }}>
@@ -278,7 +293,7 @@ const AquaMeshLanding = () => {
                   <Typography variant="h6" fontWeight={800} mb={0.5}>
                     {useCase.title}
                   </Typography>
-                  <Typography variant="body2" color="#425c57">
+                  <Typography variant="body2" color="text.secondary">
                     {useCase.body}
                   </Typography>
                 </Paper>
@@ -300,14 +315,15 @@ const AquaMeshLanding = () => {
                     height: '100%',
                     p: 2.5,
                     borderRadius: 1,
-                    border: '1px solid rgba(0, 90, 73, 0.14)',
-                    bgcolor: '#ffffff',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
                   }}
                 >
                   <Typography variant="h6" fontWeight={800} mb={1}>
                     {item.question}
                   </Typography>
-                  <Typography variant="body2" color="#425c57">
+                  <Typography variant="body2" color="text.secondary">
                     {item.answer}
                   </Typography>
                 </Paper>
@@ -323,14 +339,19 @@ const AquaMeshLanding = () => {
             p: { xs: 3, sm: 4 },
             borderRadius: 2,
             bgcolor: 'primary.dark',
-            color: '#ffffff',
+            color: 'primary.contrastText',
             textAlign: 'center',
           }}
         >
           <Typography variant="h4" component="h2" fontWeight={850} mb={1}>
             Ready to build your first workspace?
           </Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.82)', mb: 3 }}>
+          <Typography
+            sx={{
+              color: alpha(theme.palette.primary.contrastText, 0.82),
+              mb: 3,
+            }}
+          >
             Enter the workspace, create one reusable widget, and place it
             wherever it helps: a dashboard, review board, lab log, or task
             space.
@@ -343,7 +364,8 @@ const AquaMeshLanding = () => {
               borderRadius: 1,
               textTransform: 'none',
               bgcolor: 'primary.main',
-              '&:hover': { bgcolor: 'primary.dark' },
+              color: 'primary.contrastText',
+              '&:hover': { bgcolor: 'primary.light' },
             }}
           >
             Enter workspace
