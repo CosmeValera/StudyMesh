@@ -62,9 +62,7 @@ interface EditorCanvasProps {
   onStartOperationsWidget?: () => void
   onUseTemplate?: () => void
   onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | null
-  onRestartOnboarding?: () => void
-  onSkipOnboarding?: () => void
+  onboardingStep?: 'choose' | 'save' | 'place' | null
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
@@ -96,8 +94,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onUseTemplate,
   onboardingActive = false,
   onboardingStep = null,
-  onRestartOnboarding,
-  onSkipOnboarding,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -113,6 +109,12 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
     onboardingActive &&
     widgetData.components.length > 0 &&
     onboardingStep === 'save'
+
+  const showOnboardingPlacePrompt =
+    editMode &&
+    onboardingActive &&
+    widgetData.components.length > 0 &&
+    onboardingStep === 'place'
 
   // Render the component hierarchy
   const renderComponents = (components: ComponentData[]) => {
@@ -211,7 +213,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         </Typography>
       )}
 
-      {showOnboardingSavePrompt && (
+      {(showOnboardingSavePrompt || showOnboardingPlacePrompt) && (
         <Paper
           data-testid="widget-editor-save-coach"
           sx={{
@@ -238,7 +240,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   mb: 0.25,
                 }}
               >
-                Step 2: tune it, then save it
+                {showOnboardingPlacePrompt
+                  ? 'Step 3: add it to your dashboard'
+                  : 'Step 2: tune it, then save it'}
               </Typography>
               <Typography
                 variant="body2"
@@ -247,23 +251,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   fontSize: isPhone ? '0.78rem' : undefined,
                 }}
               >
-                Select the blue pen in a block to change its label, data, colors, or layout.
-                Save the Daily Operations widget when it is ready to be used in
-                dashboards.
+                {showOnboardingPlacePrompt
+                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget called ${widgetData.name || 'Daily Operations'}, and click it to place it on the dashboard.`
+                  : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the Daily Operations widget when it is ready to be used in dashboards.'}
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1}>
-              {onSkipOnboarding && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={onSkipOnboarding}
-                  sx={{ borderRadius: 1, textTransform: 'none' }}
-                >
-                  Got it
-                </Button>
-              )}
-            </Stack>
           </Stack>
         </Paper>
       )}
@@ -343,8 +335,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         fontSize: isPhone ? '0.78rem' : undefined,
                       }}
                     >
-                      Track orders today, delayed tasks, support tickets, and
-                      system status without writing code.
+                      {isPhone
+                        ? 'Start fast, then add status text if you need it.'
+                        : 'Track orders today, delayed tasks, support tickets, and system status without writing code.'}
                     </Typography>
                   </Box>
 
@@ -371,6 +364,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       onClick={() => onAddStarterComponent?.('Chart')}
                       disabled={!onAddStarterComponent}
                       sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
                         borderRadius: 1,
                         textTransform: 'none',
                         color: 'primary.dark',
@@ -401,6 +395,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       onClick={() => onAddStarterComponent?.('TextField')}
                       disabled={!onAddStarterComponent}
                       sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
                         borderRadius: 1,
                         textTransform: 'none',
                         color: 'primary.dark',
@@ -416,6 +411,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       onClick={onUseTemplate}
                       disabled={!onUseTemplate}
                       sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
                         borderRadius: 1,
                         textTransform: 'none',
                         color: 'primary.dark',

@@ -19,7 +19,7 @@ import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
 import { cloneTemplate } from './constants/templateWidgets'
 
-type OnboardingStep = 'choose' | 'save'
+type OnboardingStep = 'choose' | 'save' | 'place'
 
 const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 
@@ -132,7 +132,7 @@ const WidgetEditor: React.FC<{
 
   const [onboardingStep, setOnboardingStep] =
     React.useState<OnboardingStep>('choose')
-  const [onboardingDismissed, setOnboardingDismissed] = React.useState(() => {
+  const [onboardingDismissed] = React.useState(() => {
     if (typeof window === 'undefined') {
       return false
     }
@@ -159,21 +159,6 @@ const WidgetEditor: React.FC<{
       setViewMode('edit')
     }
   }, [isPhone, setViewMode, viewMode])
-
-  const handleSkipOnboarding = React.useCallback(() => {
-    setOnboardingDismissed(true)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
-    }
-  }, [])
-
-  const handleRestartOnboarding = React.useCallback(() => {
-    setOnboardingDismissed(false)
-    setOnboardingStep(widgetData.components.length > 0 ? 'save' : 'choose')
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(WIDGET_EDITOR_ONBOARDING_KEY)
-    }
-  }, [widgetData.components.length])
 
   const handleGuidedDragStart = React.useCallback(
     (event: React.DragEvent<HTMLDivElement>, type: string) => {
@@ -239,10 +224,10 @@ const WidgetEditor: React.FC<{
       return
     }
 
-    if (widgetData.components.length > 0) {
+    if (widgetData.components.length > 0 && onboardingStep === 'choose') {
       setOnboardingStep('save')
     }
-  }, [onboardingActive, widgetData.components.length])
+  }, [onboardingActive, onboardingStep, widgetData.components.length])
 
   // Listen for loadWidgetInEditor events from widget management
   React.useEffect(() => {
@@ -281,7 +266,9 @@ const WidgetEditor: React.FC<{
 
       // Set the appropriate edit mode first
       if (customProps.initialEditMode !== undefined) {
-        setViewMode(customProps.initialEditMode ? defaultEditViewMode : 'preview')
+        setViewMode(
+          customProps.initialEditMode ? defaultEditViewMode : 'preview',
+        )
       }
 
       // Then load the widget - use a setTimeout to ensure the edit mode is set first
@@ -319,20 +306,7 @@ const WidgetEditor: React.FC<{
 
   // Handle saving with a custom name from the dialog
   const handleSaveWidgetWithName = (name: string) => {
-    // Update widget data with the new name
-    setWidgetData((prev) => ({ ...prev, name }))
-
-    // Set a short timeout to allow state update to process
-    setTimeout(() => {
-      // Then call the actual save function
-      handleSaveWidget()
-      // Reset the dialog request flag
-      document.dispatchEvent(
-        new CustomEvent('resetSaveDialogRequested', {
-          detail: { editorId },
-        }),
-      )
-    }, 0)
+    handleSaveWidget(false, name)
   }
 
   // Handle closing component toasts
@@ -377,6 +351,24 @@ const WidgetEditor: React.FC<{
     // Otherwise, compare current components to saved
     return savedJson !== currentJson
   }, [widgetData, savedWidgets, isUpdating])
+
+  React.useEffect(() => {
+    if (
+      onboardingActive &&
+      onboardingStep === 'save' &&
+      widgetData.components.length > 0 &&
+      isUpdating &&
+      !hasChanges
+    ) {
+      setOnboardingStep('place')
+    }
+  }, [
+    hasChanges,
+    isUpdating,
+    onboardingActive,
+    onboardingStep,
+    widgetData.components.length,
+  ])
 
   // Check if the current widget (including any loaded preview) is the latest version
   const isLatestVersion = React.useMemo(() => {
@@ -692,8 +684,6 @@ const WidgetEditor: React.FC<{
               onUseTemplate={() => setShowTemplateDialog(true)}
               onboardingActive={onboardingActive}
               onboardingStep={onboardingStep}
-              onRestartOnboarding={handleRestartOnboarding}
-              onSkipOnboarding={handleSkipOnboarding}
             />
           </Box>
         )}

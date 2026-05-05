@@ -103,7 +103,7 @@ describe('Dashboards', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create daily operations widget/i }),
+      screen.getByRole('button', { name: /create your own widget/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /view daily operations example/i }),
@@ -122,7 +122,7 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     fireEvent.click(
-      screen.getByRole('button', { name: /create daily operations widget/i }),
+      screen.getByRole('button', { name: /create your own widget/i }),
     )
     fireEvent.click(
       screen.getByRole('button', { name: /view daily operations example/i }),

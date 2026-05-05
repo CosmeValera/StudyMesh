@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -14,6 +14,8 @@ import {
   Chip,
   Paper,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import TooltipStyled from '../TooltipStyled'
@@ -43,6 +45,23 @@ interface SavedDashboard {
   isPublic?: boolean
   createdAt: string
   updatedAt: string
+}
+
+type DashboardOnboardingStep = 'layout' | 'save' | 'complete' | 'done'
+
+const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
+const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
+
+const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
+  if (!layout) {
+    return false
+  }
+
+  if (layout.component === 'CustomWidget') {
+    return true
+  }
+
+  return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
 }
 
 // Dashboard Storage utilities
@@ -212,6 +231,86 @@ const DashboardEmptyState = ({
   </Box>
 )
 
+interface DashboardOnboardingCoachProps {
+  step: Exclude<DashboardOnboardingStep, 'done'>
+  hasUnsavedChanges: boolean
+  dashboardName: string
+  onGotIt: () => void
+}
+
+const DashboardOnboardingCoach = ({
+  step,
+  hasUnsavedChanges,
+  dashboardName,
+  onGotIt,
+}: DashboardOnboardingCoachProps) => {
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
+  const isLayoutStep = step === 'layout'
+  const isCompleteStep = step === 'complete'
+  const dashboardMenuName = isPhone ? 'Dash' : 'Dashboards'
+
+  return (
+    <Paper
+      data-testid={`dashboard-onboarding-coach-${step}`}
+      elevation={6}
+      sx={{
+        position: 'absolute',
+        top: { xs: 'auto', sm: 12 },
+        bottom: { xs: 8, sm: 'auto' },
+        right: { xs: 8, sm: 12 },
+        left: { xs: 8, sm: 'auto' },
+        zIndex: 1300,
+        width: { xs: 'auto', sm: 420 },
+        p: { xs: 1.25, sm: 1.5 },
+        borderRadius: 2,
+        border: '1px solid rgba(0, 188, 162, 0.36)',
+        bgcolor: 'rgba(0, 66, 50, 0.96)',
+        color: 'primary.contrastText',
+      }}
+    >
+      <Stack spacing={1}>
+        {!isCompleteStep && (
+          <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
+            Step {isLayoutStep ? '4' : '5'}
+          </Typography>
+        )}
+        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+          {isLayoutStep
+            ? 'Shape your dashboard'
+            : isCompleteStep
+              ? 'Congratulations 🎉'
+              : 'Save this dashboard'}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
+        >
+          {isCompleteStep
+            ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards. You’ll be able to find your saved dashboard “${dashboardName}” inside the ${dashboardMenuName} menu.`
+            : isLayoutStep
+              ? 'Drag the widget tab to a new spot in the dashboard.'
+              : hasUnsavedChanges
+                ? 'Save the dashboard using the disk icon on the Dashboard tab.'
+                : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
+        </Typography>
+        {isCompleteStep && (
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Button
+              size="small"
+              variant="contained"
+              onClick={onGotIt}
+              sx={{ textTransform: 'none' }}
+            >
+              Got it
+            </Button>
+          </Stack>
+        )}
+      </Stack>
+    </Paper>
+  )
+}
+
 const Dashboards = () => {
   const {
     openDashboards,
@@ -232,10 +331,41 @@ const Dashboards = () => {
   const [currentTabIndex, setCurrentTabIndex] = useState<number | null>(null)
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
   const [isAdmin, setIsAdmin] = useState(false)
+  const dashboardOnboardingLayoutBaseline = useRef<{
+    dashboardId: string
+    layoutJson: string
+  } | null>(null)
+  const [dashboardOnboardingStep, setDashboardOnboardingStep] =
+    useState<DashboardOnboardingStep>(() => {
+      if (typeof window === 'undefined') {
+        return 'layout'
+      }
+
+      const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
+      return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
+    })
   const navigate = useNavigate()
   const { openCreateWidget, openOperationsExample, openWidgetMenu } =
     useWorkspaceActions()
   const openQuickGuide = () => navigate('/')
+
+  const completeDashboardOnboarding = () => {
+    setDashboardOnboardingStep('done')
+  }
+
+  const persistDashboardOnboardingDone = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'done')
+      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
+    }
+  }
+
+  const advanceDashboardOnboarding = () => {
+    setDashboardOnboardingStep('save')
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'save')
+    }
+  }
 
   // Check if user is admin on component mount
   useEffect(() => {
@@ -266,6 +396,47 @@ const Dashboards = () => {
 
     setHasChanges(changes)
   }, [openDashboards])
+
+  useEffect(() => {
+    const currentDashboard = openDashboards[selectedDashboard]
+    const currentLayout = currentDashboard?.layout
+    const hasWidget = hasPlacedSavedWidget(currentLayout)
+
+    const currentChangeStateKnown = Object.prototype.hasOwnProperty.call(
+      hasChanges,
+      selectedDashboard,
+    )
+
+    if (
+      dashboardOnboardingStep === 'save' &&
+      hasWidget &&
+      currentChangeStateKnown &&
+      !hasChanges[selectedDashboard]
+    ) {
+      setDashboardOnboardingStep('complete')
+      persistDashboardOnboardingDone()
+      return
+    }
+
+    if (dashboardOnboardingStep !== 'layout' || !hasWidget) {
+      dashboardOnboardingLayoutBaseline.current = null
+      return
+    }
+
+    const dashboardId = currentDashboard?.id || String(selectedDashboard)
+    const layoutJson = JSON.stringify(currentLayout || {})
+    const baseline = dashboardOnboardingLayoutBaseline.current
+
+    if (!baseline || baseline.dashboardId !== dashboardId) {
+      dashboardOnboardingLayoutBaseline.current = { dashboardId, layoutJson }
+      return
+    }
+
+    if (baseline.layoutJson !== layoutJson) {
+      dashboardOnboardingLayoutBaseline.current = null
+      advanceDashboardOnboarding()
+    }
+  }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 
   const handleSaveDialogOpen = (index: number) => {
     const currentDashboard = openDashboards[index]
@@ -395,6 +566,8 @@ const Dashboards = () => {
                 {hasChanges[index] && (
                   <TooltipStyled title="Save Dashboard">
                     <IconButton
+                      aria-label={`Save dashboard ${dashboard.name}`}
+                      data-testid={`save-dashboard-${index}`}
                       size="small"
                       onClick={(ev) => {
                         ev.stopPropagation()
@@ -472,10 +645,14 @@ const Dashboards = () => {
             onClick={() => addDashboard()}
           />
         </TabList>
-        {openDashboards.map((dashboard) => {
+        {openDashboards.map((dashboard, index) => {
           const isEmptyDashboard =
             !dashboard.layout?.children ||
             dashboard.layout.children.length === 0
+          const showDashboardOnboarding =
+            index === selectedDashboard &&
+            dashboardOnboardingStep !== 'done' &&
+            hasPlacedSavedWidget(dashboard.layout)
 
           return (
             <TabPanel key={dashboard.id}>
@@ -488,6 +665,14 @@ const Dashboards = () => {
                 }}
               >
                 <Box sx={{ position: 'relative', flex: '1' }}>
+                  {showDashboardOnboarding && (
+                    <DashboardOnboardingCoach
+                      step={dashboardOnboardingStep}
+                      hasUnsavedChanges={Boolean(hasChanges[index])}
+                      dashboardName={dashboard.name}
+                      onGotIt={completeDashboardOnboarding}
+                    />
+                  )}
                   {isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}

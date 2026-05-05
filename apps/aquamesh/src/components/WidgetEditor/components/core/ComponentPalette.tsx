@@ -9,7 +9,6 @@ import {
   useTheme,
   useMediaQuery,
   Chip,
-  Divider,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
@@ -30,7 +29,7 @@ interface ComponentPaletteProps {
   setActiveContainerId?: (id: string | null) => void
   widgetData?: any // To lookup container name
   onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | null
+  onboardingStep?: 'choose' | 'save' | 'place' | null
 }
 
 // Helper function to group components by category
@@ -54,10 +53,12 @@ const PALETTE_GROUPS = [
   'Layout Containers',
   'Chart Components',
 ]
+const MOBILE_CONTENT_LAYOUT_GROUP = 'Content and layout'
 const PALETTE_GROUP_LABELS: Record<string, string> = {
   'UI Components': 'Content and Controls',
   'Layout Containers': 'Layout Helpers',
   'Chart Components': 'Charts',
+  [MOBILE_CONTENT_LAYOUT_GROUP]: 'Content and layout',
 }
 
 // Component palette component
@@ -92,7 +93,7 @@ const ComponentPalette = ({
         acc[category] = true
         return acc
       },
-      {} as Record<string, boolean>,
+      { [MOBILE_CONTENT_LAYOUT_GROUP]: true } as Record<string, boolean>,
     )
   })
 
@@ -162,7 +163,7 @@ const ComponentPalette = ({
         maxWidth: drawerWidth,
         flex: isPhone ? '0 0 auto' : `0 0 ${drawerWidth}px`,
         bgcolor: '#FFFFFF',
-        borderRight: { xs: 0, sm: 1 },
+        borderRight: 0,
         borderBottom: { xs: 1, sm: 0 },
         borderColor: 'divider',
         height: { xs: 'auto', sm: '100%' },
@@ -299,8 +300,17 @@ const ComponentPalette = ({
           },
         }}
       >
-        {PALETTE_GROUPS.map((category) => {
-          const components = groupedComponents[category] || []
+        {(isPhone
+          ? [MOBILE_CONTENT_LAYOUT_GROUP, 'Chart Components']
+          : PALETTE_GROUPS
+        ).map((category) => {
+          const groupCategories =
+            isPhone && category === MOBILE_CONTENT_LAYOUT_GROUP
+              ? ['UI Components', 'Layout Containers']
+              : [category]
+          const components = groupCategories.flatMap(
+            (groupCategory) => groupedComponents[groupCategory] || [],
+          )
 
           if (components.length === 0) {
             return null
@@ -311,7 +321,11 @@ const ComponentPalette = ({
               key={category}
               sx={{
                 mb: isPhone ? 0 : 2,
-                flex: isPhone ? '1 1 0' : 'initial',
+                flex: isPhone
+                  ? category === MOBILE_CONTENT_LAYOUT_GROUP
+                    ? '1 0 100%'
+                    : '1 1 0'
+                  : 'initial',
                 minWidth: isPhone ? 0 : undefined,
                 border: isPhone ? 1 : 0,
                 borderColor: 'divider',
@@ -373,15 +387,47 @@ const ComponentPalette = ({
                     WebkitOverflowScrolling: 'touch',
                   }}
                 >
-                  {components.map((component) => (
-                    <ComponentPaletteItem
-                      key={component.type}
-                      component={component}
-                      showTooltips={showTooltips}
-                      handleDragStart={handleDragStart}
-                      onDirectAdd={onDirectAdd}
-                    />
-                  ))}
+                  {groupCategories.map((groupCategory, groupIndex) => {
+                    const groupComponents =
+                      groupedComponents[groupCategory] || []
+
+                    if (groupComponents.length === 0) {
+                      return null
+                    }
+
+                    return (
+                      <React.Fragment key={groupCategory}>
+                        {isPhone && groupIndex > 0 && (
+                          <Box
+                            sx={{
+                              flex: '0 0 22px',
+                              alignSelf: 'center',
+                              borderTop: '1px solid',
+                              borderColor: 'divider',
+                              opacity: 0.8,
+                            }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <Box
+                          sx={{
+                            display: isPhone ? 'flex' : 'block',
+                            gap: isPhone ? 0.75 : 0,
+                          }}
+                        >
+                          {groupComponents.map((component) => (
+                            <ComponentPaletteItem
+                              key={component.type}
+                              component={component}
+                              showTooltips={showTooltips}
+                              handleDragStart={handleDragStart}
+                              onDirectAdd={onDirectAdd}
+                            />
+                          ))}
+                        </Box>
+                      </React.Fragment>
+                    )
+                  })}
                 </Box>
               </Collapse>
             </Box>
@@ -408,9 +454,7 @@ const ComponentPalette = ({
               fontSize: isPhone ? '0.5rem' : '0.65rem',
             }}
           >
-            {isPhone
-              ? 'Tap + to add an item'
-              : 'Drag items into your widget'}
+            {isPhone ? 'Tap + to add an item' : 'Drag items into your widget'}
           </Typography>
           <Typography
             variant="caption"

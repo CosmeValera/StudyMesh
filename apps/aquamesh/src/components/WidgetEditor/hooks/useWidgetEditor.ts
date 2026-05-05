@@ -137,7 +137,7 @@ export const useWidgetEditor = () => {
   const [requireNameEntryOnSave, setRequireNameEntryOnSave] = useState<boolean>(
     () => {
       const saved = localStorage.getItem('widget-editor-require-name-entry')
-      return saved ? JSON.parse(saved) : false
+      return saved ? JSON.parse(saved) : true
     },
   )
 
@@ -960,9 +960,12 @@ export const useWidgetEditor = () => {
   }
 
   // Handle saving the widget
-  const handleSaveWidget = (isMajorUpdate: boolean = false) => {
+  const handleSaveWidget = (
+    isMajorUpdate: boolean = false,
+    requestedName?: string,
+  ) => {
     // Handle default or blank name according to setting
-    let nameToSave = widgetData.name.trim() || ''
+    let nameToSave = requestedName?.trim() || widgetData.name.trim() || ''
     const existingNames = savedWidgets.map((w) => w.name)
     if (!nameToSave || nameToSave === 'New Widget') {
       if (requireNameEntryOnSave) {
@@ -997,12 +1000,6 @@ export const useWidgetEditor = () => {
       // Update widgetData name for saving
       setWidgetData((prev) => ({ ...prev, name: nameToSave }))
     }
-    // Use nameToSave for saving
-    const widgetToSaveData = {
-      name: nameToSave,
-      components: [...widgetData.components],
-    }
-
     if (!nameToSave) {
       setNotification({
         open: true,
@@ -1026,13 +1023,11 @@ export const useWidgetEditor = () => {
       setIsUndoRedoAction(true)
 
       // Find if we already have a widget with this name to replace
-      const existingWidget = savedWidgets.find(
-        (w) => w.name === widgetData.name,
-      )
+      const existingWidget = savedWidgets.find((w) => w.name === nameToSave)
 
       // Prepare basic widget data for saving
       const widgetToSave = {
-        name: widgetData.name,
+        name: nameToSave,
         components: [...widgetData.components],
       }
 
@@ -1076,24 +1071,25 @@ export const useWidgetEditor = () => {
 
         setNotification({
           open: true,
-          message: `Widget "${widgetData.name}" updated successfully${isMajorUpdate ? ' with major version bump' : ''}`,
+          message: `Widget "${nameToSave}" updated successfully${isMajorUpdate ? ' with major version bump' : ''}`,
           severity: 'success',
         })
       }
       // Handle saving new widget
       else {
-        const savedWidget = WidgetStorage.saveWidget(widgetToSaveData)
+        const savedWidget = WidgetStorage.saveWidget(widgetToSave)
         savedWidgetId = savedWidget.id
         // Set new widgetData id and version
         setWidgetData((prev) => ({
           ...prev,
+          name: nameToSave,
           id: savedWidget.id,
           version: savedWidget.version,
         }))
 
         setNotification({
           open: true,
-          message: `Widget "${widgetData.name}" saved successfully`,
+          message: `Widget "${nameToSave}" saved successfully`,
           severity: 'success',
         })
       }
