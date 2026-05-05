@@ -29,7 +29,7 @@ const workflow = [
   },
   {
     title: 'Add Blocks',
-    body: 'Drag in text, inputs, buttons, charts, and layout sections.',
+    body: 'Add text, inputs, buttons, charts, and layout sections.',
     icon: <AddchartIcon />,
   },
   {

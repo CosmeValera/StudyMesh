@@ -525,7 +525,7 @@ export const useWidgetEditor = () => {
           // Show success notification
           setNotification({
             open: true,
-            message: `Added ${componentConfig.label} component`,
+            message: `Added ${componentConfig.label} block`,
             severity: 'success',
           })
         }
@@ -825,7 +825,7 @@ export const useWidgetEditor = () => {
 
     setNotification({
       open: true,
-      message: `Added ${componentConfig.label} component`,
+      message: `Added ${componentConfig.label} block`,
       severity: 'success',
     })
 
@@ -849,7 +849,7 @@ export const useWidgetEditor = () => {
 
       setNotification({
         open: true,
-        message: 'Component deleted',
+        message: 'Block deleted',
         severity: 'success',
       })
       return
@@ -870,7 +870,7 @@ export const useWidgetEditor = () => {
 
       setNotification({
         open: true,
-        message: 'Component deleted',
+        message: 'Block deleted',
         severity: 'error',
       })
 
@@ -1318,7 +1318,7 @@ export const useWidgetEditor = () => {
       // Show success notification
       setNotification({
         open: true,
-        message: `Added ${componentConfig.label} component`,
+        message: `Added ${componentConfig.label} block`,
         severity: 'success',
       })
     }
