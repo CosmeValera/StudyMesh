@@ -35,6 +35,7 @@ import './tabs.scss'
 interface SavedDashboard {
   id: string
   name: string
+  folder?: string
   layout: DashboardLayout
   description?: string
   tags?: string[]
@@ -170,15 +171,15 @@ const DashboardEmptyState = ({
         sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
       />
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Start a workspace dashboard
+        Start a knowledge dashboard
       </Typography>
       <Typography
         variant="body1"
         sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
       >
-        Pick one real workflow: daily operations, architecture review notes, lab
-        observations, project tasks, or image-rich research. Create one reusable
-        widget first, then place it on this dashboard.
+        Open a starter example from Dashboards, or create one reusable block for
+        your notes: formulas, study questions, charts, images, project tasks, or
+        research observations.
       </Typography>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
@@ -293,6 +294,7 @@ const Dashboards = () => {
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [dashboardName, setDashboardName] = useState('')
+  const [dashboardFolder, setDashboardFolder] = useState('Default')
   const [dashboardDescription, setDashboardDescription] = useState('')
   const [dashboardTags, setDashboardTags] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
@@ -435,6 +437,7 @@ const Dashboards = () => {
       // Show enhanced save dialog for new dashboards
       setCurrentTabIndex(index)
       setDashboardName(currentDashboard.name || '')
+      setDashboardFolder('Default')
       setDashboardDescription('')
       setDashboardTags(['dashboard'])
       setIsPublic(false)
@@ -446,6 +449,7 @@ const Dashboards = () => {
   const handleSaveDialogClose = () => {
     setSaveDialogOpen(false)
     setDashboardName('')
+    setDashboardFolder('Default')
     setDashboardDescription('')
     setDashboardTags([])
     setIsPublic(false)
@@ -479,6 +483,7 @@ const Dashboards = () => {
           const newDashboard: SavedDashboard = {
             id: `dashboard-${Date.now()}`,
             name: dashboardName.trim(),
+            folder: dashboardFolder.trim() || 'Default',
             layout: currentDashboard.layout,
             description: dashboardDescription.trim() || undefined,
             tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
@@ -770,6 +775,37 @@ const Dashboards = () => {
                   <CloseIcon width={16} height={16} />
                 </IconButton>
               ),
+            }}
+          />
+
+          <TextField
+            margin="normal"
+            id="folder"
+            label="Folder"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={dashboardFolder}
+            onChange={(e) => setDashboardFolder(e.target.value)}
+            helperText="Dashboards with the same folder name are grouped together."
+            InputLabelProps={{
+              shrink: true,
+              sx: { color: 'text.secondary' },
+            }}
+            InputProps={{
+              sx: {
+                bgcolor: 'background.paper',
+                color: 'text.primary',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'divider',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                },
+              },
             }}
           />
 

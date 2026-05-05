@@ -59,8 +59,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const WorkspacePage = () => {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
-  const { openCreateWidget, openOperationsExample, openWidgetMenu } =
-    useWorkspaceActions()
+  const {
+    openCreateWidget,
+    openOperationsExample,
+    openMathExample,
+    openTutorialExample,
+    openWidgetMenu,
+  } = useWorkspaceActions()
   const handledActionRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -76,6 +81,10 @@ const WorkspacePage = () => {
       openCreateWidget()
     } else if (action === 'open-operations-example') {
       openOperationsExample()
+    } else if (action === 'open-math-example') {
+      openMathExample()
+    } else if (action === 'open-tutorial-example') {
+      openTutorialExample()
     } else if (action === 'add-widget') {
       openWidgetMenu()
     }
@@ -84,6 +93,8 @@ const WorkspacePage = () => {
   }, [
     openCreateWidget,
     openOperationsExample,
+    openMathExample,
+    openTutorialExample,
     openWidgetMenu,
     searchParams,
     setSearchParams,

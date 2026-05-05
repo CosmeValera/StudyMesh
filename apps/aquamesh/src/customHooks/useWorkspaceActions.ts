@@ -40,6 +40,28 @@ const createLayoutWithComponent = (
   ],
 })
 
+const createLayoutWithComponents = (
+  componentConfigs: WorkspaceComponentConfig[],
+): DashboardLayout => ({
+  type: 'row',
+  weight: 100,
+  children: [
+    {
+      type: 'tabset',
+      weight: 100,
+      active: true,
+      children: componentConfigs.map((componentConfig) => ({
+        type: 'tab',
+        name: componentConfig.name,
+        component: componentConfig.component,
+        config: componentConfig.customProps
+          ? { customProps: componentConfig.customProps }
+          : undefined,
+      })),
+    },
+  ],
+})
+
 const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   if (!layout) {
     return false
@@ -114,43 +136,153 @@ export const useWorkspaceActions = () => {
     })
   }, [ensureDashboardAndAddComponent])
 
-  const openOperationsExample = useCallback(() => {
-    const widgetName = 'Daily Operations Dashboard'
-    let operationsWidget = WidgetStorage.getAllWidgets().find(
-      (widget) => widget.name === widgetName,
-    )
+  const openTemplateDashboard = useCallback(
+    ({
+      widgetName,
+      templateId,
+      description,
+      tags,
+    }: {
+      widgetName: string
+      templateId: string
+      description: string
+      tags: string[]
+    }) => {
+      let widget = WidgetStorage.getAllWidgets().find(
+        (savedWidget) => savedWidget.name === widgetName,
+      )
 
-    if (!operationsWidget) {
-      const template = cloneTemplate('template-operations-dashboard')
+      if (!widget) {
+        const template = cloneTemplate(templateId)
 
-      if (template) {
-        operationsWidget = WidgetStorage.saveWidget({
-          name: widgetName,
-          description:
-            'Daily operations dashboard for orders, delayed tasks, support tickets, system status, team notes, and handoff actions.',
-          category: 'Dashboard',
-          tags: ['dashboard', 'daily operations', 'orders', 'tickets'],
-          components: template.components,
-          version: '1.0',
-          author: 'AquaMesh',
-        })
+        if (template) {
+          widget = WidgetStorage.saveWidget({
+            name: widgetName,
+            description,
+            category: 'Knowledge Workspace',
+            tags,
+            components: template.components,
+            version: '1.0',
+            author: 'AquaMesh',
+          })
+        }
       }
-    }
+
+      addDashboard({
+        name: widgetName,
+        layout: createLayoutWithComponent({
+          name: widgetName,
+          component: 'CustomWidget',
+          customProps: widget
+            ? {
+                widgetId: widget.id,
+                components: widget.components,
+              }
+            : undefined,
+        }),
+      })
+    },
+    [addDashboard],
+  )
+
+  const saveTemplateWidget = useCallback(
+    ({
+      widgetName,
+      templateId,
+      description,
+      category = 'Knowledge Workspace',
+      tags,
+    }: {
+      widgetName: string
+      templateId: string
+      description: string
+      category?: string
+      tags: string[]
+    }) => {
+      let widget = WidgetStorage.getAllWidgets().find(
+        (savedWidget) => savedWidget.name === widgetName,
+      )
+
+      if (!widget) {
+        const template = cloneTemplate(templateId)
+
+        if (template) {
+          widget = WidgetStorage.saveWidget({
+            name: widgetName,
+            description,
+            category,
+            tags,
+            components: template.components,
+            version: '1.0',
+            author: 'AquaMesh',
+          })
+        }
+      }
+
+      return widget
+    },
+    [],
+  )
+
+  const openOperationsExample = useCallback(() => {
+    openTemplateDashboard({
+      widgetName: 'Daily Operations Dashboard',
+      templateId: 'template-operations-dashboard',
+      description:
+        'Daily operations dashboard for orders, delayed tasks, support tickets, system status, team notes, and handoff actions.',
+      tags: ['dashboard', 'daily operations', 'orders', 'tickets'],
+    })
+  }, [openTemplateDashboard])
+
+  const openMathExample = useCallback(() => {
+    const mathWidgets = [
+      saveTemplateWidget({
+        widgetName: 'Mathematics 1 — Chart',
+        templateId: 'template-math-derivatives-chart',
+        description:
+          'Practice-progress chart for the derivatives study dashboard.',
+        tags: ['mathematics', 'derivatives', 'chart'],
+      }),
+      saveTemplateWidget({
+        widgetName: 'Mathematics 1 — Derivatives Example',
+        templateId: 'template-math-derivatives-example',
+        description:
+          'Worked derivative examples and a question input for the study dashboard.',
+        tags: ['mathematics', 'derivatives', 'example'],
+      }),
+      saveTemplateWidget({
+        widgetName: 'Mathematics 1 — Theory Derivatives',
+        templateId: 'template-math-derivatives-theory',
+        description:
+          'Core derivative theory and formulas for the study dashboard.',
+        tags: ['mathematics', 'derivatives', 'theory'],
+      }),
+    ].filter(Boolean)
 
     addDashboard({
-      name: widgetName,
-      layout: createLayoutWithComponent({
-        name: widgetName,
-        component: 'CustomWidget',
-        customProps: operationsWidget
-          ? {
-              widgetId: operationsWidget.id,
-              components: operationsWidget.components,
-            }
-          : undefined,
-      }),
+      name: 'Mathematics 1 — Derivatives',
+      layout: createLayoutWithComponents(
+        mathWidgets.map((widget) => ({
+          name: widget!.name,
+          component: 'CustomWidget',
+          customProps: {
+            widgetId: widget!.id,
+            components: widget!.components,
+          },
+        })),
+      ),
     })
-  }, [addDashboard])
+  }, [addDashboard, saveTemplateWidget])
+
+  const openTutorialExample = useCallback(() => {
+    openTemplateDashboard({
+      widgetName: 'AquaMesh Tutorial',
+      templateId: 'template-knowledge-tutorial',
+      description:
+        'A simple dashboard that explains widgets, dashboards, and blocks with visual examples.',
+      tags: ['tutorial', 'knowledge wiki', 'dashboard', 'blocks'],
+    })
+  }, [openTemplateDashboard])
 
   const openWidgetMenu = useCallback(() => {
     window.dispatchEvent(new CustomEvent(OPEN_WIDGET_MENU_EVENT))
@@ -160,6 +292,8 @@ export const useWorkspaceActions = () => {
     ensureDashboardAndAddComponent,
     openCreateWidget,
     openOperationsExample,
+    openMathExample,
+    openTutorialExample,
     openWidgetMenu,
   }
 }

@@ -44,6 +44,7 @@ import DeleteConfirmationDialog from '../WidgetEditor/components/dialogs/DeleteC
 interface SavedDashboard {
   id: string
   name: string
+  folder?: string
   layout: Layout
   description?: string
   tags?: string[]
@@ -168,6 +169,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
           (dashboard: {
             id: string
             name: string
+            folder?: string
             layout: Layout
             description?: string
             tags?: string[]
@@ -177,6 +179,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
           }) => ({
             id: dashboard.id,
             name: dashboard.name,
+            folder: dashboard.folder?.trim() || 'Default',
             layout: dashboard.layout,
             description: dashboard.description || 'No description',
             tags: dashboard.tags || ['dashboard'],
@@ -358,6 +361,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       filtered = filtered.filter(
         (dashboard) =>
           dashboard.name.toLowerCase().includes(term) ||
+          dashboard.folder?.toLowerCase().includes(term) ||
           dashboard.description?.toLowerCase().includes(term) ||
           dashboard.tags?.some((tag) => tag.toLowerCase().includes(term)),
       )
@@ -787,6 +791,17 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                     color: 'primary.dark',
                                   }}
                                 />
+                                <Chip
+                                  size="small"
+                                  label={dashboard.folder || 'Default'}
+                                  sx={{
+                                    ml: 1,
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: 'action.hover',
+                                    color: 'text.secondary',
+                                  }}
+                                />
                                 {dashboard.isPublic && (
                                   <Chip
                                     size="small"
@@ -1056,6 +1071,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
   onSave,
 }) => {
   const [name, setName] = useState('')
+  const [folder, setFolder] = useState('Default')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
@@ -1065,6 +1081,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
   useEffect(() => {
     if (dashboard) {
       setName(dashboard.name)
+      setFolder(dashboard.folder || 'Default')
       setDescription(dashboard.description || '')
       setTags(dashboard.tags || [])
       setIsPublic(dashboard.isPublic || false)
@@ -1077,6 +1094,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
       const updatedDashboard: SavedDashboard = {
         ...dashboard,
         name: name.trim(),
+        folder: folder.trim() || 'Default',
         description: description.trim() || 'No description',
         tags: tags.length > 0 ? tags : ['dashboard'],
         isPublic,
@@ -1162,6 +1180,31 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
             }}
             margin="normal"
             required
+            InputLabelProps={{ shrink: true, sx: { color: 'text.secondary' } }}
+            InputProps={{
+              sx: {
+                bgcolor: 'background.paper',
+                color: 'text.primary',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'divider',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                },
+              },
+            }}
+          />
+
+          <TextField
+            fullWidth
+            label="Folder"
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            margin="normal"
+            helperText="Dashboards with the same folder name are grouped in the dashboard menu."
             InputLabelProps={{ shrink: true, sx: { color: 'text.secondary' } }}
             InputProps={{
               sx: {

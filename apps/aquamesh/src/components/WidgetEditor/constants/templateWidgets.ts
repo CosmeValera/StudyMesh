@@ -717,6 +717,552 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
     updatedAt: new Date().toISOString(),
     tags: ['report', 'status', 'system', 'monitoring'],
   },
+  {
+    id: 'template-knowledge-math',
+    name: 'Mathematics Knowledge Wiki Template',
+    description:
+      'A visual study page for formulas, worked examples, practice progress, and questions to review later.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-math-title',
+        type: 'Label',
+        props: {
+          text: 'Mathematics 1 — Derivatives',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#1976D2',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-math-overview',
+        type: 'FieldSet',
+        props: {
+          legend: 'What this dashboard teaches',
+          collapsed: false,
+          borderStyle: 'solid',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+          borderColor: '#1976D2',
+          legendColor: '#1976D2',
+          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+          padding: 2,
+          borderRadius: 8,
+        },
+        children: [
+          {
+            id: 'template-math-goal',
+            type: 'Label',
+            props: {
+              text: 'Use this as a wiki page: collect the concept, formulas, examples, practice questions, and a progress chart in one reusable dashboard.',
+              variant: 'body1',
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-math-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
+        children: [
+          {
+            id: 'template-math-formulas',
+            type: 'FieldSet',
+            props: {
+              legend: 'Core formulas',
+              borderStyle: 'solid',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              borderColor: '#7B1FA2',
+              legendColor: '#7B1FA2',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-math-formula-label',
+                type: 'Label',
+                props: {
+                  text: 'Power rule: d/dx xⁿ = n·xⁿ⁻¹\nChain rule: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct rule: (fg)′ = f′g + fg′',
+                  variant: 'body1',
+                  whiteSpace: 'pre-line',
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-math-questions',
+            type: 'FieldSet',
+            props: {
+              legend: 'Questions to resolve',
+              borderStyle: 'solid',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              borderColor: '#EF6C00',
+              legendColor: '#EF6C00',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-math-question-input',
+                type: 'TextField',
+                props: {
+                  label: 'Add a doubt or exam question',
+                  placeholder: 'Example: when should I use chain rule?',
+                  fullWidth: true,
+                  variant: 'outlined',
+                  helperText:
+                    'Future idea: turn notes/questions into dashboard blocks automatically.',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-math-progress',
+        type: 'Chart',
+        props: {
+          title: 'Study progress',
+          chartType: 'pie',
+          height: 260,
+          description: 'Example of using charts as visual study feedback.',
+          data: `{
+            "labels": ["Understood", "Needs practice", "Ask teacher"],
+            "datasets": [{
+              "data": [55, 35, 10],
+              "backgroundColor": ["rgba(25, 118, 210, 0.85)", "rgba(239, 108, 0, 0.85)", "rgba(194, 24, 91, 0.85)"],
+              "borderWidth": 2
+            }]
+          }`,
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['knowledge wiki', 'math', 'study', 'formulas', 'chart'],
+  },
+  {
+    id: 'template-knowledge-physics',
+    name: 'Physics Knowledge Wiki Template',
+    description:
+      'A visual physics study page for formulas, experiment notes, diagrams, and revision status.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-physics-title',
+        type: 'Label',
+        props: {
+          text: 'Physics 1 — Motion',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#007C66',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-physics-overview',
+        type: 'FieldSet',
+        props: {
+          legend: 'Knowledge page structure',
+          collapsed: false,
+          borderStyle: 'solid',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+          borderColor: '#007C66',
+          legendColor: '#007C66',
+          backgroundColor: 'rgba(0, 124, 102, 0.08)',
+          padding: 2,
+          borderRadius: 8,
+        },
+        children: [
+          {
+            id: 'template-physics-overview-label',
+            type: 'Label',
+            props: {
+              text: 'This example shows how AquaMesh can behave like a visual wiki: formulas, notes, questions, and charts live in the same dashboard.',
+              variant: 'body1',
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-physics-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
+        children: [
+          {
+            id: 'template-physics-formulas',
+            type: 'FieldSet',
+            props: {
+              legend: 'Motion formulas',
+              borderStyle: 'solid',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              borderColor: '#455A64',
+              legendColor: '#455A64',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-physics-formula-label',
+                type: 'Label',
+                props: {
+                  text: 'Velocity: v = Δx / Δt\nAcceleration: a = Δv / Δt\nPosition: x = x₀ + vt + ½at²',
+                  variant: 'body1',
+                  whiteSpace: 'pre-line',
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-physics-lab-notes',
+            type: 'FieldSet',
+            props: {
+              legend: 'Experiment notes',
+              borderStyle: 'solid',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              borderColor: '#C2185B',
+              legendColor: '#C2185B',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-physics-note-input',
+                type: 'TextField',
+                props: {
+                  label: 'Observation',
+                  placeholder:
+                    'Example: slope of position/time graph gives velocity',
+                  fullWidth: true,
+                  variant: 'outlined',
+                  helperText:
+                    'Future idea: paste notes and generate a dashboard from them.',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-physics-chart',
+        type: 'Chart',
+        props: {
+          title: 'Revision status',
+          chartType: 'bar',
+          height: 280,
+          description: 'Track what needs review before the exam.',
+          data: `{
+            "labels": ["Formulas", "Graphs", "Problems", "Lab notes"],
+            "datasets": [{
+              "label": "Confidence",
+              "data": [80, 55, 45, 70],
+              "backgroundColor": "rgba(0, 124, 102, 0.75)",
+              "borderColor": "rgba(0, 124, 102, 1)",
+              "borderWidth": 2
+            }]
+          }`,
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['knowledge wiki', 'physics', 'study', 'formulas', 'notes'],
+  },
+
+  {
+    id: 'template-math-derivatives-chart',
+    name: 'Mathematics Derivatives Chart Template',
+    description: 'A chart widget for derivative practice progress.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-math-chart-title',
+        type: 'Label',
+        props: {
+          text: 'Mathematics 1 — Chart',
+          variant: 'h5',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#1976D2',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-math-progress-chart',
+        type: 'Chart',
+        props: {
+          title: 'Derivative practice progress',
+          chartType: 'bar',
+          height: 280,
+          description:
+            'Example chart: what is understood, what needs practice, and what needs help.',
+          data: `{
+            "labels": ["Power rule", "Chain rule", "Product rule", "Word problems"],
+            "datasets": [{
+              "label": "Confidence",
+              "data": [85, 55, 65, 35],
+              "backgroundColor": "rgba(25, 118, 210, 0.75)",
+              "borderColor": "rgba(25, 118, 210, 1)",
+              "borderWidth": 2
+            }]
+          }`,
+        },
+      },
+      {
+        id: 'template-math-chart-note',
+        type: 'Label',
+        props: {
+          text: 'This is a chart block. Later it could react to answers, checks, or note data.',
+          variant: 'body2',
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['mathematics', 'derivatives', 'chart'],
+  },
+  {
+    id: 'template-math-derivatives-example',
+    name: 'Mathematics Derivatives Example Template',
+    description:
+      'A widget with worked derivative examples and a question input.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-math-example-title',
+        type: 'Label',
+        props: {
+          text: 'Mathematics 1 — Derivatives Example',
+          variant: 'h5',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#EF6C00',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-math-example-section',
+        type: 'FieldSet',
+        props: {
+          legend: 'Worked example',
+          borderStyle: 'solid',
+          borderColor: '#EF6C00',
+          legendColor: '#EF6C00',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+          padding: 2,
+          borderRadius: 8,
+        },
+        children: [
+          {
+            id: 'template-math-example-text',
+            type: 'Label',
+            props: {
+              text: 'Example: f(x)=3x⁴ - 2x² + 7\nf′(x)=12x³ - 4x\n\nWhy: apply the power rule to each term.',
+              variant: 'body1',
+              whiteSpace: 'pre-line',
+            },
+          },
+          {
+            id: 'template-math-example-input',
+            type: 'TextField',
+            props: {
+              label: 'Try one yourself',
+              placeholder: 'Derivative of x³ + 5x?',
+              fullWidth: true,
+              variant: 'outlined',
+              helperText:
+                'This is an input block for answers, doubts, or notes.',
+            },
+          },
+        ],
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['mathematics', 'derivatives', 'example', 'input'],
+  },
+  {
+    id: 'template-math-derivatives-theory',
+    name: 'Mathematics Derivatives Theory Template',
+    description: 'A widget with derivative theory and formulas.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-math-theory-title',
+        type: 'Label',
+        props: {
+          text: 'Mathematics 1 — Theory Derivatives',
+          variant: 'h5',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#7B1FA2',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-math-theory-fieldset',
+        type: 'FieldSet',
+        props: {
+          legend: 'Core theory',
+          borderStyle: 'solid',
+          borderColor: '#7B1FA2',
+          legendColor: '#7B1FA2',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+          padding: 2,
+          borderRadius: 8,
+        },
+        children: [
+          {
+            id: 'template-math-theory-text',
+            type: 'Label',
+            props: {
+              text: 'A derivative measures the rate of change of a function.\n\nPower rule: d/dx xⁿ = n·xⁿ⁻¹\nChain rule: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct rule: (fg)′ = f′g + fg′',
+              variant: 'body1',
+              whiteSpace: 'pre-line',
+            },
+          },
+        ],
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['mathematics', 'derivatives', 'theory', 'formulas'],
+  },
+  {
+    id: 'template-knowledge-tutorial',
+    name: 'AquaMesh Tutorial Template',
+    description: 'A dashboard that explains widgets, dashboards, and blocks.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-tutorial-title',
+        type: 'Label',
+        props: {
+          text: 'AquaMesh Tutorial',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#007C66',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-tutorial-intro',
+        type: 'FieldSet',
+        props: {
+          legend: 'The three ideas',
+          borderStyle: 'solid',
+          borderColor: '#007C66',
+          legendColor: '#007C66',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+          padding: 2,
+          borderRadius: 8,
+        },
+        children: [
+          {
+            id: 'template-tutorial-text',
+            type: 'Label',
+            props: {
+              text: 'Widgets are reusable pieces of knowledge.\nDashboards are pages where widgets live together.\nBlocks are the small parts inside a widget: labels, inputs, buttons, charts, and groups.',
+              variant: 'body1',
+              whiteSpace: 'pre-line',
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-tutorial-blocks',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
+        children: [
+          {
+            id: 'template-tutorial-label-section',
+            type: 'FieldSet',
+            props: { legend: 'Label block', padding: 2, borderRadius: 8 },
+            children: [
+              {
+                id: 'template-tutorial-label-example',
+                type: 'Label',
+                props: {
+                  text: 'This is a label: text, theory, explanations, or titles.',
+                  variant: 'body1',
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-tutorial-input-section',
+            type: 'FieldSet',
+            props: { legend: 'Input block', padding: 2, borderRadius: 8 },
+            children: [
+              {
+                id: 'template-tutorial-input-example',
+                type: 'TextField',
+                props: {
+                  label: 'This is an input',
+                  placeholder: 'Write a note or answer',
+                  fullWidth: true,
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-tutorial-button-section',
+            type: 'FieldSet',
+            props: { legend: 'Button block', padding: 2, borderRadius: 8 },
+            children: [
+              {
+                id: 'template-tutorial-button-example',
+                type: 'Button',
+                props: {
+                  text: 'This is a button',
+                  variant: 'contained',
+                  showToast: true,
+                  toastMessage: 'Button clicked',
+                  toastSeverity: 'info',
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-tutorial-chart-section',
+            type: 'FieldSet',
+            props: {
+              legend: 'Chart / graph block',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-tutorial-chart-example',
+                type: 'Chart',
+                props: {
+                  title: 'This is a chart',
+                  chartType: 'pie',
+                  height: 220,
+                  data: `{"labels":["Labels","Inputs","Charts"],"datasets":[{"data":[35,30,35],"backgroundColor":["rgba(0,124,102,0.8)","rgba(25,118,210,0.8)","rgba(239,108,0,0.8)"]}]}`,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['tutorial', 'widgets', 'dashboards', 'blocks'],
+  },
 ]
 
 // Function to clone a template and generate new IDs

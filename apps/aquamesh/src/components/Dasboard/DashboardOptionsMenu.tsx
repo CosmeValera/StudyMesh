@@ -21,6 +21,7 @@ import { useWorkspaceActions } from '../../customHooks/useWorkspaceActions'
 interface SavedDashboard {
   id: string
   name: string
+  folder?: string
   layout: Layout
   description?: string
   tags?: string[]
@@ -79,7 +80,7 @@ const DashboardOptionsMenu: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false)
 
   const { addDashboard } = useDashboards()
-  const { openOperationsExample } = useWorkspaceActions()
+  const { openMathExample, openTutorialExample } = useWorkspaceActions()
 
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -121,6 +122,15 @@ const DashboardOptionsMenu: React.FC = () => {
   const visibleCustomDashboards = isAdmin
     ? customDashboards
     : customDashboards.filter((d) => d.isPublic)
+
+  const dashboardsByFolder = visibleCustomDashboards.reduce<
+    Record<string, SavedDashboard[]>
+  >((folders, dashboard) => {
+    const folderName = dashboard.folder?.trim() || 'Default'
+    folders[folderName] = folders[folderName] || []
+    folders[folderName].push(dashboard)
+    return folders
+  }, {})
 
   // Handle opening and closing dropdown
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -211,57 +221,81 @@ const DashboardOptionsMenu: React.FC = () => {
 
         <Divider sx={{ my: 1, borderColor: 'divider' }} />
 
-        {!isPhone && (
-          <>
-            {/* Predefined Dashboards Section */}
-            <Typography
-              sx={{
-                px: 2,
-                py: 1,
-                fontWeight: 'bold',
-                mt: 1,
-                color: 'text.primary',
-              }}
-            >
-              Demo Scenarios
-            </Typography>
-            <Divider sx={{ borderColor: 'divider' }} />
-            <MenuItem
-              onClick={() => {
-                openOperationsExample()
-                handleClose()
-              }}
-              sx={{ p: 1.5 }}
-            >
-              Daily Operations Example
-            </MenuItem>
-          </>
-        )}
+        {/* Starter folders */}
+        <Typography
+          sx={{
+            px: 2,
+            py: 1,
+            fontWeight: 'bold',
+            mt: 1,
+            color: 'text.primary',
+          }}
+        >
+          Mathematics
+        </Typography>
+        <Divider sx={{ borderColor: 'divider' }} />
+        <MenuItem
+          onClick={() => {
+            openMathExample()
+            handleClose()
+          }}
+          sx={{ p: 1.5 }}
+        >
+          Mathematics Study Example
+        </MenuItem>
+
+        <Typography
+          sx={{
+            px: 2,
+            py: 1,
+            fontWeight: 'bold',
+            mt: 1,
+            color: 'text.primary',
+          }}
+        >
+          Tutorial
+        </Typography>
+        <Divider sx={{ borderColor: 'divider' }} />
+        <MenuItem
+          onClick={() => {
+            openTutorialExample()
+            handleClose()
+          }}
+          sx={{ p: 1.5 }}
+        >
+          AquaMesh Tutorial
+        </MenuItem>
 
         {/* Custom Dashboards Section */}
         {visibleCustomDashboards.length > 0 && (
           <>
-            <Typography
-              sx={{
-                px: 2,
-                py: 1,
-                fontWeight: 'bold',
-                mt: 1,
-                color: 'text.primary',
-              }}
-            >
-              My Dashboards
-            </Typography>
-            <Divider sx={{ borderColor: 'divider' }} />
-            {[...visibleCustomDashboards].reverse().map((dashboard) => (
-              <MenuItem
-                key={dashboard.id}
-                onClick={() => loadCustomDashboard(dashboard)}
-                sx={{ p: 1.5 }}
-              >
-                {dashboard.name}
-              </MenuItem>
-            ))}
+            {Object.entries(dashboardsByFolder).map(
+              ([folderName, dashboards]) => (
+                <React.Fragment key={folderName}>
+                  <Typography
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      fontWeight: 'bold',
+                      mt: 1,
+                      color: 'text.primary',
+                    }}
+                  >
+                    {folderName}
+                  </Typography>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  {[...dashboards].reverse().map((dashboard) => (
+                    <MenuItem
+                      key={dashboard.id}
+                      onClick={() => loadCustomDashboard(dashboard)}
+                      sx={{ p: 1.5 }}
+                    >
+                      {dashboard.name}
+                    </MenuItem>
+                  ))}
+                </React.Fragment>
+              ),
+            )}
           </>
         )}
         {isPhone && visibleCustomDashboards.length === 0 && (
@@ -275,7 +309,7 @@ const DashboardOptionsMenu: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            No Dashboards
+            No saved dashboards yet
           </MenuItem>
         )}
       </Menu>
