@@ -67,8 +67,6 @@ const renderEditorCanvas = (
     onAddStarterComponent: vi.fn(),
     onStartOperationsWidget: vi.fn(),
     onUseTemplate: vi.fn(),
-    onRestartOnboarding: vi.fn(),
-    onSkipOnboarding: vi.fn(),
     ...overrides,
   }
 
@@ -183,7 +181,7 @@ describe('EditorCanvas first-widget guide', () => {
   })
 
   it('shows the edit and save guidance after the first component exists', () => {
-    const props = renderEditorCanvas({
+    renderEditorCanvas({
       onboardingActive: true,
       onboardingStep: 'save',
       widgetData: {
@@ -204,8 +202,8 @@ describe('EditorCanvas first-widget guide', () => {
     expect(
       screen.queryByRole('button', { name: /show again/i }),
     ).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /got it/i }))
-    expect(props.onSkipOnboarding).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('button', { name: /got it/i }),
+    ).not.toBeInTheDocument()
   })
 })

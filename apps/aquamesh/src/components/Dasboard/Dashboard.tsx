@@ -45,9 +45,10 @@ interface SavedDashboard {
   updatedAt: string
 }
 
-type DashboardOnboardingStep = 'layout' | 'save' | 'done'
+type DashboardOnboardingStep = 'layout' | 'save' | 'complete' | 'done'
 
 const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
+const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 
 const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
   if (!layout) {
@@ -231,15 +232,18 @@ const DashboardEmptyState = ({
 interface DashboardOnboardingCoachProps {
   step: Exclude<DashboardOnboardingStep, 'done'>
   hasUnsavedChanges: boolean
-  onDone: () => void
+  onDismiss: () => void
+  onGotIt: () => void
 }
 
 const DashboardOnboardingCoach = ({
   step,
   hasUnsavedChanges,
-  onDone,
+  onDismiss,
+  onGotIt,
 }: DashboardOnboardingCoachProps) => {
   const isLayoutStep = step === 'layout'
+  const isCompleteStep = step === 'complete'
 
   return (
     <Paper
@@ -262,27 +266,45 @@ const DashboardOnboardingCoach = ({
     >
       <Stack spacing={1}>
         <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
-          Step {isLayoutStep ? '4' : '5'}
+          Step {isLayoutStep ? '4' : isCompleteStep ? '6' : '5'}
         </Typography>
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-          {isLayoutStep ? 'Shape your dashboard' : 'Save this dashboard'}
+          {isLayoutStep
+            ? 'Shape your dashboard'
+            : isCompleteStep
+              ? 'Congratulations 🎉'
+              : 'Save this dashboard'}
         </Typography>
         <Typography
           variant="body2"
           sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
         >
-          {isLayoutStep
-            ? 'Drag the widget tab to a new spot in the dashboard. Step 5 appears after you move it.'
-            : hasUnsavedChanges
-              ? 'Save the dashboard using the disk icon on the Dashboard tab.'
-              : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
+          {isCompleteStep
+            ? 'You finished the AquaMesh onboarding. You can keep exploring or hide these steps for next time.'
+            : isLayoutStep
+              ? 'Drag the widget tab to a new spot in the dashboard. Step 5 appears after you move it.'
+              : hasUnsavedChanges
+                ? 'Save the dashboard using the disk icon on the Dashboard tab.'
+                : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
         </Typography>
-        {!isLayoutStep && (
+        {isCompleteStep && (
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button
               size="small"
+              variant="outlined"
+              onClick={onDismiss}
+              sx={{
+                textTransform: 'none',
+                color: 'primary.contrastText',
+                borderColor: 'rgba(255, 255, 255, 0.6)',
+              }}
+            >
+              Dismiss
+            </Button>
+            <Button
+              size="small"
               variant="contained"
-              onClick={onDone}
+              onClick={onGotIt}
               sx={{ textTransform: 'none' }}
             >
               Got it
@@ -336,7 +358,12 @@ const Dashboards = () => {
     setDashboardOnboardingStep('done')
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'done')
+      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
     }
+  }
+
+  const dismissDashboardOnboarding = () => {
+    setDashboardOnboardingStep('done')
   }
 
   const advanceDashboardOnboarding = () => {
@@ -381,6 +408,21 @@ const Dashboards = () => {
     const currentLayout = currentDashboard?.layout
     const hasWidget = hasPlacedSavedWidget(currentLayout)
 
+    const currentChangeStateKnown = Object.prototype.hasOwnProperty.call(
+      hasChanges,
+      selectedDashboard,
+    )
+
+    if (
+      dashboardOnboardingStep === 'save' &&
+      hasWidget &&
+      currentChangeStateKnown &&
+      !hasChanges[selectedDashboard]
+    ) {
+      setDashboardOnboardingStep('complete')
+      return
+    }
+
     if (dashboardOnboardingStep !== 'layout' || !hasWidget) {
       dashboardOnboardingLayoutBaseline.current = null
       return
@@ -399,7 +441,7 @@ const Dashboards = () => {
       dashboardOnboardingLayoutBaseline.current = null
       advanceDashboardOnboarding()
     }
-  }, [dashboardOnboardingStep, openDashboards, selectedDashboard])
+  }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 
   const handleSaveDialogOpen = (index: number) => {
     const currentDashboard = openDashboards[index]
@@ -632,7 +674,8 @@ const Dashboards = () => {
                     <DashboardOnboardingCoach
                       step={dashboardOnboardingStep}
                       hasUnsavedChanges={Boolean(hasChanges[index])}
-                      onDone={completeDashboardOnboarding}
+                      onDismiss={dismissDashboardOnboarding}
+                      onGotIt={completeDashboardOnboarding}
                     />
                   )}
                   {isEmptyDashboard ? (

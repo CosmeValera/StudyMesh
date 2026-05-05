@@ -132,7 +132,7 @@ const WidgetEditor: React.FC<{
 
   const [onboardingStep, setOnboardingStep] =
     React.useState<OnboardingStep>('choose')
-  const [onboardingDismissed, setOnboardingDismissed] = React.useState(() => {
+  const [onboardingDismissed] = React.useState(() => {
     if (typeof window === 'undefined') {
       return false
     }
@@ -159,21 +159,6 @@ const WidgetEditor: React.FC<{
       setViewMode('edit')
     }
   }, [isPhone, setViewMode, viewMode])
-
-  const handleSkipOnboarding = React.useCallback(() => {
-    setOnboardingDismissed(true)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
-    }
-  }, [])
-
-  const handleRestartOnboarding = React.useCallback(() => {
-    setOnboardingDismissed(false)
-    setOnboardingStep(widgetData.components.length > 0 ? 'save' : 'choose')
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(WIDGET_EDITOR_ONBOARDING_KEY)
-    }
-  }, [widgetData.components.length])
 
   const handleGuidedDragStart = React.useCallback(
     (event: React.DragEvent<HTMLDivElement>, type: string) => {
@@ -712,8 +697,6 @@ const WidgetEditor: React.FC<{
               onUseTemplate={() => setShowTemplateDialog(true)}
               onboardingActive={onboardingActive}
               onboardingStep={onboardingStep}
-              onRestartOnboarding={handleRestartOnboarding}
-              onSkipOnboarding={handleSkipOnboarding}
             />
           </Box>
         )}

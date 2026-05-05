@@ -63,8 +63,6 @@ interface EditorCanvasProps {
   onUseTemplate?: () => void
   onboardingActive?: boolean
   onboardingStep?: 'choose' | 'save' | 'place' | null
-  onRestartOnboarding?: () => void
-  onSkipOnboarding?: () => void
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
@@ -96,8 +94,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onUseTemplate,
   onboardingActive = false,
   onboardingStep = null,
-  onRestartOnboarding,
-  onSkipOnboarding,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -260,18 +256,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the Daily Operations widget when it is ready to be used in dashboards.'}
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1}>
-              {onSkipOnboarding && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={onSkipOnboarding}
-                  sx={{ borderRadius: 1, textTransform: 'none' }}
-                >
-                  Got it
-                </Button>
-              )}
-            </Stack>
           </Stack>
         </Paper>
       )}
