@@ -255,7 +255,7 @@ const DashboardOnboardingCoach = ({
         bottom: { xs: 8, sm: 'auto' },
         right: { xs: 8, sm: 12 },
         left: { xs: 8, sm: 'auto' },
-        zIndex: 10,
+        zIndex: 1300,
         width: { xs: 'auto', sm: 420 },
         p: { xs: 1.25, sm: 1.5 },
         borderRadius: 2,
@@ -280,9 +280,9 @@ const DashboardOnboardingCoach = ({
           sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
         >
           {isCompleteStep
-            ? 'You finished the AquaMesh onboarding. You can keep exploring or hide these steps for next time.'
+            ? 'You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards.'
             : isLayoutStep
-              ? 'Drag the widget tab to a new spot in the dashboard. Step 5 appears after you move it.'
+              ? 'Drag the widget tab to a new spot in the dashboard.'
               : hasUnsavedChanges
                 ? 'Save the dashboard using the disk icon on the Dashboard tab.'
                 : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
@@ -307,7 +307,7 @@ const DashboardOnboardingCoach = ({
               onClick={onGotIt}
               sx={{ textTransform: 'none' }}
             >
-              Got it
+              Don’t show onboarding again
             </Button>
           </Stack>
         )}
