@@ -365,7 +365,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                               )}
                               <Chip
                                 size="small"
-                                label={`${version.components.length} items`}
+                                label={`${version.components.length} ${version.components.length === 1 ? 'block' : 'blocks'}`}
                                 variant="outlined"
                                 sx={{ height: 20, fontSize: '0.7rem', borderColor: alpha(theme.palette.divider, 0.6), color: 'text.secondary' }}
                               />
@@ -434,7 +434,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                       )}
                     </Box>
                     <Typography variant={isPhone ? 'subtitle2' : 'h6'} fontWeight="medium" sx={{mb: 1.5, color: theme.palette.text.primary, fontSize: isPhone ? '1rem' : undefined}}>
-                      Component Summary
+                      Block Summary
                     </Typography>
                     <Paper variant="outlined" sx={{ 
                         p: '16px 20px', borderRadius: 2.5, 
@@ -443,7 +443,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                         mb: 3, flexGrow: 1, overflow: 'auto' 
                       }}>
                       <Typography variant="subtitle1" fontWeight="bold" gutterBottom color="text.primary">
-                        {selectedVersion.components.length} component{selectedVersion.components.length !== 1 ? 's' : ''}
+                        {selectedVersion.components.length} block{selectedVersion.components.length !== 1 ? 's' : ''}
                       </Typography>
                       {selectedVersion.components.length > 0 ? (
                         <Box component="ul" sx={{ pl: 2.5, m: 0, maxHeight: '220px', overflowY: 'auto' }}>
@@ -477,7 +477,7 @@ const WidgetVersioningDialog: React.FC<WidgetVersioningDialogProps> = ({
                         }}
                       >
                         <Typography variant="subtitle2" gutterBottom fontWeight="medium">
-                          Component Count Comparison
+                          Block Count Comparison
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
                           <Box sx={{ textAlign: 'center' }}>

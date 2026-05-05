@@ -485,7 +485,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
                   <Typography fontWeight="medium" color="text.primary">
-                    Confirm Component Deletion
+                    Confirm Block Deletion
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
@@ -501,7 +501,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   color="text.secondary"
                   sx={{ ml: 5, mb: 1 }}
                 >
-                  Show a confirmation dialog when deleting components.
+                  Show a confirmation dialog when deleting blocks.
                 </Typography>
               </Box>
             </Box>
