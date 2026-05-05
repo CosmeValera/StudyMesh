@@ -14,6 +14,8 @@ import {
   Chip,
   Paper,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import TooltipStyled from '../TooltipStyled'
@@ -232,16 +234,21 @@ const DashboardEmptyState = ({
 interface DashboardOnboardingCoachProps {
   step: Exclude<DashboardOnboardingStep, 'done'>
   hasUnsavedChanges: boolean
+  dashboardName: string
   onGotIt: () => void
 }
 
 const DashboardOnboardingCoach = ({
   step,
   hasUnsavedChanges,
+  dashboardName,
   onGotIt,
 }: DashboardOnboardingCoachProps) => {
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isLayoutStep = step === 'layout'
   const isCompleteStep = step === 'complete'
+  const dashboardMenuName = isPhone ? 'Dash' : 'Dashboards'
 
   return (
     <Paper
@@ -280,7 +287,7 @@ const DashboardOnboardingCoach = ({
           sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
         >
           {isCompleteStep
-            ? 'You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards.'
+            ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards. You’ll be able to find your saved dashboard “${dashboardName}” inside the ${dashboardMenuName} menu.`
             : isLayoutStep
               ? 'Drag the widget tab to a new spot in the dashboard.'
               : hasUnsavedChanges
@@ -662,6 +669,7 @@ const Dashboards = () => {
                     <DashboardOnboardingCoach
                       step={dashboardOnboardingStep}
                       hasUnsavedChanges={Boolean(hasChanges[index])}
+                      dashboardName={dashboard.name}
                       onGotIt={completeDashboardOnboarding}
                     />
                   )}
