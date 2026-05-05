@@ -154,7 +154,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
-        bgcolor: '#F8FAFA',
+        bgcolor: 'background.default',
         transition: 'width 0.3s ease',
         width: '100%',
       }}
@@ -304,7 +304,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
               <Typography
                 variant="subtitle2"
                 sx={{
-                  color: 'foreground.contrastPrimary',
+                  color: 'text.primary',
                   fontWeight: 700,
                   mb: 0.25,
                 }}
@@ -316,7 +316,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
               <Typography
                 variant="body2"
                 sx={{
-                  color: 'foreground.contrastSecondary',
+                  color: 'text.secondary',
                   fontSize: isPhone ? '0.78rem' : undefined,
                 }}
               >
@@ -349,7 +349,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
           borderRadius: 1,
           minHeight: isPhone ? 150 : 200,
           overflowY: 'auto',
-          color: 'foreground.contrastPrimary',
+          color: 'text.primary',
           boxShadow: 'none',
           transition: 'background-color 0.2s',
         }}
@@ -365,7 +365,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              color: 'foreground.contrastPrimary',
+              color: 'text.primary',
               pt: isPhone ? 2 : 4,
               pb: isPhone ? 2 : 4,
               px: isPhone ? 0.5 : 2,
@@ -390,7 +390,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       variant={isPhone ? 'subtitle1' : 'h6'}
                       sx={{
                         fontWeight: 700,
-                        color: 'foreground.contrastPrimary',
+                        color: 'text.primary',
                         mb: 0.5,
                       }}
                     >
@@ -401,7 +401,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                     <Typography
                       variant="body2"
                       sx={{
-                        color: 'foreground.contrastSecondary',
+                        color: 'text.secondary',
                         fontSize: isPhone ? '0.78rem' : undefined,
                       }}
                     >

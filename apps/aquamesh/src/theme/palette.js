@@ -1,24 +1,9 @@
-// IDEA (re-)use css variables here
-const createPalette = (accent) => ({
-  brand: {
-    primary: accent.main,
-  },
+const lightBase = {
+  mode: 'light',
   common: {
     black: '#000000',
     white: '#FFFFFF',
     clear: '#FFFFFF0',
-  },
-  primary: {
-    main: accent.main,
-    light: accent.light,
-    dark: accent.dark,
-    contrastText: accent.contrastText,
-  },
-  secondary: {
-    main: accent.soft,
-    light: accent.surface,
-    dark: accent.light,
-    contrastText: accent.dark,
   },
   grey: {
     50: '#F9FAFA',
@@ -36,39 +21,6 @@ const createPalette = (accent) => ({
     A400: '#596569',
     A700: '#2D3334',
   },
-  critical: {
-    main: '#E31B0C',
-    light: '#F88078',
-    dark: '#BA1408',
-  },
-  serious: {
-    main: '#ED6C02',
-    light: '#FFB547',
-    dark: '#BB5A00',
-  },
-  caution: {
-    main: '#FBE20E',
-    light: '#FDF082',
-    dark: '#B4A203',
-    contrastText: '#00000099',
-  },
-  normal: {
-    main: '#299E2E',
-    light: '#7BC67E',
-    dark: '#3B873E',
-  },
-  standby: {
-    main: accent.main,
-    light: accent.light,
-    dark: accent.dark,
-  },
-  off: {
-    main: '#9EA7AD',
-    light: '#D6D9DC',
-    dark: '#6A7177',
-  },
-  // REVIEW add these colors after creating the theme, so we can reference
-  // their bases
   foreground: {
     primary: '#102A2DDE',
     contrastPrimary: '#102A2DDE',
@@ -76,6 +28,11 @@ const createPalette = (accent) => ({
     contrastSecondary: '#3D575CDE',
     disabled: '#00102661',
     contrastDisabled: '#00102661',
+  },
+  text: {
+    primary: '#102A2DDE',
+    secondary: '#3D575CDE',
+    disabled: '#00102661',
   },
   background: {
     header: '#FFFFFF',
@@ -86,22 +43,8 @@ const createPalette = (accent) => ({
     paper: '#FFFFFF',
     dialog: '#FFFFFF',
     modal: '#FFFFFF',
-    accentSoft: accent.soft,
-    accentSurface: accent.surface,
   },
-  action: {
-    active: `${accent.light}33`,
-    contrastActive: '#FFFFFF7a',
-    hover: `${accent.light}24`,
-    contrastHover: '#FFFFFF14',
-    selected: `${accent.light}33`,
-    contrastSelected: '#FFFFFF29',
-    disabled: '#00000042',
-    contrastDisabled: '#FFFFFF42',
-  },
-  tabs: {
-    background: '#FFFFFF14',
-  },
+  divider: '#0000001F',
   other: {
     divider: '#0000001F',
     outlinedBorder: '#0000003B',
@@ -110,6 +53,133 @@ const createPalette = (accent) => ({
     standardInputLine: '#0000006B',
     snackbar: '#2D3334',
   },
-})
+}
+
+const darkBase = {
+  ...lightBase,
+  mode: 'dark',
+  grey: {
+    ...lightBase.grey,
+    50: '#071414',
+    100: '#0A1A1C',
+    200: '#102326',
+    300: '#183236',
+    400: '#304B50',
+    500: '#6D858A',
+    600: '#90A3A7',
+    700: '#B5C4C7',
+    800: '#D7E0E2',
+    900: '#F4FAFA',
+  },
+  foreground: {
+    primary: '#E8F4F2DE',
+    contrastPrimary: '#E8F4F2DE',
+    secondary: '#B6CAC6DE',
+    contrastSecondary: '#B6CAC6DE',
+    disabled: '#E8F4F261',
+    contrastDisabled: '#E8F4F261',
+  },
+  text: {
+    primary: '#E8F4F2DE',
+    secondary: '#B6CAC6DE',
+    disabled: '#E8F4F261',
+  },
+  background: {
+    header: '#081718',
+    barDark: '#061213',
+    barMedium: '#0B1A1C',
+    default: '#071414',
+    light: '#102326',
+    paper: '#0D2022',
+    dialog: '#102326',
+    modal: '#102326',
+  },
+  divider: '#D7E0E21F',
+  other: {
+    divider: '#D7E0E21F',
+    outlinedBorder: '#D7E0E23B',
+    backdropOverlay: '#000000B3',
+    filledInputBackground: '#FFFFFF14',
+    standardInputLine: '#FFFFFF70',
+    snackbar: '#E8F4F2',
+  },
+}
+
+const createSeverityPalette = (mode) =>
+  mode === 'dark'
+    ? {
+        critical: { main: '#FF8A80', light: '#FFDAD6', dark: '#E35D52' },
+        serious: { main: '#FFB46A', light: '#FFD8AD', dark: '#F28A2A' },
+        caution: {
+          main: '#FBE86A',
+          light: '#FFF3A8',
+          dark: '#DCC02B',
+          contrastText: '#211C00',
+        },
+        normal: { main: '#7DDB85', light: '#BDF1C1', dark: '#44AF4E' },
+        off: { main: '#87979B', light: '#BAC6C9', dark: '#5D6C70' },
+      }
+    : {
+        critical: { main: '#E31B0C', light: '#F88078', dark: '#BA1408' },
+        serious: { main: '#ED6C02', light: '#FFB547', dark: '#BB5A00' },
+        caution: {
+          main: '#FBE20E',
+          light: '#FDF082',
+          dark: '#B4A203',
+          contrastText: '#00000099',
+        },
+        normal: { main: '#299E2E', light: '#7BC67E', dark: '#3B873E' },
+        off: { main: '#9EA7AD', light: '#D6D9DC', dark: '#6A7177' },
+      }
+
+const createPalette = (accent, mode = 'light') => {
+  const isDark = mode === 'dark'
+  const base = isDark ? darkBase : lightBase
+  const accentSoft = isDark ? `${accent.main}2E` : accent.soft
+  const accentSurface = isDark ? `${accent.main}1A` : accent.surface
+
+  return {
+    ...base,
+    brand: {
+      primary: accent.main,
+    },
+    primary: {
+      main: isDark ? accent.light : accent.main,
+      light: isDark ? accent.surface : accent.light,
+      dark: isDark ? accent.main : accent.dark,
+      contrastText: isDark ? '#04211D' : accent.contrastText,
+    },
+    secondary: {
+      main: accentSoft,
+      light: accentSurface,
+      dark: isDark ? accent.light : accent.light,
+      contrastText: isDark ? '#E8F4F2DE' : accent.dark,
+    },
+    ...createSeverityPalette(mode),
+    standby: {
+      main: isDark ? accent.light : accent.main,
+      light: isDark ? accent.surface : accent.light,
+      dark: isDark ? accent.main : accent.dark,
+    },
+    background: {
+      ...base.background,
+      accentSoft,
+      accentSurface,
+    },
+    action: {
+      active: isDark ? `${accent.main}3D` : `${accent.light}33`,
+      contrastActive: isDark ? `${accent.main}3D` : '#FFFFFF7a',
+      hover: isDark ? `${accent.main}26` : `${accent.light}24`,
+      contrastHover: '#FFFFFF14',
+      selected: isDark ? `${accent.main}33` : `${accent.light}33`,
+      contrastSelected: isDark ? `${accent.main}33` : '#FFFFFF29',
+      disabled: isDark ? '#FFFFFF3D' : '#00000042',
+      contrastDisabled: '#FFFFFF42',
+    },
+    tabs: {
+      background: isDark ? `${accent.main}1F` : '#FFFFFF14',
+    },
+  }
+}
 
 export default createPalette

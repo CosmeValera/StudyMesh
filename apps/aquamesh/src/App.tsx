@@ -27,6 +27,7 @@ import {
   readStoredAccentColorId,
   writeStoredAccentColorId,
 } from './theme/accentColors'
+import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext'
 import { PrimeReactProvider } from 'primereact/api'
 import 'primeflex/primeflex.css'
 import 'primeicons/primeicons.css'
@@ -98,15 +99,16 @@ const WorkspacePage = () => {
   )
 }
 
-const App = () => {
+const AppShell = () => {
+  const { mode } = useThemeMode()
   const [accentColorId, setAccentColorId] = useState(readStoredAccentColorId)
   const accentColor = useMemo(
     () => getAccentColorById(accentColorId),
     [accentColorId],
   )
   const theme = useMemo(
-    () => createAquaMeshTheme(accentColorId),
-    [accentColorId],
+    () => createAquaMeshTheme(mode, accentColorId),
+    [accentColorId, mode],
   )
 
   useEffect(() => {
@@ -125,33 +127,41 @@ const App = () => {
   )
 
   return (
+    <AccentColorProvider value={accentColorContextValue}>
+      <ThemeProvider theme={theme}>
+        <PrimeReactProvider value={{ ripple: true }}>
+          <CssBaseline />
+          <DashboardProvider>
+            <LayoutProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<AquaMeshLanding />} />
+                <Route
+                  path="/workspace"
+                  element={
+                    <ProtectedRoute>
+                      <WorkspacePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </LayoutProvider>
+          </DashboardProvider>
+        </PrimeReactProvider>
+      </ThemeProvider>
+    </AccentColorProvider>
+  )
+}
+
+const App = () => {
+  return (
     <BrowserRouter>
-      <AccentColorProvider value={accentColorContextValue}>
-        <ThemeProvider theme={theme}>
-          <PrimeReactProvider value={{ ripple: true }}>
-            <CssBaseline />
-            <DashboardProvider>
-              <LayoutProvider>
-                <CssBaseline />
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/" element={<AquaMeshLanding />} />
-                  <Route
-                    path="/workspace"
-                    element={
-                      <ProtectedRoute>
-                        <WorkspacePage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </LayoutProvider>
-            </DashboardProvider>
-          </PrimeReactProvider>
-        </ThemeProvider>
-      </AccentColorProvider>
+      <ThemeModeProvider>
+        <AppShell />
+      </ThemeModeProvider>
     </BrowserRouter>
   )
 }
+
 export default App

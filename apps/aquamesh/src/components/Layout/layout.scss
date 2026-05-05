@@ -50,9 +50,11 @@
 .flexlayout__tabset {
   border-radius: 8px;
   background-color: var(--background-paper);
-  border: 1px solid var(--grey-200);
+  border: 1px solid var(--surface-border, var(--grey-200));
 
-  & .flexlayout__tabset-selected .flexlayout__tabset_tabbar_inner_tab_container  {
+  &
+    .flexlayout__tabset-selected
+    .flexlayout__tabset_tabbar_inner_tab_container {
     background-color: var(--background-paper);
   }
 
@@ -95,7 +97,7 @@
 }
 
 .flexlayout__tab_button {
-  background-color: transparent;
+  background-color: var(--background-paper);
   height: 32px;
   line-height: 1;
   min-width: 132px;
@@ -116,7 +118,8 @@
 
     &.flexlayout__tab_button--selected {
       color: var(--foreground-primary);
-      background-color: var(--action-selected);
+      background-color: var(--background-bar-medium);
+      border: 1px solid var(--primary-main);
       border-bottom: 1px solid var(--primary-main);
     }
 
@@ -146,7 +149,7 @@
     width: 24px;
     height: 24px;
     cursor: pointer;
-    
+
     & > svg {
       color: var(--foreground-primary);
     }
@@ -154,7 +157,8 @@
 }
 
 /* Hide the entire toolbar when tab container is empty */
-.flexlayout__tabset:has(.flexlayout__tabset_tabbar_inner_tab_container:empty) .flexlayout__tab_toolbar {
+.flexlayout__tabset:has(.flexlayout__tabset_tabbar_inner_tab_container:empty)
+  .flexlayout__tab_toolbar {
   display: none !important;
 }
 
