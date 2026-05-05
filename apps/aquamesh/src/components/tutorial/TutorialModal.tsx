@@ -661,13 +661,12 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                             left: 0,
                             right: 0,
                             height: '4px',
-                            background:
-                              'linear-gradient(90deg, #00BC9A 0%, #00D1AB 100%)',
+                            background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                           },
                           // Highlight the current slide
                           border:
                             currentSlide === index
-                              ? '2px solid #00BC9A'
+                              ? `2px solid ${theme.palette.primary.main}`
                               : '2px solid rgba(0, 0, 0, 0.06)',
                           boxShadow:
                             currentSlide === index
@@ -697,7 +696,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                               {React.cloneElement(option.icon, {
                                 style: {
                                   fontSize: isMobile ? '28px' : '32px',
-                                  color: '#00BC9A',
+                                  color: theme.palette.primary.main,
                                 },
                               })}
                             </div>
@@ -832,8 +831,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                                           : '0 4px 12px rgba(0, 188, 162, 0.5)',
                                       backgroundColor:
                                         btnIndex === 0
-                                          ? 'rgba(0, 124, 102, 0.08)'
-                                          : '#00D1AB',
+                                          ? 'action.hover'
+                                          : 'primary.light',
                                     },
                                     transition: 'all 0.2s ease',
                                     fontSize: isMobile ? '0.8rem' : undefined,
@@ -860,7 +859,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                                     : 'translateY(-2px)',
                                   boxShadow:
                                     '0 4px 12px rgba(0, 188, 162, 0.5)',
-                                  backgroundColor: '#00D1AB',
+                                  backgroundColor: 'primary.light',
                                 },
                                 transition: 'all 0.2s ease',
                                 fontSize: isMobile ? '0.8rem' : undefined,
@@ -908,15 +907,15 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                         borderRadius: '50%',
                         backgroundColor:
                           currentSlide === index
-                            ? '#00BC9A'
-                            : 'rgba(0, 188, 162, 0.3)',
+                            ? 'primary.main'
+                            : 'action.selected',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         '&:hover': {
                           backgroundColor:
                             currentSlide === index
-                              ? '#00BC9A'
-                              : 'rgba(0, 188, 162, 0.5)',
+                              ? 'primary.main'
+                              : 'action.hover',
                         },
                       }}
                     />

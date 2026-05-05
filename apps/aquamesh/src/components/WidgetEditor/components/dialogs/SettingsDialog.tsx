@@ -26,6 +26,9 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import SettingsIcon from '@mui/icons-material/Settings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
+import ColorLensIcon from '@mui/icons-material/ColorLens'
+
+import AccentColorPicker from '../../../../theme/AccentColorPicker'
 
 interface SettingsDialogProps {
   open: boolean
@@ -220,6 +223,35 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           >
             Interface Options
           </Typography>
+
+          <Paper
+            elevation={0}
+            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box
+                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <ColorLensIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                  <Typography fontWeight="medium" color="text.primary">
+                    Accent Color
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ ml: 5, mb: 2 }}
+                >
+                  Pick the highlight color used by navigation, dialogs,
+                  onboarding, and editor controls.
+                </Typography>
+                <Box sx={{ ml: 5 }}>
+                  <AccentColorPicker />
+                </Box>
+              </Box>
+            </Box>
+          </Paper>
 
           <Paper
             elevation={0}
@@ -602,10 +634,10 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           onClick={onClose}
           variant="contained"
           sx={{
-            bgcolor: '#00D1AB',
+            bgcolor: 'primary.light',
             color: '#191919',
             '&:hover': {
-              bgcolor: '#00E4BC',
+              bgcolor: 'primary.main',
             },
           }}
         >

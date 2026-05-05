@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, CssBaseline } from '@mui/material'
 import { ThemeProvider } from '@mui/material/styles'
 import {
@@ -18,7 +18,15 @@ import Login from './components/auth/Login'
 import AquaMeshLanding from './components/landing/AquaMeshLanding'
 import { useWorkspaceActions } from './customHooks/useWorkspaceActions'
 
-import theme from './theme'
+import { createAquaMeshTheme } from './theme'
+import { AccentColorProvider } from './theme/AccentColorContext'
+import {
+  accentColorOptions,
+  applyAccentCssVariables,
+  getAccentColorById,
+  readStoredAccentColorId,
+  writeStoredAccentColorId,
+} from './theme/accentColors'
 import { PrimeReactProvider } from 'primereact/api'
 import 'primeflex/primeflex.css'
 import 'primeicons/primeicons.css'
@@ -33,17 +41,17 @@ import './hide-overlay.scss'
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const userData = localStorage.getItem('userData')
-  
+
   // If no user data exists, automatically set admin user and continue to app
   if (!userData) {
     const defaultAdminUser = {
       id: 'admin',
       name: 'Admin',
-      role: 'ADMIN_ROLE'
+      role: 'ADMIN_ROLE',
     }
     localStorage.setItem('userData', JSON.stringify(defaultAdminUser))
   }
-  
+
   return <>{children}</>
 }
 
@@ -79,14 +87,11 @@ const WorkspacePage = () => {
     searchParams,
     setSearchParams,
   ])
-  
+
   return (
     <Box sx={{ overflowX: 'hidden', height: '100dvh' }}>
       <TopNavBar open={menuOpen} setOpen={setMenuOpen} />
-      <Main
-        mt={8}
-        sx={{ position: 'relative' }}
-      >
+      <Main mt={8} sx={{ position: 'relative' }}>
         <Dashboards />
       </Main>
     </Box>
@@ -94,28 +99,58 @@ const WorkspacePage = () => {
 }
 
 const App = () => {
+  const [accentColorId, setAccentColorId] = useState(readStoredAccentColorId)
+  const accentColor = useMemo(
+    () => getAccentColorById(accentColorId),
+    [accentColorId],
+  )
+  const theme = useMemo(
+    () => createAquaMeshTheme(accentColorId),
+    [accentColorId],
+  )
+
+  useEffect(() => {
+    writeStoredAccentColorId(accentColorId)
+    applyAccentCssVariables(accentColor)
+  }, [accentColor, accentColorId])
+
+  const accentColorContextValue = useMemo(
+    () => ({
+      accentColorId,
+      accentColor,
+      setAccentColorId,
+      options: accentColorOptions,
+    }),
+    [accentColor, accentColorId],
+  )
+
   return (
     <BrowserRouter>
-      <ThemeProvider theme={theme}>
-        <PrimeReactProvider value={{ ripple: true }}>
-          <CssBaseline />
-          <DashboardProvider>
-            <LayoutProvider>
-              <CssBaseline />
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={<AquaMeshLanding />} />
-                <Route path="/workspace" element={
-                  <ProtectedRoute>
-                    <WorkspacePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </LayoutProvider>
-          </DashboardProvider>
-        </PrimeReactProvider>
-      </ThemeProvider>
+      <AccentColorProvider value={accentColorContextValue}>
+        <ThemeProvider theme={theme}>
+          <PrimeReactProvider value={{ ripple: true }}>
+            <CssBaseline />
+            <DashboardProvider>
+              <LayoutProvider>
+                <CssBaseline />
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/" element={<AquaMeshLanding />} />
+                  <Route
+                    path="/workspace"
+                    element={
+                      <ProtectedRoute>
+                        <WorkspacePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </LayoutProvider>
+            </DashboardProvider>
+          </PrimeReactProvider>
+        </ThemeProvider>
+      </AccentColorProvider>
     </BrowserRouter>
   )
 }

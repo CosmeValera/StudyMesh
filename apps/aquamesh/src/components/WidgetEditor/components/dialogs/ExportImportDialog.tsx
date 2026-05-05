@@ -730,12 +730,12 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
           onClick={onClose}
           variant="contained"
           sx={{
-            bgcolor: '#00D1AB',
+            bgcolor: 'primary.light',
             color: '#191919',
             px: isPhone ? 2 : undefined,
             py: isPhone ? 1 : undefined,
             '&:hover': {
-              bgcolor: '#00E4BC',
+              bgcolor: 'primary.main',
             },
           }}
         >
@@ -752,7 +752,7 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         sx={{
           '& .MuiSnackbarContent-root': {
-            bgcolor: '#00BC9A',
+            bgcolor: 'primary.main',
             color: 'black',
             fontWeight: 'medium',
             borderRadius: 2,

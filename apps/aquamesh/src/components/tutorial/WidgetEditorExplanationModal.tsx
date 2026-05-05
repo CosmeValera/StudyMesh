@@ -816,12 +816,12 @@ const WidgetEditorExplanationModal: React.FC<
           size="large"
           startIcon={<EditIcon />}
           sx={{
-            bgcolor: '#00D1AB',
+            bgcolor: 'primary.light',
             color: '#191919',
             px: 3,
             py: 1,
             '&:hover': {
-              bgcolor: '#00E4BC',
+              bgcolor: 'primary.main',
               transform: 'translateY(-3px)',
               boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
             },

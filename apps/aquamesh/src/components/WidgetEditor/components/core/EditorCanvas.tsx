@@ -166,9 +166,10 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
           mb: isPhone ? 1 : 1.5,
           px: isPhone ? 1 : 1.25,
           py: isPhone ? 0.75 : 1,
-          border: '1px solid rgba(0, 188, 162, 0.16)',
+          border: '1px solid',
+          borderColor: 'divider',
           borderRadius: 1,
-          bgcolor: '#FFFFFF',
+          bgcolor: 'background.paper',
         }}
       >
         <Stack
@@ -286,9 +287,10 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
           sx={{
             mb: isPhone ? 1 : 1.5,
             p: isPhone ? 1.25 : 1.5,
-            border: '1px solid rgba(0, 188, 162, 0.36)',
+            border: '1px solid',
+            borderColor: 'primary.light',
             borderRadius: 1,
-            bgcolor: 'rgba(0, 188, 162, 0.08)',
+            bgcolor: 'background.accentSoft',
             boxShadow: 'none',
           }}
         >
@@ -336,15 +338,13 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
           p: isPhone ? 1 : 2,
           backgroundColor: editMode
             ? dropTarget.id === null && isDragging
-              ? 'rgba(0, 188, 162, 0.1)'
-              : 'rgba(0, 188, 162, 0.05)'
-            : 'rgba(0, 188, 162, 0.02)',
-          border: editMode
-            ? '2px dashed rgba(0, 188, 162, 0.3)'
-            : '1px solid rgba(255, 255, 255, 0.1)',
-          outline: showOnboardingChoosePrompt
-            ? '3px solid rgba(0, 188, 162, 0.36)'
-            : 'none',
+              ? 'action.selected'
+              : 'background.accentSurface'
+            : 'background.paper',
+          border: editMode ? '2px dashed' : '1px solid',
+          outline: showOnboardingChoosePrompt ? '3px solid' : 'none',
+          outlineColor: 'primary.main',
+          borderColor: editMode ? 'primary.light' : 'divider',
           outlineOffset: 3,
           borderRadius: 1,
           minHeight: isPhone ? 150 : 200,
@@ -377,9 +377,10 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   width: '100%',
                   maxWidth: 680,
                   p: isPhone ? 1.5 : 2,
-                  border: '1px solid rgba(0, 188, 162, 0.28)',
+                  border: '1px solid',
+                  borderColor: 'primary.light',
                   borderRadius: 1,
-                  bgcolor: 'rgba(0, 188, 162, 0.08)',
+                  bgcolor: 'background.accentSoft',
                   boxShadow: '0 10px 28px rgba(0, 0, 0, 0.12)',
                 }}
               >
