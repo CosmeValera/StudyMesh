@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -59,23 +59,6 @@ const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
   }
 
   return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
-}
-
-const countWidgetPanels = (layout?: DashboardLayout): number => {
-  if (!layout) {
-    return 0
-  }
-
-  if (layout.type === 'tabset') {
-    return hasPlacedSavedWidget(layout) ? 1 : 0
-  }
-
-  return (
-    layout.children?.reduce(
-      (total, child) => total + countWidgetPanels(child),
-      0,
-    ) || 0
-  )
 }
 
 // Dashboard Storage utilities
@@ -248,16 +231,12 @@ const DashboardEmptyState = ({
 interface DashboardOnboardingCoachProps {
   step: Exclude<DashboardOnboardingStep, 'done'>
   hasUnsavedChanges: boolean
-  hasSplitDashboard: boolean
-  onNext: () => void
   onDone: () => void
 }
 
 const DashboardOnboardingCoach = ({
   step,
   hasUnsavedChanges,
-  hasSplitDashboard,
-  onNext,
   onDone,
 }: DashboardOnboardingCoachProps) => {
   const isLayoutStep = step === 'layout'
@@ -293,25 +272,13 @@ const DashboardOnboardingCoach = ({
           sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
         >
           {isLayoutStep
-            ? 'Drag the widget tab to another side of the dashboard. As soon as the dashboard splits, you can save it.'
+            ? 'Drag the widget tab to a new spot in the dashboard. Step 5 appears after you move it.'
             : hasUnsavedChanges
               ? 'Save the dashboard using the disk icon on the Dashboard tab.'
               : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
         </Typography>
-        <Stack direction="row" spacing={1} justifyContent="flex-end">
-          {isLayoutStep ? (
-            <Button
-              size="small"
-              variant="contained"
-              onClick={onNext}
-              disabled={!hasSplitDashboard}
-              sx={{ textTransform: 'none' }}
-            >
-              {hasSplitDashboard
-                ? 'Next: save dashboard'
-                : 'Split the dashboard first'}
-            </Button>
-          ) : (
+        {!isLayoutStep && (
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button
               size="small"
               variant="contained"
@@ -320,8 +287,8 @@ const DashboardOnboardingCoach = ({
             >
               Got it
             </Button>
-          )}
-        </Stack>
+          </Stack>
+        )}
       </Stack>
     </Paper>
   )
@@ -347,6 +314,10 @@ const Dashboards = () => {
   const [currentTabIndex, setCurrentTabIndex] = useState<number | null>(null)
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
   const [isAdmin, setIsAdmin] = useState(false)
+  const dashboardOnboardingLayoutBaseline = useRef<{
+    dashboardId: string
+    layoutJson: string
+  } | null>(null)
   const [dashboardOnboardingStep, setDashboardOnboardingStep] =
     useState<DashboardOnboardingStep>(() => {
       if (typeof window === 'undefined') {
@@ -372,13 +343,6 @@ const Dashboards = () => {
     setDashboardOnboardingStep('save')
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'save')
-    }
-  }
-
-  const returnDashboardOnboardingToLayout = () => {
-    setDashboardOnboardingStep('layout')
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'layout')
     }
   }
 
@@ -413,19 +377,29 @@ const Dashboards = () => {
   }, [openDashboards])
 
   useEffect(() => {
-    const currentLayout = openDashboards[selectedDashboard]?.layout
-    const hasSplitLayout = countWidgetPanels(currentLayout) > 1
+    const currentDashboard = openDashboards[selectedDashboard]
+    const currentLayout = currentDashboard?.layout
+    const hasWidget = hasPlacedSavedWidget(currentLayout)
 
-    if (dashboardOnboardingStep === 'layout' && hasSplitLayout) {
+    if (dashboardOnboardingStep !== 'layout' || !hasWidget) {
+      dashboardOnboardingLayoutBaseline.current = null
+      return
+    }
+
+    const dashboardId = currentDashboard?.id || String(selectedDashboard)
+    const layoutJson = JSON.stringify(currentLayout || {})
+    const baseline = dashboardOnboardingLayoutBaseline.current
+
+    if (!baseline || baseline.dashboardId !== dashboardId) {
+      dashboardOnboardingLayoutBaseline.current = { dashboardId, layoutJson }
+      return
+    }
+
+    if (baseline.layoutJson !== layoutJson) {
+      dashboardOnboardingLayoutBaseline.current = null
       advanceDashboardOnboarding()
-      return
     }
-
-    if (dashboardOnboardingStep === 'save' && !hasSplitLayout) {
-      returnDashboardOnboardingToLayout()
-      return
-    }
-  }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
+  }, [dashboardOnboardingStep, openDashboards, selectedDashboard])
 
   const handleSaveDialogOpen = (index: number) => {
     const currentDashboard = openDashboards[index]
@@ -642,7 +616,6 @@ const Dashboards = () => {
             index === selectedDashboard &&
             dashboardOnboardingStep !== 'done' &&
             hasPlacedSavedWidget(dashboard.layout)
-          const hasSplitDashboard = countWidgetPanels(dashboard.layout) > 1
 
           return (
             <TabPanel key={dashboard.id}>
@@ -659,8 +632,6 @@ const Dashboards = () => {
                     <DashboardOnboardingCoach
                       step={dashboardOnboardingStep}
                       hasUnsavedChanges={Boolean(hasChanges[index])}
-                      hasSplitDashboard={hasSplitDashboard}
-                      onNext={advanceDashboardOnboarding}
                       onDone={completeDashboardOnboarding}
                     />
                   )}
