@@ -92,14 +92,14 @@ describe('Dashboards', () => {
     })
   })
 
-  it('shows Daily Operations actions when the selected dashboard is empty', () => {
+  it('shows workspace actions when the selected dashboard is empty', () => {
     mockDashboardProvider({})
 
     render(<Dashboards />)
 
     expect(
       screen.getByRole('heading', {
-        name: /build your daily operations dashboard/i,
+        name: /start a workspace dashboard/i,
       }),
     ).toBeInTheDocument()
     expect(

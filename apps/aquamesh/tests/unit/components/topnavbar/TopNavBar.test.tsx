@@ -182,7 +182,9 @@ describe('TopNavBar Component', () => {
       screen.getByRole('button', { name: /create widget/i }),
     ).toBeInTheDocument()
     expect(screen.queryByTitle('Open tutorial')).not.toBeInTheDocument()
-    expect(screen.queryByTitle('Frequently Asked Questions')).not.toBeInTheDocument()
+    expect(
+      screen.queryByTitle('Frequently Asked Questions'),
+    ).not.toBeInTheDocument()
   })
 
   it('navigates home when the logo is clicked', () => {
@@ -210,7 +212,7 @@ describe('TopNavBar Component', () => {
     // Check if the menu items appear
     await waitFor(() => {
       expect(screen.getByText('Saved Widgets')).toBeInTheDocument()
-      expect(screen.getByText('Example Operations Widgets')).toBeInTheDocument()
+      expect(screen.getByText('Example Starter Widgets')).toBeInTheDocument()
     })
   })
 
@@ -227,7 +229,7 @@ describe('TopNavBar Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Saved Widgets')).toBeInTheDocument()
-      expect(screen.getByText('Example Operations Widgets')).toBeInTheDocument()
+      expect(screen.getByText('Example Starter Widgets')).toBeInTheDocument()
     })
   })
 

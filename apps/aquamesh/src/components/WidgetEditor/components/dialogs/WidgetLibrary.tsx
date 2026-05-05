@@ -445,7 +445,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
               <Typography variant="body2" sx={{ maxWidth: 400 }}>
                 {searchTerm
                   ? `No saved widgets match your search for "${searchTerm}"`
-                  : 'Create a Daily Operations widget, save it here, then reuse it in any dashboard.'}
+                  : 'Create a widget for a real use case, save it here, then reuse it in any dashboard.'}
               </Typography>
             </Box>
           ) : (

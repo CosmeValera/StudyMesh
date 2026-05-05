@@ -1,6 +1,6 @@
 # AquaMesh app
 
-AquaMesh is the main no-code custom widget builder in this monorepo. It gives non-programmers a visual workspace for creating reusable dashboard widgets, arranging them into dashboards, and saving layouts without writing UI code.
+AquaMesh is the main no-code custom widget builder in this monorepo. It gives non-programmers a visual workspace for creating reusable widgets from text, inputs, buttons, charts, images, and layout blocks, then arranging them into dashboards or focused workspaces without writing UI code.
 
 ## Product workflow
 
@@ -10,7 +10,7 @@ AquaMesh is the main no-code custom widget builder in this monorepo. It gives no
 4. Save dashboard layouts for reuse.
 5. Import, export, or restore widget versions when work needs to move or be recovered.
 
-For demo and portfolio use, the recommended scenario is a **Daily Operations Dashboard** with orders today, delayed tasks, support ticket mix, system status, team notes, and a handoff action. It gives the app a concrete user story: an operations user can assemble an internal dashboard without waiting for custom code.
+For demo and portfolio use, **Daily Operations** remains one concrete example: orders today, delayed tasks, support ticket mix, system status, team notes, and a handoff action. AquaMesh is broader than that single dashboard: architects can organize site-review notes, biologists can collect observation logs, and teams can build task or research workspaces without waiting for custom code.
 
 ## User-facing capabilities
 

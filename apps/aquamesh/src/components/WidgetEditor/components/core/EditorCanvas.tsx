@@ -252,8 +252,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                 }}
               >
                 {showOnboardingPlacePrompt
-                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget called ${widgetData.name || 'Daily Operations'}, and click it to place it on the dashboard.`
-                  : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the Daily Operations widget when it is ready to be used in dashboards.'}
+                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget called ${widgetData.name || 'My First Widget'}, and click it to place it on the dashboard.`
+                  : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the widget when it is ready to be reused.'}
               </Typography>
             </Box>
           </Stack>
@@ -328,7 +328,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                     >
                       {showOnboardingChoosePrompt
                         ? 'Start with one block'
-                        : 'Build a Daily Operations widget'}
+                        : 'Build your first reusable widget'}
                     </Typography>
                     <Typography
                       variant="body2"
@@ -343,7 +343,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                           : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
                         : isPhone
                           ? 'Use a quick shortcut, then save it for dashboards.'
-                          : 'Use these shortcuts to create a reusable widget faster, or drag any block from the palette.'}
+                          : 'Use a shortcut for a concrete example, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
@@ -362,7 +362,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         disabled={!onStartOperationsWidget}
                         sx={{ borderRadius: 1, textTransform: 'none' }}
                       >
-                        Daily Operations template
+                        Example operations template
                       </Button>
                       <Button
                         variant="outlined"
@@ -378,7 +378,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                           borderColor: 'primary.dark',
                         }}
                       >
-                        Tickets chart
+                        Chart block
                       </Button>
                       <Button
                         variant="outlined"
@@ -409,7 +409,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                           borderColor: 'primary.dark',
                         }}
                       >
-                        Team note
+                        Notes field
                       </Button>
                       <Button
                         variant="text"

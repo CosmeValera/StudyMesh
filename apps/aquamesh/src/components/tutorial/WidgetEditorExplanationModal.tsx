@@ -376,8 +376,8 @@ const WidgetEditorExplanationModal: React.FC<
               </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Add blocks that match the Daily Operations story: orders today,
-              delayed tasks, support tickets, system status, and team notes.
+              Add blocks that match your chosen workflow: status labels, charts,
+              notes, images, controls, or layout sections.
             </Typography>
           </Paper>
         </Grid>

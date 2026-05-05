@@ -39,7 +39,7 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       category: 'Start Here',
       question: 'What should I do first?',
       answer:
-        'Start with Create Widget. Build one reusable Daily Operations widget first, then add it to a dashboard.',
+        'Start with Create Widget. Pick one concrete use case, such as an operations summary, architecture site review, lab observation log, or task tracker. Save it, then reuse it in a dashboard.',
     },
     {
       category: 'Start Here',
@@ -47,8 +47,8 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       answer: (
         <>
           1. Open <span style={accentText}>Create Widget</span>. 2. Build a
-          Daily Operations summary for orders today, delayed tasks, support
-          tickets, and system status. 3. Click Save. 4. Open{' '}
+          focused widget for your work: operations status, site-review notes,
+          lab observations, or a task board. 3. Click Save. 4. Open{' '}
           <span style={accentText}>Add Widget</span> and place the saved widget
           on a dashboard.
         </>
@@ -61,7 +61,7 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
         <>
           Click <span style={accentText}>Create Widget</span> in the top bar,
           name the widget, add building blocks to the canvas, preview it, then
-          save it as a reusable Daily Operations widget.
+          save it as a reusable widget.
         </>
       ),
     },
@@ -69,7 +69,7 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       category: 'Create Widget',
       question: 'Which building blocks should I start with?',
       answer:
-        'Start with one concrete operations need: a chart for support tickets, a status label for system health, or a note field for team handoff.',
+        'Start with one concrete need: a chart for trends, a status label, an image for context, or a note field for follow-up.',
     },
     {
       category: 'Create Widget',

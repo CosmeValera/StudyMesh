@@ -223,7 +223,7 @@ const ComponentPalette = ({
           >
             {isPhone
               ? 'Tap any block below to add it to your widget.'
-              : 'Grab a block below and drag it into the Daily Operations widget canvas.'}
+              : 'Grab a block below and drag it into your widget canvas.'}
           </Typography>
         </Box>
       )}
