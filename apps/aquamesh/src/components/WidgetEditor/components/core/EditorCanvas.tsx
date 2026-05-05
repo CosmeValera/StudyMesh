@@ -351,8 +351,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         fontSize: isPhone ? '0.78rem' : undefined,
                       }}
                     >
-                      Track orders today, delayed tasks, support tickets, and
-                      system status without writing code.
+                      {isPhone
+                        ? 'Start fast, then add status text if you need it.'
+                        : 'Track orders today, delayed tasks, support tickets, and system status without writing code.'}
                     </Typography>
                   </Box>
 
@@ -379,6 +380,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       onClick={() => onAddStarterComponent?.('Chart')}
                       disabled={!onAddStarterComponent}
                       sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
                         borderRadius: 1,
                         textTransform: 'none',
                         color: 'primary.dark',
@@ -409,6 +411,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       onClick={() => onAddStarterComponent?.('TextField')}
                       disabled={!onAddStarterComponent}
                       sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
                         borderRadius: 1,
                         textTransform: 'none',
                         color: 'primary.dark',
@@ -424,6 +427,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                       onClick={onUseTemplate}
                       disabled={!onUseTemplate}
                       sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
                         borderRadius: 1,
                         textTransform: 'none',
                         color: 'primary.dark',

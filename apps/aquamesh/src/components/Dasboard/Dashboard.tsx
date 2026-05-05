@@ -312,7 +312,9 @@ const DashboardOnboardingCoach = ({
           sx={{ color: 'rgba(255, 255, 255, 0.84)', lineHeight: 1.45 }}
         >
           {isLayoutStep
-            ? `To build a multi-widget dashboard, ${hasMultipleWidgets ? 'drag a widget tab to another side of the dashboard' : `open ${isPhone ? 'Add' : 'Add Widget'} and add another saved widget, then drag a widget tab to another side of the dashboard`}. Use the thin separator line between widgets to make one bigger or smaller.`
+            ? hasMultipleWidgets
+              ? 'Drag one widget tab to another side of the dashboard. As soon as the dashboard splits, you can save it.'
+              : `Open ${isPhone ? 'Add' : 'Add Widget'} and add one more saved widget, then drag one tab to another side of the dashboard.`
             : hasUnsavedChanges
               ? 'Click the dashboard tab at the top, then click the small save button on that tab to save the whole multi-widget dashboard.'
               : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
