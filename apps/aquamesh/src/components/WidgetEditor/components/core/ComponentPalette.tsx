@@ -163,7 +163,7 @@ const ComponentPalette = ({
         maxWidth: drawerWidth,
         flex: isPhone ? '0 0 auto' : `0 0 ${drawerWidth}px`,
         bgcolor: '#FFFFFF',
-        borderRight: { xs: 0, sm: 1 },
+        borderRight: 0,
         borderBottom: { xs: 1, sm: 0 },
         borderColor: 'divider',
         height: { xs: 'auto', sm: '100%' },

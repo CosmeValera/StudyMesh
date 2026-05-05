@@ -161,7 +161,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               onClick={toggleSidebar}
               sx={{
                 mr: isPhone ? 0.25 : 2,
-                ml: isPhone ? 0.5 : 0,
+                ml: isPhone ? 0.5 : -1.5,
                 p: isPhone ? 0.5 : 1,
                 color: showSidebar
                   ? 'primary.main'
