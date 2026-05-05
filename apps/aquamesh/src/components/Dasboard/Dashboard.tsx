@@ -839,10 +839,10 @@ const Dashboards = () => {
                 variant="contained"
                 disabled={!tagInput.trim()}
                 sx={{
-                  bgcolor: '#00D1AB',
+                  bgcolor: 'primary.light',
                   color: '#191919',
                   '&:hover': {
-                    bgcolor: '#00E4BC',
+                    bgcolor: 'primary.main',
                   },
                 }}
               >
@@ -883,10 +883,10 @@ const Dashboards = () => {
                   onChange={(e) => setIsPublic(e.target.checked)}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: '#00D1AB',
+                      color: 'primary.light',
                     },
                     '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: '#00886F',
+                      backgroundColor: 'primary.dark',
                     },
                   }}
                 />

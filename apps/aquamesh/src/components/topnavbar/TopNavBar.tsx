@@ -20,7 +20,9 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import WidgetsIcon from '@mui/icons-material/Widgets'
 import CreateIcon from '@mui/icons-material/Create'
 import FolderIcon from '@mui/icons-material/Folder'
+import ColorLensIcon from '@mui/icons-material/ColorLens'
 
+import AccentColorPicker from '../../theme/AccentColorPicker'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
@@ -538,9 +540,23 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   color: 'text.primary',
                   border: 1,
                   borderColor: 'divider',
+                  minWidth: 260,
                 },
               }}
             >
+              <Box sx={{ px: 2, py: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <ColorLensIcon
+                    fontSize="small"
+                    sx={{ color: 'primary.main', mr: 1 }}
+                  />
+                  <Typography variant="body2" fontWeight="medium">
+                    Accent color
+                  </Typography>
+                </Box>
+                <AccentColorPicker dense />
+              </Box>
+              <Divider sx={{ borderColor: 'divider' }} />
               <MenuItem onClick={handleLogout} sx={{ color: 'text.primary' }}>
                 <ListItemIcon>
                   <LogoutIcon

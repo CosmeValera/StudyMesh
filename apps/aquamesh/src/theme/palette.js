@@ -1,7 +1,7 @@
 // IDEA (re-)use css variables here
-const palette = {
+const createPalette = (accent) => ({
   brand: {
-    primary: '#009879',
+    primary: accent.main,
   },
   common: {
     black: '#000000',
@@ -9,15 +9,15 @@ const palette = {
     clear: '#FFFFFF0',
   },
   primary: {
-    main: '#007C66',
-    light: '#00C49A',
-    dark: '#005A49',
-    contrastText: '#FFFFFF',
+    main: accent.main,
+    light: accent.light,
+    dark: accent.dark,
+    contrastText: accent.contrastText,
   },
   secondary: {
-    main: '#009879',
-    light: '#00C49A',
-    dark: '#007C66',
+    main: accent.main,
+    light: accent.light,
+    dark: accent.dark,
   },
   grey: {
     50: '#F9FAFA',
@@ -57,9 +57,9 @@ const palette = {
     dark: '#3B873E',
   },
   standby: {
-    main: '#009879',
-    light: '#00C49A',
-    dark: '#007C66',
+    main: accent.main,
+    light: accent.light,
+    dark: accent.dark,
   },
   off: {
     main: '#9EA7AD',
@@ -87,11 +87,11 @@ const palette = {
     modal: '#FFFFFF',
   },
   action: {
-    active: '#00C49A33',
+    active: `${accent.light}33`,
     contrastActive: '#FFFFFF7a',
-    hover: '#00C49A1F',
+    hover: `${accent.light}1F`,
     contrastHover: '#FFFFFF14',
-    selected: '#00C49A24',
+    selected: `${accent.light}24`,
     contrastSelected: '#FFFFFF29',
     disabled: '#00000042',
     contrastDisabled: '#FFFFFF42',
@@ -107,6 +107,6 @@ const palette = {
     standardInputLine: '#0000006B',
     snackbar: '#2D3334',
   },
-}
+})
 
-export default palette
+export default createPalette

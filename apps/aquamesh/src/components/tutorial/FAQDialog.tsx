@@ -29,7 +29,7 @@ interface FAQ {
 }
 
 const accentText = {
-  color: '#007C66',
+  color: 'primary.main',
   fontWeight: 'bold',
 }
 
@@ -237,10 +237,10 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
           onClick={onClose}
           variant="contained"
           sx={{
-            bgcolor: '#00D1AB',
+            bgcolor: 'primary.light',
             color: '#191919',
             '&:hover': {
-              bgcolor: '#00E4BC',
+              bgcolor: 'primary.main',
             },
           }}
         >

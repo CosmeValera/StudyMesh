@@ -417,7 +417,10 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                 borderRadius: 2,
               }}
             >
-              <CircularProgress size={60} sx={{ color: '#00D1AB', mb: 2 }} />
+              <CircularProgress
+                size={60}
+                sx={{ color: 'primary.light', mb: 2 }}
+              />
               <Typography variant="h6" color="white">
                 Loading saved widgets...
               </Typography>

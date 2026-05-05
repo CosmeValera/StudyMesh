@@ -170,7 +170,7 @@ const AquaMeshLanding = () => {
             <Typography
               variant="h5"
               component="p"
-              sx={{ fontWeight: 700, color: '#005A49', mb: 2 }}
+              sx={{ fontWeight: 700, color: 'primary.dark', mb: 2 }}
             >
               Create reusable workspace widgets without code.
             </Typography>
@@ -236,7 +236,7 @@ const AquaMeshLanding = () => {
                   }}
                 >
                   <Stack direction="row" spacing={1} alignItems="center" mb={1}>
-                    <Box sx={{ color: '#007C66', display: 'flex' }}>
+                    <Box sx={{ color: 'primary.main', display: 'flex' }}>
                       {step.icon}
                     </Box>
                     <Typography variant="caption" color="#667c78">
@@ -272,7 +272,7 @@ const AquaMeshLanding = () => {
                     bgcolor: '#ffffff',
                   }}
                 >
-                  <Box sx={{ color: '#007C66', display: 'flex', mb: 1 }}>
+                  <Box sx={{ color: 'primary.main', display: 'flex', mb: 1 }}>
                     {useCase.icon}
                   </Box>
                   <Typography variant="h6" fontWeight={800} mb={0.5}>
@@ -322,7 +322,7 @@ const AquaMeshLanding = () => {
             mb: 8,
             p: { xs: 3, sm: 4 },
             borderRadius: 2,
-            bgcolor: '#005A49',
+            bgcolor: 'primary.dark',
             color: '#ffffff',
             textAlign: 'center',
           }}
@@ -342,8 +342,8 @@ const AquaMeshLanding = () => {
             sx={{
               borderRadius: 1,
               textTransform: 'none',
-              bgcolor: '#00BCA2',
-              '&:hover': { bgcolor: '#00A891' },
+              bgcolor: 'primary.main',
+              '&:hover': { bgcolor: 'primary.dark' },
             }}
           >
             Enter workspace

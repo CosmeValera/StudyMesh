@@ -827,7 +827,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                       borderWidth: 2,
                       '&:hover': {
                         ...cardStyles.base['&:hover'],
-                        borderColor: '#00BC9A',
+                        borderColor: 'primary.main',
                         bgcolor: 'rgba(0, 188, 154, 0.25)',
                       },
                     }}
@@ -846,7 +846,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                         }}
                       >
                         <SaveIcon
-                          sx={{ fontSize: 45, color: '#00BC9A', mb: 2 }}
+                          sx={{ fontSize: 45, color: 'primary.main', mb: 2 }}
                         />
                         <Typography
                           variant="h6"
@@ -884,7 +884,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                     borderWidth: 2,
                     '&:hover': {
                       ...cardStyles.base['&:hover'],
-                      borderColor: '#00BC9A',
+                      borderColor: 'primary.main',
                       bgcolor: 'rgba(0, 188, 154, 0.25)',
                     },
                   }}
@@ -949,7 +949,7 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
                           (t) => t.id === template.id,
                         )
                           ? '#9c27b0'
-                          : '#00BC9A',
+                          : 'primary.main',
                         borderRadius: '8px 8px 0 0',
                       }}
                     />
@@ -1243,12 +1243,12 @@ const TemplateSelectionDialog: React.FC<TemplateSelectionDialogProps> = ({
               onClick={onClose}
               variant="contained"
               sx={{
-                bgcolor: '#00D1AB',
+                bgcolor: 'primary.light',
                 color: '#191919',
                 px: isPhone ? 2 : undefined,
                 py: isPhone ? 1 : undefined,
                 '&:hover': {
-                  bgcolor: '#00E4BC',
+                  bgcolor: 'primary.main',
                 },
               }}
             >

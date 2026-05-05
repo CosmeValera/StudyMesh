@@ -119,21 +119,20 @@ export const dialogStyles = {
 }
 
 export const buttonStyles = {
-  // Primary action button with gradient
+  // Primary action button
   primary: {
     px: 3,
     py: 1,
     minWidth: 100,
-    backgroundImage: 'linear-gradient(135deg, #00BC9A 0%, #008C8C 100%)',
-    color: 'white',
+    bgcolor: 'primary.main',
+    color: 'primary.contrastText',
     fontWeight: 500,
     '&:hover': {
-      backgroundImage: 'linear-gradient(135deg, #00CEAA 0%, #009D9D 100%)',
+      bgcolor: 'primary.dark',
     },
     '&:disabled': {
       color: 'rgba(255,255,255,0.5)',
-      backgroundImage:
-        'linear-gradient(135deg, rgba(0,188,154,0.5) 0%, rgba(0,140,140,0.5) 100%)',
+      bgcolor: 'action.disabled',
     },
   },
 
@@ -341,7 +340,7 @@ export const formFieldStyles = {
       '&.Mui-checked': {
         color: 'white',
         '& + .MuiSwitch-track': {
-          backgroundColor: '#00BC9A',
+          backgroundColor: 'primary.main',
         },
       },
     },

@@ -350,11 +350,11 @@ const ComponentSearchDialog: React.FC<ComponentSearchDialogProps> = ({
           variant="contained"
           size={isMobile ? 'small' : 'medium'}
           sx={{
-            bgcolor: '#00D1AB',
+            bgcolor: 'primary.light',
             color: '#191919',
             fontSize: isMobile ? '0.75rem' : undefined,
             '&:hover': {
-              bgcolor: '#00E4BC',
+              bgcolor: 'primary.main',
             },
           }}
         >

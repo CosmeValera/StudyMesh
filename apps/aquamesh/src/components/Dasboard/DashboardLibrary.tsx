@@ -599,11 +599,11 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                       onChange={handlePublicFilterChange}
                       sx={{
                         '& .MuiSwitch-switchBase.Mui-checked': {
-                          color: '#00D1AB',
+                          color: 'primary.light',
                         },
                         '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track':
                           {
-                            backgroundColor: '#00886F',
+                            backgroundColor: 'primary.dark',
                           },
                       }}
                     />
@@ -1016,10 +1016,10 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             onClick={onClose}
             variant="contained"
             sx={{
-              bgcolor: '#00D1AB',
+              bgcolor: 'primary.light',
               color: '#191919',
               '&:hover': {
-                bgcolor: '#00E4BC',
+                bgcolor: 'primary.main',
               },
             }}
           >
@@ -1242,10 +1242,10 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
                 variant="contained"
                 disabled={!tagInput.trim()}
                 sx={{
-                  bgcolor: '#00D1AB',
+                  bgcolor: 'primary.light',
                   color: '#191919',
                   '&:hover': {
-                    bgcolor: '#00E4BC',
+                    bgcolor: 'primary.main',
                   },
                 }}
               >
@@ -1285,10 +1285,10 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
                 onChange={(e) => setIsPublic(e.target.checked)}
                 sx={{
                   '& .MuiSwitch-switchBase.Mui-checked': {
-                    color: '#00D1AB',
+                    color: 'primary.light',
                   },
                   '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                    backgroundColor: '#00886F',
+                    backgroundColor: 'primary.dark',
                   },
                 }}
               />
@@ -1330,10 +1330,10 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
           variant="contained"
           disabled={!name.trim()}
           sx={{
-            bgcolor: '#00D1AB',
+            bgcolor: 'primary.light',
             color: '#191919',
             '&:hover': {
-              bgcolor: '#00E4BC',
+              bgcolor: 'primary.main',
             },
           }}
         >
