@@ -646,7 +646,20 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                         !editMode || (!hasChanges && isUpdating) || isEmpty
                           ? 'action.disabled'
                           : 'primary.main',
-                      padding: isPhone ? '4px' : '8px',
+                      width: 30,
+                      height: 30,
+                      p: 0,
+                      border: '1px solid',
+                      borderColor:
+                        !editMode || (!hasChanges && isUpdating) || isEmpty
+                          ? alpha(theme.palette.action.disabled, 0.25)
+                          : alpha(theme.palette.divider, 0.6),
+                      borderRadius: 1,
+                      bgcolor: alpha(theme.palette.background.paper, 0.35),
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        borderColor: alpha(theme.palette.primary.main, 0.5),
+                      },
                     }}
                   >
                     <SaveIcon

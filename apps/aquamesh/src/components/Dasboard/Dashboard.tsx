@@ -232,14 +232,12 @@ const DashboardEmptyState = ({
 interface DashboardOnboardingCoachProps {
   step: Exclude<DashboardOnboardingStep, 'done'>
   hasUnsavedChanges: boolean
-  onDismiss: () => void
   onGotIt: () => void
 }
 
 const DashboardOnboardingCoach = ({
   step,
   hasUnsavedChanges,
-  onDismiss,
   onGotIt,
 }: DashboardOnboardingCoachProps) => {
   const isLayoutStep = step === 'layout'
@@ -265,9 +263,11 @@ const DashboardOnboardingCoach = ({
       }}
     >
       <Stack spacing={1}>
-        <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
-          Step {isLayoutStep ? '4' : isCompleteStep ? '6' : '5'}
-        </Typography>
+        {!isCompleteStep && (
+          <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
+            Step {isLayoutStep ? '4' : '5'}
+          </Typography>
+        )}
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
           {isLayoutStep
             ? 'Shape your dashboard'
@@ -291,23 +291,11 @@ const DashboardOnboardingCoach = ({
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button
               size="small"
-              variant="outlined"
-              onClick={onDismiss}
-              sx={{
-                textTransform: 'none',
-                color: 'primary.contrastText',
-                borderColor: 'rgba(255, 255, 255, 0.6)',
-              }}
-            >
-              Dismiss
-            </Button>
-            <Button
-              size="small"
               variant="contained"
               onClick={onGotIt}
               sx={{ textTransform: 'none' }}
             >
-              Don’t show onboarding again
+              Got it
             </Button>
           </Stack>
         )}
@@ -356,14 +344,13 @@ const Dashboards = () => {
 
   const completeDashboardOnboarding = () => {
     setDashboardOnboardingStep('done')
+  }
+
+  const persistDashboardOnboardingDone = () => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'done')
       window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
     }
-  }
-
-  const dismissDashboardOnboarding = () => {
-    setDashboardOnboardingStep('done')
   }
 
   const advanceDashboardOnboarding = () => {
@@ -420,6 +407,7 @@ const Dashboards = () => {
       !hasChanges[selectedDashboard]
     ) {
       setDashboardOnboardingStep('complete')
+      persistDashboardOnboardingDone()
       return
     }
 
@@ -674,7 +662,6 @@ const Dashboards = () => {
                     <DashboardOnboardingCoach
                       step={dashboardOnboardingStep}
                       hasUnsavedChanges={Boolean(hasChanges[index])}
-                      onDismiss={dismissDashboardOnboarding}
                       onGotIt={completeDashboardOnboarding}
                     />
                   )}

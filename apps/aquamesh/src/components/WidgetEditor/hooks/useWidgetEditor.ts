@@ -137,7 +137,7 @@ export const useWidgetEditor = () => {
   const [requireNameEntryOnSave, setRequireNameEntryOnSave] = useState<boolean>(
     () => {
       const saved = localStorage.getItem('widget-editor-require-name-entry')
-      return saved ? JSON.parse(saved) : false
+      return saved ? JSON.parse(saved) : true
     },
   )
 

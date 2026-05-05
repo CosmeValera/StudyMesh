@@ -252,7 +252,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                 }}
               >
                 {showOnboardingPlacePrompt
-                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget you just saved, and click it to place it on the dashboard.`
+                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget called ${widgetData.name || 'Daily Operations'}, and click it to place it on the dashboard.`
                   : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the Daily Operations widget when it is ready to be used in dashboards.'}
               </Typography>
             </Box>
