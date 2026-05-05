@@ -306,20 +306,7 @@ const WidgetEditor: React.FC<{
 
   // Handle saving with a custom name from the dialog
   const handleSaveWidgetWithName = (name: string) => {
-    // Update widget data with the new name
-    setWidgetData((prev) => ({ ...prev, name }))
-
-    // Set a short timeout to allow state update to process
-    setTimeout(() => {
-      // Then call the actual save function
-      handleSaveWidget()
-      // Reset the dialog request flag
-      document.dispatchEvent(
-        new CustomEvent('resetSaveDialogRequested', {
-          detail: { editorId },
-        }),
-      )
-    }, 0)
+    handleSaveWidget(false, name)
   }
 
   // Handle closing component toasts

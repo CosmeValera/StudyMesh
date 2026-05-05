@@ -650,12 +650,16 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                       height: 30,
                       p: 0,
                       border: '1px solid',
+                      mr: 0.75,
                       borderColor:
                         !editMode || (!hasChanges && isUpdating) || isEmpty
                           ? alpha(theme.palette.action.disabled, 0.25)
-                          : alpha(theme.palette.divider, 0.6),
+                          : theme.palette.primary.main,
                       borderRadius: 1,
-                      bgcolor: alpha(theme.palette.background.paper, 0.35),
+                      bgcolor:
+                        !editMode || (!hasChanges && isUpdating) || isEmpty
+                          ? alpha(theme.palette.background.paper, 0.35)
+                          : alpha(theme.palette.primary.main, 0.1),
                       '&:hover': {
                         bgcolor: alpha(theme.palette.primary.main, 0.08),
                         borderColor: alpha(theme.palette.primary.main, 0.5),
