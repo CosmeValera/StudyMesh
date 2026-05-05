@@ -24,11 +24,7 @@ import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import WidgetsIcon from '@mui/icons-material/Widgets'
 import CreateIcon from '@mui/icons-material/Create'
-import ImportContactsIcon from '@mui/icons-material/ImportContacts'
-import { useNavigate } from 'react-router-dom'
-
 import DashboardLayoutView from '../Layout/Layout'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
@@ -141,17 +137,11 @@ const DashboardStorage = {
 interface DashboardEmptyStateProps {
   isAdmin: boolean
   onCreateWidget: () => void
-  onOpenOperationsExample: () => void
-  onOpenWidgetMenu: () => void
-  onOpenQuickGuide: () => void
 }
 
 const DashboardEmptyState = ({
   isAdmin,
   onCreateWidget,
-  onOpenOperationsExample,
-  onOpenWidgetMenu,
-  onOpenQuickGuide,
 }: DashboardEmptyStateProps) => (
   <Box
     sx={{
@@ -193,7 +183,6 @@ const DashboardEmptyState = ({
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
         justifyContent="center"
-        sx={{ mb: 2 }}
       >
         {isAdmin && (
           <Button
@@ -204,29 +193,7 @@ const DashboardEmptyState = ({
             Create your own widget
           </Button>
         )}
-        <Button
-          variant="outlined"
-          startIcon={<DashboardCustomizeIcon />}
-          onClick={onOpenOperationsExample}
-        >
-          View Daily Operations example
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<WidgetsIcon />}
-          onClick={onOpenWidgetMenu}
-        >
-          Add saved widget
-        </Button>
       </Stack>
-      <Button
-        variant="text"
-        startIcon={<ImportContactsIcon />}
-        onClick={onOpenQuickGuide}
-        sx={{ color: 'foreground.contrastPrimary' }}
-      >
-        Open quick guide
-      </Button>
     </Paper>
   </Box>
 )
@@ -344,10 +311,7 @@ const Dashboards = () => {
       const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
       return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
     })
-  const navigate = useNavigate()
-  const { openCreateWidget, openOperationsExample, openWidgetMenu } =
-    useWorkspaceActions()
-  const openQuickGuide = () => navigate('/')
+  const { openCreateWidget } = useWorkspaceActions()
 
   const completeDashboardOnboarding = () => {
     setDashboardOnboardingStep('done')
@@ -677,9 +641,6 @@ const Dashboards = () => {
                     <DashboardEmptyState
                       isAdmin={isAdmin}
                       onCreateWidget={openCreateWidget}
-                      onOpenOperationsExample={openOperationsExample}
-                      onOpenWidgetMenu={openWidgetMenu}
-                      onOpenQuickGuide={openQuickGuide}
                     />
                   ) : (
                     <DashboardLayoutView
@@ -705,9 +666,6 @@ const Dashboards = () => {
         <DashboardEmptyState
           isAdmin={isAdmin}
           onCreateWidget={openCreateWidget}
-          onOpenOperationsExample={openOperationsExample}
-          onOpenWidgetMenu={openWidgetMenu}
-          onOpenQuickGuide={openQuickGuide}
         />
       )}
 

@@ -326,7 +326,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         mb: 0.5,
                       }}
                     >
-                      Build a Daily Operations widget
+                      {showOnboardingChoosePrompt
+                        ? 'Start with one block'
+                        : 'Build a Daily Operations widget'}
                     </Typography>
                     <Typography
                       variant="body2"
@@ -335,91 +337,95 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         fontSize: isPhone ? '0.78rem' : undefined,
                       }}
                     >
-                      {isPhone
-                        ? 'Start fast, then add status text if you need it.'
-                        : 'Track orders today, delayed tasks, support tickets, and system status without writing code.'}
+                      {showOnboardingChoosePrompt
+                        ? 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
+                        : isPhone
+                          ? 'Use a quick shortcut, then save it for dashboards.'
+                          : 'Use these shortcuts to create a reusable widget faster, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
-                  <Stack
-                    direction={isPhone ? 'column' : 'row'}
-                    spacing={1}
-                    useFlexGap
-                    flexWrap="wrap"
-                  >
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<DashboardCustomizeIcon />}
-                      onClick={onStartOperationsWidget}
-                      disabled={!onStartOperationsWidget}
-                      sx={{ borderRadius: 1, textTransform: 'none' }}
+                  {!showOnboardingChoosePrompt && (
+                    <Stack
+                      direction={isPhone ? 'column' : 'row'}
+                      spacing={1}
+                      useFlexGap
+                      flexWrap="wrap"
                     >
-                      Start from Daily Operations
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<AutoGraphIcon />}
-                      onClick={() => onAddStarterComponent?.('Chart')}
-                      disabled={!onAddStarterComponent}
-                      sx={{
-                        display: { xs: 'none', sm: 'inline-flex' },
-                        borderRadius: 1,
-                        textTransform: 'none',
-                        color: 'primary.dark',
-                        borderColor: 'primary.dark',
-                      }}
-                    >
-                      Add tickets chart
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<TextFieldsIcon />}
-                      onClick={() => onAddStarterComponent?.('Label')}
-                      disabled={!onAddStarterComponent}
-                      sx={{
-                        borderRadius: 1,
-                        textTransform: 'none',
-                        color: 'primary.dark',
-                        borderColor: 'primary.dark',
-                      }}
-                    >
-                      Add status text
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<InputIcon />}
-                      onClick={() => onAddStarterComponent?.('TextField')}
-                      disabled={!onAddStarterComponent}
-                      sx={{
-                        display: { xs: 'none', sm: 'inline-flex' },
-                        borderRadius: 1,
-                        textTransform: 'none',
-                        color: 'primary.dark',
-                        borderColor: 'primary.dark',
-                      }}
-                    >
-                      Add team note
-                    </Button>
-                    <Button
-                      variant="text"
-                      size="small"
-                      startIcon={<ViewModuleIcon />}
-                      onClick={onUseTemplate}
-                      disabled={!onUseTemplate}
-                      sx={{
-                        display: { xs: 'none', sm: 'inline-flex' },
-                        borderRadius: 1,
-                        textTransform: 'none',
-                        color: 'primary.dark',
-                      }}
-                    >
-                      Browse templates
-                    </Button>
-                  </Stack>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<DashboardCustomizeIcon />}
+                        onClick={onStartOperationsWidget}
+                        disabled={!onStartOperationsWidget}
+                        sx={{ borderRadius: 1, textTransform: 'none' }}
+                      >
+                        Daily Operations template
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<AutoGraphIcon />}
+                        onClick={() => onAddStarterComponent?.('Chart')}
+                        disabled={!onAddStarterComponent}
+                        sx={{
+                          display: { xs: 'none', sm: 'inline-flex' },
+                          borderRadius: 1,
+                          textTransform: 'none',
+                          color: 'primary.dark',
+                          borderColor: 'primary.dark',
+                        }}
+                      >
+                        Tickets chart
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<TextFieldsIcon />}
+                        onClick={() => onAddStarterComponent?.('Label')}
+                        disabled={!onAddStarterComponent}
+                        sx={{
+                          borderRadius: 1,
+                          textTransform: 'none',
+                          color: 'primary.dark',
+                          borderColor: 'primary.dark',
+                        }}
+                      >
+                        Status text
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<InputIcon />}
+                        onClick={() => onAddStarterComponent?.('TextField')}
+                        disabled={!onAddStarterComponent}
+                        sx={{
+                          display: { xs: 'none', sm: 'inline-flex' },
+                          borderRadius: 1,
+                          textTransform: 'none',
+                          color: 'primary.dark',
+                          borderColor: 'primary.dark',
+                        }}
+                      >
+                        Team note
+                      </Button>
+                      <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<ViewModuleIcon />}
+                        onClick={onUseTemplate}
+                        disabled={!onUseTemplate}
+                        sx={{
+                          display: { xs: 'none', sm: 'inline-flex' },
+                          borderRadius: 1,
+                          textTransform: 'none',
+                          color: 'primary.dark',
+                        }}
+                      >
+                        Browse templates
+                      </Button>
+                    </Stack>
+                  )}
                 </Stack>
               </Box>
             ) : (

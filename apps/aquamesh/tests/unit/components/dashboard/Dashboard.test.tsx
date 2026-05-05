@@ -106,14 +106,14 @@ describe('Dashboards', () => {
       screen.getByRole('button', { name: /create your own widget/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /view daily operations example/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: /view daily operations example/i }),
+    ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add saved widget/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: /add saved widget/i }),
+    ).not.toBeInTheDocument()
   })
 
-  it('shows the same Daily Operations actions when no dashboard is open', () => {
+  it('opens Create Widget when the empty workspace action is used', () => {
     mockDashboardProvider({
       openDashboards: [],
       selectedDashboard: -1,
@@ -124,15 +124,10 @@ describe('Dashboards', () => {
     fireEvent.click(
       screen.getByRole('button', { name: /create your own widget/i }),
     )
-    fireEvent.click(
-      screen.getByRole('button', { name: /view daily operations example/i }),
-    )
-    fireEvent.click(screen.getByRole('button', { name: /add saved widget/i }))
-    fireEvent.click(screen.getByRole('button', { name: /open quick guide/i }))
 
     expect(openCreateWidgetMock).toHaveBeenCalledTimes(1)
-    expect(openOperationsExampleMock).toHaveBeenCalledTimes(1)
-    expect(openWidgetMenuMock).toHaveBeenCalledTimes(1)
-    expect(navigateMock).toHaveBeenCalledWith('/')
+    expect(openOperationsExampleMock).not.toHaveBeenCalled()
+    expect(openWidgetMenuMock).not.toHaveBeenCalled()
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 })

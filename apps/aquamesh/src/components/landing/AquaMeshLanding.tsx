@@ -169,26 +169,18 @@ const AquaMeshLanding = () => {
               Create operational dashboard widgets without code.
             </Typography>
             <Typography variant="body1" sx={{ color: '#425c57', mb: 3 }}>
-              Build reusable widgets for orders, delayed tasks, support
-              tickets, system status, team notes, and handoff actions, then
-              place them into dashboards.
+              Build reusable widgets for orders, delayed tasks, support tickets,
+              system status, team notes, and handoff actions, then place them
+              into dashboards.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
                 variant="contained"
                 size="large"
-                onClick={() => openWorkspace('create-widget')}
+                onClick={() => openWorkspace()}
                 sx={{ borderRadius: 1, textTransform: 'none' }}
               >
-                Create your own widget
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={() => openWorkspace('open-operations-example')}
-                sx={{ borderRadius: 1, textTransform: 'none' }}
-              >
-                Open operations example
+                Enter workspace
               </Button>
             </Stack>
           </Grid>
@@ -205,7 +197,7 @@ const AquaMeshLanding = () => {
             >
               <Box
                 component="img"
-                src="/images/widget_editor.png"
+                src="/images/widget_builder_overview.svg"
                 alt="AquaMesh widget editor"
                 sx={{
                   display: 'block',
@@ -288,7 +280,7 @@ const AquaMeshLanding = () => {
           </Grid>
         </Box>
 
-        <Box sx={{ py: 5, pb: 8 }}>
+        <Box sx={{ py: 5 }}>
           <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
             Quick answers
           </Typography>
@@ -316,6 +308,39 @@ const AquaMeshLanding = () => {
             ))}
           </Grid>
         </Box>
+
+        <Paper
+          elevation={0}
+          sx={{
+            mb: 8,
+            p: { xs: 3, sm: 4 },
+            borderRadius: 2,
+            bgcolor: '#005A49',
+            color: '#ffffff',
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="h4" component="h2" fontWeight={850} mb={1}>
+            Ready to build your first dashboard?
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.82)', mb: 3 }}>
+            Enter the workspace, create one reusable widget, and place it on a
+            dashboard.
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => openWorkspace()}
+            sx={{
+              borderRadius: 1,
+              textTransform: 'none',
+              bgcolor: '#00BCA2',
+              '&:hover': { bgcolor: '#00A891' },
+            }}
+          >
+            Enter workspace
+          </Button>
+        </Paper>
       </Container>
     </Box>
   )
