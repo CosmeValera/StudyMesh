@@ -10,6 +10,7 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
+import EditIcon from '@mui/icons-material/Edit'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import InputIcon from '@mui/icons-material/Input'
 import TextFieldsIcon from '@mui/icons-material/TextFields'
@@ -158,60 +159,126 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         width: '100%',
       }}
     >
-      {/* Widget name field */}
-      {editMode ? (
-        <TextField
-          label="Widget Name"
-          value={widgetData.name}
-          onChange={(e) =>
-            handleWidgetNameChange
-              ? handleWidgetNameChange(e.target.value)
-              : setWidgetData((prev) => ({ ...prev, name: e.target.value }))
-          }
-          margin="normal"
-          variant="outlined"
-          size="small"
-          data-testid="widget-name-input"
-          onFocus={(e) => {
-            e.target.select()
-          }}
-          sx={{
-            mb: isPhone ? 1 : 2,
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-              },
-              '&:hover fieldset': {
-                borderColor: 'primary.light',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: 'primary.main',
-              },
-            },
-            '& .MuiInputLabel-root': {
-              color: 'foreground.contrastSecondary',
-              fontSize: isPhone ? '0.8rem' : undefined,
-            },
-            '& .MuiOutlinedInput-input': {
-              color: 'foreground.contrastPrimary',
-              padding: isPhone ? '8px 10px' : undefined,
-              fontSize: isPhone ? '0.875rem' : undefined,
-            },
-          }}
-        />
-      ) : (
-        <Typography
-          variant="body1"
-          sx={{
-            mb: isPhone ? 1 : 2,
-            fontSize: isPhone ? '0.875rem' : undefined,
-            color: 'foreground.contrastPrimary',
-            userSelect: 'none', // Prevent text selection in view mode
-          }}
+      {/* Compact widget title header */}
+      <Paper
+        elevation={0}
+        sx={{
+          mb: isPhone ? 1 : 1.5,
+          px: isPhone ? 1 : 1.25,
+          py: isPhone ? 0.75 : 1,
+          border: '1px solid rgba(0, 188, 162, 0.16)',
+          borderRadius: 1,
+          bgcolor: '#FFFFFF',
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={isPhone ? 0.75 : 1}
+          alignItems="center"
+          sx={{ minWidth: 0 }}
         >
-          <strong>Widget Name:</strong> {widgetData.name}
-        </Typography>
-      )}
+          {editMode && (
+            <EditIcon
+              aria-hidden="true"
+              sx={{
+                color: 'primary.dark',
+                fontSize: isPhone ? 18 : 20,
+                flexShrink: 0,
+              }}
+            />
+          )}
+
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+              variant="caption"
+              component="div"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 700,
+                lineHeight: 1.1,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Widget name
+            </Typography>
+
+            {editMode ? (
+              <TextField
+                aria-label="Widget name"
+                placeholder="Name this widget"
+                value={widgetData.name}
+                onChange={(e) =>
+                  handleWidgetNameChange
+                    ? handleWidgetNameChange(e.target.value)
+                    : setWidgetData((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                }
+                variant="standard"
+                fullWidth
+                size="small"
+                data-testid="widget-name-input"
+                helperText={
+                  widgetData.name.trim()
+                    ? isPhone
+                      ? ''
+                      : 'Shown in dashboards and your saved widget library.'
+                    : 'Required before saving.'
+                }
+                FormHelperTextProps={{
+                  sx: {
+                    mx: 0,
+                    mt: 0.25,
+                    color: widgetData.name.trim()
+                      ? 'text.secondary'
+                      : 'warning.dark',
+                    fontSize: isPhone ? '0.68rem' : '0.72rem',
+                    lineHeight: 1.2,
+                  },
+                }}
+                onFocus={(e) => {
+                  e.target.select()
+                }}
+                sx={{
+                  mt: -0.25,
+                  '& .MuiInputBase-input': {
+                    color: 'text.primary',
+                    fontWeight: 700,
+                    fontSize: isPhone ? '0.95rem' : '1.05rem',
+                    lineHeight: 1.25,
+                    py: 0.25,
+                  },
+                  '& .MuiInput-underline:before': {
+                    borderBottomColor: 'transparent',
+                  },
+                  '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
+                    borderBottomColor: 'primary.light',
+                  },
+                  '& .MuiInput-underline:after': {
+                    borderBottomColor: 'primary.main',
+                  },
+                }}
+              />
+            ) : (
+              <Typography
+                variant={isPhone ? 'body2' : 'subtitle1'}
+                sx={{
+                  color: 'text.primary',
+                  fontWeight: 700,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                }}
+              >
+                {widgetData.name || 'Untitled widget'}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+      </Paper>
 
       {(showOnboardingSavePrompt || showOnboardingPlacePrompt) && (
         <Paper

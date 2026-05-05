@@ -84,6 +84,52 @@ describe('EditorCanvas first-widget guide', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps widget naming in a compact editable canvas header', () => {
+    const props = renderEditorCanvas({
+      widgetData: {
+        name: 'Daily Operations',
+        components: [],
+      },
+    })
+
+    expect(screen.getByText('Widget name')).toBeInTheDocument()
+    expect(screen.getByLabelText('Widget name')).toHaveValue('Daily Operations')
+    expect(
+      screen.getByText('Shown in dashboards and your saved widget library.'),
+    ).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Widget name'), {
+      target: { value: 'Ops Overview' },
+    })
+
+    expect(props.handleWidgetNameChange).toHaveBeenCalledWith('Ops Overview')
+  })
+
+  it('keeps first-time naming clear when the title is empty', () => {
+    renderEditorCanvas({
+      widgetData: {
+        name: '',
+        components: [],
+      },
+    })
+
+    expect(screen.getByPlaceholderText('Name this widget')).toBeInTheDocument()
+    expect(screen.getByText('Required before saving.')).toBeInTheDocument()
+  })
+
+  it('shows the saved widget title without edit chrome in view mode', () => {
+    renderEditorCanvas({
+      editMode: false,
+      widgetData: {
+        name: 'Service Desk Summary',
+        components: [],
+      },
+    })
+
+    expect(screen.getByText('Service Desk Summary')).toBeInTheDocument()
+    expect(screen.queryByTestId('widget-name-input')).not.toBeInTheDocument()
+  })
+
   it('shows starter actions for an empty editable widget', () => {
     renderEditorCanvas()
 
