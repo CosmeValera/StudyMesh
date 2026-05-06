@@ -101,15 +101,9 @@ const WorkspacePage = () => {
   ])
 
   return (
-    <Box sx={{ overflow: 'hidden', height: '100dvh' }}>
+    <Box sx={{ overflowX: 'hidden', height: '100dvh' }}>
       <TopNavBar open={menuOpen} setOpen={setMenuOpen} />
-      <Main
-        sx={{
-          position: 'relative',
-          marginTop: 0,
-          height: { xs: 'calc(100dvh - 72px)', sm: 'calc(100dvh - 64px)' },
-        }}
-      >
+      <Main mt={8} sx={{ position: 'relative' }}>
         <Dashboards />
       </Main>
     </Box>

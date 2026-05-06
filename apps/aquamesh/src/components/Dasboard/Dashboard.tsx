@@ -146,7 +146,7 @@ const DashboardEmptyState = ({
 }: DashboardEmptyStateProps) => (
   <Box
     sx={{
-      height: '100%',
+      minHeight: 'calc(100dvh - 130px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -517,7 +517,7 @@ const Dashboards = () => {
   return (
     <Box>
       <Tabs
-        className={selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''}
+        className={`react-tabs ${selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''}`.trim()}
         selectedIndex={selectedDashboard}
         onSelect={(index) => setSelectedDashboard(index)}
         style={{ position: 'relative' }}
