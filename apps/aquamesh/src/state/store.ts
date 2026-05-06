@@ -21,15 +21,17 @@ export interface DashboardLayout {
   children?: DashboardLayout[]
 }
 
-const DEFAULT_DASHBOARD: StateDashboard = {
-  id: 'default-dashboard',
+const createDefaultDashboard = (): StateDashboard => ({
+  id: `default-dashboard-${Date.now()}`,
   name: 'Dashboard',
   layout: {
     type: 'row',
     id: '#default-dashboard-layout',
     children: [],
   },
-}
+})
+
+const DEFAULT_DASHBOARD: StateDashboard = createDefaultDashboard()
 
 interface StoreState {
   selectedDashboard: number
@@ -45,8 +47,24 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       selectedDashboard: 0,
       openDashboards: [DEFAULT_DASHBOARD],
-      setDashboards: (element) => set({ openDashboards: element }),
-      setSelectedDashboard: (index) => set({ selectedDashboard: index }),
+      setDashboards: (element) =>
+        set((state) => {
+          const openDashboards =
+            element.length > 0 ? element : [createDefaultDashboard()]
+          const selectedDashboard = Math.min(
+            Math.max(state.selectedDashboard, 0),
+            openDashboards.length - 1,
+          )
+
+          return { openDashboards, selectedDashboard }
+        }),
+      setSelectedDashboard: (index) =>
+        set((state) => ({
+          selectedDashboard: Math.min(
+            Math.max(index, 0),
+            Math.max(state.openDashboards.length - 1, 0),
+          ),
+        })),
       changeWidgetData: (data) => {
         const state = get()
         const updatedOpenDashboards = [...state.openDashboards]
