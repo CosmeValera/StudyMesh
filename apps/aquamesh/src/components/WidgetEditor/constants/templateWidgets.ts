@@ -1138,6 +1138,136 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
     updatedAt: new Date().toISOString(),
     tags: ['mathematics', 'derivatives', 'theory', 'formulas'],
   },
+
+  {
+    id: 'template-aquamesh-interactivity',
+    name: 'AquaMesh Interactivity Template',
+    description:
+      'A hands-on tutorial widget showing buttons, answer boxes, checkable lists, and chart updates.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-interactivity-title',
+        type: 'Label',
+        props: {
+          text: 'AquaMesh Interactivity',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#007C66',
+          fontWeight: 700,
+        },
+      },
+      {
+        id: 'template-interactivity-intro',
+        type: 'LongText',
+        props: {
+          __blockType: 'LongText',
+          title: 'Try the workflow',
+          text: 'This dashboard shows the first interactive pattern: type a number, press a button, and watch the chart update. You can also mark checklist items as done and send the completed count into the chart.',
+          callout: true,
+        },
+      },
+      {
+        id: 'template-interactivity-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
+        children: [
+          {
+            id: 'template-interactivity-controls',
+            type: 'FieldSet',
+            props: {
+              legend: 'Add typed values to a chart',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-interactivity-input',
+                type: 'TextField',
+                props: {
+                  label: 'Value to add',
+                  placeholder: 'Example: 8',
+                  type: 'number',
+                  fullWidth: true,
+                  helperText:
+                    'Press the button below to append this number to the chart.',
+                },
+              },
+              {
+                id: 'template-interactivity-add-button',
+                type: 'Button',
+                props: {
+                  text: 'Add typed value to chart',
+                  variant: 'contained',
+                  color: 'primary',
+                  clickAction: 'addChartValue',
+                  chartLabelSource: 'static',
+                  chartLabel: 'Typed value',
+                  chartValueSource: 'firstInput',
+                  showToast: true,
+                  toastSeverity: 'success',
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-interactivity-tasks',
+            type: 'FieldSet',
+            props: {
+              legend: 'Mark tasks done',
+              padding: 2,
+              borderRadius: 8,
+            },
+            children: [
+              {
+                id: 'template-interactivity-task-list',
+                type: 'ListBlock',
+                props: {
+                  __blockType: 'ListBlock',
+                  title: 'Interactive checklist',
+                  items:
+                    'Read the explanation\nType a chart value\nPress the chart button\nMark this list as done',
+                  ordered: false,
+                  interactiveChecklist: true,
+                },
+              },
+              {
+                id: 'template-interactivity-count-button',
+                type: 'Button',
+                props: {
+                  text: 'Add completed task count',
+                  variant: 'outlined',
+                  color: 'success',
+                  clickAction: 'addChartValue',
+                  chartLabelSource: 'static',
+                  chartLabel: 'Completed tasks',
+                  chartValueSource: 'checkedListCount',
+                  showToast: true,
+                  toastSeverity: 'success',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-interactivity-chart',
+        type: 'Chart',
+        props: {
+          title: 'Interaction results',
+          description:
+            'Buttons can append new values while the widget is running.',
+          chartType: 'pie',
+          height: 300,
+          data: `{"labels":["Starter value"],"datasets":[{"label":"Values","data":[3],"backgroundColor":["rgba(0,124,102,0.8)"]}]}`,
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
+  },
   {
     id: 'template-knowledge-tutorial',
     name: 'AquaMesh Tutorial Template',
