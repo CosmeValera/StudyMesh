@@ -8,6 +8,7 @@ import { cloneTemplate } from '../components/WidgetEditor/constants/templateWidg
 import { DashboardLayout } from '../state/store'
 
 export const OPEN_WIDGET_MENU_EVENT = 'aquamesh-open-widget-menu'
+export const OPEN_WIDGET_STUDIO_EVENT = 'aquamesh-open-widget-studio'
 
 export interface WorkspaceComponentConfig {
   id?: string
@@ -304,6 +305,7 @@ export const useWorkspaceActions = () => {
       if (openDashboards.length === 0) {
         addDashboard({
           name: 'Dashboard',
+          isEditing: true,
           layout: createLayoutWithComponent(componentConfig),
         })
         return
@@ -345,12 +347,8 @@ export const useWorkspaceActions = () => {
   )
 
   const openCreateWidget = useCallback(() => {
-    ensureDashboardAndAddComponent({
-      id: `widget-editor-${Date.now()}`,
-      name: 'Create Widget',
-      component: 'WidgetEditor',
-    })
-  }, [ensureDashboardAndAddComponent])
+    window.dispatchEvent(new CustomEvent(OPEN_WIDGET_STUDIO_EVENT))
+  }, [])
 
   const openTemplateDashboard = useCallback(
     ({
@@ -386,6 +384,7 @@ export const useWorkspaceActions = () => {
 
       addDashboard({
         name: widgetName,
+        isEditing: false,
         layout: createLayoutWithComponent({
           name: widgetName,
           component: 'CustomWidget',
@@ -420,6 +419,7 @@ export const useWorkspaceActions = () => {
     if (mathDashboard) {
       addDashboard({
         name: mathDashboard.name,
+        isEditing: false,
         layout: mathDashboard.layout,
       })
     }
@@ -434,6 +434,7 @@ export const useWorkspaceActions = () => {
     if (tutorialDashboard) {
       addDashboard({
         name: tutorialDashboard.name,
+        isEditing: false,
         layout: tutorialDashboard.layout,
       })
     }

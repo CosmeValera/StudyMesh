@@ -28,6 +28,7 @@ import AccentColorPicker from '../../theme/AccentColorPicker'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
+import { useDashboards } from '../Dasboard/DashboardProvider'
 import WidgetManagementModal from '../WidgetEditor/components/dialogs/WidgetLibrary'
 import useWidgetManager from '../WidgetEditor/hooks/useWidgetManager'
 import {
@@ -115,6 +116,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const { ensureDashboardAndAddComponent, openCreateWidget } =
     useWorkspaceActions()
+  const { openDashboards, selectedDashboard } = useDashboards()
+  const currentDashboard = openDashboards[selectedDashboard]
+  const canAddWidgets = Boolean(
+    currentDashboard && currentDashboard.isEditing !== false,
+  )
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -185,6 +191,22 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   // Handle opening widgets library
   const handleOpenWidgetsLibrary = () => {
     openWidgetManagement()
+    handleClose()
+  }
+
+  const handleAddWidgetToDashboard = (item: {
+    name: string
+    component: string
+    customProps?: Record<string, unknown>
+  }) => {
+    if (!canAddWidgets) {
+      return
+    }
+
+    ensureDashboardAndAddComponent({
+      id: `panel-${Date.now()}`,
+      ...item,
+    })
     handleClose()
   }
 
@@ -306,6 +328,20 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                     </ListItemIcon>
                     Saved Widgets
                   </MenuItem>
+                  {!canAddWidgets && (
+                    <MenuItem
+                      disabled
+                      sx={{
+                        p: 1.5,
+                        opacity: 1,
+                        whiteSpace: 'normal',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      Open a dashboard in edit mode to add widgets from My
+                      Widgets.
+                    </MenuItem>
+                  )}
                   <Divider sx={{ my: 1, borderColor: 'divider' }} />
                 </>
               )}
@@ -323,12 +359,9 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                           <MenuItem
                             key={item.name}
                             onClick={() => {
-                              ensureDashboardAndAddComponent({
-                                id: `panel-${Date.now()}`,
-                                ...item,
-                              })
-                              handleClose()
+                              handleAddWidgetToDashboard(item)
                             }}
+                            disabled={!canAddWidgets}
                             sx={{ p: 1.5 }}
                           >
                             {item.name}
@@ -394,12 +427,9 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                               <MenuItem
                                 key={item.name}
                                 onClick={() => {
-                                  ensureDashboardAndAddComponent({
-                                    id: `panel-${Date.now()}`,
-                                    ...item,
-                                  })
-                                  handleClose()
+                                  handleAddWidgetToDashboard(item)
                                 }}
+                                disabled={!canAddWidgets}
                                 sx={{ p: 1.5 }}
                               >
                                 {item.name}
@@ -435,12 +465,9 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                               <MenuItem
                                 key={item.name}
                                 onClick={() => {
-                                  ensureDashboardAndAddComponent({
-                                    id: `panel-${Date.now()}`,
-                                    ...item,
-                                  })
-                                  handleClose()
+                                  handleAddWidgetToDashboard(item)
                                 }}
+                                disabled={!canAddWidgets}
                                 sx={{
                                   p: 1.5,
                                   display: 'flex',

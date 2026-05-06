@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, CssBaseline } from '@mui/material'
+import {
+  AppBar,
+  Box,
+  CssBaseline,
+  Dialog,
+  IconButton,
+  Toolbar,
+  Typography,
+} from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
 import { ThemeProvider } from '@mui/material/styles'
 import {
   BrowserRouter,
@@ -15,7 +24,11 @@ import Dashboards from './components/Dasboard/Dashboard'
 import DashboardProvider from './components/Dasboard/DashboardProvider'
 import LayoutProvider from './components/Layout/LayoutProvider'
 import AquaMeshLanding from './components/landing/AquaMeshLanding'
-import { useWorkspaceActions } from './customHooks/useWorkspaceActions'
+import WidgetEditor from './components/WidgetEditor/WidgetEditor'
+import {
+  OPEN_WIDGET_STUDIO_EVENT,
+  useWorkspaceActions,
+} from './customHooks/useWorkspaceActions'
 
 import { createAquaMeshTheme } from './theme'
 import { AccentColorProvider } from './theme/AccentColorContext'
@@ -58,6 +71,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const WorkspacePage = () => {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+  const [widgetStudioOpen, setWidgetStudioOpen] = useState(false)
   const {
     openCreateWidget,
     openOperationsExample,
@@ -66,6 +80,19 @@ const WorkspacePage = () => {
     openWidgetMenu,
   } = useWorkspaceActions()
   const handledActionRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const handleOpenWidgetStudio = () => setWidgetStudioOpen(true)
+
+    window.addEventListener(OPEN_WIDGET_STUDIO_EVENT, handleOpenWidgetStudio)
+
+    return () => {
+      window.removeEventListener(
+        OPEN_WIDGET_STUDIO_EVENT,
+        handleOpenWidgetStudio,
+      )
+    }
+  }, [])
 
   useEffect(() => {
     const action = searchParams.get('action')
@@ -105,6 +132,29 @@ const WorkspacePage = () => {
       <Main mt={8} sx={{ position: 'relative' }}>
         <Dashboards />
       </Main>
+      <Dialog
+        fullScreen
+        open={widgetStudioOpen}
+        onClose={() => setWidgetStudioOpen(false)}
+      >
+        <AppBar position="static" color="default" elevation={1}>
+          <Toolbar>
+            <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
+              Widget Studio
+            </Typography>
+            <IconButton
+              edge="end"
+              aria-label="Close Widget Studio"
+              onClick={() => setWidgetStudioOpen(false)}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+        <Box sx={{ height: 'calc(100dvh - 64px)', overflow: 'auto' }}>
+          <WidgetEditor />
+        </Box>
+      </Dialog>
     </Box>
   )
 }

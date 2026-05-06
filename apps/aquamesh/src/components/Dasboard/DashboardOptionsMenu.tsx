@@ -153,6 +153,7 @@ const DashboardOptionsMenu: React.FC = () => {
   const createDashboardWithLayout = (dashboardName: string, layout: Layout) => {
     addDashboard({
       name: dashboardName,
+      isEditing: false,
       layout,
     })
     handleClose()
@@ -170,7 +171,15 @@ const DashboardOptionsMenu: React.FC = () => {
   }
 
   const handleCreateDashboard = () => {
-    addDashboard()
+    addDashboard({
+      name: 'Dashboard',
+      isEditing: true,
+      layout: {
+        type: 'row',
+        id: '#default-dashboard-layout',
+        children: [],
+      },
+    })
     handleClose()
   }
 

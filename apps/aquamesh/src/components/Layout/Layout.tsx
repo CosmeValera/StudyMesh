@@ -17,8 +17,9 @@ import 'flexlayout-react/style/light.css'
 import './layout.scss'
 
 interface DashboardLayoutViewProps {
-  layout?: DashboardLayout;
-  updateLayout: (model: Model) => void; 
+  layout?: DashboardLayout
+  updateLayout: (model: Model) => void
+  readOnly?: boolean
 }
 
 const CONFIG = {
@@ -47,7 +48,11 @@ const EmptyWidget = () => (
   </div>
 )
 
-const DashboardLayoutView: React.FC<DashboardLayoutViewProps>= ({ layout, updateLayout }) => {
+const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
+  layout,
+  updateLayout,
+  readOnly = false,
+}) => {
   const { ref } = useLayout()
 
   const factory = (node: TabNode) => {
@@ -75,9 +80,17 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps>= ({ layout, update
 
   const model = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config: any = Object.assign({}, CONFIG, { layout: layout || {} })
+    const config: any = Object.assign({}, CONFIG, {
+      global: {
+        ...CONFIG.global,
+        tabSetEnableClose: !readOnly,
+        tabEnableDrag: !readOnly,
+        splitterEnableHandle: !readOnly,
+      },
+      layout: layout || {},
+    })
     return Model.fromJson(config)
-  }, [layout])
+  }, [layout, readOnly])
 
   return (
     <Layout
@@ -132,7 +145,11 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps>= ({ layout, update
       onTabSetPlaceHolder={() => (
         <EmptyWidgetIcon width={60} height={60} opacity={0.16} />
       )}
-      onModelChange={updateLayout}
+      onModelChange={(updatedModel) => {
+        if (!readOnly) {
+          updateLayout(updatedModel)
+        }
+      }}
     />
   )
 }

@@ -6,6 +6,7 @@ export interface StateDashboard {
   name: string
   layout?: DashboardLayout
   aquamesh?: string
+  isEditing?: boolean
 }
 
 export interface DashboardLayout {
@@ -24,6 +25,7 @@ export interface DashboardLayout {
 const DEFAULT_DASHBOARD: StateDashboard = {
   id: 'default-dashboard',
   name: 'Dashboard',
+  isEditing: true,
   layout: {
     type: 'row',
     id: '#default-dashboard-layout',

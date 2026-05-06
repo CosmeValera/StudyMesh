@@ -22,6 +22,7 @@ interface DashboardContextType {
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
   renameDashboard: (id: string, newName: string) => void
+  setDashboardEditing: (id: string, isEditing: boolean) => void
 }
 
 const DashboardContext = React.createContext<DashboardContextType | null>(null)
@@ -90,6 +91,14 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     setDashboards(newOpenDashboards)
   }
 
+  const setDashboardEditing = (id: string, isEditing: boolean) => {
+    const newOpenDashboards = openDashboards.map((dashboard) =>
+      dashboard.id === id ? { ...dashboard, isEditing } : dashboard,
+    )
+
+    setDashboards(newOpenDashboards)
+  }
+
   return (
     <DashboardContext.Provider
       {...props}
@@ -102,6 +111,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         updateLayout,
         updateDashboardLayout,
         renameDashboard,
+        setDashboardEditing,
       }}
     />
   )
