@@ -485,7 +485,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                   color: 'text.primary',
                 }}
               >
-                Dashboard Library
+                Saved Dashboards
               </Typography>
             </Box>
             <Box display="flex" alignItems="center">

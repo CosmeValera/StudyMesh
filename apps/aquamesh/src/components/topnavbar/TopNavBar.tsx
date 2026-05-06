@@ -9,6 +9,8 @@ import {
   MenuItem,
   Divider,
   Avatar,
+  Dialog,
+  IconButton,
   ListItemIcon,
   useMediaQuery,
   useTheme,
@@ -17,12 +19,13 @@ import { useNavigate } from 'react-router-dom'
 
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
-import WidgetsIcon from '@mui/icons-material/Widgets'
-import CreateIcon from '@mui/icons-material/Create'
+import ExtensionIcon from '@mui/icons-material/Extension'
+import ConstructionIcon from '@mui/icons-material/Construction'
 import FolderIcon from '@mui/icons-material/Folder'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
+import CloseIcon from '@mui/icons-material/Close'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
@@ -31,11 +34,15 @@ import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
 import WidgetManagementModal from '../WidgetEditor/components/dialogs/WidgetLibrary'
 import useWidgetManager from '../WidgetEditor/hooks/useWidgetManager'
 import {
+  OPEN_WIDGET_EDITOR_EVENT,
   OPEN_WIDGET_MENU_EVENT,
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
 import DashboardWidgetExplanationModal from '../tutorial/DashboardWidgetExplanationModal'
+import WidgetEditor from '../WidgetEditor/WidgetEditor'
+import { CustomWidget } from '../WidgetEditor/WidgetStorage'
+import { useDashboards } from '../Dasboard/DashboardProvider'
 
 // Define user data type
 interface UserData {
@@ -104,6 +111,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const widgetsButtonRef = useRef<HTMLButtonElement | null>(null)
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
+  const [widgetEditorPayload, setWidgetEditorPayload] = useState<{
+    loadWidget?: CustomWidget
+    initialEditMode?: boolean
+  } | null>(null)
   const [userData, setUserData] = useState<UserData>({
     id: 'admin',
     name: 'Admin User',
@@ -115,6 +127,8 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const { ensureDashboardAndAddComponent, openCreateWidget } =
     useWorkspaceActions()
+  const { openDashboards, selectedDashboard, isDashboardEditing } =
+    useDashboards()
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -122,6 +136,14 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
+  const selectedOpenDashboard = openDashboards[selectedDashboard]
+  const selectedDashboardIsEmpty =
+    Boolean(selectedOpenDashboard) &&
+    (!selectedOpenDashboard.layout?.children ||
+      selectedOpenDashboard.layout.children.length === 0)
+  const canPlaceWidgets =
+    Boolean(selectedOpenDashboard) &&
+    (selectedDashboardIsEmpty || isDashboardEditing(selectedOpenDashboard?.id))
 
   // Use the widget manager hook
   const {
@@ -144,6 +166,26 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       } catch (error) {
         console.error('Failed to parse user data from localStorage', error)
       }
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleOpenWidgetEditor = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        loadWidget?: CustomWidget
+        initialEditMode?: boolean
+      }>
+      setWidgetEditorPayload(customEvent.detail || null)
+      setWidgetEditorOpen(true)
+    }
+
+    window.addEventListener(OPEN_WIDGET_EDITOR_EVENT, handleOpenWidgetEditor)
+
+    return () => {
+      window.removeEventListener(
+        OPEN_WIDGET_EDITOR_EVENT,
+        handleOpenWidgetEditor,
+      )
     }
   }, [])
 
@@ -234,11 +276,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <DashboardOptionsMenu />
             )}
 
-            {/* Add Widget Menu */}
+            {/* Widgets Menu */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
-                icon={<WidgetsIcon />}
-                label={isPhone ? 'Widget' : 'Add Widget'}
+                icon={<ExtensionIcon />}
+                label={'Widgets'}
                 onClick={handleWidgetsMenuOpen}
                 buttonRef={widgetsButtonRef}
                 data-tutorial-id="widgets-button"
@@ -255,11 +297,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   mx: 1,
                   px: 2,
                 }}
-                startIcon={<WidgetsIcon />}
+                startIcon={<ExtensionIcon />}
                 endIcon={<KeyboardArrowDownIcon />}
                 data-tutorial-id="widgets-button"
               >
-                Add Widget
+                Widgets
               </Button>
             )}
             <Menu
@@ -289,14 +331,16 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                     data-tutorial-id="create-widget-button"
                   >
                     <ListItemIcon>
-                      <CreateIcon
+                      <ConstructionIcon
                         fontSize="small"
                         sx={{ color: 'text.secondary' }}
                       />
                     </ListItemIcon>
-                    Open Widget Editor
+                    Create Widget
                   </MenuItem>
-                  <Divider sx={{ my: 1, borderColor: 'divider' }} />
+                  {canPlaceWidgets && (
+                    <Divider sx={{ my: 1, borderColor: 'divider' }} />
+                  )}
                   <MenuItem onClick={handleOpenWidgetsLibrary} sx={{ p: 1.5 }}>
                     <ListItemIcon>
                       <FolderIcon
@@ -304,14 +348,14 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                         sx={{ color: 'text.secondary' }}
                       />
                     </ListItemIcon>
-                    Saved Widgets
+                    Open Saved Widgets
                   </MenuItem>
-                  <Divider sx={{ my: 1, borderColor: 'divider' }} />
+                  
                 </>
               )}
 
               {/* Predefined Widgets Section */}
-              {isPhone ? (
+              {canPlaceWidgets && isPhone ? <Divider sx={{ my: 1, borderColor: 'divider' }} /> && (
                 topNavBarWidgets.filter((widget) =>
                   widget.name.includes('Custom'),
                 ).length > 0 ? (
@@ -322,7 +366,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                         {panel.items.map((item) => (
                           <MenuItem
                             key={item.name}
+                            disabled={!canPlaceWidgets}
                             onClick={() => {
+                              if (!canPlaceWidgets) {
+                                return
+                              }
                               ensureDashboardAndAddComponent({
                                 id: `panel-${Date.now()}`,
                                 ...item,
@@ -362,7 +410,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                     </Typography>
                   </MenuItem>
                 )
-              ) : (
+              ) : canPlaceWidgets ? (
                 <>
                   {topNavBarWidgets.filter(
                     (widget) =>
@@ -393,7 +441,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                             {topNavBarWidget.items.map((item) => (
                               <MenuItem
                                 key={item.name}
+                                disabled={!canPlaceWidgets}
                                 onClick={() => {
+                                  if (!canPlaceWidgets) {
+                                    return
+                                  }
                                   ensureDashboardAndAddComponent({
                                     id: `panel-${Date.now()}`,
                                     ...item,
@@ -434,7 +486,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                             {topNavBarWidget.items.map((item) => (
                               <MenuItem
                                 key={item.name}
+                                disabled={!canPlaceWidgets}
                                 onClick={() => {
+                                  if (!canPlaceWidgets) {
+                                    return
+                                  }
                                   ensureDashboardAndAddComponent({
                                     id: `panel-${Date.now()}`,
                                     ...item,
@@ -456,7 +512,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                     </>
                   )}
                 </>
-              )}
+              ) : null}
             </Menu>
           </Box>
 
@@ -600,6 +656,55 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         open={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
       />
+      <Dialog
+        fullScreen
+        open={widgetEditorOpen}
+        onClose={() => setWidgetEditorOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.default',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            height: '100dvh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <Box
+            sx={{
+              height: 48,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight={700}>
+              Create Widget
+            </Typography>
+            <IconButton
+              aria-label="Close Create Widget"
+              onClick={() => setWidgetEditorOpen(false)}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <WidgetEditor
+              key={`${widgetEditorOpen}-${widgetEditorPayload?.loadWidget?.id || 'new'}`}
+              customProps={widgetEditorPayload || undefined}
+            />
+          </Box>
+        </Box>
+      </Dialog>
     </>
   )
 }

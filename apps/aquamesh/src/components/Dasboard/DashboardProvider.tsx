@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useContext } from 'react'
 
 import { nanoid } from 'nanoid'
@@ -22,6 +22,9 @@ interface DashboardContextType {
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
   renameDashboard: (id: string, newName: string) => void
+  editingDashboardIds: string[]
+  setDashboardEditing: (id: string, isEditing: boolean) => void
+  isDashboardEditing: (id?: string) => boolean
 }
 
 const DashboardContext = React.createContext<DashboardContextType | null>(null)
@@ -31,11 +34,45 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
   const setSelectedDashboard = useStore((state) => state.setSelectedDashboard)
   const openDashboards = useStore((state) => state.openDashboards)
   const setDashboards = useStore((state) => state.setDashboards)
+  const [editingDashboardIds, setEditingDashboardIds] = useState<string[]>([])
+
+  const hasDashboardContent = (layout?: DashboardLayout): boolean => {
+    if (!layout) {
+      return false
+    }
+
+    if (layout.type === 'tab' && Boolean(layout.component)) {
+      return true
+    }
+
+    return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
+  }
+
+  const setDashboardEditing = (id: string, isEditing: boolean) => {
+    setEditingDashboardIds((currentIds) => {
+      if (isEditing) {
+        return currentIds.includes(id) ? currentIds : [...currentIds, id]
+      }
+
+      return currentIds.filter((currentId) => currentId !== id)
+    })
+  }
+
+  const isDashboardEditing = (id?: string) => {
+    if (!id) {
+      return false
+    }
+
+    return editingDashboardIds.includes(id)
+  }
 
   const removeDashboard = (id: string) => {
     const dashboards = openDashboards.filter((dashboard) => dashboard.id !== id)
 
     setDashboards(dashboards)
+    setEditingDashboardIds((currentIds) =>
+      currentIds.filter((currentId) => currentId !== id),
+    )
 
     if (selectedDashboard >= dashboards.length) {
       setSelectedDashboard(selectedDashboard - 1)
@@ -43,13 +80,16 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
   }
 
   const addDashboard = (dashboard = DEFAULT_DASHBOARD) => {
-    const newDashboard = openDashboards.concat(
-      Object.assign({ id: nanoid() }, dashboard),
-    )
+    const id = nanoid()
+    const newDashboard = openDashboards.concat(Object.assign({ id }, dashboard))
     const newSelectedDashboard = openDashboards.length
 
     setDashboards(newDashboard)
     setSelectedDashboard(newSelectedDashboard)
+
+    if (!hasDashboardContent(dashboard.layout)) {
+      setDashboardEditing(id, true)
+    }
   }
 
   const updateLayout = (model: Model) => {
@@ -102,6 +142,9 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         updateLayout,
         updateDashboardLayout,
         renameDashboard,
+        editingDashboardIds,
+        setDashboardEditing,
+        isDashboardEditing,
       }}
     />
   )

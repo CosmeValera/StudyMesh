@@ -38,7 +38,7 @@ test.describe('Library Access Tests', () => {
     // Verify that the dialog is open
     const dashboardsDialog = page
       .getByRole('dialog')
-      .filter({ has: page.getByText('Dashboard Library') })
+      .filter({ has: page.getByText('Saved Dashboards') })
     await expect(dashboardsDialog).toBeVisible({ timeout: 5000 })
 
     // Take screenshot

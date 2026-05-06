@@ -24,7 +24,9 @@ import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import CreateIcon from '@mui/icons-material/Create'
+import WidgetsIcon from '@mui/icons-material/Widgets'
+import EditIcon from '@mui/icons-material/Edit'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import DashboardLayoutView from '../Layout/Layout'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
@@ -137,12 +139,16 @@ const DashboardStorage = {
 
 interface DashboardEmptyStateProps {
   isAdmin: boolean
-  onCreateWidget: () => void
+  onAddWidget: () => void
+  hasDashboard: boolean
+  onCreateDashboard: () => void
 }
 
 const DashboardEmptyState = ({
   isAdmin,
-  onCreateWidget,
+  onAddWidget,
+  hasDashboard,
+  onCreateDashboard,
 }: DashboardEmptyStateProps) => (
   <Box
     sx={{
@@ -171,28 +177,37 @@ const DashboardEmptyState = ({
         sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
       />
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Start a knowledge dashboard
+        {hasDashboard ? 'Build this dashboard' : 'Open a dashboard'}
       </Typography>
       <Typography
         variant="body1"
         sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
       >
-        Open a starter example from Dashboards, or create one reusable block for
-        your notes: formulas, study questions, charts, images, project tasks, or
-        research observations.
+        {hasDashboard
+          ? 'Use Add Widget, then choose a saved item from My Widgets. Place the widgets you need, adjust the layout, then save the dashboard.'
+          : 'Create a dashboard first, or open a saved dashboard from the Dashboards menu. Widgets can be placed once a dashboard is ready to edit.'}
       </Typography>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
         justifyContent="center"
       >
-        {isAdmin && (
+        {isAdmin && hasDashboard && (
           <Button
             variant="contained"
-            startIcon={<CreateIcon />}
-            onClick={onCreateWidget}
+            startIcon={<WidgetsIcon />}
+            onClick={onAddWidget}
           >
-            Create your own widget
+            Add Widget
+          </Button>
+        )}
+        {isAdmin && !hasDashboard && (
+          <Button
+            variant="contained"
+            startIcon={<DashboardCustomizeIcon />}
+            onClick={onCreateDashboard}
+          >
+            Create Dashboard
           </Button>
         )}
       </Stack>
@@ -290,6 +305,8 @@ const Dashboards = () => {
     addDashboard,
     updateLayout,
     renameDashboard,
+    setDashboardEditing,
+    isDashboardEditing,
   } = useDashboards()
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -315,7 +332,7 @@ const Dashboards = () => {
       const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
       return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
     })
-  const { openCreateWidget } = useWorkspaceActions()
+  const { openWidgetMenu } = useWorkspaceActions()
   const selectedDashboardIsEmpty =
     !openDashboards[selectedDashboard]?.layout?.children ||
     openDashboards[selectedDashboard]?.layout?.children?.length === 0
@@ -432,6 +449,7 @@ const Dashboards = () => {
             ...prev,
             [index]: false,
           }))
+          setDashboardEditing(currentDashboard.id, false)
         }
       } catch (error) {
         console.error('Error updating dashboard:', error)
@@ -505,6 +523,7 @@ const Dashboards = () => {
             ...prev,
             [currentTabIndex]: false,
           }))
+          setDashboardEditing(currentDashboard.id, false)
         }
 
         handleSaveDialogClose()
@@ -559,6 +578,46 @@ const Dashboards = () => {
                     </IconButton>
                   </TooltipStyled>
                 )}
+                {dashboard.layout?.children &&
+                  dashboard.layout.children.length > 0 && (
+                    <TooltipStyled
+                      title={
+                        isDashboardEditing(dashboard.id)
+                          ? 'View Dashboard'
+                          : 'Edit Dashboard'
+                      }
+                    >
+                      <IconButton
+                        aria-label={
+                          isDashboardEditing(dashboard.id)
+                            ? `View dashboard ${dashboard.name}`
+                            : `Edit dashboard ${dashboard.name}`
+                        }
+                        size="small"
+                        onClick={(ev) => {
+                          ev.stopPropagation()
+                          setDashboardEditing(
+                            dashboard.id,
+                            !isDashboardEditing(dashboard.id),
+                          )
+                        }}
+                        sx={{
+                          p: 0.5,
+                          mr: 0.5,
+                          color: isDashboardEditing(dashboard.id)
+                            ? 'primary.light'
+                            : 'text.secondary',
+                          '&:hover': { color: 'primary.main' },
+                        }}
+                      >
+                        {isDashboardEditing(dashboard.id) ? (
+                          <VisibilityIcon sx={{ fontSize: 16 }} />
+                        ) : (
+                          <EditIcon sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                    </TooltipStyled>
+                  )}
                 <Box
                   className="close"
                   sx={{
@@ -651,11 +710,14 @@ const Dashboards = () => {
                   {isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}
-                      onCreateWidget={openCreateWidget}
+                      onAddWidget={openWidgetMenu}
+                      hasDashboard
+                      onCreateDashboard={() => addDashboard()}
                     />
                   ) : (
                     <DashboardLayoutView
                       layout={dashboard.layout}
+                      readOnly={!isDashboardEditing(dashboard.id)}
                       updateLayout={(model) => {
                         updateLayout(model)
                         // Mark this dashboard as having changes after layout update
@@ -676,7 +738,9 @@ const Dashboards = () => {
       {openDashboards.length === 0 && (
         <DashboardEmptyState
           isAdmin={isAdmin}
-          onCreateWidget={openCreateWidget}
+          onAddWidget={openWidgetMenu}
+          hasDashboard={false}
+          onCreateDashboard={() => addDashboard()}
         />
       )}
 

@@ -8,6 +8,7 @@ import { cloneTemplate } from '../components/WidgetEditor/constants/templateWidg
 import { DashboardLayout } from '../state/store'
 
 export const OPEN_WIDGET_MENU_EVENT = 'aquamesh-open-widget-menu'
+export const OPEN_WIDGET_EDITOR_EVENT = 'aquamesh-open-widget-editor'
 
 export interface WorkspaceComponentConfig {
   id?: string
@@ -345,12 +346,8 @@ export const useWorkspaceActions = () => {
   )
 
   const openCreateWidget = useCallback(() => {
-    ensureDashboardAndAddComponent({
-      id: `widget-editor-${Date.now()}`,
-      name: 'Create Widget',
-      component: 'WidgetEditor',
-    })
-  }, [ensureDashboardAndAddComponent])
+    window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
+  }, [])
 
   const openTemplateDashboard = useCallback(
     ({
