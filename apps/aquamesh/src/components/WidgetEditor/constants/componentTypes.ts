@@ -6,6 +6,10 @@ import ViewQuiltIcon from '@mui/icons-material/ViewQuilt'
 import FlexibleIcon from '@mui/icons-material/Dashboard'
 import GridViewIcon from '@mui/icons-material/GridView'
 import PieChartIcon from '@mui/icons-material/PieChart'
+import ImageIcon from '@mui/icons-material/Image'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'
+import SubjectIcon from '@mui/icons-material/Subject'
 import { ComponentType } from '../types/types'
 
 // Building blocks that can be added to a widget.
@@ -17,23 +21,34 @@ export const COMPONENT_TYPES: ComponentType[] = [
     defaultProps: { text: 'Display Text' },
     category: 'UI Components',
     icon: TextFieldsIcon,
-    tooltip: 'Shows a short piece of text, such as a title, status, or note.'
+    tooltip: 'Shows a short piece of text, such as a title, status, or note.',
   },
   {
     type: 'TextField',
     label: 'Answer Box',
-    defaultProps: { label: 'Answer Box', placeholder: 'Enter text...', defaultValue: '' },
+    defaultProps: {
+      label: 'Answer Box',
+      placeholder: 'Enter text...',
+      defaultValue: '',
+    },
     category: 'UI Components',
     icon: InputIcon,
-    tooltip: 'Lets someone type a value, note, or answer into the widget.'
+    tooltip: 'Lets someone type a value, note, or answer into the widget.',
   },
   {
     type: 'Button',
     label: 'Button',
-    defaultProps: { text: 'Button', variant: 'contained', showToast: true, toastMessage: 'Action completed!', toastSeverity: 'info' },
+    defaultProps: {
+      text: 'Button',
+      variant: 'contained',
+      showToast: true,
+      toastMessage: 'Action completed!',
+      toastSeverity: 'info',
+    },
     category: 'UI Components',
     icon: SmartButtonIcon,
-    tooltip: 'Adds a button for actions like confirming a step, opening a link, or showing a message.'
+    tooltip:
+      'Adds a button for actions like confirming a step, opening a link, or showing a message.',
   },
   {
     type: 'SwitchEnable',
@@ -41,13 +56,14 @@ export const COMPONENT_TYPES: ComponentType[] = [
     defaultProps: { label: 'Switch', defaultChecked: false },
     category: 'UI Components',
     icon: ToggleOnIcon,
-    tooltip: 'Adds a simple on/off choice, such as Enabled, Open, or Needs review.'
+    tooltip:
+      'Adds a simple on/off choice, such as Enabled, Open, or Needs review.',
   },
   {
     type: 'Chart',
     label: 'Pie Chart',
-    defaultProps: { 
-      title: '', 
+    defaultProps: {
+      title: '',
       chartType: 'pie',
       height: 400,
       description: '',
@@ -66,13 +82,69 @@ export const COMPONENT_TYPES: ComponentType[] = [
             ]
           }
         ]
-      }`
+      }`,
     },
     category: 'UI Components',
     icon: PieChartIcon,
-    tooltip: 'Shows a pie chart for simple breakdowns, such as ticket types or incident causes.'
+    tooltip:
+      'Shows a pie chart for simple breakdowns, such as ticket types or incident causes.',
   },
-  
+  {
+    type: 'LongText',
+    label: 'Long Text',
+    defaultProps: {
+      __blockType: 'LongText',
+      title: 'Study note',
+      text: 'Write a longer explanation, theorem, research note, or lesson summary here.',
+      callout: true,
+    },
+    category: 'Knowledge Blocks',
+    icon: SubjectIcon,
+    tooltip:
+      'Adds a larger note block for explanations, study summaries, or wiki-style writing.',
+  },
+  {
+    type: 'ListBlock',
+    label: 'List',
+    defaultProps: {
+      __blockType: 'ListBlock',
+      title: 'Key ideas',
+      items: 'Definition\nExample\nPractice question',
+      ordered: false,
+    },
+    category: 'Knowledge Blocks',
+    icon: FormatListBulletedIcon,
+    tooltip:
+      'Adds a clean list for concepts, steps, references, or quick study bullets.',
+  },
+  {
+    type: 'ImageBlock',
+    label: 'Image',
+    defaultProps: {
+      __blockType: 'ImageBlock',
+      src: '',
+      alt: 'Knowledge image',
+      caption: 'Diagram or reference image',
+      maxHeight: 260,
+    },
+    category: 'Knowledge Blocks',
+    icon: ImageIcon,
+    tooltip: 'Adds an image/diagram block using an image URL.',
+  },
+  {
+    type: 'PdfBlock',
+    label: 'PDF',
+    defaultProps: {
+      __blockType: 'PdfBlock',
+      src: '',
+      title: 'Reference PDF',
+      height: 420,
+    },
+    category: 'Knowledge Blocks',
+    icon: PictureAsPdfIcon,
+    tooltip: 'Embeds a PDF reference by URL, with an open-link fallback.',
+  },
+
   // Layout Containers
   {
     type: 'FieldSet',
@@ -80,33 +152,35 @@ export const COMPONENT_TYPES: ComponentType[] = [
     defaultProps: { legend: 'Grouped Section', collapsed: false },
     category: 'Layout Containers',
     icon: ViewQuiltIcon,
-    tooltip: 'Groups related items under one heading. It can be opened or collapsed.'
+    tooltip:
+      'Groups related items under one heading. It can be opened or collapsed.',
   },
   {
     type: 'FlexBox',
     label: 'Flexible Group',
-    defaultProps: { 
-      direction: 'row', 
-      justifyContent: 'flex-start', 
-      alignItems: 'center', 
+    defaultProps: {
+      direction: 'row',
+      justifyContent: 'flex-start',
+      alignItems: 'center',
       spacing: 0,
-      wrap: 'wrap'
+      wrap: 'wrap',
     },
     category: 'Layout Containers',
     icon: FlexibleIcon,
-    tooltip: 'Places items next to each other or stacks them, with simple spacing controls.'
+    tooltip:
+      'Places items next to each other or stacks them, with simple spacing controls.',
   },
   {
     type: 'GridBox',
     label: 'Grid Group',
-    defaultProps: { 
-      columns: 2, 
+    defaultProps: {
+      columns: 2,
       rows: 1,
-      spacing: 2
+      spacing: 2,
     },
     category: 'Layout Containers',
     icon: GridViewIcon,
-    tooltip: 'Arranges items into clear columns, like cards on a dashboard.'
+    tooltip: 'Arranges items into clear columns, like cards on a dashboard.',
   },
 ]
 
@@ -114,7 +188,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
  * Get a component icon by type
  */
 export const getComponentIcon = (type: string) => {
-  const componentType = COMPONENT_TYPES.find(c => c.type === type)
+  const componentType = COMPONENT_TYPES.find((c) => c.type === type)
   return componentType?.icon || null
 }
 
@@ -123,13 +197,13 @@ export const getComponentIcon = (type: string) => {
  */
 export const getComponentsByCategory = () => {
   const categories: Record<string, ComponentType[]> = {}
-  
-  COMPONENT_TYPES.forEach(component => {
+
+  COMPONENT_TYPES.forEach((component) => {
     if (!categories[component.category]) {
       categories[component.category] = []
     }
     categories[component.category].push(component)
   })
-  
+
   return categories
-} 
+}

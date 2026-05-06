@@ -21,6 +21,7 @@ import WidgetsIcon from '@mui/icons-material/Widgets'
 import CreateIcon from '@mui/icons-material/Create'
 import FolderIcon from '@mui/icons-material/Folder'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
@@ -33,6 +34,7 @@ import {
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
+import WorkspaceHelpModal from '../tutorial/WorkspaceHelpModal'
 
 // Define user data type
 interface UserData {
@@ -100,6 +102,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   )
   const widgetsButtonRef = useRef<HTMLButtonElement | null>(null)
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [userData, setUserData] = useState<UserData>({
     id: 'admin',
     name: 'Admin User',
@@ -479,6 +482,26 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
           {/* Right Side Elements */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {isPhone || isTablet ? (
+              <ButtonWithLabel
+                icon={<HelpOutlineIcon />}
+                label="Help"
+                onClick={() => setIsHelpOpen(true)}
+                title="How AquaMesh works"
+              />
+            ) : (
+              <Button
+                onClick={() => setIsHelpOpen(true)}
+                sx={{
+                  color: 'foreground.contrastPrimary',
+                  minWidth: 'auto',
+                  px: 1.5,
+                }}
+                startIcon={<HelpOutlineIcon />}
+              >
+                Help
+              </Button>
+            )}
             <ThemeModeToggle compact={isPhone} />
             <Divider
               orientation="vertical"
@@ -593,6 +616,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         onPreview={previewWidget}
         onEdit={editWidget}
         onDelete={deleteWidget}
+      />
+      <WorkspaceHelpModal
+        open={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </>
   )
