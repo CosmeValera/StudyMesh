@@ -28,7 +28,7 @@ interface SavedDashboardRecord {
   updatedAt: string
 }
 
-const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v6'
+const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v7'
 
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
