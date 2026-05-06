@@ -218,7 +218,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<ConstructionIcon />}
-                label="Create"
+                label="Create Widget"
                 onClick={() => openCreateWidget()}
                 data-tutorial-id="create-widget-button"
               />
