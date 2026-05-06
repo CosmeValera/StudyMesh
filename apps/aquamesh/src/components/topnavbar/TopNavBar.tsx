@@ -347,39 +347,51 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 )
               ) : (
                 <>
-                  <Typography
-                    sx={{
-                      px: 2,
-                      py: 1,
-                      fontWeight: 'bold',
-                      mt: 1,
-                      color: 'text.primary',
-                    }}
-                  >
-                    Example Starter Widgets
-                  </Typography>
-                  <Divider sx={{ borderColor: 'divider' }} />
-                  {topNavBarWidgets
-                    .filter((widget) => !widget.name.includes('Custom'))
-                    .map((topNavBarWidget) => (
-                      <Box key={topNavBarWidget.name}>
-                        {topNavBarWidget.items.map((item) => (
-                          <MenuItem
-                            key={item.name}
-                            onClick={() => {
-                              ensureDashboardAndAddComponent({
-                                id: `panel-${Date.now()}`,
-                                ...item,
-                              })
-                              handleClose()
-                            }}
-                            sx={{ p: 1.5 }}
-                          >
-                            {item.name}
-                          </MenuItem>
+                  {topNavBarWidgets.filter(
+                    (widget) =>
+                      !widget.name.includes('Custom') &&
+                      widget.items.length > 0,
+                  ).length > 0 && (
+                    <>
+                      <Typography
+                        sx={{
+                          px: 2,
+                          py: 1,
+                          fontWeight: 'bold',
+                          mt: 1,
+                          color: 'text.primary',
+                        }}
+                      >
+                        Starter Widgets
+                      </Typography>
+                      <Divider sx={{ borderColor: 'divider' }} />
+                      {topNavBarWidgets
+                        .filter(
+                          (widget) =>
+                            !widget.name.includes('Custom') &&
+                            widget.items.length > 0,
+                        )
+                        .map((topNavBarWidget) => (
+                          <Box key={topNavBarWidget.name}>
+                            {topNavBarWidget.items.map((item) => (
+                              <MenuItem
+                                key={item.name}
+                                onClick={() => {
+                                  ensureDashboardAndAddComponent({
+                                    id: `panel-${Date.now()}`,
+                                    ...item,
+                                  })
+                                  handleClose()
+                                }}
+                                sx={{ p: 1.5 }}
+                              >
+                                {item.name}
+                              </MenuItem>
+                            ))}
+                          </Box>
                         ))}
-                      </Box>
-                    ))}
+                    </>
+                  )}
 
                   {/* Custom Widgets Section */}
                   {topNavBarWidgets.filter((widget) =>

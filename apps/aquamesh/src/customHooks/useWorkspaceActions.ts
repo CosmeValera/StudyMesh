@@ -16,6 +16,20 @@ export interface WorkspaceComponentConfig {
   customProps?: Record<string, unknown>
 }
 
+interface SavedDashboardRecord {
+  id: string
+  name: string
+  folder?: string
+  layout: DashboardLayout
+  description?: string
+  tags?: string[]
+  isPublic?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v1'
+
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
 ): DashboardLayout => ({
@@ -40,27 +54,199 @@ const createLayoutWithComponent = (
   ],
 })
 
-const createLayoutWithComponents = (
+const createMathStarterLayout = (
   componentConfigs: WorkspaceComponentConfig[],
-): DashboardLayout => ({
-  type: 'row',
-  weight: 100,
-  children: [
-    {
-      type: 'tabset',
-      weight: 100,
-      active: true,
-      children: componentConfigs.map((componentConfig) => ({
-        type: 'tab',
-        name: componentConfig.name,
-        component: componentConfig.component,
-        config: componentConfig.customProps
-          ? { customProps: componentConfig.customProps }
-          : undefined,
-      })),
-    },
-  ],
+): DashboardLayout => {
+  const [chart, example, theory] = componentConfigs
+
+  const createTab = (componentConfig: WorkspaceComponentConfig) => ({
+    type: 'tab',
+    name: componentConfig.name,
+    component: componentConfig.component,
+    config: componentConfig.customProps
+      ? { customProps: componentConfig.customProps }
+      : undefined,
+  })
+
+  return {
+    type: 'row',
+    weight: 100,
+    children: [
+      {
+        type: 'tabset',
+        weight: 43,
+        active: true,
+        children: [createTab(chart)],
+      },
+      {
+        type: 'row',
+        weight: 57,
+        children: [
+          {
+            type: 'tabset',
+            weight: 50,
+            children: [createTab(example)],
+          },
+          {
+            type: 'tabset',
+            weight: 50,
+            children: [createTab(theory)],
+          },
+        ],
+      },
+    ],
+  }
+}
+
+const saveTemplateWidget = ({
+  widgetName,
+  templateId,
+  description,
+  category = 'Knowledge Workspace',
+  tags,
+}: {
+  widgetName: string
+  templateId: string
+  description: string
+  category?: string
+  tags: string[]
+}) => {
+  let widget = WidgetStorage.getAllWidgets().find(
+    (savedWidget) => savedWidget.name === widgetName,
+  )
+
+  if (!widget) {
+    const template = cloneTemplate(templateId)
+
+    if (template) {
+      widget = WidgetStorage.saveWidget({
+        name: widgetName,
+        description,
+        category,
+        tags,
+        components: template.components,
+        version: '1.0',
+        author: 'AquaMesh',
+      })
+    }
+  }
+
+  return widget
+}
+
+const createCustomWidgetConfig = (
+  widget: NonNullable<ReturnType<typeof saveTemplateWidget>>,
+) => ({
+  name: widget.name,
+  component: 'CustomWidget',
+  customProps: {
+    widgetId: widget.id,
+    components: widget.components,
+  },
 })
+
+const getSavedDashboards = (): SavedDashboardRecord[] => {
+  try {
+    const dashboards = window.localStorage.getItem('customDashboards')
+    return dashboards ? JSON.parse(dashboards) : []
+  } catch (error) {
+    console.error('Failed to read saved dashboards', error)
+    return []
+  }
+}
+
+const saveStarterDashboard = (
+  dashboard: Omit<SavedDashboardRecord, 'id' | 'createdAt' | 'updatedAt'>,
+) => {
+  const dashboards = getSavedDashboards()
+
+  if (
+    dashboards.some((savedDashboard) => savedDashboard.name === dashboard.name)
+  ) {
+    return
+  }
+
+  const now = new Date().toISOString()
+  dashboards.push({
+    id: `dashboard-starter-${dashboard.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    ...dashboard,
+    createdAt: now,
+    updatedAt: now,
+  })
+  window.localStorage.setItem('customDashboards', JSON.stringify(dashboards))
+}
+
+export const ensureStarterDashboards = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (window.localStorage.getItem(STARTER_DASHBOARDS_SEEDED_KEY) === 'true') {
+    return
+  }
+
+  const mathWidgets = [
+    saveTemplateWidget({
+      widgetName: 'Mathematics 1 — Chart',
+      templateId: 'template-math-derivatives-chart',
+      description:
+        'Practice-progress chart for the derivatives study dashboard.',
+      tags: ['mathematics', 'derivatives', 'chart'],
+    }),
+    saveTemplateWidget({
+      widgetName: 'Mathematics 1 — Derivatives Example',
+      templateId: 'template-math-derivatives-example',
+      description:
+        'Worked derivative examples and a question input for the study dashboard.',
+      tags: ['mathematics', 'derivatives', 'example'],
+    }),
+    saveTemplateWidget({
+      widgetName: 'Mathematics 1 — Theory Derivatives',
+      templateId: 'template-math-derivatives-theory',
+      description:
+        'Core derivative theory and formulas for the study dashboard.',
+      tags: ['mathematics', 'derivatives', 'theory'],
+    }),
+  ].filter(Boolean)
+
+  if (mathWidgets.length === 3) {
+    saveStarterDashboard({
+      name: 'Mathematics 1 — Derivatives',
+      folder: 'Mathematics',
+      layout: createMathStarterLayout(
+        mathWidgets.map((widget) => createCustomWidgetConfig(widget!)),
+      ),
+      description:
+        'A starter mathematics dashboard with theory, examples, and a chart.',
+      tags: ['mathematics', 'derivatives', 'starter'],
+      isPublic: true,
+    })
+  }
+
+  const tutorialWidget = saveTemplateWidget({
+    widgetName: 'AquaMesh Tutorial',
+    templateId: 'template-knowledge-tutorial',
+    description:
+      'A simple dashboard that explains widgets, dashboards, and blocks with visual examples.',
+    tags: ['tutorial', 'knowledge wiki', 'dashboard', 'blocks'],
+  })
+
+  if (tutorialWidget) {
+    saveStarterDashboard({
+      name: 'AquaMesh Tutorial',
+      folder: 'Tutorial',
+      layout: createLayoutWithComponent(
+        createCustomWidgetConfig(tutorialWidget),
+      ),
+      description:
+        'A starter dashboard that explains the basic AquaMesh concepts.',
+      tags: ['tutorial', 'widgets', 'dashboards', 'blocks'],
+      isPublic: true,
+    })
+  }
+
+  window.localStorage.setItem(STARTER_DASHBOARDS_SEEDED_KEY, 'true')
+}
 
 const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   if (!layout) {
@@ -185,45 +371,6 @@ export const useWorkspaceActions = () => {
     [addDashboard],
   )
 
-  const saveTemplateWidget = useCallback(
-    ({
-      widgetName,
-      templateId,
-      description,
-      category = 'Knowledge Workspace',
-      tags,
-    }: {
-      widgetName: string
-      templateId: string
-      description: string
-      category?: string
-      tags: string[]
-    }) => {
-      let widget = WidgetStorage.getAllWidgets().find(
-        (savedWidget) => savedWidget.name === widgetName,
-      )
-
-      if (!widget) {
-        const template = cloneTemplate(templateId)
-
-        if (template) {
-          widget = WidgetStorage.saveWidget({
-            name: widgetName,
-            description,
-            category,
-            tags,
-            components: template.components,
-            version: '1.0',
-            author: 'AquaMesh',
-          })
-        }
-      }
-
-      return widget
-    },
-    [],
-  )
-
   const openOperationsExample = useCallback(() => {
     openTemplateDashboard({
       widgetName: 'Daily Operations Dashboard',
@@ -235,54 +382,32 @@ export const useWorkspaceActions = () => {
   }, [openTemplateDashboard])
 
   const openMathExample = useCallback(() => {
-    const mathWidgets = [
-      saveTemplateWidget({
-        widgetName: 'Mathematics 1 — Chart',
-        templateId: 'template-math-derivatives-chart',
-        description:
-          'Practice-progress chart for the derivatives study dashboard.',
-        tags: ['mathematics', 'derivatives', 'chart'],
-      }),
-      saveTemplateWidget({
-        widgetName: 'Mathematics 1 — Derivatives Example',
-        templateId: 'template-math-derivatives-example',
-        description:
-          'Worked derivative examples and a question input for the study dashboard.',
-        tags: ['mathematics', 'derivatives', 'example'],
-      }),
-      saveTemplateWidget({
-        widgetName: 'Mathematics 1 — Theory Derivatives',
-        templateId: 'template-math-derivatives-theory',
-        description:
-          'Core derivative theory and formulas for the study dashboard.',
-        tags: ['mathematics', 'derivatives', 'theory'],
-      }),
-    ].filter(Boolean)
+    ensureStarterDashboards()
+    const mathDashboard = getSavedDashboards().find(
+      (dashboard) => dashboard.name === 'Mathematics 1 — Derivatives',
+    )
 
-    addDashboard({
-      name: 'Mathematics 1 — Derivatives',
-      layout: createLayoutWithComponents(
-        mathWidgets.map((widget) => ({
-          name: widget!.name,
-          component: 'CustomWidget',
-          customProps: {
-            widgetId: widget!.id,
-            components: widget!.components,
-          },
-        })),
-      ),
-    })
-  }, [addDashboard, saveTemplateWidget])
+    if (mathDashboard) {
+      addDashboard({
+        name: mathDashboard.name,
+        layout: mathDashboard.layout,
+      })
+    }
+  }, [addDashboard])
 
   const openTutorialExample = useCallback(() => {
-    openTemplateDashboard({
-      widgetName: 'AquaMesh Tutorial',
-      templateId: 'template-knowledge-tutorial',
-      description:
-        'A simple dashboard that explains widgets, dashboards, and blocks with visual examples.',
-      tags: ['tutorial', 'knowledge wiki', 'dashboard', 'blocks'],
-    })
-  }, [openTemplateDashboard])
+    ensureStarterDashboards()
+    const tutorialDashboard = getSavedDashboards().find(
+      (dashboard) => dashboard.name === 'AquaMesh Tutorial',
+    )
+
+    if (tutorialDashboard) {
+      addDashboard({
+        name: tutorialDashboard.name,
+        layout: tutorialDashboard.layout,
+      })
+    }
+  }, [addDashboard])
 
   const openWidgetMenu = useCallback(() => {
     window.dispatchEvent(new CustomEvent(OPEN_WIDGET_MENU_EVENT))

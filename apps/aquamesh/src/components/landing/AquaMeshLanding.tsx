@@ -26,8 +26,8 @@ import ThemeModeToggle from '../shared/ThemeModeToggle'
 
 const workflow = [
   {
-    title: 'Open an example',
-    body: 'Start from a Mathematics or Tutorial dashboard so the app explains itself before you build anything.',
+    title: 'Enter the workspace',
+    body: 'Start with a clean workspace, then open saved dashboards or create your own widgets when you need them.',
     icon: <SchoolIcon />,
   },
   {
@@ -84,17 +84,17 @@ const quickAnswers = [
   {
     question: 'What is AquaMesh for?',
     answer:
-      'AquaMesh is becoming a visual knowledge wiki: notes, formulas, charts, images, and reusable widgets organized into dashboards.',
+      'AquaMesh is a visual knowledge wiki: notes, formulas, charts, images, and reusable widgets organized into dashboards.',
   },
   {
-    question: 'What should I open first?',
+    question: 'What should I do first?',
     answer:
-      'Open the Mathematics or Tutorial example from the dashboard menu. They are starter pages and mini tutorials.',
+      'Enter the workspace. From there you can create a dashboard, save it to a folder, or open existing dashboards.',
   },
   {
-    question: 'Can notes become dashboards?',
+    question: 'How are dashboards organized?',
     answer:
-      'That is the direction: paste or write notes, then turn them into structured dashboard blocks. This PR prepares the product around that workflow.',
+      'When you save a dashboard, choose a folder name. Dashboards with the same folder name appear together.',
   },
 ]
 
@@ -191,18 +191,10 @@ const AquaMeshLanding = () => {
               <Button
                 variant="contained"
                 size="large"
-                onClick={() => openWorkspace('open-math-example')}
-                sx={{ borderRadius: 1, textTransform: 'none' }}
-              >
-                Open math example
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
                 onClick={() => openWorkspace()}
                 sx={{ borderRadius: 1, textTransform: 'none' }}
               >
-                Start blank
+                Enter workspace
               </Button>
             </Stack>
           </Grid>
@@ -350,7 +342,7 @@ const AquaMeshLanding = () => {
           }}
         >
           <Typography variant="h4" component="h2" fontWeight={850} mb={1}>
-            Ready to open your first study dashboard?
+            Ready to build your workspace?
           </Typography>
           <Typography
             sx={{
@@ -358,13 +350,12 @@ const AquaMeshLanding = () => {
               mb: 3,
             }}
           >
-            Open a guided Mathematics dashboard, inspect the blocks, and use it
-            as a starting point for your own notes.
+            Enter the workspace, create dashboards, and organize them by folder.
           </Typography>
           <Button
             variant="contained"
             size="large"
-            onClick={() => openWorkspace('open-math-example')}
+            onClick={() => openWorkspace()}
             sx={{
               borderRadius: 1,
               textTransform: 'none',
@@ -373,7 +364,7 @@ const AquaMeshLanding = () => {
               '&:hover': { bgcolor: 'primary.light' },
             }}
           >
-            Open math example
+            Enter workspace
           </Button>
         </Paper>
       </Container>

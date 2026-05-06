@@ -15,7 +15,7 @@ import FolderIcon from '@mui/icons-material/Folder'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import { Layout } from '../../types/types'
-import { useWorkspaceActions } from '../../customHooks/useWorkspaceActions'
+import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
 
 // Define saved dashboard type
 interface SavedDashboard {
@@ -80,7 +80,6 @@ const DashboardOptionsMenu: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false)
 
   const { addDashboard } = useDashboards()
-  const { openMathExample, openTutorialExample } = useWorkspaceActions()
 
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -109,6 +108,7 @@ const DashboardOptionsMenu: React.FC = () => {
 
   const loadSavedDashboards = () => {
     try {
+      ensureStarterDashboards()
       const dashboards = localStorage.getItem('customDashboards')
       if (dashboards) {
         setCustomDashboards(JSON.parse(dashboards))
@@ -126,7 +126,13 @@ const DashboardOptionsMenu: React.FC = () => {
   const dashboardsByFolder = visibleCustomDashboards.reduce<
     Record<string, SavedDashboard[]>
   >((folders, dashboard) => {
-    const folderName = dashboard.folder?.trim() || 'Default'
+    const rawFolderName = dashboard.folder?.trim() || 'Default'
+    const folderName =
+      rawFolderName.toLowerCase() === 'mathematics'
+        ? 'Mathematics'
+        : rawFolderName.toLowerCase() === 'tutorial'
+          ? 'Tutorial'
+          : rawFolderName
     folders[folderName] = folders[folderName] || []
     folders[folderName].push(dashboard)
     return folders
@@ -221,52 +227,7 @@ const DashboardOptionsMenu: React.FC = () => {
 
         <Divider sx={{ my: 1, borderColor: 'divider' }} />
 
-        {/* Starter folders */}
-        <Typography
-          sx={{
-            px: 2,
-            py: 1,
-            fontWeight: 'bold',
-            mt: 1,
-            color: 'text.primary',
-          }}
-        >
-          Mathematics
-        </Typography>
-        <Divider sx={{ borderColor: 'divider' }} />
-        <MenuItem
-          onClick={() => {
-            openMathExample()
-            handleClose()
-          }}
-          sx={{ p: 1.5 }}
-        >
-          Mathematics Study Example
-        </MenuItem>
-
-        <Typography
-          sx={{
-            px: 2,
-            py: 1,
-            fontWeight: 'bold',
-            mt: 1,
-            color: 'text.primary',
-          }}
-        >
-          Tutorial
-        </Typography>
-        <Divider sx={{ borderColor: 'divider' }} />
-        <MenuItem
-          onClick={() => {
-            openTutorialExample()
-            handleClose()
-          }}
-          sx={{ p: 1.5 }}
-        >
-          AquaMesh Tutorial
-        </MenuItem>
-
-        {/* Custom Dashboards Section */}
+        {/* Dashboard folders */}
         {visibleCustomDashboards.length > 0 && (
           <>
             {Object.entries(dashboardsByFolder).map(

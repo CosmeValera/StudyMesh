@@ -316,6 +316,9 @@ const Dashboards = () => {
       return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
     })
   const { openCreateWidget } = useWorkspaceActions()
+  const selectedDashboardIsEmpty =
+    !openDashboards[selectedDashboard]?.layout?.children ||
+    openDashboards[selectedDashboard]?.layout?.children?.length === 0
 
   const completeDashboardOnboarding = () => {
     setDashboardOnboardingStep('done')
@@ -514,6 +517,7 @@ const Dashboards = () => {
   return (
     <Box>
       <Tabs
+        className={selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''}
         selectedIndex={selectedDashboard}
         onSelect={(index) => setSelectedDashboard(index)}
         style={{ position: 'relative' }}

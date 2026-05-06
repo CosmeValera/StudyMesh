@@ -39,6 +39,7 @@ import LockIcon from '@mui/icons-material/Lock'
 import { Layout } from '../../types/types'
 import { useDashboards } from './DashboardProvider'
 import { DefaultDashboard } from './fixture'
+import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
 import DeleteConfirmationDialog from '../WidgetEditor/components/dialogs/DeleteConfirmationDialog'
 
 interface SavedDashboard {
@@ -160,6 +161,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   // Function to load dashboards from localStorage
   const loadDashboards = () => {
     try {
+      ensureStarterDashboards()
       const savedDashboards = localStorage.getItem('customDashboards')
       if (savedDashboards) {
         const parsedDashboards = JSON.parse(savedDashboards)

@@ -20,16 +20,6 @@ const ThemeModeContext = createContext<ThemeModeContextValue | undefined>(
   undefined,
 )
 
-const getSystemThemeMode = (): ThemeMode => {
-  if (typeof window === 'undefined') {
-    return 'light'
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
-}
-
 const getInitialThemeMode = (): ThemeMode => {
   if (typeof window === 'undefined') {
     return 'light'
@@ -41,7 +31,7 @@ const getInitialThemeMode = (): ThemeMode => {
     return savedMode
   }
 
-  return getSystemThemeMode()
+  return 'light'
 }
 
 export const ThemeModeProvider = ({
@@ -50,24 +40,6 @@ export const ThemeModeProvider = ({
   children: React.ReactNode
 }) => {
   const [mode, setModeState] = useState<ThemeMode>(getInitialThemeMode)
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-    const handleSystemPreferenceChange = (event: MediaQueryListEvent) => {
-      const savedMode = window.localStorage.getItem(THEME_STORAGE_KEY)
-
-      if (!savedMode) {
-        setModeState(event.matches ? 'dark' : 'light')
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleSystemPreferenceChange)
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleSystemPreferenceChange)
-    }
-  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.theme = mode

@@ -815,7 +815,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   fullWidth: true,
                   variant: 'outlined',
                   helperText:
-                    'Future idea: turn notes/questions into dashboard blocks automatically.',
+                    'Use this block for questions, doubts, or short study notes.',
                 },
               },
             ],
@@ -944,7 +944,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   fullWidth: true,
                   variant: 'outlined',
                   helperText:
-                    'Future idea: paste notes and generate a dashboard from them.',
+                    'Use this block for experiment notes and observations.',
                 },
               },
             ],
@@ -1009,8 +1009,8 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
             "datasets": [{
               "label": "Confidence",
               "data": [85, 55, 65, 35],
-              "backgroundColor": "rgba(25, 118, 210, 0.75)",
-              "borderColor": "rgba(25, 118, 210, 1)",
+              "backgroundColor": ["rgba(25, 118, 210, 0.75)", "rgba(239, 108, 0, 0.75)", "rgba(123, 31, 162, 0.75)", "rgba(0, 124, 102, 0.75)"],
+              "borderColor": ["rgba(25, 118, 210, 1)", "rgba(239, 108, 0, 1)", "rgba(123, 31, 162, 1)", "rgba(0, 124, 102, 1)"],
               "borderWidth": 2
             }]
           }`,
@@ -1020,7 +1020,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
         id: 'template-math-chart-note',
         type: 'Label',
         props: {
-          text: 'This is a chart block. Later it could react to answers, checks, or note data.',
+          text: 'This is a chart block. Use it to visualize progress, scores, or categories.',
           variant: 'body2',
         },
       },
