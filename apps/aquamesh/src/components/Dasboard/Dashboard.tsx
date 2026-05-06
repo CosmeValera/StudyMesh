@@ -108,6 +108,18 @@ const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
   return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
 }
 
+const hasDashboardContent = (layout?: DashboardLayout): boolean => {
+  if (!layout) {
+    return false
+  }
+
+  if (layout.type === 'tab' && Boolean(layout.component)) {
+    return true
+  }
+
+  return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
+}
+
 // Dashboard Storage utilities
 const DashboardStorage = {
   getAll: (): SavedDashboard[] => {
@@ -507,9 +519,9 @@ const Dashboards = () => {
     })
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
-  const selectedDashboardIsEmpty =
-    !openDashboards[selectedDashboard]?.layout?.children ||
-    openDashboards[selectedDashboard]?.layout?.children?.length === 0
+  const selectedDashboardIsEmpty = !hasDashboardContent(
+    openDashboards[selectedDashboard]?.layout,
+  )
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
         (dashboard) => dashboard.id === dashboardEditorId,
@@ -519,9 +531,9 @@ const Dashboards = () => {
     draftDashboard ||
     (dashboardEditorIndex >= 0 ? openDashboards[dashboardEditorIndex] : null)
   const dashboardEditorIsDraft = Boolean(draftDashboard)
-  const dashboardEditorIsEmpty =
-    !dashboardEditorDashboard?.layout?.children ||
-    dashboardEditorDashboard.layout.children.length === 0
+  const dashboardEditorIsEmpty = !hasDashboardContent(
+    dashboardEditorDashboard?.layout,
+  )
   const customWidgetPanels = topNavBarWidgets.filter((widget) =>
     widget.name.includes('Custom'),
   )
@@ -735,9 +747,14 @@ const Dashboards = () => {
 
   const handleSaveDialogOpen = (index: number) => {
     if (dashboardEditorIsDraft && draftDashboard) {
+      if (!hasDashboardContent(draftDashboard.layout)) {
+        return
+      }
+
       setCurrentTabIndex(null)
       setDashboardName('')
       setDashboardFolder('Default')
+      setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
       setDashboardDescription('')
       setDashboardTags(['dashboard'])
       setIsPublic(false)
@@ -748,13 +765,17 @@ const Dashboards = () => {
 
     const currentDashboard = openDashboards[index]
 
+    if (!currentDashboard || !hasDashboardContent(currentDashboard.layout)) {
+      return
+    }
+
     // Check if it's an update of an existing dashboard
     const existingDashboard = DashboardStorage.getByName(currentDashboard.name)
 
     if (existingDashboard) {
       // Direct update without showing the dialog for existing dashboards
       try {
-        if (currentDashboard.layout) {
+        if (hasDashboardContent(currentDashboard.layout)) {
           const updatedDashboard: SavedDashboard = {
             ...existingDashboard,
             layout: currentDashboard.layout,
@@ -823,11 +844,16 @@ const Dashboards = () => {
 
   const handleSaveDashboard = () => {
     if (draftDashboard && dashboardName.trim() !== '') {
+      if (!hasDashboardContent(draftDashboard.layout)) {
+        return
+      }
+
       try {
         const newDashboard: SavedDashboard = {
           id: `dashboard-${Date.now()}`,
           name: dashboardName.trim(),
           folder: dashboardFolder.trim() || 'Default',
+          folderColor: normalizeFolderColor(dashboardFolderColor),
           layout: draftDashboard.layout,
           description: dashboardDescription.trim() || undefined,
           tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
@@ -853,8 +879,13 @@ const Dashboards = () => {
 
     if (currentTabIndex !== null && dashboardName.trim() !== '') {
       const currentDashboard = openDashboards[currentTabIndex]
+
+      if (!currentDashboard || !hasDashboardContent(currentDashboard.layout)) {
+        return
+      }
+
       try {
-        if (currentDashboard.layout) {
+        if (hasDashboardContent(currentDashboard.layout)) {
           const newDashboard: SavedDashboard = {
             id: `dashboard-${Date.now()}`,
             name: dashboardName.trim(),
@@ -910,90 +941,99 @@ const Dashboards = () => {
         style={{ position: 'relative' }}
       >
         <TabList>
-          {openDashboards.map((dashboard, index) => (
-            <Tab key={dashboard.id}>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  flex: '1 0 0',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  marginLeft: '0.5rem',
-                }}
-              >
-                {dashboard.name}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {hasChanges[index] && (
-                  <TooltipStyled title="Save Dashboard">
-                    <IconButton
-                      aria-label={`Save dashboard ${dashboard.name}`}
-                      data-testid={`save-dashboard-${index}`}
-                      size="small"
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        handleSaveDialogOpen(index)
-                      }}
-                      sx={{
-                        p: 0.5,
-                        mr: 0.5,
-                        color: 'primary.light',
-                        '&:hover': { color: 'primary.main' },
-                      }}
-                    >
-                      <SaveIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </TooltipStyled>
-                )}
-                {dashboard.layout?.children &&
-                  dashboard.layout.children.length > 0 && (
-                    <TooltipStyled title="Edit Dashboard">
-                      <IconButton
-                        aria-label={`Edit dashboard ${dashboard.name}`}
-                        size="small"
-                        onClick={(ev) => {
-                          ev.stopPropagation()
-                          openDashboardEditor(dashboard.id)
-                        }}
-                        sx={{
-                          p: 0.5,
-                          mr: 0.5,
-                          color: 'text.secondary',
-                          '&:hover': { color: 'primary.main' },
-                        }}
-                      >
-                        <EditIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
-                    </TooltipStyled>
-                  )}
-                <Box
-                  className="close"
+          {openDashboards.map((dashboard, index) => {
+            const isOnlyEmptyDashboard =
+              openDashboards.length === 1 &&
+              !hasDashboardContent(dashboard.layout)
+
+            return (
+              <Tab key={dashboard.id}>
+                <Typography
+                  variant="subtitle2"
                   sx={{
-                    display: 'flex',
-                    p: 0.5,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderRadius: '999px',
-                    transition: 'all .25s ease',
-                    '&:hover': {
-                      backgroundColor: 'action.contrastHover',
-                    },
+                    flex: '1 0 0',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    marginLeft: '0.5rem',
                   }}
                 >
-                  <CloseIcon
-                    width={16}
-                    height={16}
-                    onClick={(ev) => {
-                      // NOTE prevent the tab being closed from being selected too!
-                      ev.stopPropagation()
-                      removeDashboard(dashboard.id)
-                    }}
-                  />
+                  {dashboard.name}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {hasChanges[index] &&
+                    hasDashboardContent(dashboard.layout) && (
+                      <TooltipStyled title="Save Dashboard">
+                        <IconButton
+                          aria-label={`Save dashboard ${dashboard.name}`}
+                          data-testid={`save-dashboard-${index}`}
+                          size="small"
+                          onClick={(ev) => {
+                            ev.stopPropagation()
+                            handleSaveDialogOpen(index)
+                          }}
+                          sx={{
+                            p: 0.5,
+                            mr: 0.5,
+                            color: 'primary.light',
+                            '&:hover': { color: 'primary.main' },
+                          }}
+                        >
+                          <SaveIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </TooltipStyled>
+                    )}
+                  {dashboard.layout?.children &&
+                    dashboard.layout.children.length > 0 && (
+                      <TooltipStyled title="Edit Dashboard">
+                        <IconButton
+                          aria-label={`Edit dashboard ${dashboard.name}`}
+                          size="small"
+                          onClick={(ev) => {
+                            ev.stopPropagation()
+                            openDashboardEditor(dashboard.id)
+                          }}
+                          sx={{
+                            p: 0.5,
+                            mr: 0.5,
+                            color: 'text.secondary',
+                            '&:hover': { color: 'primary.main' },
+                          }}
+                        >
+                          <EditIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </TooltipStyled>
+                    )}
+                  {!isOnlyEmptyDashboard && (
+                    <Box
+                      className="close"
+                      sx={{
+                        display: 'flex',
+                        p: 0.5,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        borderRadius: '999px',
+                        transition: 'all .25s ease',
+                        '&:hover': {
+                          backgroundColor: 'action.contrastHover',
+                        },
+                      }}
+                    >
+                      <CloseIcon
+                        width={16}
+                        height={16}
+                        onClick={(ev) => {
+                          // NOTE prevent the tab being closed from being selected too!
+                          ev.stopPropagation()
+                          removeDashboard(dashboard.id)
+                        }}
+                      />
+                    </Box>
+                  )}
                 </Box>
-              </Box>
-            </Tab>
-          ))}
+              </Tab>
+            )
+          })}
           <Button
             size="small"
             variant="text"
@@ -1029,9 +1069,7 @@ const Dashboards = () => {
           />
         </TabList>
         {openDashboards.map((dashboard, index) => {
-          const isEmptyDashboard =
-            !dashboard.layout?.children ||
-            dashboard.layout.children.length === 0
+          const isEmptyDashboard = !hasDashboardContent(dashboard.layout)
           const showDashboardOnboarding =
             index === selectedDashboard &&
             dashboardOnboardingStep !== 'done' &&

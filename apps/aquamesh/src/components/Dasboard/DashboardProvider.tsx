@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useContext } from 'react'
 
 import { nanoid } from 'nanoid'
@@ -29,6 +29,11 @@ interface DashboardContextType {
 }
 
 const DashboardContext = React.createContext<DashboardContextType | null>(null)
+
+const createEmptyDashboard = (): StateDashboard => ({
+  id: nanoid(),
+  ...DEFAULT_DASHBOARD,
+})
 
 const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
   const selectedDashboard = useStore((state) => state.selectedDashboard)
@@ -67,8 +72,30 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     return editingDashboardIds.includes(id)
   }
 
+  useEffect(() => {
+    if (openDashboards.length === 0) {
+      const emptyDashboard = createEmptyDashboard()
+      setDashboards([emptyDashboard])
+      setSelectedDashboard(0)
+      setEditingDashboardIds([emptyDashboard.id])
+      return
+    }
+
+    if (selectedDashboard < 0 || selectedDashboard >= openDashboards.length) {
+      setSelectedDashboard(0)
+    }
+  }, [openDashboards, selectedDashboard, setDashboards, setSelectedDashboard])
+
   const removeDashboard = (id: string) => {
     const dashboards = openDashboards.filter((dashboard) => dashboard.id !== id)
+
+    if (dashboards.length === 0) {
+      const emptyDashboard = createEmptyDashboard()
+      setDashboards([emptyDashboard])
+      setSelectedDashboard(0)
+      setEditingDashboardIds([emptyDashboard.id])
+      return
+    }
 
     setDashboards(dashboards)
     setEditingDashboardIds((currentIds) =>
@@ -76,7 +103,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     )
 
     if (selectedDashboard >= dashboards.length) {
-      setSelectedDashboard(selectedDashboard - 1)
+      setSelectedDashboard(Math.max(0, dashboards.length - 1))
     }
   }
 
