@@ -17,12 +17,18 @@ import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import { Layout } from '../../types/types'
 import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
+import {
+  DEFAULT_FOLDER_COLOR,
+  normalizeFolderColor,
+  normalizeFolderName,
+} from './folderColors'
 
 // Define saved dashboard type
 interface SavedDashboard {
   id: string
   name: string
   folder?: string
+  folderColor?: string
   layout: Layout
   description?: string
   tags?: string[]
@@ -127,17 +133,21 @@ const DashboardOptionsMenu: React.FC = () => {
   const dashboardsByFolder = visibleCustomDashboards.reduce<
     Record<string, SavedDashboard[]>
   >((folders, dashboard) => {
-    const rawFolderName = dashboard.folder?.trim() || 'Default'
-    const folderName =
-      rawFolderName.toLowerCase() === 'mathematics'
-        ? 'Mathematics'
-        : rawFolderName.toLowerCase() === 'tutorial'
-          ? 'Tutorial'
-          : rawFolderName
+    const folderName = normalizeFolderName(dashboard.folder)
     folders[folderName] = folders[folderName] || []
     folders[folderName].push(dashboard)
     return folders
   }, {})
+
+  const getFolderColor = (folderName: string, dashboards: SavedDashboard[]) =>
+    normalizeFolderColor(
+      dashboards.find((dashboard) => dashboard.folderColor)?.folderColor ||
+        (folderName === 'Mathematics'
+          ? '#1976D2'
+          : folderName === 'Tutorial'
+            ? DEFAULT_FOLDER_COLOR
+            : undefined),
+    )
 
   // Handle opening and closing dropdown
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -248,31 +258,42 @@ const DashboardOptionsMenu: React.FC = () => {
         {visibleCustomDashboards.length > 0 && (
           <>
             {Object.entries(dashboardsByFolder).map(
-              ([folderName, dashboards]) => (
-                <React.Fragment key={folderName}>
-                  <Typography
-                    sx={{
-                      px: 2,
-                      py: 1,
-                      fontWeight: 'bold',
-                      mt: 1,
-                      color: 'text.primary',
-                    }}
-                  >
-                    {folderName}
-                  </Typography>
-                  <Divider sx={{ borderColor: 'divider' }} />
-                  {[...dashboards].reverse().map((dashboard) => (
-                    <MenuItem
-                      key={dashboard.id}
-                      onClick={() => loadCustomDashboard(dashboard)}
-                      sx={{ p: 1.5 }}
+              ([folderName, dashboards]) => {
+                const folderColor = getFolderColor(folderName, dashboards)
+
+                return (
+                  <React.Fragment key={folderName}>
+                    <Typography
+                      sx={{
+                        px: 2,
+                        py: 1,
+                        fontWeight: 'bold',
+                        mt: 1,
+                        color: 'text.primary',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                      }}
                     >
-                      {dashboard.name}
-                    </MenuItem>
-                  ))}
-                </React.Fragment>
-              ),
+                      <FolderIcon
+                        fontSize="small"
+                        sx={{ color: folderColor }}
+                      />
+                      {folderName}
+                    </Typography>
+                    <Divider sx={{ borderColor: 'divider' }} />
+                    {[...dashboards].reverse().map((dashboard) => (
+                      <MenuItem
+                        key={dashboard.id}
+                        onClick={() => loadCustomDashboard(dashboard)}
+                        sx={{ p: 1.5 }}
+                      >
+                        {dashboard.name}
+                      </MenuItem>
+                    ))}
+                  </React.Fragment>
+                )
+              },
             )}
           </>
         )}
