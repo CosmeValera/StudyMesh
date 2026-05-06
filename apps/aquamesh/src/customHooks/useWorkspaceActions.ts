@@ -28,7 +28,7 @@ interface SavedDashboardRecord {
   updatedAt: string
 }
 
-const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v1'
+const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v2'
 
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
@@ -104,21 +104,22 @@ const saveTemplateWidget = ({
   description,
   category = 'Knowledge Workspace',
   tags,
+  refreshExisting = false,
 }: {
   widgetName: string
   templateId: string
   description: string
   category?: string
   tags: string[]
+  refreshExisting?: boolean
 }) => {
   let widget = WidgetStorage.getAllWidgets().find(
     (savedWidget) => savedWidget.name === widgetName,
   )
+  const template = cloneTemplate(templateId)
 
-  if (!widget) {
-    const template = cloneTemplate(templateId)
-
-    if (template) {
+  if (template) {
+    if (!widget) {
       widget = WidgetStorage.saveWidget({
         name: widgetName,
         description,
@@ -128,6 +129,15 @@ const saveTemplateWidget = ({
         version: '1.0',
         author: 'AquaMesh',
       })
+    } else if (refreshExisting) {
+      widget =
+        WidgetStorage.updateWidget(widget.id, {
+          description,
+          category,
+          tags,
+          components: template.components,
+          author: 'AquaMesh',
+        }) || widget
     }
   }
 
@@ -159,20 +169,26 @@ const saveStarterDashboard = (
   dashboard: Omit<SavedDashboardRecord, 'id' | 'createdAt' | 'updatedAt'>,
 ) => {
   const dashboards = getSavedDashboards()
+  const now = new Date().toISOString()
+  const existingIndex = dashboards.findIndex(
+    (savedDashboard) => savedDashboard.name === dashboard.name,
+  )
 
-  if (
-    dashboards.some((savedDashboard) => savedDashboard.name === dashboard.name)
-  ) {
-    return
+  if (existingIndex >= 0) {
+    dashboards[existingIndex] = {
+      ...dashboards[existingIndex],
+      ...dashboard,
+      updatedAt: now,
+    }
+  } else {
+    dashboards.push({
+      id: `dashboard-starter-${dashboard.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      ...dashboard,
+      createdAt: now,
+      updatedAt: now,
+    })
   }
 
-  const now = new Date().toISOString()
-  dashboards.push({
-    id: `dashboard-starter-${dashboard.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-    ...dashboard,
-    createdAt: now,
-    updatedAt: now,
-  })
   window.localStorage.setItem('customDashboards', JSON.stringify(dashboards))
 }
 
@@ -192,6 +208,7 @@ export const ensureStarterDashboards = () => {
       description:
         'Practice-progress chart for the derivatives study dashboard.',
       tags: ['mathematics', 'derivatives', 'chart'],
+      refreshExisting: true,
     }),
     saveTemplateWidget({
       widgetName: 'Mathematics 1 — Derivatives Example',
@@ -199,6 +216,7 @@ export const ensureStarterDashboards = () => {
       description:
         'Worked derivative examples and a question input for the study dashboard.',
       tags: ['mathematics', 'derivatives', 'example'],
+      refreshExisting: true,
     }),
     saveTemplateWidget({
       widgetName: 'Mathematics 1 — Theory Derivatives',
@@ -206,6 +224,7 @@ export const ensureStarterDashboards = () => {
       description:
         'Core derivative theory and formulas for the study dashboard.',
       tags: ['mathematics', 'derivatives', 'theory'],
+      refreshExisting: true,
     }),
   ].filter(Boolean)
 
@@ -229,6 +248,7 @@ export const ensureStarterDashboards = () => {
     description:
       'A simple dashboard that explains widgets, dashboards, and blocks with visual examples.',
     tags: ['tutorial', 'knowledge wiki', 'dashboard', 'blocks'],
+    refreshExisting: true,
   })
 
   if (tutorialWidget) {

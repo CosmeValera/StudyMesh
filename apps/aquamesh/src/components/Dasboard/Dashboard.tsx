@@ -146,7 +146,7 @@ const DashboardEmptyState = ({
 }: DashboardEmptyStateProps) => (
   <Box
     sx={{
-      minHeight: 'calc(100dvh - 130px)',
+      height: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

@@ -1,6 +1,7 @@
 .react-tabs {
   -webkit-tap-highlight-color: transparent;
-  margin: -56px 6px 0 6px;
+  height: 100%;
+  margin: 0 6px;
   background-color: var(--background-bar-medium);
 
   &__tab-list {
@@ -81,23 +82,8 @@
   &__tab-panel {
     position: relative;
     background: var(--background-bar-medium, #f4f7f8);
-    // NOTE use the whole viewport and substract (1) header's height, (2) main
-    // content's top padding, (3) tab bar height, and (4) main content's bottom
-    // padding
-
-    // Desktop default.
-    height: calc(100dvh - 36px - 16px - 36px - 24px);
+    height: calc(100% - 36px);
     display: none;
-
-    // Tablet: -2px extra height.
-    @media (min-width: 576px) and (max-width: 992px) {
-      height: calc(100dvh - 36px - 16px - 36px - 24px - 2px);
-    }
-
-    // Phone: -8px extra height.
-    @media (max-width: 576.99px) {
-      height: calc(100dvh - 36px - 16px - 36px - 24px - 8px);
-    }
 
     &--selected {
       display: block;
