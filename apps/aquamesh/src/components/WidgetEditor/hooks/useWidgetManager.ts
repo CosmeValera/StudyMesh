@@ -1,19 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useLayout } from '../../Layout/LayoutProvider'
-import { useDashboards } from '../../Dasboard/DashboardProvider'
 import WidgetStorage, { CustomWidget } from '../WidgetStorage'
+import { OPEN_WIDGET_EDITOR_EVENT } from '../../../customHooks/useWorkspaceActions'
 
 // Custom hook for widget management
 export const useWidgetManager = () => {
   // State for widget management modal
   const [isWidgetManagementOpen, setIsWidgetManagementOpen] = useState(false)
   const [widgets, setWidgets] = useState<CustomWidget[]>([])
-
-  // Layout context to add widget editor component
-  const { addComponent } = useLayout()
-
-  // Dashboards context to manage dashboards
-  const { addDashboard, openDashboards } = useDashboards()
 
   // Load widgets on mount or when modal is opened
   useEffect(() => {
@@ -51,11 +44,6 @@ export const useWidgetManager = () => {
     return editorToolbar.length > 0 || componentPalette.length > 0
   }
 
-  // Check if there are any open dashboards
-  const hasOpenDashboards = (): boolean => {
-    return openDashboards.length > 0
-  }
-
   // Opens widget management modal
   const openWidgetManagement = () => {
     loadWidgets()
@@ -67,27 +55,6 @@ export const useWidgetManager = () => {
     setIsWidgetManagementOpen(false)
   }
 
-  // Helper function to ensure there's a dashboard before adding a component
-  const ensureDashboardAndAddComponent = (componentConfig: {
-    id: string
-    name: string
-    component: string
-    customProps?: Record<string, unknown>
-  }) => {
-    // Check if there are any open dashboards
-    if (!hasOpenDashboards()) {
-      // Create a new dashboard if none exists
-      addDashboard()
-      // Short delay to ensure the dashboard is created before adding the component
-      setTimeout(() => {
-        addComponent(componentConfig)
-      }, 100)
-    } else {
-      // If dashboards already exist, add the component directly
-      addComponent(componentConfig)
-    }
-  }
-
   // Open a new widget editor without loading any widget
   const openWidgetEditor = async () => {
     // Always close the widget management modal first if it's open
@@ -95,12 +62,7 @@ export const useWidgetManager = () => {
       closeWidgetManagement()
     }
 
-    // Use the ensureDashboardAndAddComponent function to properly handle dashboard creation
-    ensureDashboardAndAddComponent({
-      id: `widget-editor-${Date.now()}`,
-      name: 'Widget Editor',
-      component: 'WidgetEditor',
-    })
+    window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
 
     // Return a promise that resolves after the widget editor is opened
     return new Promise<void>((resolve) => {
@@ -130,19 +92,14 @@ export const useWidgetManager = () => {
         }),
       )
     } else {
-      ensureDashboardAndAddComponent({
-        id: `widget-editor-${Date.now()}`,
-        name: `Widget Editor - ${widget.name}`,
-        component: 'WidgetEditor',
-      })
-
-      setTimeout(() => {
-        document.dispatchEvent(
-          new CustomEvent('loadWidgetInEditor', {
-            detail: payload,
-          }),
-        )
-      }, 500)
+      window.dispatchEvent(
+        new CustomEvent(OPEN_WIDGET_EDITOR_EVENT, {
+          detail: {
+            loadWidget: widget,
+            initialEditMode: viewMode !== 'preview',
+          },
+        }),
+      )
     }
   }
 
@@ -175,8 +132,6 @@ export const useWidgetManager = () => {
     deleteWidget,
     isWidgetEditorOpen,
     openWidgetEditor,
-    hasOpenDashboards,
-    ensureDashboardAndAddComponent,
   }
 }
 

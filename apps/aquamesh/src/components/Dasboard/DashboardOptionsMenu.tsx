@@ -10,13 +10,16 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import DashboardIcon from '@mui/icons-material/Dashboard'
+import HomeIcon from '@mui/icons-material/Home'
 import FolderIcon from '@mui/icons-material/Folder'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import { Layout } from '../../types/types'
-import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
+import {
+  ensureStarterDashboards,
+  OPEN_DASHBOARD_EDITOR_EVENT,
+} from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
   normalizeFolderColor,
@@ -180,7 +183,7 @@ const DashboardOptionsMenu: React.FC = () => {
   }
 
   const handleCreateDashboard = () => {
-    addDashboard()
+    window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
     handleClose()
   }
 
@@ -194,7 +197,7 @@ const DashboardOptionsMenu: React.FC = () => {
     <>
       {isPhone || isTablet ? (
         <ButtonWithLabel
-          icon={<DashboardIcon />}
+          icon={<HomeIcon />}
           label={isPhone ? 'Dashboard' : 'Dashboards'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
@@ -210,7 +213,7 @@ const DashboardOptionsMenu: React.FC = () => {
             mx: 1,
             px: 2,
           }}
-          startIcon={<DashboardIcon />}
+          startIcon={<HomeIcon />}
           endIcon={<KeyboardArrowDownIcon />}
           data-tutorial-id="dashboards-button"
         >
@@ -313,7 +316,7 @@ const DashboardOptionsMenu: React.FC = () => {
         )}
       </Menu>
 
-      {/* Dashboard Library Dialog */}
+      {/* Saved Dashboards Dialog */}
       <SavedDashboardsDialog
         open={dashboardLibraryOpen}
         onClose={handleDashboardLibraryClose}

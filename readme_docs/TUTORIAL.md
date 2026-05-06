@@ -29,7 +29,7 @@ Dashboards are container layouts that organize multiple widgets into a cohesive 
 
 ![Dashboard Interface](./readme_images/dashboard.png)
 
-In the **Dashboard Library**, you can save, categorize, and change visibility of your dashboards.
+In the **Saved Dashboards**, you can save, categorize, and change visibility of your dashboards.
 
 ![Dashboards Library](./readme_images/dashboards-library.png)
 

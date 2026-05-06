@@ -129,6 +129,7 @@ const WidgetEditor: React.FC<{
   // State to control save widget dialog
   const [showSaveDialog, setShowSaveDialog] = React.useState(false)
   const [saveDialogDefaultName, setSaveDialogDefaultName] = React.useState('')
+  const loadedInitialWidgetKeyRef = React.useRef<string | null>(null)
 
   const [onboardingStep, setOnboardingStep] =
     React.useState<OnboardingStep>('choose')
@@ -257,7 +258,16 @@ const WidgetEditor: React.FC<{
 
   // Handle initial widget load from customProps
   React.useEffect(() => {
-    if (customProps?.loadWidget) {
+    const widget = customProps?.loadWidget
+
+    if (widget) {
+      const initialWidgetKey = `${widget.id}-${customProps.initialEditMode ? 'edit' : 'preview'}`
+
+      if (loadedInitialWidgetKeyRef.current === initialWidgetKey) {
+        return
+      }
+
+      loadedInitialWidgetKeyRef.current = initialWidgetKey
       // console.log('WidgetEditor: Loading initial widget from customProps', {
       //   widgetName: customProps.loadWidget.name,
       //   editMode: customProps.initialEditMode || false,
@@ -274,10 +284,7 @@ const WidgetEditor: React.FC<{
       // Then load the widget - use a setTimeout to ensure the edit mode is set first
       setTimeout(() => {
         // Load the widget with the proper mode
-        handleLoadWidget(
-          customProps.loadWidget!,
-          customProps.initialEditMode || false,
-        )
+        handleLoadWidget(widget, customProps.initialEditMode || false)
       }, 0)
     }
   }, [customProps, defaultEditViewMode, handleLoadWidget, setViewMode])
