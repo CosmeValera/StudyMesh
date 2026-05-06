@@ -28,7 +28,7 @@ interface SavedDashboardRecord {
   updatedAt: string
 }
 
-const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v4'
+const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v5'
 
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
@@ -271,6 +271,29 @@ export const ensureStarterDashboards = () => {
       description:
         'A starter dashboard that explains the basic AquaMesh concepts.',
       tags: ['tutorial', 'widgets', 'dashboards', 'blocks'],
+      isPublic: true,
+    })
+  }
+
+  const interactivityWidget = saveTemplateWidget({
+    widgetName: 'AquaMesh Interactivity',
+    templateId: 'template-aquamesh-interactivity',
+    description:
+      'A hands-on tutorial dashboard for buttons, checklists, answer boxes, and chart updates.',
+    tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
+    refreshExisting: true,
+  })
+
+  if (interactivityWidget) {
+    saveStarterDashboard({
+      name: 'AquaMesh Interactivity',
+      folder: 'Tutorial',
+      layout: createLayoutWithComponent(
+        createCustomWidgetConfig(interactivityWidget),
+      ),
+      description:
+        'A starter dashboard that demonstrates AquaMesh widget interactivity.',
+      tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
       isPublic: true,
     })
   }

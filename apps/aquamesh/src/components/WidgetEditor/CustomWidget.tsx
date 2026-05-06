@@ -15,6 +15,7 @@ import {
   Alert,
   Collapse,
   InputAdornment,
+  Checkbox,
 } from '@mui/material'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
@@ -96,6 +97,10 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
   // Track collapsed state for fieldsets
   const [collapsedFieldsets, setCollapsedFieldsets] = useState<
     Record<string, boolean>
+  >({})
+  const [inputValues, setInputValues] = useState<Record<string, string>>({})
+  const [checkedListItems, setCheckedListItems] = useState<
+    Record<string, Record<number, boolean>>
   >({})
 
   const resolveStoredWidget = () => {
@@ -223,6 +228,129 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
       ...prev,
       [componentId]: !prev[componentId],
     }))
+  }
+
+  const getFirstInputValue = () => {
+    const value = Object.values(inputValues).find((fieldValue) =>
+      String(fieldValue || '').trim(),
+    )
+
+    return value ? String(value) : ''
+  }
+
+  const getCheckedListCount = () =>
+    Object.values(checkedListItems).reduce(
+      (total, listState) =>
+        total + Object.values(listState).filter(Boolean).length,
+      0,
+    )
+
+  const addValueToFirstChart = (buttonProps: Record<string, unknown>) => {
+    let updated = false
+    const labelSource = String(buttonProps.chartLabelSource || 'static')
+    const valueSource = String(buttonProps.chartValueSource || 'static')
+    const label =
+      labelSource === 'firstInput'
+        ? getFirstInputValue() || String(buttonProps.chartLabel || 'New value')
+        : String(buttonProps.chartLabel || 'New value')
+    const rawValue =
+      valueSource === 'firstInput'
+        ? getFirstInputValue()
+        : valueSource === 'checkedListCount'
+          ? getCheckedListCount()
+          : buttonProps.chartValue || 1
+    const value = Number(rawValue)
+
+    if (!Number.isFinite(value)) {
+      showToast(
+        'Enter a numeric value before adding it to the chart',
+        'warning',
+      )
+      return
+    }
+
+    const updateComponent = (component: ComponentData): ComponentData => {
+      if (updated) {
+        return {
+          ...component,
+          children: component.children?.map(updateComponent),
+        }
+      }
+
+      if (component.type === 'Chart') {
+        updated = true
+        let parsedData = {
+          labels: [] as string[],
+          datasets: [
+            {
+              label: 'Values',
+              data: [] as number[],
+              backgroundColor: [] as string[],
+            },
+          ],
+        }
+
+        try {
+          const chartData = String(component.props.data || '{}')
+          if (chartData.trim() && !chartData.trim().startsWith('<')) {
+            parsedData = JSON.parse(chartData)
+          }
+        } catch (error) {
+          console.error('Error parsing chart data before interaction:', error)
+        }
+
+        const datasets = Array.isArray(parsedData.datasets)
+          ? parsedData.datasets
+          : []
+        const firstDataset = datasets[0] || {
+          label: 'Values',
+          data: [],
+          backgroundColor: [],
+        }
+        const nextBackground = Array.isArray(firstDataset.backgroundColor)
+          ? [
+              ...firstDataset.backgroundColor,
+              `hsl(${(parsedData.labels.length * 57) % 360}, 70%, 58%)`,
+            ]
+          : firstDataset.backgroundColor
+
+        return {
+          ...component,
+          props: {
+            ...component.props,
+            data: JSON.stringify(
+              {
+                ...parsedData,
+                labels: [...(parsedData.labels || []), label],
+                datasets: [
+                  {
+                    ...firstDataset,
+                    data: [...(firstDataset.data || []), value],
+                    backgroundColor: nextBackground,
+                  },
+                  ...datasets.slice(1),
+                ],
+              },
+              null,
+              2,
+            ),
+          },
+        }
+      }
+
+      return {
+        ...component,
+        children: component.children?.map(updateComponent),
+      }
+    }
+
+    setWidgetComponents((currentComponents) =>
+      currentComponents.map(updateComponent),
+    )
+    showToast(
+      updated ? `Added ${label}: ${value} to the chart` : 'No chart found',
+      updated ? 'success' : 'warning',
+    )
   }
 
   // Recursively apply collapsed state to all FieldSet components
@@ -574,6 +702,8 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
                     console.error('Error opening URL:', err)
                     showToast('Error opening URL', 'error')
                   }
+                } else if (clickAction === 'addChartValue') {
+                  addValueToFirstChart(component.props)
                 }
                 // For 'none' action, do nothing
               }}
@@ -590,6 +720,12 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
               label={component.props.label as string}
               placeholder={component.props.placeholder as string}
               defaultValue={(component.props.defaultValue as string) || ''}
+              onChange={(event) =>
+                setInputValues((currentValues) => ({
+                  ...currentValues,
+                  [component.id]: event.target.value,
+                }))
+              }
               variant={
                 component.props.variant as 'outlined' | 'filled' | 'standard'
               }
@@ -670,6 +806,7 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
           .map((item) => item.trim())
           .filter(Boolean)
         const ordered = Boolean(component.props.ordered)
+        const interactive = Boolean(component.props.interactiveChecklist)
 
         return (
           <Box key={component.id} sx={{ mb: 2 }}>
@@ -678,14 +815,44 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
                 {component.props.title as string}
               </Typography>
             )}
-            <Box component={ordered ? 'ol' : 'ul'} sx={{ pl: 3, my: 0 }}>
+            <Box
+              component={ordered ? 'ol' : 'ul'}
+              sx={{ pl: interactive ? 0 : 3, my: 0 }}
+            >
               {items.map((item, index) => (
                 <Typography
                   component="li"
                   variant="body2"
                   key={`${item}-${index}`}
-                  sx={{ mb: 0.5 }}
+                  sx={{
+                    mb: 0.5,
+                    display: interactive ? 'flex' : 'list-item',
+                    alignItems: 'center',
+                    listStyle: interactive ? 'none' : undefined,
+                    textDecoration: checkedListItems[component.id]?.[index]
+                      ? 'line-through'
+                      : 'none',
+                    color: checkedListItems[component.id]?.[index]
+                      ? 'text.secondary'
+                      : 'text.primary',
+                  }}
                 >
+                  {interactive && (
+                    <Checkbox
+                      size="small"
+                      checked={Boolean(checkedListItems[component.id]?.[index])}
+                      onChange={(event) =>
+                        setCheckedListItems((currentItems) => ({
+                          ...currentItems,
+                          [component.id]: {
+                            ...(currentItems[component.id] || {}),
+                            [index]: event.target.checked,
+                          },
+                        }))
+                      }
+                      sx={{ mr: 0.5, p: 0.25 }}
+                    />
+                  )}
                   {item}
                 </Typography>
               ))}
