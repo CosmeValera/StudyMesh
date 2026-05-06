@@ -70,6 +70,7 @@ export interface ComponentPreviewProps {
   showWidgetName?: boolean
   activeContainerId?: string | null
   onSelectContainer?: (containerId: string) => void
+  toastScope?: string
 }
 
 // Notification severity options

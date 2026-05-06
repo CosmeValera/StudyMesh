@@ -51,6 +51,7 @@ interface EditorCanvasProps {
   onUseTemplate?: () => void
   onboardingActive?: boolean
   onboardingStep?: 'choose' | 'save' | 'place' | null
+  toastScope?: string
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
@@ -80,6 +81,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onUseTemplate,
   onboardingActive = false,
   onboardingStep = null,
+  toastScope,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -127,6 +129,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         showWidgetName={editMode}
         activeContainerId={activeContainerId}
         onSelectContainer={onSelectContainer}
+        toastScope={toastScope}
       />
     ))
   }
@@ -277,8 +280,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                           ? 'Tap any block in Building Blocks to add it here. You can experiment and adjust it after it lands here.'
                           : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
                         : isPhone
-                        ? 'Start from a working operations summary, then save it for dashboards.'
-                        : 'Start from a working operations summary, or drag any block from the palette.'}
+                          ? 'Start from a working operations summary, then save it for dashboards.'
+                          : 'Start from a working operations summary, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
@@ -379,8 +382,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   ? isDragging
                     ? 'Drop it into your widget'
                     : showSidebar
-                    ? 'Add text, inputs, buttons, charts, and layout containers. Save it to reuse in any dashboard.'
-                    : 'Open the building blocks panel to add text, inputs, buttons, charts, and layout containers.'
+                      ? 'Add text, inputs, buttons, charts, and layout containers. Save it to reuse in any dashboard.'
+                      : 'Open the building blocks panel to add text, inputs, buttons, charts, and layout containers.'
                   : 'This widget has no saved content yet'}
               </Typography>
             )}

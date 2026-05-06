@@ -11,7 +11,6 @@ import EditorToolbar from './components/core/EditorToolbar'
 import ComponentPalette from './components/core/ComponentPalette'
 import EditorCanvas from './components/core/EditorCanvas'
 import CustomWidgetPreview from './CustomWidget'
-import NotificationSystem from './components/ui/NotificationSystem'
 import DeleteConfirmationDialog from './components/dialogs/DeleteConfirmationDialog'
 import SettingsDialog from './components/dialogs/SettingsDialog'
 import { CustomWidget } from './WidgetStorage'
@@ -39,7 +38,6 @@ const WidgetEditor: React.FC<{
     editMode,
     viewMode,
     setViewMode,
-    notification,
     savedWidgets,
     showWidgetList,
     setShowWidgetList,
@@ -77,7 +75,6 @@ const WidgetEditor: React.FC<{
     handleSaveWidget,
     handleLoadWidget,
     handleDeleteSavedWidget,
-    handleCloseNotification,
     handleToggleVisibility,
     handleToggleFieldsetCollapse,
     confirmDeleteComponent,
@@ -180,62 +177,6 @@ const WidgetEditor: React.FC<{
     [handleDirectAdd, onboardingActive],
   )
 
-  // Toast state for component interactions
-  const [componentToast, setComponentToast] = React.useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info' | 'warning'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
-  const lastComponentToastRef = React.useRef<{
-    key: string
-    timestamp: number
-  } | null>(null)
-
-  // Listen for custom toast events from components
-  React.useEffect(() => {
-    const handleComponentToast = (event: Event) => {
-      const customEvent = event as CustomEvent
-      if (customEvent.detail) {
-        if (
-          customEvent.detail.editorId &&
-          customEvent.detail.editorId !== editorId
-        ) {
-          return
-        }
-
-        const message = customEvent.detail.message || 'Action performed'
-        const severity = customEvent.detail.severity || 'info'
-        const toastKey = `${severity}:${message}`
-        const now = Date.now()
-
-        if (
-          lastComponentToastRef.current?.key === toastKey &&
-          now - lastComponentToastRef.current.timestamp < 250
-        ) {
-          return
-        }
-
-        lastComponentToastRef.current = { key: toastKey, timestamp: now }
-        setComponentToast({
-          open: true,
-          message,
-          severity,
-        })
-      }
-    }
-
-    document.addEventListener('showWidgetToast', handleComponentToast)
-
-    // Cleanup
-    return () => {
-      document.removeEventListener('showWidgetToast', handleComponentToast)
-    }
-  }, [editorId])
-
   React.useEffect(() => {
     if (!onboardingActive) {
       return
@@ -332,14 +273,6 @@ const WidgetEditor: React.FC<{
   // Handle saving with a custom name from the dialog
   const handleSaveWidgetWithName = (name: string) => {
     handleSaveWidget(false, name)
-  }
-
-  // Handle closing component toasts
-  const handleCloseComponentToast = () => {
-    setComponentToast({
-      ...componentToast,
-      open: false,
-    })
   }
 
   const currentSavedWidget = React.useMemo(
@@ -725,6 +658,7 @@ const WidgetEditor: React.FC<{
               onUseTemplate={() => setShowTemplateDialog(true)}
               onboardingActive={onboardingActive}
               onboardingStep={onboardingStep}
+              toastScope={editorId}
             />
           </Box>
         )}
@@ -809,19 +743,19 @@ const WidgetEditor: React.FC<{
           isUpdating
             ? savedWidgets.find((w) => w.name === widgetData.name)
             : widgetData.components.length > 0
-            ? ({
-                id: widgetData.id || `widget-${Date.now()}`,
-                name: widgetData.name,
-                components: widgetData.components,
-                createdAt: widgetData.createdAt
-                  ? new Date(widgetData.createdAt).toISOString()
-                  : new Date().toISOString(),
-                updatedAt: widgetData.updatedAt
-                  ? new Date(widgetData.updatedAt).toISOString()
-                  : new Date().toISOString(),
-                version: widgetData.version || '1.0',
-              } as CustomWidget)
-            : null
+              ? ({
+                  id: widgetData.id || `widget-${Date.now()}`,
+                  name: widgetData.name,
+                  components: widgetData.components,
+                  createdAt: widgetData.createdAt
+                    ? new Date(widgetData.createdAt).toISOString()
+                    : new Date().toISOString(),
+                  updatedAt: widgetData.updatedAt
+                    ? new Date(widgetData.updatedAt).toISOString()
+                    : new Date().toISOString(),
+                  version: widgetData.version || '1.0',
+                } as CustomWidget)
+              : null
         }
         showDeleteTemplateConfirmation={showDeleteTemplateConfirmation}
       />
@@ -884,14 +818,6 @@ const WidgetEditor: React.FC<{
         onSave={handleSaveWidgetWithName}
         defaultName={saveDialogDefaultName}
         existingWidgets={savedWidgets}
-      />
-
-      {/* Notification toasts */}
-      <NotificationSystem
-        notification={notification}
-        componentToast={componentToast}
-        handleCloseNotification={handleCloseNotification}
-        handleCloseComponentToast={handleCloseComponentToast}
       />
     </Box>
   )

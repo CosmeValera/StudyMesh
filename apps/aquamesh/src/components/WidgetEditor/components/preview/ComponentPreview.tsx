@@ -63,6 +63,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   showWidgetName,
   activeContainerId,
   onSelectContainer,
+  toastScope,
 }) => {
   const isCurrentTarget =
     dropTarget.id === component.id && dropTarget.isHovering
@@ -121,7 +122,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     const severity =
                       (component.props.toastSeverity as string) || 'info'
                     const customEvent = new CustomEvent('showWidgetToast', {
-                      detail: { message, severity },
+                      detail: { message, severity, editorId: toastScope },
                       bubbles: true,
                     })
                     document.dispatchEvent(customEvent)
@@ -283,6 +284,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
+                    toastScope={toastScope}
                   />
                 ))
               ) : (
@@ -404,6 +406,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     detail: {
                       message: toastMessage,
                       severity: toastSeverity,
+                      editorId: toastScope,
                     },
                     bubbles: true,
                   })
@@ -816,6 +819,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   handleContainerDrop={handleContainerDrop}
                   onToggleVisibility={onToggleVisibility}
                   showWidgetName={showWidgetName}
+                  toastScope={toastScope}
                 />
               ))
             ) : (
@@ -904,6 +908,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
+                    toastScope={toastScope}
                   />
                 </Box>
               ))
