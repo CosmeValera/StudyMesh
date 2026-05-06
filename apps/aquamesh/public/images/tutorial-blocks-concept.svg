@@ -1,0 +1,18 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="540" rx="36" fill="#F7FAFF"/>
+  <rect x="86" y="80" width="788" height="380" rx="30" fill="white" stroke="#1E88E5" stroke-width="6"/>
+  <text x="126" y="138" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#0D47A1">A widget is made from blocks</text>
+  <rect x="126" y="184" width="190" height="108" rx="22" fill="#E0F2F1" stroke="#007C66" stroke-width="4"/>
+  <text x="166" y="246" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#005848">Text</text>
+  <rect x="386" y="184" width="190" height="108" rx="22" fill="#FFF3E0" stroke="#FB8C00" stroke-width="4"/>
+  <text x="420" y="246" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#E65100">Input</text>
+  <rect x="646" y="184" width="190" height="108" rx="22" fill="#E8F5E9" stroke="#43A047" stroke-width="4"/>
+  <text x="680" y="246" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#1B5E20">Button</text>
+  <rect x="126" y="332" width="190" height="72" rx="20" fill="#E3F2FD" stroke="#1E88E5" stroke-width="4"/>
+  <text x="171" y="377" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#0D47A1">Chart</text>
+  <rect x="386" y="332" width="190" height="72" rx="20" fill="#FCE4EC" stroke="#D81B60" stroke-width="4"/>
+  <text x="430" y="377" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#880E4F">Image</text>
+  <rect x="646" y="332" width="190" height="72" rx="20" fill="#F3E5F5" stroke="#8E24AA" stroke-width="4"/>
+  <text x="698" y="377" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#4A148C">PDF</text>
+  <path d="M318 238H374M578 238H634M318 368H374M578 368H634" stroke="#9DB2AA" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 16"/>
+</svg>
