@@ -238,7 +238,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<WidgetsIcon />}
-                label={isPhone ? 'Add' : 'Add Widget'}
+                label={isPhone ? 'Widget' : 'Add Widget'}
                 onClick={handleWidgetsMenuOpen}
                 buttonRef={widgetsButtonRef}
                 data-tutorial-id="widgets-button"

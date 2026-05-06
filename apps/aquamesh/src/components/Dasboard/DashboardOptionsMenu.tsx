@@ -185,7 +185,7 @@ const DashboardOptionsMenu: React.FC = () => {
       {isPhone || isTablet ? (
         <ButtonWithLabel
           icon={<DashboardIcon />}
-          label={isPhone ? 'Dash' : 'Dashboards'}
+          label={isPhone ? 'Dashboard' : 'Dashboards'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
         />
