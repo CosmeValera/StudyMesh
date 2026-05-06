@@ -163,17 +163,25 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     options.push({
       title: 'Create your first reusable knowledge block',
       description:
-        'Open Create Widget when you are ready to build your own formula card, revision tracker, research note, or project block.',
+        'Open Add Widget, then choose Open Widget Editor when you are ready to build your own formula card, revision tracker, research note, or project block.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'Start building',
       image: placeholderImages.customWidgetCreation,
       action: () => {
         onClose()
-        const createWidgetButton = document.querySelector(
-          '[data-tutorial-id="create-widget-button"]',
+        const widgetsButton = document.querySelector(
+          '[data-tutorial-id="widgets-button"]',
         )
-        if (createWidgetButton) {
-          ;(createWidgetButton as HTMLElement).click()
+        if (widgetsButton) {
+          ;(widgetsButton as HTMLElement).click()
+          window.setTimeout(() => {
+            const createWidgetButton = document.querySelector(
+              '[data-tutorial-id="create-widget-button"]',
+            )
+            if (createWidgetButton) {
+              ;(createWidgetButton as HTMLElement).click()
+            }
+          }, 0)
         }
       },
     })

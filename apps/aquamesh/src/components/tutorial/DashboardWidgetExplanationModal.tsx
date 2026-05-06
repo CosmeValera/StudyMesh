@@ -69,7 +69,7 @@ const DashboardWidgetExplanationModal: React.FC<
             fontWeight="bold"
             color="text.primary"
           >
-            Widget To Dashboard
+            Dashboards and widgets
           </Typography>
           <IconButton
             aria-label="close"
@@ -117,9 +117,10 @@ const DashboardWidgetExplanationModal: React.FC<
                     </Typography>
                   </Box>
                   <Typography variant="body1" paragraph color="text.secondary">
-                    Dashboards are where saved widgets become a useful
-                    workspace. After creating a widget, add it here, arrange it,
-                    and save the layout.
+                    A dashboard is the page/canvas. Widgets live inside it:
+                    notes, charts, lists, PDFs, inputs, or any reusable block
+                    you build. Add widgets, arrange them, resize the layout, and
+                    save the dashboard when the page feels useful.
                   </Typography>
                   <Box mt={3} display="flex" justifyContent="center">
                     <img
@@ -143,13 +144,21 @@ const DashboardWidgetExplanationModal: React.FC<
                   <Box component="ul" sx={{ pl: 2 }}>
                     <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
-                        <strong>Add the saved widget</strong> from Add Widget
+                        <strong>Add widgets</strong> from Add Widget. One
+                        dashboard can contain several widgets.
                       </Typography>
                     </Box>
                     <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
-                        <strong>Arrange the dashboard</strong> around the
-                        information you need
+                        <strong>Move widgets</strong> by dragging their tab/tag
+                        in the dashboard layout.
+                      </Typography>
+                    </Box>
+                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
+                      <Typography variant="body1">
+                        <strong>Resize widgets</strong> by dragging the
+                        separator between them once the dashboard has multiple
+                        widgets.
                       </Typography>
                     </Box>
                     <Box component="li" sx={{ mb: 1 }} color="text.primary">
@@ -193,9 +202,10 @@ const DashboardWidgetExplanationModal: React.FC<
                     </Typography>
                   </Box>
                   <Typography variant="body1" paragraph color="text.secondary">
-                    Widgets are reusable dashboard blocks. Build one in Create
-                    Widget with text, inputs, buttons, charts, or layout blocks,
-                    then reuse it anywhere.
+                    Widgets are reusable pieces of a dashboard. Build one in the
+                    Widget Editor with text, inputs, buttons, charts, lists,
+                    images, PDFs, or layout blocks, then reuse it on any
+                    dashboard.
                   </Typography>
                   <Box mt={3} display="flex" justifyContent="center">
                     <img
@@ -219,13 +229,13 @@ const DashboardWidgetExplanationModal: React.FC<
                   <Box component="ul" sx={{ pl: 2 }}>
                     <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
-                        <strong>Open Create Widget</strong> from the top bar
+                        <strong>Open Widget Editor</strong> from Add Widget
                       </Typography>
                     </Box>
                     <Box component="li" sx={{ mb: 1 }} color="text.primary">
                       <Typography variant="body1">
                         <strong>Add building blocks</strong>, preview, and save
-                        the widget
+                        the widget. Saved widgets appear back inside Add Widget.
                       </Typography>
                     </Box>
                   </Box>

@@ -101,12 +101,20 @@ const WidgetEditorExplanationModal: React.FC<
       onCloseTutorial()
     }
 
-    // Programmatically click the widget editor button
-    const createWidgetButton = document.querySelector(
-      '[data-tutorial-id="create-widget-button"]',
+    // Programmatically open Add Widget, then click the Widget Editor shortcut.
+    const widgetsButton = document.querySelector(
+      '[data-tutorial-id="widgets-button"]',
     )
-    if (createWidgetButton) {
-      ;(createWidgetButton as HTMLElement).click()
+    if (widgetsButton) {
+      ;(widgetsButton as HTMLElement).click()
+      window.setTimeout(() => {
+        const createWidgetButton = document.querySelector(
+          '[data-tutorial-id="create-widget-button"]',
+        )
+        if (createWidgetButton) {
+          ;(createWidgetButton as HTMLElement).click()
+        }
+      }, 0)
     }
   }
 
@@ -115,7 +123,7 @@ const WidgetEditorExplanationModal: React.FC<
     {
       title: 'Create Widget Quick Start',
       content:
-        'Create one reusable widget first: name it, add building blocks, preview it, save it, then add it to a dashboard from Add Widget.',
+        'Create one reusable widget first from Add Widget → Open Widget Editor: name it, add building blocks, preview it, save it, then add it to a dashboard from Add Widget.',
     },
     {
       title: 'Build The Widget',

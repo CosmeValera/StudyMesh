@@ -22,6 +22,7 @@ import CreateIcon from '@mui/icons-material/Create'
 import FolderIcon from '@mui/icons-material/Folder'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import Brightness6Icon from '@mui/icons-material/Brightness6'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
@@ -34,7 +35,7 @@ import {
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
-import WorkspaceHelpModal from '../tutorial/WorkspaceHelpModal'
+import DashboardWidgetExplanationModal from '../tutorial/DashboardWidgetExplanationModal'
 
 // Define user data type
 interface UserData {
@@ -178,7 +179,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     handleClose()
     // Clear user data from localStorage
     localStorage.removeItem('userData')
-    navigate('/login')
+    navigate('/')
   }
 
   // Handle opening widgets library
@@ -205,18 +206,14 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
           }}
         >
           {/* Logo and Brand */}
-          <Button
-            variant="text"
-            onClick={() => navigate('/')}
-            aria-label="Go to AquaMesh home and tutorial"
+          <Box
+            aria-label="AquaMesh logo"
             sx={{
               display: 'flex',
               alignItems: 'center',
               fontWeight: isDesktop ? 'bold' : 'normal',
               mr: isPhone ? 0.25 : isDesktop ? 4 : 1,
               color: 'foreground.contrastPrimary',
-              textTransform: 'none',
-              minWidth: 'auto',
               px: isPhone ? 0.5 : 0,
             }}
           >
@@ -226,7 +223,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               style={{ marginRight: isDesktop ? '12px' : '0' }}
             />
             {isDesktop && 'AquaMesh'}
-          </Button>
+          </Box>
 
           {/* Main Navigation Items */}
           <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
@@ -283,6 +280,23 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               {/* Widget Management Section */}
               {userData.id === 'admin' && userData.role === 'ADMIN_ROLE' && (
                 <>
+                  <MenuItem
+                    onClick={() => {
+                      openCreateWidget()
+                      handleClose()
+                    }}
+                    sx={{ p: 1.5 }}
+                    data-tutorial-id="create-widget-button"
+                  >
+                    <ListItemIcon>
+                      <CreateIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Open Widget Editor
+                  </MenuItem>
+                  <Divider sx={{ my: 1, borderColor: 'divider' }} />
                   <MenuItem onClick={handleOpenWidgetsLibrary} sx={{ p: 1.5 }}>
                     <ListItemIcon>
                       <FolderIcon
@@ -444,74 +458,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 </>
               )}
             </Menu>
-
-            {/* Create Widget Button */}
-            {userData.id === 'admin' &&
-              userData.role === 'ADMIN_ROLE' &&
-              (isPhone || isTablet ? (
-                <ButtonWithLabel
-                  icon={<CreateIcon />}
-                  label={isPhone ? 'Build' : 'Create Widget'}
-                  onClick={() => {
-                    openCreateWidget()
-                    handleClose()
-                  }}
-                  data-tutorial-id="create-widget-button"
-                />
-              ) : (
-                <Button
-                  onClick={() => {
-                    openCreateWidget()
-                    handleClose()
-                  }}
-                  sx={{
-                    color: 'foreground.contrastPrimary',
-                    display: 'flex',
-                    alignItems: 'center',
-                    minWidth: 'auto',
-                    mx: 1,
-                    px: 2,
-                  }}
-                  startIcon={<CreateIcon />}
-                  data-tutorial-id="create-widget-button"
-                >
-                  Create Widget
-                </Button>
-              ))}
           </Box>
 
           {/* Right Side Elements */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={<HelpOutlineIcon />}
-                label="Help"
-                onClick={() => setIsHelpOpen(true)}
-                title="How AquaMesh works"
-              />
-            ) : (
-              <Button
-                onClick={() => setIsHelpOpen(true)}
-                sx={{
-                  color: 'foreground.contrastPrimary',
-                  minWidth: 'auto',
-                  px: 1.5,
-                }}
-                startIcon={<HelpOutlineIcon />}
-              >
-                Help
-              </Button>
-            )}
-            <ThemeModeToggle compact={isPhone} />
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{
-                mx: isPhone ? 0.5 : isTablet ? 1 : 2,
-                bgcolor: 'background.light',
-              }}
-            />
-
             {/* User Menu */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
@@ -583,6 +533,19 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             >
               <Box sx={{ px: 2, py: 1.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Brightness6Icon
+                    fontSize="small"
+                    sx={{ color: 'primary.main', mr: 1 }}
+                  />
+                  <Typography variant="body2" fontWeight="medium">
+                    Light / dark mode
+                  </Typography>
+                </Box>
+                <ThemeModeToggle compact />
+              </Box>
+              <Divider sx={{ borderColor: 'divider' }} />
+              <Box sx={{ px: 2, py: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <ColorLensIcon
                     fontSize="small"
                     sx={{ color: 'primary.main', mr: 1 }}
@@ -593,6 +556,22 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 </Box>
                 <AccentColorPicker dense />
               </Box>
+              <Divider sx={{ borderColor: 'divider' }} />
+              <MenuItem
+                onClick={() => {
+                  setIsHelpOpen(true)
+                  handleClose()
+                }}
+                sx={{ color: 'text.primary' }}
+              >
+                <ListItemIcon>
+                  <HelpOutlineIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
+                </ListItemIcon>
+                Help / tutorial
+              </MenuItem>
               <Divider sx={{ borderColor: 'divider' }} />
               <MenuItem onClick={handleLogout} sx={{ color: 'text.primary' }}>
                 <ListItemIcon>
@@ -617,7 +596,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         onEdit={editWidget}
         onDelete={deleteWidget}
       />
-      <WorkspaceHelpModal
+      <DashboardWidgetExplanationModal
         open={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
       />

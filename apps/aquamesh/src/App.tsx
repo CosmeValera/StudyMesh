@@ -14,7 +14,6 @@ import Main from './components/Main'
 import Dashboards from './components/Dasboard/Dashboard'
 import DashboardProvider from './components/Dasboard/DashboardProvider'
 import LayoutProvider from './components/Layout/LayoutProvider'
-import Login from './components/auth/Login'
 import AquaMeshLanding from './components/landing/AquaMeshLanding'
 import { useWorkspaceActions } from './customHooks/useWorkspaceActions'
 
@@ -145,7 +144,6 @@ const AppShell = () => {
           <DashboardProvider>
             <LayoutProvider>
               <Routes>
-                <Route path="/login" element={<Login />} />
                 <Route path="/" element={<AquaMeshLanding />} />
                 <Route
                   path="/workspace"

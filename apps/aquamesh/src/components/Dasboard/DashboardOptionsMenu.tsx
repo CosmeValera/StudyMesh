@@ -12,6 +12,7 @@ import {
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import FolderIcon from '@mui/icons-material/Folder'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import { Layout } from '../../types/types'
@@ -168,6 +169,11 @@ const DashboardOptionsMenu: React.FC = () => {
     setDashboardLibraryOpen(true)
   }
 
+  const handleCreateDashboard = () => {
+    addDashboard()
+    handleClose()
+  }
+
   // Handle dashboard library dialog close
   const handleDashboardLibraryClose = () => {
     setDashboardLibraryOpen(false)
@@ -218,6 +224,17 @@ const DashboardOptionsMenu: React.FC = () => {
         }}
       >
         {/* Dashboard Management Section */}
+        <MenuItem onClick={handleCreateDashboard} sx={{ p: 1.5 }}>
+          <ListItemIcon>
+            <AddCircleOutlineIcon
+              fontSize="small"
+              sx={{ color: 'text.secondary' }}
+            />
+          </ListItemIcon>
+          Create Dashboard
+        </MenuItem>
+        <Divider sx={{ my: 1, borderColor: 'divider' }} />
+
         <MenuItem onClick={handleOpenDashboardLibrary} sx={{ p: 1.5 }}>
           <ListItemIcon>
             <FolderIcon fontSize="small" sx={{ color: 'text.secondary' }} />
