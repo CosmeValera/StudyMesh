@@ -1,12 +1,12 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import TopNavBar from '../../../../src/components/topnavbar/TopNavBar'
 import * as useTopNavBarWidgetsModule from '../../../../src/customHooks/useTopNavBarWidgets'
 import * as LayoutProviderModule from '../../../../src/components/Layout/LayoutProvider'
 import * as DashboardProviderModule from '../../../../src/components/Dasboard/DashboardProvider'
-import { OPEN_WIDGET_MENU_EVENT } from '../../../../src/customHooks/useWorkspaceActions'
+import { OPEN_DASHBOARD_EDITOR_EVENT } from '../../../../src/customHooks/useWorkspaceActions'
 
 // Mock custom hooks and providers
 vi.mock('../../../../src/customHooks/useTopNavBarWidgets', () => ({
@@ -33,20 +33,22 @@ vi.mock('../../../../src/components/Dasboard/DashboardOptionsMenu', () => ({
 }))
 
 vi.mock(
-  '../../../../src/components/WidgetEditor/components/dialogs/WidgetManagementModal',
+  '../../../../src/components/WidgetEditor/WidgetEditor',
   () => ({
     __esModule: true,
-    default: ({ open, onClose }) => (
-      <div
-        data-testid="widget-management-modal"
-        data-open={open}
-        onClick={onClose}
-      >
-        Widget Management Modal
-      </div>
-    ),
+    default: () => <div data-testid="widget-editor">Widget Editor</div>,
   }),
 )
+
+vi.mock('../../../../src/components/shared/ThemeModeToggle', () => ({
+  __esModule: true,
+  default: () => <div data-testid="theme-mode-toggle" />,
+}))
+
+vi.mock('../../../../src/theme/AccentColorPicker', () => ({
+  __esModule: true,
+  default: () => <div data-testid="accent-color-picker" />,
+}))
 
 // Mock SVG import
 vi.mock('../../../../public/logo.svg', () => ({
@@ -176,10 +178,10 @@ describe('TopNavBar Component', () => {
     expect(screen.getByTestId('logo')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-options-menu')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add widget/i }),
+      screen.getByRole('button', { name: /create widget/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create widget/i }),
+      screen.getByRole('button', { name: /create dashboard/i }),
     ).toBeInTheDocument()
     expect(screen.queryByTitle('Open tutorial')).not.toBeInTheDocument()
     expect(
@@ -187,73 +189,48 @@ describe('TopNavBar Component', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('navigates home when the logo is clicked', () => {
+  it('renders the AquaMesh logo', () => {
     render(
       <BrowserRouter>
         <TopNavBar />
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByTestId('logo'))
-
-    expect(navigateMock).toHaveBeenCalledWith('/')
+    expect(screen.getByTestId('logo')).toBeInTheDocument()
   })
 
-  it('opens add widget menu when Add Widget button is clicked', async () => {
+  it('opens Create Widget when Create Widget button is clicked', async () => {
     render(
       <BrowserRouter>
         <TopNavBar />
       </BrowserRouter>,
     )
 
-    // Click on the Add Widget button
-    fireEvent.click(screen.getByRole('button', { name: /add widget/i }))
-
-    // Check if the menu items appear
-    await waitFor(() => {
-      expect(screen.getByText('Saved Widgets')).toBeInTheDocument()
-      expect(screen.getByText('Example Starter Widgets')).toBeInTheDocument()
-    })
-  })
-
-  it('opens add widget menu from global workspace event', async () => {
-    render(
-      <BrowserRouter>
-        <TopNavBar />
-      </BrowserRouter>,
-    )
-
-    act(() => {
-      window.dispatchEvent(new CustomEvent(OPEN_WIDGET_MENU_EVENT))
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Saved Widgets')).toBeInTheDocument()
-      expect(screen.getByText('Example Starter Widgets')).toBeInTheDocument()
-    })
-  })
-
-  it('opens create widget when Create Widget button is clicked', () => {
-    render(
-      <BrowserRouter>
-        <TopNavBar />
-      </BrowserRouter>,
-    )
-
-    // Get the mocked addComponent function
-    // Click on the Create Widget button
     fireEvent.click(screen.getByRole('button', { name: /create widget/i }))
 
-    // Verify the addComponent function was called with the correct arguments
-    expect(addComponentMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Create Widget',
-        component: 'WidgetEditor',
-      }),
+    expect(await screen.findByTestId('widget-editor')).toBeInTheDocument()
+  })
+
+  it('dispatches the dashboard builder event when Create Dashboard is clicked', () => {
+    const dashboardEditorListener = vi.fn()
+    window.addEventListener(OPEN_DASHBOARD_EDITOR_EVENT, dashboardEditorListener)
+
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /create dashboard/i }))
+
+    expect(dashboardEditorListener).toHaveBeenCalledTimes(1)
+    window.removeEventListener(
+      OPEN_DASHBOARD_EDITOR_EVENT,
+      dashboardEditorListener,
     )
   })
 
-  it('navigates to login page when logout is clicked', async () => {
+  it('navigates to the landing page when logout is clicked', async () => {
     render(
       <BrowserRouter>
         <TopNavBar />
@@ -272,99 +249,6 @@ describe('TopNavBar Component', () => {
     })
 
     // Verify navigation to login page
-    expect(navigateMock).toHaveBeenCalledWith('/login')
-  })
-
-  it('adds a dashboard if none exists when adding a widget', () => {
-    // Mock openDashboards as empty to test this behavior
-    vi.mocked(DashboardProviderModule.useDashboards).mockReturnValue({
-      openDashboards: [],
-      selectedDashboard: 0,
-      setSelectedDashboard: vi.fn(),
-      removeDashboard: vi.fn(),
-      addDashboard: addDashboardMock,
-      updateLayout: vi.fn(),
-      updateDashboardLayout: updateDashboardLayoutMock,
-      renameDashboard: vi.fn(),
-    })
-
-    render(
-      <BrowserRouter>
-        <TopNavBar />
-      </BrowserRouter>,
-    )
-
-    // Click on the Add Widget button
-    fireEvent.click(screen.getByRole('button', { name: /add widget/i }))
-
-    // Click on a widget in the menu
-    fireEvent.click(screen.getByText('Chart Widget'))
-
-    // Verify addDashboard was called
-    expect(addDashboardMock).toHaveBeenCalledWith({
-      name: 'Dashboard',
-      layout: expect.objectContaining({
-        children: expect.arrayContaining([
-          expect.objectContaining({
-            children: expect.arrayContaining([
-              expect.objectContaining({
-                name: 'Chart Widget',
-                component: 'ChartWidget',
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    })
-
-    expect(addComponentMock).not.toHaveBeenCalled()
-  })
-
-  it('initializes a blank dashboard when adding a widget', () => {
-    vi.mocked(DashboardProviderModule.useDashboards).mockReturnValue({
-      openDashboards: [
-        {
-          id: 'dash1',
-          name: 'Dashboard',
-          layout: {
-            type: 'row',
-            children: [],
-          },
-        },
-      ],
-      selectedDashboard: 0,
-      setSelectedDashboard: vi.fn(),
-      removeDashboard: vi.fn(),
-      addDashboard: addDashboardMock,
-      updateLayout: vi.fn(),
-      updateDashboardLayout: updateDashboardLayoutMock,
-      renameDashboard: vi.fn(),
-    })
-
-    render(
-      <BrowserRouter>
-        <TopNavBar />
-      </BrowserRouter>,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /add widget/i }))
-    fireEvent.click(screen.getByText('Chart Widget'))
-
-    expect(updateDashboardLayoutMock).toHaveBeenCalledWith(
-      0,
-      expect.objectContaining({
-        children: expect.arrayContaining([
-          expect.objectContaining({
-            children: expect.arrayContaining([
-              expect.objectContaining({
-                name: 'Chart Widget',
-                component: 'ChartWidget',
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    )
-    expect(addComponentMock).not.toHaveBeenCalled()
+    expect(navigateMock).toHaveBeenCalledWith('/')
   })
 })

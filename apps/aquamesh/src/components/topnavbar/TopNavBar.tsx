@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
 import ConstructionIcon from '@mui/icons-material/Construction'
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
@@ -85,7 +86,14 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
       {icon}
       <Typography
         variant="caption"
-        sx={{ fontSize: '0.6rem', mt: 0.3, lineHeight: 1 }}
+        sx={{
+          fontSize: '0.6rem',
+          mt: 0.3,
+          lineHeight: 1,
+          maxWidth: '58px',
+          textAlign: 'center',
+          whiteSpace: 'normal',
+        }}
       >
         {label}
       </Typography>
@@ -110,7 +118,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const userModeLabel =
     userData.role === 'ADMIN_ROLE' ? 'Builder mode' : 'Viewer mode'
 
-  const { openCreateWidget } = useWorkspaceActions()
+  const { openCreateWidget, openCreateDashboard } = useWorkspaceActions()
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -212,6 +220,30 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <DashboardOptionsMenu />
             ) : (
               <DashboardOptionsMenu />
+            )}
+            
+            {/* Create Dashboard */}
+            {isPhone || isTablet ? (
+              <ButtonWithLabel
+                icon={<DashboardCustomizeIcon />}
+                label="Create Dashboard"
+                onClick={() => openCreateDashboard()}
+              />
+            ) : (
+              <Button
+                onClick={() => openCreateDashboard()}
+                sx={{
+                  color: 'foreground.contrastPrimary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: 'auto',
+                  mx: 1,
+                  px: 2,
+                }}
+                startIcon={<DashboardCustomizeIcon />}
+              >
+                Create Dashboard
+              </Button>
             )}
 
             {/* Create Widget */}

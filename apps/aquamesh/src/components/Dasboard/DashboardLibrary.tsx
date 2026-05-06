@@ -65,6 +65,8 @@ interface SavedDashboard {
 interface SavedDashboardsDialogProps {
   open: boolean
   onClose: () => void
+  mode?: 'workspace' | 'builder'
+  onOpenInBuilder?: (dashboard: SavedDashboard) => void
 }
 
 // Add a new interface for the edit dashboard dialog
@@ -87,7 +89,11 @@ type SortOption =
 const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   open,
   onClose,
+  mode = 'workspace',
+  onOpenInBuilder,
 }) => {
+  const openActionLabel =
+    mode === 'builder' ? 'Open in Builder' : 'Open in Workspace'
   // Increased card spacing and padding for mobile via responsive styles
 
   // Search state
@@ -257,6 +263,12 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
 
   // Handle opening a dashboard
   const handleOpenDashboard = (dashboard: SavedDashboard) => {
+    if (mode === 'builder') {
+      onOpenInBuilder?.(dashboard)
+      onClose()
+      return
+    }
+
     // Convert saved dashboard to the format needed by DashboardProvider
     const dashboardToOpen: DefaultDashboard = {
       name: dashboard.name,
@@ -722,6 +734,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                       cursor: 'pointer',
                     }}
                     onClick={() => handleOpenDashboard(dashboard)}
+                    aria-label={`${openActionLabel} ${dashboard.name}`}
                   >
                     <Box
                       sx={{

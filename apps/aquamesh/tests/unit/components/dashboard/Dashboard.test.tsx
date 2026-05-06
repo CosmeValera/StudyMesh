@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import Dashboards from '../../../../src/components/Dasboard/Dashboard'
 import * as DashboardProviderModule from '../../../../src/components/Dasboard/DashboardProvider'
 import * as WorkspaceActionsModule from '../../../../src/customHooks/useWorkspaceActions'
+import * as LayoutProviderModule from '../../../../src/components/Layout/LayoutProvider'
+import * as useTopNavBarWidgetsModule from '../../../../src/customHooks/useTopNavBarWidgets'
 
 vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
   __esModule: true,
@@ -12,7 +14,20 @@ vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
 
 vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   __esModule: true,
+  OPEN_DASHBOARD_EDITOR_EVENT: 'aquamesh-open-dashboard-editor',
+  OPEN_WIDGET_EDITOR_EVENT: 'aquamesh-open-widget-editor',
+  ensureStarterDashboards: vi.fn(),
   useWorkspaceActions: vi.fn(),
+}))
+
+vi.mock('../../../../src/components/Layout/LayoutProvider', () => ({
+  __esModule: true,
+  useLayout: vi.fn(),
+}))
+
+vi.mock('../../../../src/customHooks/useTopNavBarWidgets', () => ({
+  __esModule: true,
+  default: vi.fn(),
 }))
 
 vi.mock('../../../../src/components/Layout/Layout', () => ({
@@ -38,6 +53,7 @@ vi.mock('../../../../src/icons/close.svg', () => ({
 
 const navigateMock = vi.fn()
 const openCreateWidgetMock = vi.fn()
+const openCreateDashboardMock = vi.fn()
 const openOperationsExampleMock = vi.fn()
 const openWidgetMenuMock = vi.fn()
 
@@ -87,23 +103,31 @@ describe('Dashboards', () => {
     vi.mocked(WorkspaceActionsModule.useWorkspaceActions).mockReturnValue({
       ensureDashboardAndAddComponent: vi.fn(),
       openCreateWidget: openCreateWidgetMock,
+      openCreateDashboard: openCreateDashboardMock,
       openOperationsExample: openOperationsExampleMock,
       openWidgetMenu: openWidgetMenuMock,
     })
+    vi.mocked(LayoutProviderModule.useLayout).mockReturnValue({
+      ref: { current: null },
+      addComponent: vi.fn(),
+    })
+    vi.mocked(useTopNavBarWidgetsModule.default).mockReturnValue({
+      topNavBarWidgets: [],
+    })
   })
 
-  it('shows workspace actions when the selected dashboard is empty', () => {
+  it('shows dashboard workflow actions when the selected dashboard is empty', () => {
     mockDashboardProvider({})
 
     render(<Dashboards />)
 
     expect(
       screen.getByRole('heading', {
-        name: /start a workspace dashboard/i,
+        name: /empty dashboard/i,
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create your own widget/i }),
+      screen.getByRole('button', { name: /create dashboard/i }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /view daily operations example/i }),
@@ -113,7 +137,7 @@ describe('Dashboards', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('opens Create Widget when the empty workspace action is used', () => {
+  it('opens Create Dashboard when the empty workspace action is used', () => {
     mockDashboardProvider({
       openDashboards: [],
       selectedDashboard: -1,
@@ -122,10 +146,13 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     fireEvent.click(
-      screen.getByRole('button', { name: /create your own widget/i }),
+      screen.getByRole('button', { name: /create dashboard/i }),
     )
 
-    expect(openCreateWidgetMock).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getAllByText('Create Dashboard').length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(openCreateWidgetMock).not.toHaveBeenCalled()
     expect(openOperationsExampleMock).not.toHaveBeenCalled()
     expect(openWidgetMenuMock).not.toHaveBeenCalled()
     expect(navigateMock).not.toHaveBeenCalled()

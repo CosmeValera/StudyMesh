@@ -379,6 +379,10 @@ export const useWorkspaceActions = () => {
     window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
   }, [])
 
+  const openCreateDashboard = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
+  }, [])
+
   const openTemplateDashboard = useCallback(
     ({
       widgetName,
@@ -469,6 +473,7 @@ export const useWorkspaceActions = () => {
   return {
     ensureDashboardAndAddComponent,
     openCreateWidget,
+    openCreateDashboard,
     openOperationsExample,
     openMathExample,
     openTutorialExample,

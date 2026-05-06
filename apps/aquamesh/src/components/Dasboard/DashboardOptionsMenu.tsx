@@ -4,7 +4,6 @@ import {
   Menu,
   MenuItem,
   Divider,
-  ListItemIcon,
   Typography,
   useTheme,
   useMediaQuery,
@@ -12,14 +11,9 @@ import {
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import HomeIcon from '@mui/icons-material/Home'
 import FolderIcon from '@mui/icons-material/Folder'
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import { useDashboards } from './DashboardProvider'
-import SavedDashboardsDialog from './DashboardLibrary'
 import { Layout } from '../../types/types'
-import {
-  ensureStarterDashboards,
-  OPEN_DASHBOARD_EDITOR_EVENT,
-} from '../../customHooks/useWorkspaceActions'
+import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
   normalizeFolderColor,
@@ -85,7 +79,6 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
 const DashboardOptionsMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [customDashboards, setCustomDashboards] = useState<SavedDashboard[]>([])
-  const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -176,23 +169,6 @@ const DashboardOptionsMenu: React.FC = () => {
     createDashboardWithLayout(dashboard.name, dashboard.layout)
   }
 
-  // Open dashboard library dialog
-  const handleOpenDashboardLibrary = () => {
-    handleClose()
-    setDashboardLibraryOpen(true)
-  }
-
-  const handleCreateDashboard = () => {
-    window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
-    handleClose()
-  }
-
-  // Handle dashboard library dialog close
-  const handleDashboardLibraryClose = () => {
-    setDashboardLibraryOpen(false)
-    loadSavedDashboards() // Refresh dashboards list
-  }
-
   return (
     <>
       {isPhone || isTablet ? (
@@ -236,27 +212,6 @@ const DashboardOptionsMenu: React.FC = () => {
           },
         }}
       >
-        {/* Dashboard Management Section */}
-        <MenuItem onClick={handleCreateDashboard} sx={{ p: 1.5 }}>
-          <ListItemIcon>
-            <AddCircleOutlineIcon
-              fontSize="small"
-              sx={{ color: 'text.secondary' }}
-            />
-          </ListItemIcon>
-          Create Dashboard
-        </MenuItem>
-        <Divider sx={{ my: 1, borderColor: 'divider' }} />
-
-        <MenuItem onClick={handleOpenDashboardLibrary} sx={{ p: 1.5 }}>
-          <ListItemIcon>
-            <FolderIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-          </ListItemIcon>
-          Open Saved Dashboards
-        </MenuItem>
-
-        <Divider sx={{ my: 1, borderColor: 'divider' }} />
-
         {/* Dashboard folders */}
         {visibleCustomDashboards.length > 0 && (
           <>
@@ -314,13 +269,21 @@ const DashboardOptionsMenu: React.FC = () => {
             No saved dashboards yet
           </MenuItem>
         )}
+        {!isPhone && visibleCustomDashboards.length === 0 && (
+          <MenuItem
+            disabled
+            sx={{
+              p: 1.5,
+              opacity: 1,
+              justifyContent: 'center',
+              whiteSpace: 'normal',
+              textAlign: 'center',
+            }}
+          >
+            No saved dashboards yet
+          </MenuItem>
+        )}
       </Menu>
-
-      {/* Saved Dashboards Dialog */}
-      <SavedDashboardsDialog
-        open={dashboardLibraryOpen}
-        onClose={handleDashboardLibraryClose}
-      />
     </>
   )
 }

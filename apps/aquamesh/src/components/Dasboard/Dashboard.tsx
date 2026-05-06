@@ -30,10 +30,12 @@ import SaveIcon from '@mui/icons-material/Save'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import EditIcon from '@mui/icons-material/Edit'
 import ExtensionIcon from '@mui/icons-material/Extension'
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
+import SavedDashboardsDialog from './DashboardLibrary'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
@@ -504,6 +506,7 @@ const Dashboards = () => {
   } | null>(null)
   const [dashboardWidgetsAnchorEl, setDashboardWidgetsAnchorEl] =
     useState<null | HTMLElement>(null)
+  const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
   const dashboardOnboardingLayoutBaseline = useRef<{
     dashboardId: string
     layoutJson: string
@@ -586,6 +589,16 @@ const Dashboards = () => {
         children: [],
       },
     })
+  }
+
+  const loadSavedDashboardInBuilder = (dashboard: SavedDashboard) => {
+    setDashboardEditorId(null)
+    setDraftDashboard({
+      id: `draft-dashboard-${Date.now()}`,
+      name: dashboard.name,
+      layout: dashboard.layout,
+    })
+    loadDashboardOptions()
   }
 
   const createEmptyDashboardTab = () => {
@@ -1183,6 +1196,14 @@ const Dashboards = () => {
             <Stack direction="row" spacing={1} alignItems="center">
               <Button
                 variant="outlined"
+                startIcon={<FolderOpenIcon />}
+                onClick={() => setDashboardLibraryOpen(true)}
+                sx={{ textTransform: 'none' }}
+              >
+                Saved Dashboards
+              </Button>
+              <Button
+                variant="outlined"
                 startIcon={<ExtensionIcon />}
                 onClick={handleDashboardWidgetsMenuOpen}
                 sx={{ textTransform: 'none' }}
@@ -1338,6 +1359,16 @@ const Dashboards = () => {
           </Box>
         </Box>
       </Dialog>
+
+      <SavedDashboardsDialog
+        open={dashboardLibraryOpen}
+        onClose={() => {
+          setDashboardLibraryOpen(false)
+          loadDashboardOptions()
+        }}
+        mode="builder"
+        onOpenInBuilder={loadSavedDashboardInBuilder}
+      />
 
       {/* Save Dashboard Dialog */}
       <Dialog
