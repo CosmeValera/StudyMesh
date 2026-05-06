@@ -16,7 +16,10 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import { Layout } from '../../types/types'
-import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
+import {
+  ensureStarterDashboards,
+  OPEN_DASHBOARD_EDITOR_EVENT,
+} from '../../customHooks/useWorkspaceActions'
 
 // Define saved dashboard type
 interface SavedDashboard {
@@ -170,7 +173,7 @@ const DashboardOptionsMenu: React.FC = () => {
   }
 
   const handleCreateDashboard = () => {
-    addDashboard()
+    window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
     handleClose()
   }
 

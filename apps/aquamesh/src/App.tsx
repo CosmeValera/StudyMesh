@@ -63,7 +63,6 @@ const WorkspacePage = () => {
     openOperationsExample,
     openMathExample,
     openTutorialExample,
-    openWidgetMenu,
   } = useWorkspaceActions()
   const handledActionRef = useRef<string | null>(null)
 
@@ -85,7 +84,7 @@ const WorkspacePage = () => {
     } else if (action === 'open-tutorial-example') {
       openTutorialExample()
     } else if (action === 'add-widget') {
-      openWidgetMenu()
+      openCreateWidget()
     }
 
     setSearchParams({}, { replace: true })
@@ -94,7 +93,6 @@ const WorkspacePage = () => {
     openOperationsExample,
     openMathExample,
     openTutorialExample,
-    openWidgetMenu,
     searchParams,
     setSearchParams,
   ])

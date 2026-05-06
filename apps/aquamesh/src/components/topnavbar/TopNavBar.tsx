@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   AppBar,
   Box,
@@ -19,30 +19,23 @@ import { useNavigate } from 'react-router-dom'
 
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
-import ExtensionIcon from '@mui/icons-material/Extension'
 import ConstructionIcon from '@mui/icons-material/Construction'
-import FolderIcon from '@mui/icons-material/Folder'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
-import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
-import WidgetManagementModal from '../WidgetEditor/components/dialogs/WidgetLibrary'
-import useWidgetManager from '../WidgetEditor/hooks/useWidgetManager'
 import {
   OPEN_WIDGET_EDITOR_EVENT,
-  OPEN_WIDGET_MENU_EVENT,
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
 import DashboardWidgetExplanationModal from '../tutorial/DashboardWidgetExplanationModal'
 import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
-import { useDashboards } from '../Dasboard/DashboardProvider'
 
 // Define user data type
 interface UserData {
@@ -62,7 +55,6 @@ interface ButtonWithLabelProps {
   icon: React.ReactNode
   label: string
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void
-  buttonRef?: React.Ref<HTMLButtonElement>
   sx?: React.CSSProperties | Record<string, unknown>
   'data-tutorial-id'?: string
   title?: string
@@ -72,13 +64,11 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   icon,
   label,
   onClick,
-  buttonRef,
   sx,
   ...props
 }) => {
   return (
     <Button
-      ref={buttonRef}
       onClick={onClick}
       sx={{
         color: 'foreground.contrastPrimary',
@@ -105,10 +95,6 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
 
 const TopNavBar: React.FC<TopNavBarProps> = () => {
   // State for different dropdown menus
-  const [widgetsAnchorEl, setWidgetsAnchorEl] = useState<null | HTMLElement>(
-    null,
-  )
-  const widgetsButtonRef = useRef<HTMLButtonElement | null>(null)
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
@@ -124,11 +110,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const userModeLabel =
     userData.role === 'ADMIN_ROLE' ? 'Builder mode' : 'Viewer mode'
 
-  const { topNavBarWidgets } = useTopNavBarWidgets()
-  const { ensureDashboardAndAddComponent, openCreateWidget } =
-    useWorkspaceActions()
-  const { openDashboards, selectedDashboard, isDashboardEditing } =
-    useDashboards()
+  const { openCreateWidget } = useWorkspaceActions()
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -136,25 +118,6 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
-  const selectedOpenDashboard = openDashboards[selectedDashboard]
-  const selectedDashboardIsEmpty =
-    Boolean(selectedOpenDashboard) &&
-    (!selectedOpenDashboard.layout?.children ||
-      selectedOpenDashboard.layout.children.length === 0)
-  const canPlaceWidgets =
-    Boolean(selectedOpenDashboard) &&
-    (selectedDashboardIsEmpty || isDashboardEditing(selectedOpenDashboard?.id))
-
-  // Use the widget manager hook
-  const {
-    widgets,
-    isWidgetManagementOpen,
-    openWidgetManagement,
-    closeWidgetManagement,
-    previewWidget,
-    editWidget,
-    deleteWidget,
-  } = useWidgetManager()
 
   // Load user data from localStorage on component mount
   useEffect(() => {
@@ -189,31 +152,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     }
   }, [])
 
-  useEffect(() => {
-    const handleOpenWidgetMenu = () => {
-      setWidgetsAnchorEl(widgetsButtonRef.current)
-    }
-
-    window.addEventListener(OPEN_WIDGET_MENU_EVENT, handleOpenWidgetMenu)
-
-    return () => {
-      window.removeEventListener(OPEN_WIDGET_MENU_EVENT, handleOpenWidgetMenu)
-    }
-  }, [])
-
   // Handle opening and closing dropdowns
-  const handleWidgetsMenuOpen = (
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    setWidgetsAnchorEl(event.currentTarget)
-  }
-
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setUserAnchorEl(event.currentTarget)
   }
 
   const handleClose = () => {
-    setWidgetsAnchorEl(null)
     setUserAnchorEl(null)
   }
 
@@ -222,12 +166,6 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     // Clear user data from localStorage
     localStorage.removeItem('userData')
     navigate('/')
-  }
-
-  // Handle opening widgets library
-  const handleOpenWidgetsLibrary = () => {
-    openWidgetManagement()
-    handleClose()
   }
 
   return (
@@ -276,19 +214,17 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <DashboardOptionsMenu />
             )}
 
-            {/* Widgets Menu */}
+            {/* Create Widget */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
-                icon={<ExtensionIcon />}
-                label={'Widgets'}
-                onClick={handleWidgetsMenuOpen}
-                buttonRef={widgetsButtonRef}
-                data-tutorial-id="widgets-button"
+                icon={<ConstructionIcon />}
+                label="Create"
+                onClick={() => openCreateWidget()}
+                data-tutorial-id="create-widget-button"
               />
             ) : (
               <Button
-                ref={widgetsButtonRef}
-                onClick={handleWidgetsMenuOpen}
+                onClick={() => openCreateWidget()}
                 sx={{
                   color: 'foreground.contrastPrimary',
                   display: 'flex',
@@ -297,223 +233,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   mx: 1,
                   px: 2,
                 }}
-                startIcon={<ExtensionIcon />}
-                endIcon={<KeyboardArrowDownIcon />}
-                data-tutorial-id="widgets-button"
+                startIcon={<ConstructionIcon />}
+                data-tutorial-id="create-widget-button"
               >
-                Widgets
+                Create Widget
               </Button>
             )}
-            <Menu
-              anchorEl={widgetsAnchorEl}
-              open={Boolean(widgetsAnchorEl)}
-              onClose={handleClose}
-              PaperProps={{
-                sx: {
-                  bgcolor: 'background.paper',
-                  color: 'text.primary',
-                  width: '250px',
-                  boxShadow: 3,
-                  border: 1,
-                  borderColor: 'divider',
-                },
-              }}
-            >
-              {/* Widget Management Section */}
-              {userData.id === 'admin' && userData.role === 'ADMIN_ROLE' && (
-                <>
-                  <MenuItem
-                    onClick={() => {
-                      openCreateWidget()
-                      handleClose()
-                    }}
-                    sx={{ p: 1.5 }}
-                    data-tutorial-id="create-widget-button"
-                  >
-                    <ListItemIcon>
-                      <ConstructionIcon
-                        fontSize="small"
-                        sx={{ color: 'text.secondary' }}
-                      />
-                    </ListItemIcon>
-                    Create Widget
-                  </MenuItem>
-                  {canPlaceWidgets && (
-                    <Divider sx={{ my: 1, borderColor: 'divider' }} />
-                  )}
-                  <MenuItem onClick={handleOpenWidgetsLibrary} sx={{ p: 1.5 }}>
-                    <ListItemIcon>
-                      <FolderIcon
-                        fontSize="small"
-                        sx={{ color: 'text.secondary' }}
-                      />
-                    </ListItemIcon>
-                    Open Saved Widgets
-                  </MenuItem>
-                  
-                </>
-              )}
-
-              {/* Predefined Widgets Section */}
-              {canPlaceWidgets && isPhone ? <Divider sx={{ my: 1, borderColor: 'divider' }} /> && (
-                topNavBarWidgets.filter((widget) =>
-                  widget.name.includes('Custom'),
-                ).length > 0 ? (
-                  topNavBarWidgets
-                    .filter((widget) => widget.name.includes('Custom'))
-                    .map((panel) => (
-                      <Box key={panel.name}>
-                        {panel.items.map((item) => (
-                          <MenuItem
-                            key={item.name}
-                            disabled={!canPlaceWidgets}
-                            onClick={() => {
-                              if (!canPlaceWidgets) {
-                                return
-                              }
-                              ensureDashboardAndAddComponent({
-                                id: `panel-${Date.now()}`,
-                                ...item,
-                              })
-                              handleClose()
-                            }}
-                            sx={{ p: 1.5 }}
-                          >
-                            {item.name}
-                          </MenuItem>
-                        ))}
-                      </Box>
-                    ))
-                ) : (
-                  <MenuItem
-                    disabled
-                    sx={{
-                      p: 1.5,
-                      opacity: 1,
-                      justifyContent: 'center',
-                      whiteSpace: 'normal',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontSize: '0.7rem',
-                        whiteSpace: 'normal',
-                        wordBreak: 'break-word',
-                        display: 'block',
-                      }}
-                    >
-                      {userData.role === 'ADMIN_ROLE'
-                        ? 'No saved widgets yet. Create a widget for your work, then add it to this dashboard.'
-                        : 'Switch to Builder mode to create your own reusable widgets.'}
-                    </Typography>
-                  </MenuItem>
-                )
-              ) : canPlaceWidgets ? (
-                <>
-                  {topNavBarWidgets.filter(
-                    (widget) =>
-                      !widget.name.includes('Custom') &&
-                      widget.items.length > 0,
-                  ).length > 0 && (
-                    <>
-                      <Typography
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          fontWeight: 'bold',
-                          mt: 1,
-                          color: 'text.primary',
-                        }}
-                      >
-                        Starter Widgets
-                      </Typography>
-                      <Divider sx={{ borderColor: 'divider' }} />
-                      {topNavBarWidgets
-                        .filter(
-                          (widget) =>
-                            !widget.name.includes('Custom') &&
-                            widget.items.length > 0,
-                        )
-                        .map((topNavBarWidget) => (
-                          <Box key={topNavBarWidget.name}>
-                            {topNavBarWidget.items.map((item) => (
-                              <MenuItem
-                                key={item.name}
-                                disabled={!canPlaceWidgets}
-                                onClick={() => {
-                                  if (!canPlaceWidgets) {
-                                    return
-                                  }
-                                  ensureDashboardAndAddComponent({
-                                    id: `panel-${Date.now()}`,
-                                    ...item,
-                                  })
-                                  handleClose()
-                                }}
-                                sx={{ p: 1.5 }}
-                              >
-                                {item.name}
-                              </MenuItem>
-                            ))}
-                          </Box>
-                        ))}
-                    </>
-                  )}
-
-                  {/* Custom Widgets Section */}
-                  {topNavBarWidgets.filter((widget) =>
-                    widget.name.includes('Custom'),
-                  ).length > 0 && (
-                    <>
-                      <Typography
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          fontWeight: 'bold',
-                          mt: 1,
-                          color: 'text.primary',
-                        }}
-                      >
-                        My Widgets
-                      </Typography>
-                      <Divider sx={{ borderColor: 'divider' }} />
-                      {topNavBarWidgets
-                        .filter((widget) => widget.name.includes('Custom'))
-                        .map((topNavBarWidget) => (
-                          <Box key={topNavBarWidget.name}>
-                            {topNavBarWidget.items.map((item) => (
-                              <MenuItem
-                                key={item.name}
-                                disabled={!canPlaceWidgets}
-                                onClick={() => {
-                                  if (!canPlaceWidgets) {
-                                    return
-                                  }
-                                  ensureDashboardAndAddComponent({
-                                    id: `panel-${Date.now()}`,
-                                    ...item,
-                                  })
-                                  handleClose()
-                                }}
-                                sx={{
-                                  p: 1.5,
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                {item.name}
-                              </MenuItem>
-                            ))}
-                          </Box>
-                        ))}
-                    </>
-                  )}
-                </>
-              ) : null}
-            </Menu>
           </Box>
 
           {/* Right Side Elements */}
@@ -643,15 +368,6 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Widget Management Modal */}
-      <WidgetManagementModal
-        open={isWidgetManagementOpen}
-        onClose={closeWidgetManagement}
-        widgets={widgets}
-        onPreview={previewWidget}
-        onEdit={editWidget}
-        onDelete={deleteWidget}
-      />
       <DashboardWidgetExplanationModal
         open={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}

@@ -18,7 +18,8 @@ interface DashboardContextType {
   selectedDashboard: number
   setSelectedDashboard: (index: number) => void
   removeDashboard: (id: string) => void
-  addDashboard: (dashboard?: DefaultDashboard) => void
+  addDashboard: (dashboard?: DefaultDashboard) => string
+  replaceDashboard: (index: number, dashboard: DefaultDashboard) => string
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
   renameDashboard: (id: string, newName: string) => void
@@ -90,6 +91,26 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     if (!hasDashboardContent(dashboard.layout)) {
       setDashboardEditing(id, true)
     }
+
+    return id
+  }
+
+  const replaceDashboard = (index: number, dashboard: DefaultDashboard) => {
+    const currentDashboard = openDashboards[index]
+    const id = nanoid()
+    const newOpenDashboards = [...openDashboards]
+
+    newOpenDashboards[index] = Object.assign({ id }, dashboard)
+    setDashboards(newOpenDashboards)
+    setSelectedDashboard(index)
+
+    if (currentDashboard) {
+      setDashboardEditing(currentDashboard.id, false)
+    }
+
+    setDashboardEditing(id, !hasDashboardContent(dashboard.layout))
+
+    return id
   }
 
   const updateLayout = (model: Model) => {
@@ -139,6 +160,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         setSelectedDashboard,
         removeDashboard,
         addDashboard,
+        replaceDashboard,
         updateLayout,
         updateDashboardLayout,
         renameDashboard,

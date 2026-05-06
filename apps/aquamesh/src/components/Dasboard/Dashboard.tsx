@@ -7,9 +7,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
   TextField,
   IconButton,
   FormControlLabel,
+  ListItemIcon,
+  Menu,
+  MenuItem,
   Switch,
   Chip,
   Paper,
@@ -24,14 +28,49 @@ import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import WidgetsIcon from '@mui/icons-material/Widgets'
 import EditIcon from '@mui/icons-material/Edit'
-import VisibilityIcon from '@mui/icons-material/Visibility'
+import ExtensionIcon from '@mui/icons-material/Extension'
 import DashboardLayoutView from '../Layout/Layout'
+import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
-import { useWorkspaceActions } from '../../customHooks/useWorkspaceActions'
+import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
+import {
+  ensureStarterDashboards,
+  OPEN_DASHBOARD_EDITOR_EVENT,
+  useWorkspaceActions,
+} from '../../customHooks/useWorkspaceActions'
 import './tabs.scss'
+
+interface DashboardEditorWidgetConfig {
+  name: string
+  component: string
+  customProps?: Record<string, unknown>
+}
+
+const createLayoutWithComponent = (
+  componentConfig: DashboardEditorWidgetConfig,
+): DashboardLayout => ({
+  type: 'row',
+  weight: 100,
+  children: [
+    {
+      type: 'tabset',
+      weight: 100,
+      active: true,
+      children: [
+        {
+          type: 'tab',
+          name: componentConfig.name,
+          component: componentConfig.component,
+          config: componentConfig.customProps
+            ? { customProps: componentConfig.customProps }
+            : undefined,
+        },
+      ],
+    },
+  ],
+})
 
 // Define custom dashboard type for localStorage
 interface SavedDashboard {
@@ -139,81 +178,184 @@ const DashboardStorage = {
 
 interface DashboardEmptyStateProps {
   isAdmin: boolean
-  onAddWidget: () => void
   hasDashboard: boolean
   onCreateDashboard: () => void
+  dashboardOptions: SavedDashboard[]
+  onOpenDashboard: (dashboard: SavedDashboard) => void
 }
 
 const DashboardEmptyState = ({
   isAdmin,
-  onAddWidget,
   hasDashboard,
   onCreateDashboard,
-}: DashboardEmptyStateProps) => (
-  <Box
-    sx={{
-      minHeight: 'calc(100dvh - 130px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      p: { xs: 2, md: 4 },
-      bgcolor: 'background.default',
-    }}
-  >
-    <Paper
-      elevation={0}
+  dashboardOptions,
+  onOpenDashboard,
+}: DashboardEmptyStateProps) => {
+  const dashboardsByFolder = dashboardOptions.reduce<
+    Record<string, SavedDashboard[]>
+  >((folders, dashboard) => {
+    const folderName = dashboard.folder?.trim() || 'Default'
+    folders[folderName] = folders[folderName] || []
+    folders[folderName].push(dashboard)
+    return folders
+  }, {})
+
+  return (
+    <Box
       sx={{
-        width: 'min(720px, 100%)',
-        p: { xs: 2.5, sm: 4 },
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'primary.light',
-        bgcolor: 'background.accentSurface',
-        color: 'foreground.contrastPrimary',
-        textAlign: 'center',
+        minHeight: 'calc(100dvh - 130px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: { xs: 2, md: 4 },
+        bgcolor: 'background.default',
       }}
     >
-      <DashboardCustomizeIcon
-        sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
-      />
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        {hasDashboard ? 'Build this dashboard' : 'Open a dashboard'}
-      </Typography>
-      <Typography
-        variant="body1"
-        sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
+      <Paper
+        elevation={0}
+        sx={{
+          width: 'min(980px, 100%)',
+          p: { xs: 2.5, sm: 4 },
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'primary.light',
+          bgcolor: 'background.accentSurface',
+          color: 'foreground.contrastPrimary',
+          textAlign: 'center',
+        }}
       >
-        {hasDashboard
-          ? 'Use Add Widget, then choose a saved item from My Widgets. Place the widgets you need, adjust the layout, then save the dashboard.'
-          : 'Create a dashboard first, or open a saved dashboard from the Dashboards menu. Widgets can be placed once a dashboard is ready to edit.'}
-      </Typography>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        justifyContent="center"
-      >
-        {isAdmin && hasDashboard && (
-          <Button
-            variant="contained"
-            startIcon={<WidgetsIcon />}
-            onClick={onAddWidget}
-          >
-            Add Widget
-          </Button>
+        <DashboardCustomizeIcon
+          sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
+        />
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
+          {hasDashboard ? 'Empty dashboard' : 'Open a dashboard'}
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
+        >
+          {hasDashboard
+            ? 'Create a new dashboard from this empty space, or open an existing dashboard from a folder below.'
+            : 'Create a new dashboard, or open an existing dashboard from a folder below.'}
+        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          justifyContent="center"
+        >
+          {isAdmin && (
+            <Button
+              variant="contained"
+              startIcon={<DashboardCustomizeIcon />}
+              onClick={onCreateDashboard}
+              sx={{
+                bgcolor: 'primary.dark',
+                color: 'primary.contrastText',
+                '&:hover': { bgcolor: 'primary.main' },
+              }}
+            >
+              Create Dashboard
+            </Button>
+          )}
+        </Stack>
+        {Object.keys(dashboardsByFolder).length > 0 && (
+          <Box sx={{ mt: 3, textAlign: 'left' }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ color: 'foreground.contrastSecondary', mb: 1.5 }}
+            >
+              Open existing dashboard
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  md: 'repeat(3, minmax(0, 1fr))',
+                },
+                gap: 1.5,
+              }}
+            >
+              {Object.entries(dashboardsByFolder)
+                .slice(0, 3)
+                .map(([folderName, dashboards]) => (
+                  <Box
+                    key={folderName}
+                    sx={{
+                      minWidth: 0,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'foreground.contrastSecondary',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        display: 'block',
+                        mb: 0.75,
+                      }}
+                    >
+                      {folderName}
+                    </Typography>
+                    <Stack spacing={0.75}>
+                      {dashboards.slice(0, 2).map((dashboard) => (
+                        <Button
+                          key={dashboard.id}
+                          variant="outlined"
+                          onClick={() => onOpenDashboard(dashboard)}
+                          sx={{
+                            minHeight: 52,
+                            justifyContent: 'flex-start',
+                            alignItems: 'center',
+                            textTransform: 'none',
+                            bgcolor: 'background.default',
+                            color: 'text.primary',
+                            borderColor: 'divider',
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              bgcolor: 'action.hover',
+                            },
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+                            <Typography
+                              variant="body2"
+                              fontWeight={700}
+                              sx={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {dashboard.name}
+                            </Typography>
+                            {dashboard.description && (
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: 'text.secondary',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  display: 'block',
+                                }}
+                              >
+                                {dashboard.description}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Button>
+                      ))}
+                    </Stack>
+                  </Box>
+                ))}
+            </Box>
+          </Box>
         )}
-        {isAdmin && !hasDashboard && (
-          <Button
-            variant="contained"
-            startIcon={<DashboardCustomizeIcon />}
-            onClick={onCreateDashboard}
-          >
-            Create Dashboard
-          </Button>
-        )}
-      </Stack>
-    </Paper>
-  </Box>
-)
+      </Paper>
+    </Box>
+  )
+}
 
 interface DashboardOnboardingCoachProps {
   step: Exclude<DashboardOnboardingStep, 'done'>
@@ -303,10 +445,11 @@ const Dashboards = () => {
     setSelectedDashboard,
     removeDashboard,
     addDashboard,
+    replaceDashboard,
     updateLayout,
+    updateDashboardLayout,
     renameDashboard,
     setDashboardEditing,
-    isDashboardEditing,
   } = useDashboards()
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -319,6 +462,17 @@ const Dashboards = () => {
   const [currentTabIndex, setCurrentTabIndex] = useState<number | null>(null)
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
   const [isAdmin, setIsAdmin] = useState(false)
+  const [dashboardOptions, setDashboardOptions] = useState<SavedDashboard[]>([])
+  const [dashboardEditorId, setDashboardEditorId] = useState<string | null>(
+    null,
+  )
+  const [draftDashboard, setDraftDashboard] = useState<{
+    id: string
+    name: string
+    layout: DashboardLayout
+  } | null>(null)
+  const [dashboardWidgetsAnchorEl, setDashboardWidgetsAnchorEl] =
+    useState<null | HTMLElement>(null)
   const dashboardOnboardingLayoutBaseline = useRef<{
     dashboardId: string
     layoutJson: string
@@ -332,10 +486,31 @@ const Dashboards = () => {
       const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
       return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
     })
-  const { openWidgetMenu } = useWorkspaceActions()
+  const { addComponent } = useLayout()
+  const { topNavBarWidgets } = useTopNavBarWidgets()
   const selectedDashboardIsEmpty =
     !openDashboards[selectedDashboard]?.layout?.children ||
     openDashboards[selectedDashboard]?.layout?.children?.length === 0
+  const dashboardEditorIndex = dashboardEditorId
+    ? openDashboards.findIndex(
+        (dashboard) => dashboard.id === dashboardEditorId,
+      )
+    : -1
+  const dashboardEditorDashboard =
+    draftDashboard ||
+    (dashboardEditorIndex >= 0 ? openDashboards[dashboardEditorIndex] : null)
+  const dashboardEditorIsDraft = Boolean(draftDashboard)
+  const dashboardEditorIsEmpty =
+    !dashboardEditorDashboard?.layout?.children ||
+    dashboardEditorDashboard.layout.children.length === 0
+  const customWidgetPanels = topNavBarWidgets.filter((widget) =>
+    widget.name.includes('Custom'),
+  )
+
+  const loadDashboardOptions = () => {
+    ensureStarterDashboards()
+    setDashboardOptions([...DashboardStorage.getAll()].reverse())
+  }
 
   const completeDashboardOnboarding = () => {
     setDashboardOnboardingStep('done')
@@ -355,6 +530,97 @@ const Dashboards = () => {
     }
   }
 
+  const openDashboardEditor = (dashboardId: string) => {
+    setDraftDashboard(null)
+    const dashboardIndex = openDashboards.findIndex(
+      (dashboard) => dashboard.id === dashboardId,
+    )
+
+    if (dashboardIndex >= 0) {
+      setSelectedDashboard(dashboardIndex)
+    }
+
+    setDashboardEditing(dashboardId, true)
+    setDashboardEditorId(dashboardId)
+  }
+
+  const createDashboardInEditor = () => {
+    setDashboardEditorId(null)
+    setDraftDashboard({
+      id: `draft-dashboard-${Date.now()}`,
+      name: 'Create Dashboard',
+      layout: {
+        type: 'row',
+        weight: 100,
+        children: [],
+      },
+    })
+  }
+
+  const createEmptyDashboardTab = () => {
+    addDashboard()
+  }
+
+  const openSavedDashboardFromEmptyState = (dashboard: SavedDashboard) => {
+    if (openDashboards[selectedDashboard] && selectedDashboardIsEmpty) {
+      replaceDashboard(selectedDashboard, {
+        name: dashboard.name,
+        layout: dashboard.layout,
+      })
+      return
+    }
+
+    addDashboard({
+      name: dashboard.name,
+      layout: dashboard.layout,
+    })
+  }
+
+  const closeDashboardEditor = () => {
+    if (dashboardEditorIsDraft) {
+      setDraftDashboard(null)
+    } else if (dashboardEditorId) {
+      setDashboardEditing(dashboardEditorId, false)
+    }
+
+    setDashboardWidgetsAnchorEl(null)
+    setDashboardEditorId(null)
+  }
+
+  const addWidgetToDashboardEditor = (
+    item: DashboardEditorWidgetConfig & { id?: string },
+  ) => {
+    if (!dashboardEditorDashboard) {
+      return
+    }
+
+    if (dashboardEditorIsEmpty) {
+      const nextLayout = createLayoutWithComponent(item)
+
+      if (dashboardEditorIsDraft) {
+        setDraftDashboard((currentDraft) =>
+          currentDraft ? { ...currentDraft, layout: nextLayout } : currentDraft,
+        )
+      } else if (dashboardEditorIndex >= 0) {
+        updateDashboardLayout(dashboardEditorIndex, nextLayout)
+      }
+
+      return
+    }
+
+    addComponent(item)
+  }
+
+  const handleDashboardWidgetsMenuOpen = (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    setDashboardWidgetsAnchorEl(event.currentTarget)
+  }
+
+  const handleDashboardWidgetsMenuClose = () => {
+    setDashboardWidgetsAnchorEl(null)
+  }
+
   // Check if user is admin on component mount
   useEffect(() => {
     try {
@@ -370,6 +636,28 @@ const Dashboards = () => {
       setIsAdmin(false)
     }
   }, [])
+
+  useEffect(() => {
+    loadDashboardOptions()
+  }, [])
+
+  useEffect(() => {
+    const handleOpenDashboardEditor = () => {
+      createDashboardInEditor()
+    }
+
+    window.addEventListener(
+      OPEN_DASHBOARD_EDITOR_EVENT,
+      handleOpenDashboardEditor,
+    )
+
+    return () => {
+      window.removeEventListener(
+        OPEN_DASHBOARD_EDITOR_EVENT,
+        handleOpenDashboardEditor,
+      )
+    }
+  })
 
   // Check if current dashboards have changes compared to saved dashboards
   useEffect(() => {
@@ -427,6 +715,18 @@ const Dashboards = () => {
   }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 
   const handleSaveDialogOpen = (index: number) => {
+    if (dashboardEditorIsDraft && draftDashboard) {
+      setCurrentTabIndex(null)
+      setDashboardName('')
+      setDashboardFolder('Default')
+      setDashboardDescription('')
+      setDashboardTags(['dashboard'])
+      setIsPublic(false)
+      setTagInput('')
+      setSaveDialogOpen(true)
+      return
+    }
+
     const currentDashboard = openDashboards[index]
 
     // Check if it's an update of an existing dashboard
@@ -443,6 +743,7 @@ const Dashboards = () => {
           }
 
           DashboardStorage.save(updatedDashboard)
+          loadDashboardOptions()
 
           // Mark this dashboard as no longer having changes
           setHasChanges((prev) => ({
@@ -450,6 +751,9 @@ const Dashboards = () => {
             [index]: false,
           }))
           setDashboardEditing(currentDashboard.id, false)
+          if (dashboardEditorId === currentDashboard.id) {
+            setDashboardEditorId(null)
+          }
         }
       } catch (error) {
         console.error('Error updating dashboard:', error)
@@ -497,6 +801,35 @@ const Dashboards = () => {
   }
 
   const handleSaveDashboard = () => {
+    if (draftDashboard && dashboardName.trim() !== '') {
+      try {
+        const newDashboard: SavedDashboard = {
+          id: `dashboard-${Date.now()}`,
+          name: dashboardName.trim(),
+          folder: dashboardFolder.trim() || 'Default',
+          layout: draftDashboard.layout,
+          description: dashboardDescription.trim() || undefined,
+          tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
+          isPublic: isAdmin ? isPublic : true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+
+        DashboardStorage.save(newDashboard)
+        loadDashboardOptions()
+        addDashboard({
+          name: newDashboard.name,
+          layout: newDashboard.layout,
+        })
+        setDraftDashboard(null)
+        setDashboardEditorId(null)
+        handleSaveDialogClose()
+      } catch (error) {
+        console.error('Error saving dashboard:', error)
+      }
+      return
+    }
+
     if (currentTabIndex !== null && dashboardName.trim() !== '') {
       const currentDashboard = openDashboards[currentTabIndex]
       try {
@@ -514,6 +847,7 @@ const Dashboards = () => {
           }
 
           DashboardStorage.save(newDashboard)
+          loadDashboardOptions()
 
           // Update the dashboard name in the TabList
           renameDashboard(currentDashboard.id, dashboardName)
@@ -524,6 +858,9 @@ const Dashboards = () => {
             [currentTabIndex]: false,
           }))
           setDashboardEditing(currentDashboard.id, false)
+          if (dashboardEditorId === currentDashboard.id) {
+            setDashboardEditorId(null)
+          }
         }
 
         handleSaveDialogClose()
@@ -531,6 +868,15 @@ const Dashboards = () => {
         console.error('Error saving dashboard:', error)
       }
     }
+  }
+
+  const handleDashboardEditorSave = () => {
+    if (dashboardEditorIsDraft) {
+      handleSaveDialogOpen(-1)
+      return
+    }
+
+    handleSaveDialogOpen(dashboardEditorIndex)
   }
 
   return (
@@ -580,41 +926,22 @@ const Dashboards = () => {
                 )}
                 {dashboard.layout?.children &&
                   dashboard.layout.children.length > 0 && (
-                    <TooltipStyled
-                      title={
-                        isDashboardEditing(dashboard.id)
-                          ? 'View Dashboard'
-                          : 'Edit Dashboard'
-                      }
-                    >
+                    <TooltipStyled title="Edit Dashboard">
                       <IconButton
-                        aria-label={
-                          isDashboardEditing(dashboard.id)
-                            ? `View dashboard ${dashboard.name}`
-                            : `Edit dashboard ${dashboard.name}`
-                        }
+                        aria-label={`Edit dashboard ${dashboard.name}`}
                         size="small"
                         onClick={(ev) => {
                           ev.stopPropagation()
-                          setDashboardEditing(
-                            dashboard.id,
-                            !isDashboardEditing(dashboard.id),
-                          )
+                          openDashboardEditor(dashboard.id)
                         }}
                         sx={{
                           p: 0.5,
                           mr: 0.5,
-                          color: isDashboardEditing(dashboard.id)
-                            ? 'primary.light'
-                            : 'text.secondary',
+                          color: 'text.secondary',
                           '&:hover': { color: 'primary.main' },
                         }}
                       >
-                        {isDashboardEditing(dashboard.id) ? (
-                          <VisibilityIcon sx={{ fontSize: 16 }} />
-                        ) : (
-                          <EditIcon sx={{ fontSize: 16 }} />
-                        )}
+                        <EditIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </TooltipStyled>
                   )}
@@ -676,7 +1003,7 @@ const Dashboards = () => {
               },
             }}
             startIcon={<AddIcon width={16} height={16} />}
-            onClick={() => addDashboard()}
+            onClick={createEmptyDashboardTab}
           />
         </TabList>
         {openDashboards.map((dashboard, index) => {
@@ -710,14 +1037,17 @@ const Dashboards = () => {
                   {isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}
-                      onAddWidget={openWidgetMenu}
                       hasDashboard
-                      onCreateDashboard={() => addDashboard()}
+                      onCreateDashboard={() =>
+                        openDashboardEditor(dashboard.id)
+                      }
+                      dashboardOptions={dashboardOptions}
+                      onOpenDashboard={openSavedDashboardFromEmptyState}
                     />
                   ) : (
                     <DashboardLayoutView
                       layout={dashboard.layout}
-                      readOnly={!isDashboardEditing(dashboard.id)}
+                      readOnly
                       updateLayout={(model) => {
                         updateLayout(model)
                         // Mark this dashboard as having changes after layout update
@@ -738,11 +1068,216 @@ const Dashboards = () => {
       {openDashboards.length === 0 && (
         <DashboardEmptyState
           isAdmin={isAdmin}
-          onAddWidget={openWidgetMenu}
           hasDashboard={false}
-          onCreateDashboard={() => addDashboard()}
+          onCreateDashboard={createDashboardInEditor}
+          dashboardOptions={dashboardOptions}
+          onOpenDashboard={openSavedDashboardFromEmptyState}
         />
       )}
+
+      <Dialog
+        fullScreen
+        open={Boolean(dashboardEditorDashboard)}
+        onClose={closeDashboardEditor}
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.default',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            height: '100dvh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <Box
+            sx={{
+              height: 56,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              px: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight={700}
+                sx={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {dashboardEditorDashboard?.name || 'Dashboard'}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button
+                variant="outlined"
+                startIcon={<ExtensionIcon />}
+                onClick={handleDashboardWidgetsMenuOpen}
+                sx={{ textTransform: 'none' }}
+              >
+                Widgets
+              </Button>
+              <Menu
+                anchorEl={dashboardWidgetsAnchorEl}
+                open={Boolean(dashboardWidgetsAnchorEl)}
+                onClose={handleDashboardWidgetsMenuClose}
+                PaperProps={{
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    width: 260,
+                    boxShadow: 3,
+                    border: 1,
+                    borderColor: 'divider',
+                  },
+                }}
+              >
+                <Typography
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    fontWeight: 'bold',
+                    color: 'text.primary',
+                  }}
+                >
+                  My Widgets
+                </Typography>
+                <Divider sx={{ borderColor: 'divider' }} />
+                {customWidgetPanels.length > 0 ? (
+                  customWidgetPanels.map((topNavBarWidget) => (
+                    <Box key={topNavBarWidget.name}>
+                      {topNavBarWidget.items.map((item) => (
+                        <MenuItem
+                          key={item.name}
+                          onClick={() => {
+                            addWidgetToDashboardEditor({
+                              id: `panel-${Date.now()}`,
+                              ...item,
+                            })
+                            handleDashboardWidgetsMenuClose()
+                          }}
+                          sx={{ p: 1.5 }}
+                        >
+                          {item.name}
+                        </MenuItem>
+                      ))}
+                    </Box>
+                  ))
+                ) : (
+                  <MenuItem
+                    disabled
+                    sx={{
+                      p: 1.5,
+                      opacity: 1,
+                      whiteSpace: 'normal',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{ color: 'text.secondary', lineHeight: 1.4 }}
+                    >
+                      No saved widgets yet. Create a widget first, then return
+                      here to place it on a dashboard.
+                    </Typography>
+                  </MenuItem>
+                )}
+              </Menu>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                disabled={
+                  dashboardEditorIsEmpty ||
+                  (!dashboardEditorIsDraft && dashboardEditorIndex < 0)
+                }
+                onClick={handleDashboardEditorSave}
+                sx={{ textTransform: 'none' }}
+              >
+                Save
+              </Button>
+              <IconButton
+                aria-label="Close dashboard editor"
+                onClick={closeDashboardEditor}
+              >
+                <CloseIcon width={20} height={20} />
+              </IconButton>
+            </Stack>
+          </Box>
+          <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            {dashboardEditorDashboard &&
+              (dashboardEditorIsEmpty ? (
+                <Box
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: { xs: 2, md: 4 },
+                    bgcolor: 'background.default',
+                  }}
+                >
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      width: 'min(640px, 100%)',
+                      p: { xs: 2.5, sm: 4 },
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <DashboardCustomizeIcon
+                      sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
+                    />
+                    <Typography variant="h5" fontWeight="bold" gutterBottom>
+                      Empty dashboard
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ color: 'text.secondary' }}
+                    >
+                      Use Widgets, then choose a saved item from My Widgets.
+                    </Typography>
+                  </Paper>
+                </Box>
+              ) : (
+                <DashboardLayoutView
+                  key={dashboardEditorDashboard.id}
+                  layout={dashboardEditorDashboard.layout}
+                  updateLayout={(model) => {
+                    if (dashboardEditorIsDraft) {
+                      setDraftDashboard((currentDraft) =>
+                        currentDraft
+                          ? { ...currentDraft, layout: model.toJson().layout }
+                          : currentDraft,
+                      )
+                      return
+                    }
+
+                    updateLayout(model)
+                    setHasChanges((prev) => ({
+                      ...prev,
+                      [selectedDashboard]: true,
+                    }))
+                  }}
+                />
+              ))}
+          </Box>
+        </Box>
+      </Dialog>
 
       {/* Save Dashboard Dialog */}
       <Dialog
