@@ -392,11 +392,6 @@ const WidgetEditor: React.FC<{
   const handleStartOperationsWidget = () => {
     const operationsWidget = cloneTemplate('template-operations-dashboard')
     if (!operationsWidget) {
-      setComponentToast({
-        open: true,
-        message: 'Daily Operations widget template is not available',
-        severity: 'error',
-      })
       return
     }
 
@@ -410,11 +405,6 @@ const WidgetEditor: React.FC<{
   // Handler for when import is complete
   const handleImportComplete = () => {
     loadSavedWidgets()
-    setComponentToast({
-      open: true,
-      message: 'Widgets imported successfully',
-      severity: 'success',
-    })
   }
 
   // Open versioning dialog for a widget, marking the loaded preview version if any
@@ -428,24 +418,12 @@ const WidgetEditor: React.FC<{
       }
       setCurrentVersioningWidget(dialogWidget)
       setShowVersioningDialog(true)
-    } else {
-      setComponentToast({
-        open: true,
-        message: 'Please save your widget first to access version history',
-        severity: 'info',
-      })
     }
   }
 
   // Open component search dialog
   const handleOpenSearchDialog = () => {
     if (widgetData.components.length === 0) {
-      // Show a message if there are no components to search
-      setComponentToast({
-        open: true,
-        message: 'No blocks to search. Add blocks to your widget first.',
-        severity: 'info',
-      })
       return
     }
 
@@ -456,13 +434,6 @@ const WidgetEditor: React.FC<{
   const handleSelectComponentFromSearch = (componentId: string) => {
     // Find the component in the widget tree
     handleEditComponent(componentId)
-
-    // Show a success message
-    setComponentToast({
-      open: true,
-      message: 'Block found and selected for editing',
-      severity: 'success',
-    })
   }
 
   // Handle restoring a previous version
@@ -482,12 +453,6 @@ const WidgetEditor: React.FC<{
     // Preview the restored version without modifying storage
     setViewMode(defaultEditViewMode)
     handleLoadWidget(restoredWidget, true)
-    // Inform the user this version is loaded for editing
-    setComponentToast({
-      open: true,
-      message: `Loaded version ${version.version} for editing`,
-      severity: 'info',
-    })
   }
 
   // Define handleMajorVersionUpdate function
@@ -500,25 +465,6 @@ const WidgetEditor: React.FC<{
 
     // Update the widget with a major version increment
     handleSaveWidget(true)
-
-    // Show success message
-    setComponentToast({
-      open: true,
-      message: `Updated to major version ${getNextMajorVersion(
-        widget.version || '1.0',
-      )}`,
-      severity: 'success',
-    })
-  }
-
-  // Helper function to calculate next major version
-  const getNextMajorVersion = (currentVersion: string): string => {
-    const versionParts = currentVersion.split('.')
-    if (versionParts.length >= 2) {
-      const major = parseInt(versionParts[0], 10) + 1
-      return `${major}.0`
-    }
-    return '2.0'
   }
 
   // Set up delete confirmation content based on what's being deleted
@@ -658,7 +604,6 @@ const WidgetEditor: React.FC<{
               onUseTemplate={() => setShowTemplateDialog(true)}
               onboardingActive={onboardingActive}
               onboardingStep={onboardingStep}
-              toastScope={editorId}
             />
           </Box>
         )}
@@ -701,11 +646,7 @@ const WidgetEditor: React.FC<{
                 bgcolor: 'background.default',
               }}
             >
-              <CustomWidgetPreview
-                components={widgetData.components}
-                useGlobalToasts
-                toastScope={editorId}
-              />
+              <CustomWidgetPreview components={widgetData.components} />
             </Box>
           </Box>
         )}

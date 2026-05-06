@@ -51,7 +51,6 @@ interface EditorCanvasProps {
   onUseTemplate?: () => void
   onboardingActive?: boolean
   onboardingStep?: 'choose' | 'save' | 'place' | null
-  toastScope?: string
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
@@ -81,7 +80,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onUseTemplate,
   onboardingActive = false,
   onboardingStep = null,
-  toastScope,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -129,7 +127,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         showWidgetName={editMode}
         activeContainerId={activeContainerId}
         onSelectContainer={onSelectContainer}
-        toastScope={toastScope}
       />
     ))
   }

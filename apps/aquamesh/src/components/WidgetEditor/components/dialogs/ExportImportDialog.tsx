@@ -32,7 +32,6 @@ import CloudDownloadIcon from '@mui/icons-material/CloudDownload'
 import ErrorIcon from '@mui/icons-material/Error'
 import CloseIcon from '@mui/icons-material/Close'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import EnhancedNotification from '../../../shared/EnhancedNotification'
 import WidgetStorage, { CustomWidget } from '../../WidgetStorage'
 import { dialogStyles, buttonStyles } from '../../../shared/DialogStyles'
 
@@ -82,8 +81,6 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
     success: boolean
     message: string
   } | null>(null)
-  const [toastOpen, setToastOpen] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Select all widgets for export
@@ -138,13 +135,6 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
   // Copy export data to clipboard
   const copyExportToClipboard = () => {
     navigator.clipboard.writeText(exportData)
-
-    setToastMessage('Export data copied to clipboard')
-    setToastOpen(true)
-
-    setTimeout(() => {
-      setToastOpen(false)
-    }, 3000)
   }
 
   // Trigger file input click
@@ -742,15 +732,6 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
           Close
         </Button>
       </DialogActions>
-
-      <EnhancedNotification
-        open={toastOpen}
-        message={toastMessage}
-        type="success"
-        variant="filled"
-        autoHideDuration={3000}
-        onClose={() => setToastOpen(false)}
-      />
     </Dialog>
   )
 }

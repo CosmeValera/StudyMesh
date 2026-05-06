@@ -42,8 +42,6 @@ WidgetEditor/
 │   │   └── ChartPreview.tsx         # Specialized preview for charts
 │   ├── shared/             # Shared components across the editor
 │   │   └── SharedEditorComponents.tsx # Common editor components
-│   └── ui/                 # Generic UI components
-│       └── NotificationSystem.tsx   # Notification/toast system
 ├── constants/              # Constants used throughout the editor
 │   ├── componentTypes.ts            # Available component types and metadata
 │   └── templateWidgets.ts           # Template widget definitions
@@ -54,7 +52,7 @@ WidgetEditor/
 │   └── types.ts                     # Common type definitions
 ├── utils/                  # Utility functions
 │   └── componentUtils.ts            # Component manipulation utilities
-├── CustomWidget.tsx        # Component for rendering saved widgets 
+├── CustomWidget.tsx        # Component for rendering saved widgets
 ├── WidgetEditor.tsx        # Main Widget Editor component
 └── WidgetStorage.ts        # Local storage handling for widgets
 ```
@@ -63,27 +61,27 @@ WidgetEditor/
 
 The WidgetEditor is built from the ground up to make widget creation a seamless and creative experience:
 
-*   **Intuitive Drag & Drop:** Start with a blank canvas or a template and simply drag components from the palette to design your widget's layout and functionality.
-*   **Rich Component Set:** Utilize a diverse library of components including interactive elements (Buttons, Switches, TextFields), layout containers (FlexBox, GridBox, FieldSets), and data visualization tools (Charts).
-*   **Deep Customization:** Each component comes with a dedicated editor, allowing you to fine-tune its appearance, behavior, and data bindings through an extensive set of properties.
-*   **Live Preview:** See your changes reflected instantly in the live preview canvas, enabling rapid iteration and design adjustments.
-*   **Complex Layouts:** Easily create sophisticated structures by nesting components within layout containers, providing full control over widget organization.
-*   **Save, Load & Reuse:** Save your widget designs to your personal library, load them for further editing, or reuse them across different dashboards.
-*   **Versioning & Templates:** Manage different versions of your widgets and leverage pre-built templates to kickstart your creations.
+- **Intuitive Drag & Drop:** Start with a blank canvas or a template and simply drag components from the palette to design your widget's layout and functionality.
+- **Rich Component Set:** Utilize a diverse library of components including interactive elements (Buttons, Switches, TextFields), layout containers (FlexBox, GridBox, FieldSets), and data visualization tools (Charts).
+- **Deep Customization:** Each component comes with a dedicated editor, allowing you to fine-tune its appearance, behavior, and data bindings through an extensive set of properties.
+- **Live Preview:** See your changes reflected instantly in the live preview canvas, enabling rapid iteration and design adjustments.
+- **Complex Layouts:** Easily create sophisticated structures by nesting components within layout containers, providing full control over widget organization.
+- **Save, Load & Reuse:** Save your widget designs to your personal library, load them for further editing, or reuse them across different dashboards.
+- **Versioning & Templates:** Manage different versions of your widgets and leverage pre-built templates to kickstart your creations.
 
 ## Usage
 
 The Widget Editor can be imported and used as follows:
 
 ```jsx
-import WidgetEditor from './components/WidgetEditor';
+import WidgetEditor from './components/WidgetEditor'
 
 function App() {
   return (
     <div>
       <WidgetEditor />
     </div>
-  );
+  )
 }
 ```
 
@@ -101,4 +99,4 @@ Each component type has a corresponding editor for its specific properties.
 
 The core state is managed in the `useWidgetEditor` hook, which centralizes all editor functionality. Components communicate through a well-defined props interface, maintaining a clean separation between UI and logic.
 
-The editor uses a nested component data structure where container components can have children, allowing for complex widget layouts. 
+The editor uses a nested component data structure where container components can have children, allowing for complex widget layouts.

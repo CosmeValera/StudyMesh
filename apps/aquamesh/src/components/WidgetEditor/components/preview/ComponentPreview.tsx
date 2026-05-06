@@ -63,7 +63,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   showWidgetName,
   activeContainerId,
   onSelectContainer,
-  toastScope,
 }) => {
   const isCurrentTarget =
     dropTarget.id === component.id && dropTarget.isHovering
@@ -111,23 +110,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                       }
                     : undefined
                 }
-                onChange={(e) => {
-                  if (component.props.showToast) {
-                    const isChecked = (e.target as HTMLInputElement).checked
-                    const message = isChecked
-                      ? (component.props.onMessage as string) ||
-                        'Switch turned ON'
-                      : (component.props.offMessage as string) ||
-                        'Switch turned OFF'
-                    const severity =
-                      (component.props.toastSeverity as string) || 'info'
-                    const customEvent = new CustomEvent('showWidgetToast', {
-                      detail: { message, severity, editorId: toastScope },
-                      bubbles: true,
-                    })
-                    document.dispatchEvent(customEvent)
-                  }
-                }}
               />
             }
             label={labelNode}
@@ -284,7 +266,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
-                    toastScope={toastScope}
                   />
                 ))
               ) : (
@@ -359,10 +340,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
           | string
           | undefined // eslint-disable-line indent
         const clickAction = component.props.clickAction as string | undefined
-        const toastMessage =
-          (component.props.toastMessage as string) || 'Button clicked!'
-        const toastSeverity =
-          (component.props.toastSeverity as string) || 'info'
         const urlProp = component.props.url as string
         // Determine alignment based on props.alignment
         const alignment = component.props.alignment as
@@ -401,17 +378,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               fullWidth={Boolean(component.props.fullWidth)}
               disabled={Boolean(component.props.disabled)}
               onClick={() => {
-                if (clickAction === 'toast') {
-                  const customEvent = new CustomEvent('showWidgetToast', {
-                    detail: {
-                      message: toastMessage,
-                      severity: toastSeverity,
-                      editorId: toastScope,
-                    },
-                    bubbles: true,
-                  })
-                  document.dispatchEvent(customEvent)
-                } else if (clickAction === 'openUrl' && urlProp) {
+                if (clickAction === 'openUrl' && urlProp) {
                   let url = urlProp
                   if (url && !url.match(/^https?:\/\//)) {
                     url = `https://${url}`
@@ -539,14 +506,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             </Button>
             {editMode && clickAction && (
               <>
-                {clickAction === 'toast' && (
-                  <Typography
-                    variant="caption"
-                    sx={{ mt: 1, display: 'block', color: 'text.secondary' }}
-                  >
-                    Click Action: Show toast "{toastMessage}" ({toastSeverity})
-                  </Typography>
-                )}
                 {clickAction === 'openUrl' && urlProp && (
                   <Typography
                     variant="caption"
@@ -819,7 +778,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   handleContainerDrop={handleContainerDrop}
                   onToggleVisibility={onToggleVisibility}
                   showWidgetName={showWidgetName}
-                  toastScope={toastScope}
                 />
               ))
             ) : (
@@ -908,7 +866,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
-                    toastScope={toastScope}
                   />
                 </Box>
               ))

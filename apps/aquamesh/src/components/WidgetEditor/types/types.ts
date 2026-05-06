@@ -70,11 +70,7 @@ export interface ComponentPreviewProps {
   showWidgetName?: boolean
   activeContainerId?: string | null
   onSelectContainer?: (containerId: string) => void
-  toastScope?: string
 }
-
-// Notification severity options
-export type NotificationSeverity = 'success' | 'error' | 'info' | 'warning'
 
 // Component type definition
 export interface ComponentType {
@@ -84,13 +80,6 @@ export interface ComponentType {
   tooltip: string
   icon: React.ComponentType
   defaultProps: Record<string, unknown>
-}
-
-// Notification
-export interface Notification {
-  open: boolean
-  message: string
-  severity: 'success' | 'error' | 'info' | 'warning'
 }
 
 // Component Editor Props
@@ -107,10 +96,7 @@ export interface ButtonProps {
   color?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'
   fullWidth?: boolean
   disabled?: boolean
-  showToast?: boolean
-  toastMessage?: string
-  toastSeverity?: 'info' | 'success' | 'warning' | 'error'
-  clickAction?: 'toast' | 'openUrl' | 'addChartValue' | 'none'
+  clickAction?: 'openUrl' | 'addChartValue' | 'none'
   url?: string
   fontWeight?: number | string
   fontStyle?: 'normal' | 'italic'

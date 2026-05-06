@@ -32,7 +32,6 @@ import CodeIcon from '@mui/icons-material/Code'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PreviewIcon from '@mui/icons-material/Preview'
 import SendIcon from '@mui/icons-material/Send'
-import EnhancedNotification from '../shared/EnhancedNotification'
 import SaveIcon from '@mui/icons-material/Save'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -56,8 +55,6 @@ interface CustomWidgetProps {
     components?: ComponentData[]
   }
   showWidgetName?: boolean
-  useGlobalToasts?: boolean
-  toastScope?: string
 }
 
 // Icon mapping - must match ButtonEditor
@@ -84,20 +81,9 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
   customProps,
   name,
   showWidgetName = false,
-  useGlobalToasts = false,
-  toastScope,
 }) => {
   const [widgetComponents, setWidgetComponents] = useState<ComponentData[]>([])
   const [widgetName, setWidgetName] = useState<string>('')
-  const [toastState, setToastState] = useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info' | 'warning'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
   // Track collapsed state for fieldsets
   const [collapsedFieldsets, setCollapsedFieldsets] = useState<
     Record<string, boolean>
@@ -202,33 +188,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     }
   }, [widgetId, customProps, name, widgetName, propComponents])
 
-  // Show toast message
-  const showToast = (
-    message: string,
-    severity: 'success' | 'error' | 'info' | 'warning' = 'info',
-  ) => {
-    if (useGlobalToasts) {
-      document.dispatchEvent(
-        new CustomEvent('showWidgetToast', {
-          detail: { message, severity, editorId: toastScope },
-          bubbles: true,
-        }),
-      )
-      return
-    }
-
-    setToastState({
-      open: true,
-      message,
-      severity,
-    })
-
-    // Auto hide after 3 seconds
-    setTimeout(() => {
-      setToastState((prev) => ({ ...prev, open: false }))
-    }, 3000)
-  }
-
   // Toggle fieldset collapsed state
   const toggleFieldsetCollapse = (componentId: string) => {
     setCollapsedFieldsets((prev) => ({
@@ -269,10 +228,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     const value = Number(rawValue)
 
     if (!Number.isFinite(value)) {
-      showToast(
-        'Enter a numeric value before adding it to the chart',
-        'warning',
-      )
       return
     }
 
@@ -354,10 +309,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     setWidgetComponents((currentComponents) =>
       currentComponents.map(updateComponent),
     )
-    showToast(
-      updated ? `Added ${label}: ${value} to the chart` : 'No chart found',
-      updated ? 'success' : 'warning',
-    )
   }
 
   // Recursively apply collapsed state to all FieldSet components
@@ -417,23 +368,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
                   | 'top'
                   | 'bottom') || 'end'
               }
-              onChange={(e) => {
-                if (component.props.showToast) {
-                  const isChecked = (e.target as HTMLInputElement).checked
-                  const message = isChecked
-                    ? (component.props.onMessage as string) ||
-                      'Switch turned ON'
-                    : (component.props.offMessage as string) ||
-                      'Switch turned OFF'
-                  const severity =
-                    (component.props.toastSeverity as
-                      | 'success'
-                      | 'error'
-                      | 'info'
-                      | 'warning') || 'info'
-                  showToast(message, severity)
-                }
-              }}
             />
           </Box>
         )
@@ -669,20 +603,8 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
               }
               onClick={() => {
                 const clickAction =
-                  (component.props.clickAction as string) || 'toast'
-                // Always show toast for 'toast' action
-                if (clickAction === 'toast') {
-                  const message =
-                    (component.props.toastMessage as string) ||
-                    'Button clicked!'
-                  const severity =
-                    (component.props.toastSeverity as
-                      | 'success'
-                      | 'error'
-                      | 'info'
-                      | 'warning') || 'info'
-                  showToast(message, severity)
-                } else if (clickAction === 'openUrl') {
+                  (component.props.clickAction as string) || 'none'
+                if (clickAction === 'openUrl') {
                   // Get URL prop and handle it safely
                   try {
                     // Try to get the URL - handle various potential types
@@ -702,12 +624,9 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 
                     if (url) {
                       window.open(url, '_blank', 'noopener,noreferrer')
-                    } else {
-                      showToast('No URL configured for this button', 'warning')
                     }
                   } catch (err) {
                     console.error('Error opening URL:', err)
-                    showToast('Error opening URL', 'error')
                   }
                 } else if (clickAction === 'addChartValue') {
                   addValueToFirstChart(component.props)
@@ -1326,19 +1245,7 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
           Widget Name: {widgetName}
         </Typography>
       )}
-      {/* Render components directly to support inline toasts */}
       {renderComponents()}
-
-      {!useGlobalToasts && (
-        <EnhancedNotification
-          open={toastState.open}
-          message={toastState.message}
-          type={toastState.severity}
-          variant="filled"
-          autoHideDuration={3000}
-          onClose={() => setToastState((prev) => ({ ...prev, open: false }))}
-        />
-      )}
     </Paper>
   )
 }

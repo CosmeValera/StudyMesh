@@ -8,9 +8,12 @@ const hookStateRef = vi.hoisted(() => ({
   current: {} as Record<string, unknown>,
 }))
 
-vi.mock('../../../../src/components/WidgetEditor/hooks/useWidgetEditor', () => ({
-  useWidgetEditor: () => hookStateRef.current,
-}))
+vi.mock(
+  '../../../../src/components/WidgetEditor/hooks/useWidgetEditor',
+  () => ({
+    useWidgetEditor: () => hookStateRef.current,
+  }),
+)
 
 vi.mock(
   '../../../../src/components/WidgetEditor/components/core/EditorToolbar',
@@ -59,7 +62,10 @@ vi.mock(
       ) => void
       onboardingStep: string | null
     }) => (
-      <div data-testid="component-palette" data-onboarding-step={onboardingStep}>
+      <div
+        data-testid="component-palette"
+        data-onboarding-step={onboardingStep}
+      >
         <div
           data-testid="palette-drag-source"
           draggable
@@ -123,11 +129,6 @@ vi.mock(
   '../../../../src/components/WidgetEditor/components/dialogs/SaveWidgetDialog',
   () => ({ __esModule: true, default: () => null }),
 )
-vi.mock(
-  '../../../../src/components/WidgetEditor/components/ui/NotificationSystem',
-  () => ({ __esModule: true, default: () => null }),
-)
-
 const createHookState = (viewMode: 'both' | 'edit' | 'preview' = 'both') => ({
   widgetData: {
     name: 'Operations',
@@ -137,7 +138,6 @@ const createHookState = (viewMode: 'both' | 'edit' | 'preview' = 'both') => ({
   editMode: viewMode !== 'preview',
   viewMode,
   setViewMode: vi.fn(),
-  notification: { open: false, message: '', severity: 'success' },
   savedWidgets: [],
   showWidgetList: false,
   setShowWidgetList: vi.fn(),
@@ -181,7 +181,6 @@ const createHookState = (viewMode: 'both' | 'edit' | 'preview' = 'both') => ({
   handleSaveWidget: vi.fn(),
   handleLoadWidget: vi.fn(),
   handleDeleteSavedWidget: vi.fn(),
-  handleCloseNotification: vi.fn(),
   handleToggleVisibility: vi.fn(),
   handleToggleFieldsetCollapse: vi.fn(),
   confirmDeleteComponent: vi.fn(),

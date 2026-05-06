@@ -41,10 +41,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
     defaultProps: {
       text: 'Button',
       variant: 'contained',
-      showToast: true,
-      toastMessage: 'Action completed!',
-      toastSeverity: 'info',
-      clickAction: 'toast',
+      clickAction: 'none',
       chartLabelSource: 'static',
       chartValueSource: 'static',
       chartLabel: 'New value',

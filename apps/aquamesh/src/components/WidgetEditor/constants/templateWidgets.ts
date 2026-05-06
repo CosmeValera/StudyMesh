@@ -74,9 +74,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
           color: 'primary',
           size: 'large',
           fullWidth: false,
-          showToast: true,
-          toastMessage: 'Form submitted successfully!',
-          toastSeverity: 'success',
+
           sx: {
             marginTop: 3,
             borderRadius: 2,
@@ -469,10 +467,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   defaultChecked: true,
                   labelPlacement: 'end',
                   color: 'success',
-                  showToast: true,
-                  onMessage: 'System marked healthy',
-                  offMessage: 'System needs attention',
-                  toastSeverity: 'success',
                 },
               },
               {
@@ -500,9 +494,8 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   size: 'medium',
                   showStartIcon: true,
                   iconName: 'notification',
-                  clickAction: 'toast',
-                  toastMessage: 'Daily operations handoff sent to the team',
-                  toastSeverity: 'success',
+                  clickAction: 'none',
+
                   borderRadius: 6,
                   fontWeight: 700,
                 },
@@ -596,10 +589,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   defaultChecked: true,
                   disabled: false,
                   color: 'primary',
-                  showToast: true,
-                  onMessage: 'Alerts enabled',
-                  offMessage: 'Alerts disabled',
-                  toastSeverity: 'info',
+
                   sx: { marginY: 1 },
                 },
               },
@@ -681,9 +671,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
               variant: 'outlined',
               icon: 'refresh',
               color: 'info',
-              showToast: true,
-              toastMessage: 'Data refreshed',
-              toastSeverity: 'info',
+
               sx: {
                 borderRadius: 2,
                 fontWeight: 'medium',
@@ -699,9 +687,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
               variant: 'contained',
               icon: 'save',
               color: 'primary',
-              showToast: true,
-              toastMessage: 'Report exported successfully',
-              toastSeverity: 'success',
+
               sx: {
                 borderRadius: 2,
                 fontWeight: 'bold',
@@ -1205,8 +1191,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   chartLabelSource: 'static',
                   chartLabel: 'Typed value',
                   chartValueSource: 'firstInput',
-                  showToast: true,
-                  toastSeverity: 'success',
                 },
               },
             ],
@@ -1243,8 +1227,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   chartLabelSource: 'static',
                   chartLabel: 'Completed tasks',
                   chartValueSource: 'checkedListCount',
-                  showToast: true,
-                  toastSeverity: 'success',
                 },
               },
             ],
@@ -1427,8 +1409,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
               chartLabelSource: 'static',
               chartLabel: 'Input value',
               chartValueSource: 'firstInput',
-              showToast: true,
-              toastSeverity: 'success',
             },
           },
           {

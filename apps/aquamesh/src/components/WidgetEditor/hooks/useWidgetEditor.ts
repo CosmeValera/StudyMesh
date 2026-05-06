@@ -5,7 +5,6 @@ import {
   ComponentData,
   WidgetData,
   DropTarget,
-  NotificationSeverity,
   WidgetEditorViewMode,
 } from '../types/types'
 import { COMPONENT_TYPES } from '../constants/componentTypes'
@@ -92,12 +91,6 @@ export const useWidgetEditor = () => {
   const setEditMode = React.useCallback((nextEditMode: boolean) => {
     setViewMode(nextEditMode ? 'edit' : 'preview')
   }, [])
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as NotificationSeverity,
-  })
-
   // Saved widgets management
   const [savedWidgets, setSavedWidgets] = useState<CustomWidget[]>([])
   const [showWidgetList, setShowWidgetList] = useState(false)
@@ -365,26 +358,6 @@ export const useWidgetEditor = () => {
       if (prevState.widgetId !== currentWidgetId) {
         // We're undoing to a different widget
         setCurrentWidgetId(prevState.widgetId)
-
-        // Find the widget in saved widgets for better messaging
-        const targetWidget = savedWidgets.find(
-          (w) => w.id === prevState.widgetId,
-        )
-
-        if (targetWidget) {
-          setNotification({
-            open: true,
-            message: `Undid to previous widget: "${targetWidget.name}"`,
-            severity: 'info',
-          })
-        }
-      } else {
-        // Standard notification for same-widget undo
-        setNotification({
-          open: true,
-          message: 'Undo successful',
-          severity: 'info',
-        })
       }
 
       // Copy previous state and remove widgetId and version to preserve the current version
@@ -398,12 +371,6 @@ export const useWidgetEditor = () => {
         ...prev,
         ...stateWithoutVersion,
       }))
-    } else {
-      setNotification({
-        open: true,
-        message: 'Nothing to undo',
-        severity: 'info',
-      })
     }
   }
 
@@ -420,26 +387,6 @@ export const useWidgetEditor = () => {
       if (nextState.widgetId !== currentWidgetId) {
         // We're redoing to a different widget
         setCurrentWidgetId(nextState.widgetId)
-
-        // Find the widget in saved widgets for better messaging
-        const targetWidget = savedWidgets.find(
-          (w) => w.id === nextState.widgetId,
-        )
-
-        if (targetWidget) {
-          setNotification({
-            open: true,
-            message: `Redid to next widget: "${targetWidget.name}"`,
-            severity: 'info',
-          })
-        }
-      } else {
-        // Standard notification for same-widget redo
-        setNotification({
-          open: true,
-          message: 'Redo successful',
-          severity: 'info',
-        })
       }
 
       // Copy next state and remove widgetId and version to preserve the current version
@@ -453,12 +400,6 @@ export const useWidgetEditor = () => {
         ...prev,
         ...stateWithoutVersion,
       }))
-    } else {
-      setNotification({
-        open: true,
-        message: 'Nothing to redo',
-        severity: 'info',
-      })
     }
   }
 
@@ -529,13 +470,6 @@ export const useWidgetEditor = () => {
                 ),
               }))
 
-              // Show success notification
-              setNotification({
-                open: true,
-                message: `Added ${componentConfig.label} to ${container.type}`,
-                severity: 'success',
-              })
-
               return
             }
           }
@@ -545,13 +479,6 @@ export const useWidgetEditor = () => {
             ...prev,
             components: [...prev.components, newComponent],
           }))
-
-          // Show success notification
-          setNotification({
-            open: true,
-            message: `Added ${componentConfig.label} block`,
-            severity: 'success',
-          })
         }
       }
     }
@@ -588,15 +515,6 @@ export const useWidgetEditor = () => {
           name: widget.name,
           components: JSON.parse(JSON.stringify(widget.components)),
           version: widget.version,
-        })
-
-        // Show notification
-        setNotification({
-          open: true,
-          message: `Widget "${widget.name}" loaded in ${
-            shouldEditMode ? 'edit' : 'preview'
-          } mode`,
-          severity: 'success',
         })
       }
     }
@@ -769,12 +687,6 @@ export const useWidgetEditor = () => {
           prev.components,
         ),
       }))
-
-      setNotification({
-        open: true,
-        message: `Added ${componentConfig.label} to ${container.type}`,
-        severity: 'success',
-      })
     }
 
     setDropTarget({ id: null, isHovering: false })
@@ -812,12 +724,6 @@ export const useWidgetEditor = () => {
             prev.components,
           ),
         }))
-
-        setNotification({
-          open: true,
-          message: `Added ${componentConfig.label} inside container`,
-          severity: 'success',
-        })
       }
     }
   }
@@ -849,12 +755,6 @@ export const useWidgetEditor = () => {
       components: [...prev.components, newComponent],
     }))
 
-    setNotification({
-      open: true,
-      message: `Added ${componentConfig.label} block`,
-      severity: 'success',
-    })
-
     setIsDragging(false)
   }
 
@@ -873,11 +773,6 @@ export const useWidgetEditor = () => {
         components: removeComponentById(id, prev.components),
       }))
 
-      setNotification({
-        open: true,
-        message: 'Block deleted',
-        severity: 'success',
-      })
       return
     }
 
@@ -893,12 +788,6 @@ export const useWidgetEditor = () => {
         ...prev,
         components: removeComponentById(componentToDelete, prev.components),
       }))
-
-      setNotification({
-        open: true,
-        message: 'Block deleted',
-        severity: 'error',
-      })
 
       setComponentToDelete(null)
       setDeleteConfirmOpen(false)
@@ -953,12 +842,6 @@ export const useWidgetEditor = () => {
         ...prev,
         components: updateComponentById(id, updatedComponent, prev.components),
       }))
-
-      setNotification({
-        open: true,
-        message: `Component ${component.hidden ? 'shown' : 'hidden'}`,
-        severity: 'info',
-      })
     }
   }
 
@@ -1000,11 +883,6 @@ export const useWidgetEditor = () => {
     )
 
     if (widgetData.components.length === 0) {
-      setNotification({
-        open: true,
-        message: 'Cannot save an empty widget',
-        severity: 'error',
-      })
       return
     }
 
@@ -1058,14 +936,6 @@ export const useWidgetEditor = () => {
         }
 
         savedWidgetId = existingWidget.id
-
-        setNotification({
-          open: true,
-          message: `Widget "${nameToSave}" updated successfully${
-            isMajorUpdate ? ' with major version bump' : ''
-          }`,
-          severity: 'success',
-        })
       }
       // Handle saving new widget
       else {
@@ -1078,12 +948,6 @@ export const useWidgetEditor = () => {
           id: savedWidget.id,
           version: savedWidget.version,
         }))
-
-        setNotification({
-          open: true,
-          message: `Widget "${nameToSave}" saved successfully`,
-          severity: 'success',
-        })
       }
 
       // Update current widget ID without triggering a re-render of widget data
@@ -1102,11 +966,6 @@ export const useWidgetEditor = () => {
       )
     } catch (error) {
       console.error('Failed to save widget:', error)
-      setNotification({
-        open: true,
-        message: 'Failed to save widget',
-        severity: 'error',
-      })
     }
   }
 
@@ -1175,14 +1034,6 @@ export const useWidgetEditor = () => {
     if (shouldEnterEditMode !== undefined) {
       setViewMode(shouldEnterEditMode ? 'both' : 'preview')
     }
-
-    setNotification({
-      open: true,
-      message: `Widget "${widget.name}" loaded in ${
-        shouldEnterEditMode ? 'both' : 'preview'
-      } mode`,
-      severity: 'success',
-    })
   }
 
   // Handle deleting a saved widget
@@ -1193,12 +1044,6 @@ export const useWidgetEditor = () => {
       if (widget) {
         WidgetStorage.deleteWidget(id)
         setSavedWidgets(WidgetStorage.getAllWidgets())
-
-        setNotification({
-          open: true,
-          message: `Widget "${widget.name}" deleted`,
-          severity: 'error',
-        })
       }
       return
     }
@@ -1209,12 +1054,6 @@ export const useWidgetEditor = () => {
       if (widget) {
         WidgetStorage.deleteWidget(id)
         setSavedWidgets(WidgetStorage.getAllWidgets())
-
-        setNotification({
-          open: true,
-          message: `Widget "${widget.name}" deleted`,
-          severity: 'error',
-        })
       }
       return
     }
@@ -1231,22 +1070,11 @@ export const useWidgetEditor = () => {
       if (widget) {
         WidgetStorage.deleteWidget(widgetToDelete)
         setSavedWidgets(WidgetStorage.getAllWidgets())
-
-        setNotification({
-          open: true,
-          message: `Widget "${widget.name}" deleted`,
-          severity: 'error',
-        })
       }
 
       setWidgetToDelete(null)
       setDeleteConfirmOpen(false)
     }
-  }
-
-  // Handle closing the notification
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false })
   }
 
   // Handle direct component addition (for mobile devices)
@@ -1292,13 +1120,6 @@ export const useWidgetEditor = () => {
             ),
           }))
 
-          // Show success notification
-          setNotification({
-            open: true,
-            message: `Added ${componentConfig.label} to ${container.type}`,
-            severity: 'success',
-          })
-
           return
         }
       }
@@ -1308,13 +1129,6 @@ export const useWidgetEditor = () => {
         ...prev,
         components: [...prev.components, newComponent],
       }))
-
-      // Show success notification
-      setNotification({
-        open: true,
-        message: `Added ${componentConfig.label} block`,
-        severity: 'success',
-      })
     }
   }
 
@@ -1348,8 +1162,6 @@ export const useWidgetEditor = () => {
     setEditMode,
     viewMode,
     setViewMode,
-    notification,
-    setNotification,
     savedWidgets,
     showWidgetList,
     setShowWidgetList,
@@ -1402,7 +1214,6 @@ export const useWidgetEditor = () => {
     handleSaveWidget,
     handleLoadWidget,
     handleDeleteSavedWidget,
-    handleCloseNotification,
     handleDirectAdd,
     toggleEditMode,
     handleToggleVisibility,
