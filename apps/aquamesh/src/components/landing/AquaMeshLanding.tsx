@@ -22,7 +22,6 @@ import SchoolIcon from '@mui/icons-material/School'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 
 import { ReactComponent as Logo } from '../../../public/logo.svg'
-import ThemeModeToggle from '../shared/ThemeModeToggle'
 
 const workflow = [
   {
@@ -143,7 +142,6 @@ const AquaMeshLanding = () => {
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
-            <ThemeModeToggle />
             <Button
               variant="outlined"
               onClick={() => openWorkspace()}
