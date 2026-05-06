@@ -1,6 +1,7 @@
 import React from 'react'
-import { Snackbar, Alert, Box } from '@mui/material'
+import { Box } from '@mui/material'
 import { Notification } from '../../types/types'
+import EnhancedNotification from '../../../shared/EnhancedNotification'
 
 interface NotificationSystemProps {
   notification: Notification
@@ -19,44 +20,35 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
   handleCloseNotification,
   handleCloseComponentToast
 }) => {
+  const activeToast = notification.open
+    ? {
+        open: notification.open,
+        message: notification.message,
+        severity: notification.severity,
+        duration: 5000,
+        onClose: handleCloseNotification,
+      }
+    : {
+        open: componentToast.open,
+        message: componentToast.message,
+        severity: componentToast.severity,
+        duration: 3000,
+        onClose: handleCloseComponentToast,
+      }
+
   return (
     <Box>
-      {/* Main notification for editor actions */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={5000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        sx={{ mt: 6 }}
-      >
-        <Alert 
-          onClose={handleCloseNotification} 
-          severity={notification.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-      
-      {/* Component toast for preview actions */}
-      <Snackbar
-        open={componentToast.open}
-        autoHideDuration={3000}
-        onClose={handleCloseComponentToast}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      >
-        <Alert 
-          onClose={handleCloseComponentToast} 
-          severity={componentToast.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {componentToast.message}
-        </Alert>
-      </Snackbar>
+      <EnhancedNotification
+        key={`${activeToast.severity}-${activeToast.message}`}
+        open={activeToast.open}
+        message={activeToast.message}
+        type={activeToast.severity}
+        variant="filled"
+        autoHideDuration={activeToast.duration}
+        onClose={activeToast.onClose}
+      />
     </Box>
   )
 }
 
-export default NotificationSystem 
+export default NotificationSystem

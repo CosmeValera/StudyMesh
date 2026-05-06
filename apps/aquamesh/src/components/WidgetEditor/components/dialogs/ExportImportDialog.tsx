@@ -19,7 +19,6 @@ import {
   IconButton,
   Divider,
   Paper,
-  Snackbar,
   useTheme,
 } from '@mui/material'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -33,6 +32,7 @@ import CloudDownloadIcon from '@mui/icons-material/CloudDownload'
 import ErrorIcon from '@mui/icons-material/Error'
 import CloseIcon from '@mui/icons-material/Close'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import EnhancedNotification from '../../../shared/EnhancedNotification'
 import WidgetStorage, { CustomWidget } from '../../WidgetStorage'
 import { dialogStyles, buttonStyles } from '../../../shared/DialogStyles'
 
@@ -743,22 +743,13 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
         </Button>
       </DialogActions>
 
-      {/* Toast notification */}
-      <Snackbar
+      <EnhancedNotification
         open={toastOpen}
+        message={toastMessage}
+        type="success"
+        variant="filled"
         autoHideDuration={3000}
         onClose={() => setToastOpen(false)}
-        message={toastMessage}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{
-          '& .MuiSnackbarContent-root': {
-            bgcolor: 'primary.main',
-            color: 'black',
-            fontWeight: 'medium',
-            borderRadius: 2,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          },
-        }}
       />
     </Dialog>
   )

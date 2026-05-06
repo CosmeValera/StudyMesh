@@ -269,6 +269,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 icon={<DashboardCustomizeIcon />}
                 label="Create Dashboard"
                 onClick={() => openCreateDashboard()}
+                data-tutorial-id="create-dashboard-button"
               />
             ) : (
               <Button
@@ -282,6 +283,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   px: 2,
                 }}
                 startIcon={<DashboardCustomizeIcon />}
+                data-tutorial-id="create-dashboard-button"
               >
                 Create Dashboard
               </Button>

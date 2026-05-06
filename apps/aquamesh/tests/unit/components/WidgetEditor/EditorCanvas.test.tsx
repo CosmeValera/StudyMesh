@@ -133,7 +133,7 @@ describe('EditorCanvas first-widget guide', () => {
       screen.getByText('Build your first reusable widget'),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /example operations template/i }),
+      screen.getByRole('button', { name: /daily operations widget/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /chart block/i }),
@@ -153,7 +153,7 @@ describe('EditorCanvas first-widget guide', () => {
     const props = renderEditorCanvas()
 
     fireEvent.click(
-      screen.getByRole('button', { name: /example operations template/i }),
+      screen.getByRole('button', { name: /daily operations widget/i }),
     )
     fireEvent.click(screen.getByRole('button', { name: /chart block/i }))
     fireEvent.click(screen.getByRole('button', { name: /status text/i }))

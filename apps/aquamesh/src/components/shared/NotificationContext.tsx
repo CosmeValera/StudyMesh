@@ -82,7 +82,7 @@ export const NotificationProvider: React.FC<{children: React.ReactNode}> = ({ ch
     type: 'info',
     variant: 'filled',
     autoHideDuration: 5000,
-    position: { vertical: 'bottom', horizontal: 'center' },
+    position: { vertical: 'bottom', horizontal: 'left' },
     transition: 'slide',
     slideDirection: 'up'
   })
@@ -125,4 +125,4 @@ export const NotificationProvider: React.FC<{children: React.ReactNode}> = ({ ch
   )
 }
 
-export default NotificationProvider 
+export default NotificationProvider

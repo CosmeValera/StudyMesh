@@ -96,7 +96,7 @@ const EnhancedNotification: React.FC<EnhancedNotificationProps> = ({
   type = 'info',
   variant = 'filled',
   autoHideDuration = 5000,
-  position = { vertical: 'bottom', horizontal: 'right' },
+  position = { vertical: 'bottom', horizontal: 'left' },
   transition = 'slide',
   slideDirection = 'up',
   onClose,
@@ -199,14 +199,16 @@ const EnhancedNotification: React.FC<EnhancedNotificationProps> = ({
       anchorOrigin={position}
       TransitionComponent={getTransition().children}
       sx={{
-        maxWidth: getMaxWidth()
+        maxWidth: getMaxWidth(),
+        left: { xs: 16, sm: 24 },
+        bottom: { xs: 16, sm: 24 },
       }}
     >
       {variant === 'elevated' ? (
         <Box
           sx={{
             ...getElevatedStyles(),
-            minWidth: '300px',
+            minWidth: { xs: 'calc(100vw - 32px)', sm: '300px' },
             maxWidth: '100%',
             display: 'flex',
             flexDirection: 'column'
@@ -257,7 +259,11 @@ const EnhancedNotification: React.FC<EnhancedNotificationProps> = ({
           severity={type}
           sx={{ 
             width: '100%',
-            alignItems: 'center'
+            minWidth: { xs: 'calc(100vw - 32px)', sm: 320 },
+            maxWidth: { xs: 'calc(100vw - 32px)', sm: 420 },
+            alignItems: 'center',
+            borderRadius: 1.5,
+            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.2)',
           }}
           action={
             action || (
@@ -284,4 +290,4 @@ const EnhancedNotification: React.FC<EnhancedNotificationProps> = ({
   )
 }
 
-export default EnhancedNotification 
+export default EnhancedNotification

@@ -12,7 +12,6 @@ import {
   FormControlLabel,
   TextField,
   Button,
-  Alert,
   Collapse,
   InputAdornment,
   Checkbox,
@@ -33,6 +32,7 @@ import CodeIcon from '@mui/icons-material/Code'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PreviewIcon from '@mui/icons-material/Preview'
 import SendIcon from '@mui/icons-material/Send'
+import EnhancedNotification from '../shared/EnhancedNotification'
 import SaveIcon from '@mui/icons-material/Save'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -56,6 +56,8 @@ interface CustomWidgetProps {
     components?: ComponentData[]
   }
   showWidgetName?: boolean
+  useGlobalToasts?: boolean
+  toastScope?: string
 }
 
 // Icon mapping - must match ButtonEditor
@@ -82,6 +84,8 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
   customProps,
   name,
   showWidgetName = false,
+  useGlobalToasts = false,
+  toastScope,
 }) => {
   const [widgetComponents, setWidgetComponents] = useState<ComponentData[]>([])
   const [widgetName, setWidgetName] = useState<string>('')
@@ -203,18 +207,21 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     message: string,
     severity: 'success' | 'error' | 'info' | 'warning' = 'info',
   ) => {
+    if (useGlobalToasts) {
+      document.dispatchEvent(
+        new CustomEvent('showWidgetToast', {
+          detail: { message, severity, editorId: toastScope },
+          bubbles: true,
+        }),
+      )
+      return
+    }
+
     setToastState({
       open: true,
       message,
       severity,
     })
-    // Dispatch global toast event for editor previews
-    document.dispatchEvent(
-      new CustomEvent('showWidgetToast', {
-        detail: { message, severity },
-        bubbles: true,
-      }),
-    )
 
     // Auto hide after 3 seconds
     setTimeout(() => {
@@ -1322,22 +1329,15 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
       {/* Render components directly to support inline toasts */}
       {renderComponents()}
 
-      {/* Toast notification */}
-      {toastState.open && (
-        <Alert
-          severity={toastState.severity}
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            left: 16,
-            zIndex: 9999,
-            boxShadow: 3,
-            maxWidth: 400,
-          }}
+      {!useGlobalToasts && (
+        <EnhancedNotification
+          open={toastState.open}
+          message={toastState.message}
+          type={toastState.severity}
+          variant="filled"
+          autoHideDuration={3000}
           onClose={() => setToastState((prev) => ({ ...prev, open: false }))}
-        >
-          {toastState.message}
-        </Alert>
+        />
       )}
     </Paper>
   )

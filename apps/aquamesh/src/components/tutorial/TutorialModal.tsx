@@ -109,9 +109,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   const options: TutorialOption[] = []
 
   options.push({
-    title: 'Start with a guided knowledge dashboard',
+    title: 'Open Dashboard',
     description:
-      'Open a Mathematics or Tutorial starter dashboard first. They work like mini tutorials: formulas, notes, inputs, and charts are already arranged so the workspace has a clear purpose.',
+      'Open a saved or starter dashboard in the workspace.',
     icon: <ImportContactsIcon fontSize="large" color="primary" />,
     hasMultipleButtons: true,
     buttons: [
@@ -139,32 +139,24 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   // Create Widget is the primary path for builder users.
   if (isAdmin) {
     options.push({
-      title: 'Create your first reusable knowledge block',
+      title: 'Create Widget',
       description:
-        'Open Add Widget, then choose Open Widget Editor when you are ready to build your own formula card, revision tracker, research note, or project block.',
+        'Build one reusable Daily Operations widget, preview it, and save it.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'Start building',
       action: () => {
         onClose()
-        const widgetsButton = document.querySelector(
-          '[data-tutorial-id="widgets-button"]',
+        const createWidgetButton = document.querySelector(
+          '[data-tutorial-id="create-widget-button"]',
         )
-        if (widgetsButton) {
-          ;(widgetsButton as HTMLElement).click()
-          window.setTimeout(() => {
-            const createWidgetButton = document.querySelector(
-              '[data-tutorial-id="create-widget-button"]',
-            )
-            if (createWidgetButton) {
-              ;(createWidgetButton as HTMLElement).click()
-            }
-          }, 0)
+        if (createWidgetButton) {
+          ;(createWidgetButton as HTMLElement).click()
         }
       },
     })
   } else {
     options.push({
-      title: 'Create your first reusable knowledge block',
+      title: 'Create Widget',
       description:
         'The recommended path is to start from a dashboard example, then create one reusable block for your own notes. Builder mode is required to save widgets.',
       icon: <CreateIcon fontSize="large" color="primary" />,
@@ -177,9 +169,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
 
   options.push(
     {
-      title: 'Use saved blocks in a dashboard',
+      title: 'Create Dashboard',
       description:
-        'After saving, open Add Widget, choose your saved block, and place it into the current knowledge dashboard.',
+        'Start a dashboard, add saved widgets, arrange them, and save.',
       icon: <DashboardIcon fontSize="large" color="primary" />,
       hasMultipleButtons: true,
       buttons: [
@@ -190,14 +182,14 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
           },
         },
         {
-          text: 'Open Add Widget',
+          text: 'Create Dashboard',
           action: () => {
             onClose()
-            const widgetsButton = document.querySelector(
-              '[data-tutorial-id="widgets-button"]',
+            const createDashboardButton = document.querySelector(
+              '[data-tutorial-id="create-dashboard-button"]',
             )
-            if (widgetsButton) {
-              ;(widgetsButton as HTMLElement).click()
+            if (createDashboardButton) {
+              ;(createDashboardButton as HTMLElement).click()
             }
           },
         },

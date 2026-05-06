@@ -175,6 +175,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             padding: isPhone ? '0px 2px' : '0px 16px',
             gap: isPhone ? 0.25 : 0,
             overflow: 'hidden',
+            flexWrap: 'nowrap',
+            alignContent: 'center',
           }}
         >
           {editMode && (
@@ -268,7 +270,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </Box>
           )}
 
-          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              minWidth: 0,
+              ml: 'auto',
+              flexShrink: 0,
+            }}
+          >
             {/* Undo/Redo buttons */}
             {!!handleUndo && !!handleRedo && (
               <>
@@ -709,6 +719,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               >
                 <span>
                   <IconButton
+                    aria-label={
+                      isEmpty
+                        ? 'Empty Widget'
+                        : isUpdating && !hasChanges
+                        ? 'No changes'
+                        : isUpdating
+                        ? 'Update Widget'
+                        : 'Save Widget'
+                    }
                     color="inherit"
                     onClick={handleSaveButtonClick}
                     disabled={

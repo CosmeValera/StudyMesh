@@ -350,58 +350,64 @@ const DashboardEmptyState = ({
             >
               {Object.entries(dashboardsByFolder)
                 .slice(0, 3)
-                .map(([folderName, dashboards]) => (
-                  <Box
-                    key={folderName}
-                    sx={{
-                      minWidth: 0,
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
+                .map(([folderName, dashboards]) => {
+                  const folderColor = normalizeFolderColor(
+                    dashboards.find((dashboard) => dashboard.folderColor)
+                      ?.folderColor || DashboardStorage.getFolderColor(folderName),
+                  )
+
+                  return (
+                    <Box
+                      key={folderName}
                       sx={{
-                        color: 'foreground.contrastSecondary',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        display: 'block',
-                        mb: 0.75,
+                        minWidth: 0,
                       }}
                     >
-                      {folderName}
-                    </Typography>
-                    <Stack spacing={0.75}>
-                      {dashboards.slice(0, 2).map((dashboard) => (
-                        <Button
-                          key={dashboard.id}
-                          variant="outlined"
-                          onClick={() => onOpenDashboard(dashboard)}
-                          sx={{
-                            minHeight: 52,
-                            justifyContent: 'flex-start',
-                            alignItems: 'center',
-                            textTransform: 'none',
-                            bgcolor: 'background.default',
-                            color: 'text.primary',
-                            borderColor: 'divider',
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              bgcolor: 'action.hover',
-                            },
-                          }}
-                        >
-                          <Box sx={{ minWidth: 0, textAlign: 'left' }}>
-                            <Typography
-                              variant="body2"
-                              fontWeight={700}
-                              sx={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {dashboard.name}
-                            </Typography>
-                            {dashboard.description && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: folderColor,
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          display: 'block',
+                          mb: 0.75,
+                        }}
+                      >
+                        {folderName}
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {dashboards.slice(0, 2).map((dashboard) => (
+                          <Button
+                            key={dashboard.id}
+                            variant="outlined"
+                            onClick={() => onOpenDashboard(dashboard)}
+                            sx={{
+                              minHeight: 52,
+                              justifyContent: 'flex-start',
+                              alignItems: 'center',
+                              textTransform: 'none',
+                              bgcolor: 'background.default',
+                              color: 'text.primary',
+                              borderColor: 'divider',
+                              '&:hover': {
+                                borderColor: 'primary.main',
+                                bgcolor: 'action.hover',
+                              },
+                            }}
+                          >
+                            <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+                              <Typography
+                                variant="body2"
+                                fontWeight={700}
+                                sx={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {dashboard.name}
+                              </Typography>
+                              {dashboard.description && (
                               <Typography
                                 variant="caption"
                                 sx={{
@@ -414,13 +420,14 @@ const DashboardEmptyState = ({
                               >
                                 {dashboard.description}
                               </Typography>
-                            )}
-                          </Box>
-                        </Button>
-                      ))}
-                    </Stack>
-                  </Box>
-                ))}
+                              )}
+                            </Box>
+                          </Button>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )
+                })}
             </Box>
           </Box>
         )}
@@ -469,29 +476,24 @@ const DashboardOnboardingCoach = ({
       }}
     >
       <Stack spacing={1}>
-        {!isCompleteStep && (
-          <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
-            Step {isLayoutStep ? '4' : '5'}
-          </Typography>
-        )}
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
           {isLayoutStep
-            ? 'Shape your dashboard'
+            ? 'Arrange dashboard'
             : isCompleteStep
-              ? 'Congratulations 🎉'
-              : 'Save this dashboard'}
+              ? 'Dashboard saved'
+              : 'Save dashboard'}
         </Typography>
         <Typography
           variant="body2"
           sx={{ color: 'text.secondary', lineHeight: 1.45 }}
         >
           {isCompleteStep
-            ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards. You’ll be able to find your saved dashboard “${dashboardName}” inside the ${dashboardMenuName} menu.`
+            ? `You can reopen "${dashboardName}" later from ${dashboardMenuName}.`
             : isLayoutStep
-              ? 'Drag the widget tab to a new spot in the dashboard.'
+              ? 'Drag a widget tab or resize a section. Save when the layout is ready.'
               : hasUnsavedChanges
-                ? 'Save the dashboard using the disk icon on the Dashboard tab.'
-                : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
+                ? 'Save this dashboard so it appears in Dashboards.'
+                : 'This dashboard is saved. You can reopen it later from Dashboards.'}
         </Typography>
         {isCompleteStep && (
           <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -511,6 +513,8 @@ const DashboardOnboardingCoach = ({
 }
 
 const Dashboards = () => {
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const {
     openDashboards,
     selectedDashboard,
@@ -587,6 +591,7 @@ const Dashboards = () => {
   const customWidgetPanels = topNavBarWidgets.filter((widget) =>
     widget.name.includes('Custom'),
   )
+  const savedDashboardsLabel = isPhone ? 'Saved' : 'Saved Dashboards'
 
   const loadDashboardOptions = () => {
     ensureStarterDashboards()
@@ -877,7 +882,11 @@ const Dashboards = () => {
       return null
     }
 
-    if (dashboardEditorIsDraft && draftDashboard?.savedDashboardId) {
+    if (dashboardEditorIsDraft) {
+      if (!draftDashboard?.savedDashboardId) {
+        return null
+      }
+
       return (
         DashboardStorage.getAll().find(
           (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
@@ -890,6 +899,11 @@ const Dashboards = () => {
 
   const dashboardEditorSavedDashboard = getSavedDashboardForEditor()
   const dashboardEditorIsUpdating = Boolean(dashboardEditorSavedDashboard)
+  const dashboardEditorHasUnsavedChanges = dashboardEditorSavedDashboard
+    ? dashboardEditorDashboard?.name !== dashboardEditorSavedDashboard.name ||
+      JSON.stringify(dashboardEditorDashboard?.layout) !==
+        JSON.stringify(dashboardEditorSavedDashboard.layout)
+    : true
 
   const populateDashboardDetailsForm = (
     dashboardNameValue: string,
@@ -996,10 +1010,6 @@ const Dashboards = () => {
         ...prev,
         [index]: false,
       }))
-      setDashboardEditing(currentDashboard.id, false)
-      if (dashboardEditorId === currentDashboard.id) {
-        setDashboardEditorId(null)
-      }
     } catch (error) {
       console.error('Error saving dashboard:', error)
     }
@@ -1043,12 +1053,16 @@ const Dashboards = () => {
 
       DashboardStorage.save(dashboardToSave)
       loadDashboardOptions()
-      addDashboard({
-        name: dashboardToSave.name,
-        layout: dashboardToSave.layout,
-      })
-      setDraftDashboard(null)
-      setDashboardEditorId(null)
+      setDraftDashboard((currentDraft) =>
+        currentDraft
+          ? {
+              ...currentDraft,
+              name: dashboardToSave.name,
+              layout: dashboardToSave.layout,
+              savedDashboardId: dashboardToSave.id,
+            }
+          : currentDraft,
+      )
     } catch (error) {
       console.error('Error saving dashboard:', error)
     }
@@ -1118,12 +1132,16 @@ const Dashboards = () => {
 
         DashboardStorage.save(dashboardToSave)
         loadDashboardOptions()
-        addDashboard({
-          name: dashboardToSave.name,
-          layout: dashboardToSave.layout,
-        })
-        setDraftDashboard(null)
-        setDashboardEditorId(null)
+        setDraftDashboard((currentDraft) =>
+          currentDraft
+            ? {
+                ...currentDraft,
+                name: dashboardToSave.name,
+                layout: dashboardToSave.layout,
+                savedDashboardId: dashboardToSave.id,
+              }
+            : currentDraft,
+        )
         handleSaveDialogClose()
       } catch (error) {
         console.error('Error saving dashboard:', error)
@@ -1174,10 +1192,6 @@ const Dashboards = () => {
             ...prev,
             [currentTabIndex]: false,
           }))
-          setDashboardEditing(currentDashboard.id, false)
-          if (dashboardEditorId === currentDashboard.id) {
-            setDashboardEditorId(null)
-          }
         }
 
         handleSaveDialogClose()
@@ -1419,19 +1433,22 @@ const Dashboards = () => {
         >
           <Box
             sx={{
-              height: 56,
+              minHeight: { xs: 104, sm: 56 },
+              height: 'auto',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
               gap: 1,
-              px: 2,
+              px: { xs: 1, sm: 2 },
+              py: { xs: 1, sm: 0 },
               borderBottom: 1,
               borderColor: 'divider',
               bgcolor: 'background.paper',
             }}
           >
-            <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Box sx={{ minWidth: 0, flex: { xs: '1 1 100%', sm: 1 } }}>
               {isEditingDashboardEditorTitle ? (
                 <TextField
                   autoFocus
@@ -1447,7 +1464,7 @@ const Dashboards = () => {
                     'aria-label': 'Dashboard title',
                   }}
                   sx={{
-                    maxWidth: 420,
+                    maxWidth: { xs: '100%', sm: 420 },
                     width: '100%',
                     '& .MuiInputBase-input': {
                       fontSize: '1rem',
@@ -1471,21 +1488,40 @@ const Dashboards = () => {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     cursor: 'text',
-                    maxWidth: 420,
+                    maxWidth: { xs: '100%', sm: 420 },
                   }}
                 >
                   {dashboardEditorDashboard?.name || 'Dashboard'}
                 </Typography>
               )}
             </Box>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              useFlexGap
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                justifyContent: { xs: 'space-between', sm: 'flex-end' },
+              }}
+            >
               <Button
                 variant="outlined"
                 startIcon={<FolderOpenIcon />}
                 onClick={() => setDashboardLibraryOpen(true)}
-                sx={{ textTransform: 'none' }}
+                sx={{
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    mr: { xs: 0.5, sm: 1 },
+                  },
+                }}
               >
-                Saved Dashboards
+                {savedDashboardsLabel}
               </Button>
               <Button
                 variant="outlined"
@@ -1493,8 +1529,13 @@ const Dashboards = () => {
                 onClick={handleDashboardWidgetsMenuOpen}
                 sx={{
                   textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
                   '& .MuiButton-startIcon': {
                     color: 'primary.main',
+                    mr: { xs: 0.5, sm: 1 },
                   },
                 }}
               >
@@ -1508,7 +1549,8 @@ const Dashboards = () => {
                   sx: {
                     bgcolor: 'background.paper',
                     color: 'text.primary',
-                    width: 260,
+                    width: { xs: 'calc(100vw - 32px)', sm: 260 },
+                    maxWidth: 260,
                     boxShadow: 3,
                     border: 1,
                     borderColor: 'divider',
@@ -1580,10 +1622,21 @@ const Dashboards = () => {
                 startIcon={<SaveIcon />}
                 disabled={
                   dashboardEditorIsEmpty ||
-                  (!dashboardEditorIsDraft && dashboardEditorIndex < 0)
+                  (!dashboardEditorIsDraft && dashboardEditorIndex < 0) ||
+                  (dashboardEditorIsUpdating &&
+                    !dashboardEditorHasUnsavedChanges)
                 }
                 onClick={handleDashboardEditorSave}
-                sx={{ textTransform: 'none' }}
+                sx={{
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    mr: { xs: 0.5, sm: 1 },
+                  },
+                }}
               >
                 {dashboardEditorIsUpdating ? 'Update' : 'Save'}
               </Button>
@@ -1599,6 +1652,7 @@ const Dashboards = () => {
                       color: 'text.secondary',
                       border: 1,
                       borderColor: 'divider',
+                      flex: '0 0 36px',
                       width: 36,
                       height: 36,
                       '&:hover': {
@@ -1620,6 +1674,7 @@ const Dashboards = () => {
                   bgcolor: 'background.default',
                   border: 1,
                   borderColor: 'divider',
+                  flex: '0 0 36px',
                   width: 36,
                   height: 36,
                   '&:hover': {
@@ -1667,7 +1722,8 @@ const Dashboards = () => {
                       variant="body1"
                       sx={{ color: 'text.secondary' }}
                     >
-                      Use Widgets, then choose a saved item from My Widgets.
+                      Add a saved widget from Widgets, or choose Create Widget
+                      there first.
                     </Typography>
                   </Paper>
                 </Box>
@@ -1739,14 +1795,14 @@ const Dashboards = () => {
           >
             <Box>
               <Typography variant="h6" fontWeight="medium">
-                Dashboard Details
+                Save Dashboard
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
-                Define the name, folder, color, and tags for this dashboard.
+                Name it and choose where it appears in Dashboards.
               </Typography>
             </Box>
             <IconButton
@@ -2060,7 +2116,7 @@ const Dashboards = () => {
               },
             }}
           >
-            Save Details
+            Save Dashboard
           </Button>
         </DialogActions>
       </Dialog>

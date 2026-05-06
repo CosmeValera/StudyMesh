@@ -190,16 +190,40 @@ const WidgetEditor: React.FC<{
     message: '',
     severity: 'info',
   })
+  const lastComponentToastRef = React.useRef<{
+    key: string
+    timestamp: number
+  } | null>(null)
 
   // Listen for custom toast events from components
   React.useEffect(() => {
     const handleComponentToast = (event: Event) => {
       const customEvent = event as CustomEvent
       if (customEvent.detail) {
+        if (
+          customEvent.detail.editorId &&
+          customEvent.detail.editorId !== editorId
+        ) {
+          return
+        }
+
+        const message = customEvent.detail.message || 'Action performed'
+        const severity = customEvent.detail.severity || 'info'
+        const toastKey = `${severity}:${message}`
+        const now = Date.now()
+
+        if (
+          lastComponentToastRef.current?.key === toastKey &&
+          now - lastComponentToastRef.current.timestamp < 250
+        ) {
+          return
+        }
+
+        lastComponentToastRef.current = { key: toastKey, timestamp: now }
         setComponentToast({
           open: true,
-          message: customEvent.detail.message || 'Action performed',
-          severity: customEvent.detail.severity || 'info',
+          message,
+          severity,
         })
       }
     }
@@ -210,7 +234,7 @@ const WidgetEditor: React.FC<{
     return () => {
       document.removeEventListener('showWidgetToast', handleComponentToast)
     }
-  }, [])
+  }, [editorId])
 
   React.useEffect(() => {
     if (!onboardingActive) {
@@ -329,6 +353,19 @@ const WidgetEditor: React.FC<{
   // Check if we're updating an existing widget. Use the saved widget id instead
   // of the name so a fresh default "New Widget" is still treated as a new save.
   const isUpdating = Boolean(currentSavedWidget)
+
+  const handleToolbarSaveWidget = React.useCallback(
+    (isMajorUpdate?: boolean) => {
+      if (isPhone && !isUpdating) {
+        setSaveDialogDefaultName(widgetData.name || 'New Widget')
+        setShowSaveDialog(true)
+        return
+      }
+
+      handleSaveWidget(isMajorUpdate)
+    },
+    [handleSaveWidget, isPhone, isUpdating, widgetData.name],
+  )
 
   // Check if there are changes to save/update
   const hasChanges = React.useMemo(() => {
@@ -602,7 +639,7 @@ const WidgetEditor: React.FC<{
         showSidebar={showSidebar}
         toggleSidebar={toggleSidebar}
         setViewMode={setViewMode}
-        handleSaveWidget={handleSaveWidget}
+        handleSaveWidget={handleToolbarSaveWidget}
         setShowWidgetList={setShowWidgetList}
         setShowSettingsModal={setShowSettingsModal}
         handleUndo={handleUndo}
@@ -730,7 +767,11 @@ const WidgetEditor: React.FC<{
                 bgcolor: 'background.default',
               }}
             >
-              <CustomWidgetPreview components={widgetData.components} />
+              <CustomWidgetPreview
+                components={widgetData.components}
+                useGlobalToasts
+                toastScope={editorId}
+              />
             </Box>
           </Box>
         )}

@@ -101,20 +101,11 @@ const WidgetEditorExplanationModal: React.FC<
       onCloseTutorial()
     }
 
-    // Programmatically open Add Widget, then click the Widget Editor shortcut.
-    const widgetsButton = document.querySelector(
-      '[data-tutorial-id="widgets-button"]',
+    const createWidgetButton = document.querySelector(
+      '[data-tutorial-id="create-widget-button"]',
     )
-    if (widgetsButton) {
-      ;(widgetsButton as HTMLElement).click()
-      window.setTimeout(() => {
-        const createWidgetButton = document.querySelector(
-          '[data-tutorial-id="create-widget-button"]',
-        )
-        if (createWidgetButton) {
-          ;(createWidgetButton as HTMLElement).click()
-        }
-      }, 0)
+    if (createWidgetButton) {
+      ;(createWidgetButton as HTMLElement).click()
     }
   }
 
@@ -123,7 +114,7 @@ const WidgetEditorExplanationModal: React.FC<
     {
       title: 'Create Widget Quick Start',
       content:
-        'Create one reusable widget first from Add Widget → Open Widget Editor: name it, add building blocks, preview it, save it, then add it to a dashboard from Add Widget.',
+        'Create one reusable widget: add blocks, preview, save, then place it from Create Dashboard > Widgets.',
     },
     {
       title: 'Build The Widget',
@@ -162,13 +153,13 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Save',
           icon: <SaveIcon />,
           content:
-            'Save the widget to the library. Saved widgets are available from Add Widget.',
+            'Save the widget to the library. Saved widgets are available from Create Dashboard > Widgets.',
         },
         {
           title: 'Use In Dashboard',
           icon: <WidgetsIcon />,
           content:
-            'Open Add Widget, choose your saved widget, and place it on the current dashboard.',
+            'Open Create Dashboard, choose Widgets, and place your saved widget on the dashboard.',
         },
       ],
     },

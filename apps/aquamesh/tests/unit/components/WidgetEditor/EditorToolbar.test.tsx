@@ -11,10 +11,8 @@ import {
 import EditorToolbar from '../../../../src/components/WidgetEditor/components/core/EditorToolbar'
 import { ThemeProvider, createTheme } from '@mui/material'
 
-// Mock matchMedia for desktop view: queries containing 'min-width' will match
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
+const setDesktopViewport = () => {
+  vi.mocked(window.matchMedia).mockImplementation((query) => ({
     matches: query.includes('min-width'),
     media: query,
     onchange: null,
@@ -23,7 +21,25 @@ Object.defineProperty(window, 'matchMedia', {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
-  })),
+  }))
+}
+
+const setPhoneViewport = () => {
+  vi.mocked(window.matchMedia).mockImplementation((query) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn(),
 })
 
 // Mock VersionWarningDialog component
@@ -92,6 +108,7 @@ describe('EditorToolbar Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    setDesktopViewport()
   })
 
   it('renders correctly with all toolbar buttons', () => {
@@ -146,6 +163,24 @@ describe('EditorToolbar Component', () => {
     expect(mockProps.handleWidgetNameChange).toHaveBeenCalledWith(
       'Ops Overview',
     )
+  })
+
+  it('hides the widget name editor on phone', () => {
+    setPhoneViewport()
+
+    render(
+      <ThemeProvider theme={darkTheme}>
+        <EditorToolbar {...mockProps} widgetName="Daily Operations" />
+      </ThemeProvider>,
+    )
+
+    expect(screen.queryByText('Daily Operations')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Rename widget' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Save Widget' }),
+    ).toBeInTheDocument()
   })
 
   it('enables undo/redo buttons when canUndo/canRedo are true', () => {

@@ -57,6 +57,19 @@ const openCreateDashboardMock = vi.fn()
 const openOperationsExampleMock = vi.fn()
 const openWidgetMenuMock = vi.fn()
 
+const mockPhoneViewport = () => {
+  vi.mocked(window.matchMedia).mockImplementation((query) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
 const mockDashboardProvider = (
   overrides: Partial<ReturnType<typeof DashboardProviderModule.useDashboards>>,
 ) => {
@@ -75,9 +88,11 @@ const mockDashboardProvider = (
     setSelectedDashboard: vi.fn(),
     removeDashboard: vi.fn(),
     addDashboard: vi.fn(),
+    replaceDashboard: vi.fn(),
     updateLayout: vi.fn(),
     updateDashboardLayout: vi.fn(),
     renameDashboard: vi.fn(),
+    setDashboardEditing: vi.fn(),
     ...overrides,
   })
 }
@@ -85,6 +100,16 @@ const mockDashboardProvider = (
 describe('Dashboards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(window.matchMedia).mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
     localStorage.getItem.mockImplementation((key: string) => {
       if (key === 'userData') {
         return JSON.stringify({
@@ -156,5 +181,96 @@ describe('Dashboards', () => {
     expect(openOperationsExampleMock).not.toHaveBeenCalled()
     expect(openWidgetMenuMock).not.toHaveBeenCalled()
     expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps Create Dashboard builder actions reachable on phones', () => {
+    mockPhoneViewport()
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /create dashboard/i }),
+    )
+
+    expect(screen.getByText('New Dashboard')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^saved$/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /widgets/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^save$/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /edit dashboard details/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /close dashboard editor/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('disables Update in Create Dashboard when the saved dashboard has no changes', () => {
+    const savedLayout = {
+      type: 'row',
+      children: [
+        {
+          type: 'tabset',
+          children: [
+            {
+              type: 'tab',
+              name: 'Pump Widget',
+              component: 'CustomWidget',
+            },
+          ],
+        },
+      ],
+    }
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify([
+          {
+            id: 'saved-dashboard-1',
+            name: 'Operations',
+            layout: savedLayout,
+            createdAt: '2026-05-06T00:00:00.000Z',
+            updatedAt: '2026-05-06T00:00:00.000Z',
+          },
+        ])
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [
+        {
+          id: 'dash1',
+          name: 'Operations',
+          layout: savedLayout,
+        },
+      ],
+      selectedDashboard: 0,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /edit dashboard operations/i }),
+    )
+
+    expect(screen.getByRole('button', { name: /^update$/i })).toBeDisabled()
   })
 })

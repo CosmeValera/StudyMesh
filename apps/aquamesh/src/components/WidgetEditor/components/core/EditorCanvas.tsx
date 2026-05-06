@@ -277,8 +277,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                           ? 'Tap any block in Building Blocks to add it here. You can experiment and adjust it after it lands here.'
                           : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
                         : isPhone
-                        ? 'Use a quick shortcut, then save it for dashboards.'
-                        : 'Use a shortcut for a concrete example, or drag any block from the palette.'}
+                        ? 'Start from a working operations summary, then save it for dashboards.'
+                        : 'Start from a working operations summary, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
@@ -297,7 +297,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         disabled={!onStartOperationsWidget}
                         sx={{ borderRadius: 1, textTransform: 'none' }}
                       >
-                        Example operations template
+                        Daily Operations widget
                       </Button>
                       <Button
                         variant="outlined"
