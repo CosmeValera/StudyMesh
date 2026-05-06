@@ -25,6 +25,7 @@ import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
+import SettingsIcon from '@mui/icons-material/Settings'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
@@ -37,6 +38,7 @@ import ThemeModeToggle from '../shared/ThemeModeToggle'
 import DashboardWidgetExplanationModal from '../tutorial/DashboardWidgetExplanationModal'
 import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
+import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
 
 // Define user data type
 interface UserData {
@@ -101,15 +103,54 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   )
 }
 
+const useStoredBoolean = (key: string, defaultValue: boolean) => {
+  const [value, setValue] = useState<boolean>(() => {
+    try {
+      const savedValue = localStorage.getItem(key)
+      return savedValue ? JSON.parse(savedValue) : defaultValue
+    } catch (error) {
+      console.error(`Failed to parse ${key} from localStorage`, error)
+      return defaultValue
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(value))
+  }, [key, value])
+
+  return [value, setValue] as const
+}
+
 const TopNavBar: React.FC<TopNavBarProps> = () => {
   // State for different dropdown menus
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
   const [widgetEditorPayload, setWidgetEditorPayload] = useState<{
     loadWidget?: CustomWidget
     initialEditMode?: boolean
   } | null>(null)
+  const [showTooltips, setShowTooltips] = useStoredBoolean(
+    'widget-editor-show-tooltips',
+    false,
+  )
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useStoredBoolean(
+    'widget-editor-delete-component-confirmation',
+    true,
+  )
+  const [showDeleteWidgetConfirmation, setShowDeleteWidgetConfirmation] =
+    useStoredBoolean('widget-editor-delete-widget-confirmation', true)
+  const [showComponentPaletteHelp, setShowComponentPaletteHelp] =
+    useStoredBoolean('widget-editor-show-palette-help', false)
+  const [showDeleteDashboardConfirmation, setShowDeleteDashboardConfirmation] =
+    useStoredBoolean('widget-editor-delete-dashboard-confirmation', true)
+  const [showAdvancedInToolbar, setShowAdvancedInToolbar] = useStoredBoolean(
+    'widget-editor-show-advanced-in-toolbar',
+    false,
+  )
+  const [showDeleteTemplateConfirmation, setShowDeleteTemplateConfirmation] =
+    useStoredBoolean('widget-editor-delete-template-confirmation', true)
   const [userData, setUserData] = useState<UserData>({
     id: 'admin',
     name: 'Admin User',
@@ -372,6 +413,22 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <Divider sx={{ borderColor: 'divider' }} />
               <MenuItem
                 onClick={() => {
+                  setIsSettingsOpen(true)
+                  handleClose()
+                }}
+                sx={{ color: 'text.primary' }}
+              >
+                <ListItemIcon>
+                  <SettingsIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
+                </ListItemIcon>
+                Settings
+              </MenuItem>
+              <Divider sx={{ borderColor: 'divider' }} />
+              <MenuItem
+                onClick={() => {
                   setIsHelpOpen(true)
                   handleClose()
                 }}
@@ -403,6 +460,30 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       <DashboardWidgetExplanationModal
         open={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
+      />
+      <SettingsDialog
+        open={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        title="Application Settings"
+        scope="global"
+        showTooltips={showTooltips}
+        onShowTooltipsChange={setShowTooltips}
+        showDeleteConfirmation={showDeleteConfirmation}
+        onShowDeleteConfirmationChange={setShowDeleteConfirmation}
+        showComponentPaletteHelp={showComponentPaletteHelp}
+        onShowComponentPaletteHelpChange={setShowComponentPaletteHelp}
+        showDeleteWidgetConfirmation={showDeleteWidgetConfirmation}
+        onShowDeleteWidgetConfirmationChange={setShowDeleteWidgetConfirmation}
+        showDeleteDashboardConfirmation={showDeleteDashboardConfirmation}
+        onShowDeleteDashboardConfirmationChange={
+          setShowDeleteDashboardConfirmation
+        }
+        showAdvancedInToolbar={showAdvancedInToolbar}
+        onShowAdvancedInToolbarChange={setShowAdvancedInToolbar}
+        showDeleteTemplateConfirmation={showDeleteTemplateConfirmation}
+        onShowDeleteTemplateConfirmationChange={
+          setShowDeleteTemplateConfirmation
+        }
       />
       <Dialog
         fullScreen
@@ -441,6 +522,18 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             <IconButton
               aria-label="Close Create Widget"
               onClick={() => setWidgetEditorOpen(false)}
+              sx={{
+                color: 'text.primary',
+                bgcolor: 'background.default',
+                border: 1,
+                borderColor: 'divider',
+                width: 36,
+                height: 36,
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                  borderColor: 'text.secondary',
+                },
+              }}
             >
               <CloseIcon />
             </IconButton>

@@ -19,15 +19,28 @@ vi.mock(
     default: ({
       editMode,
       viewMode,
+      isUpdating,
+      setShowSettingsModal,
     }: {
       editMode: boolean
       viewMode: string
+      isUpdating: boolean
+      setShowSettingsModal: (show: boolean) => void
     }) => (
       <div
         data-testid="editor-toolbar"
         data-edit-mode={editMode ? 'true' : 'false'}
         data-view-mode={viewMode}
-      />
+        data-is-updating={isUpdating ? 'true' : 'false'}
+      >
+        <button
+          type="button"
+          data-testid="mock-editor-settings"
+          onClick={() => setShowSettingsModal(true)}
+        >
+          Settings
+        </button>
+      </div>
     ),
   }),
 )
@@ -244,5 +257,48 @@ describe('WidgetEditor view modes', () => {
       'data-onboarding-step',
       'choose',
     )
+  })
+
+  it('treats a new default-name widget as a save even when New Widget already exists', () => {
+    hookStateRef.current = {
+      ...createHookState(),
+      widgetData: {
+        name: 'New Widget',
+        components: [
+          { id: 'label-1', type: 'Label', props: { text: 'Status' } },
+        ],
+      },
+      savedWidgets: [
+        {
+          id: 'saved-widget-1',
+          name: 'New Widget',
+          components: [
+            { id: 'label-2', type: 'Label', props: { text: 'Saved' } },
+          ],
+          createdAt: '2026-05-06T00:00:00.000Z',
+          updatedAt: '2026-05-06T00:00:00.000Z',
+          category: 'Other',
+          tags: [],
+          description: '',
+          version: '1.0',
+          author: '',
+        },
+      ],
+    }
+
+    render(<WidgetEditor />)
+
+    expect(screen.getByTestId('editor-toolbar')).toHaveAttribute(
+      'data-is-updating',
+      'false',
+    )
+  })
+
+  it('wires the toolbar settings action to the editor settings state', () => {
+    render(<WidgetEditor />)
+
+    fireEvent.click(screen.getByTestId('mock-editor-settings'))
+
+    expect(hookStateRef.current.setShowSettingsModal).toHaveBeenCalledWith(true)
   })
 })

@@ -76,13 +76,26 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   )
 }
 
+const hasDashboardContent = (layout?: Layout): boolean => {
+  if (!layout) {
+    return false
+  }
+
+  if (layout.type === 'tab' && Boolean(layout.component)) {
+    return true
+  }
+
+  return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
+}
+
 const DashboardOptionsMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [customDashboards, setCustomDashboards] = useState<SavedDashboard[]>([])
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
-  const { addDashboard } = useDashboards()
+  const { addDashboard, openDashboards, replaceDashboard, selectedDashboard } =
+    useDashboards()
 
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -157,6 +170,17 @@ const DashboardOptionsMenu: React.FC = () => {
 
   // Create a dashboard with predefined layout
   const createDashboardWithLayout = (dashboardName: string, layout: Layout) => {
+    const focusedDashboard = openDashboards[selectedDashboard]
+
+    if (focusedDashboard && !hasDashboardContent(focusedDashboard.layout)) {
+      replaceDashboard(selectedDashboard, {
+        name: dashboardName,
+        layout,
+      })
+      handleClose()
+      return
+    }
+
     addDashboard({
       name: dashboardName,
       layout,

@@ -25,6 +25,45 @@ const MAX_HISTORY_STATES = 50
 
 // Debounce delay for name changes in milliseconds
 const NAME_CHANGE_DEBOUNCE_DELAY = 750
+const DEFAULT_WIDGET_NAME = 'New Widget'
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const getUniqueWidgetName = (
+  requestedName: string,
+  widgets: CustomWidget[],
+  ignoreWidgetId?: string,
+) => {
+  const baseName = requestedName.trim() || DEFAULT_WIDGET_NAME
+  const usedNames = new Set(
+    widgets
+      .filter((widget) => widget.id !== ignoreWidgetId)
+      .map((widget) => widget.name),
+  )
+
+  if (!usedNames.has(baseName)) {
+    return baseName
+  }
+
+  const suffixPattern = new RegExp(`^${escapeRegExp(baseName)} \\((\\d+)\\)$`)
+  let nextSuffix = 2
+
+  usedNames.forEach((name) => {
+    const match = name.match(suffixPattern)
+    if (match) {
+      nextSuffix = Math.max(nextSuffix, Number(match[1]) + 1)
+    }
+  })
+
+  let candidate = `${baseName} (${nextSuffix})`
+  while (usedNames.has(candidate)) {
+    nextSuffix += 1
+    candidate = `${baseName} (${nextSuffix})`
+  }
+
+  return candidate
+}
 
 // Interface for tracking widget history
 interface WidgetHistoryItem extends WidgetData {
@@ -133,14 +172,6 @@ export const useWidgetEditor = () => {
     },
   )
 
-  // Require name entry on save (prompt for name) or auto-generate
-  const [requireNameEntryOnSave, setRequireNameEntryOnSave] = useState<boolean>(
-    () => {
-      const saved = localStorage.getItem('widget-editor-require-name-entry')
-      return saved ? JSON.parse(saved) : true
-    },
-  )
-
   // Confirmation dialog for template deletion setting
   const [showDeleteTemplateConfirmation, setShowDeleteTemplateConfirmation] =
     useState<boolean>(() => {
@@ -169,7 +200,7 @@ export const useWidgetEditor = () => {
   )
 
   // Additional flag to prevent duplicate dialog events
-  const [isSaveDialogRequested, setIsSaveDialogRequested] = useState(false)
+  const [, setIsSaveDialogRequested] = useState(false)
 
   // Save settings to localStorage when they change
   useEffect(() => {
@@ -217,13 +248,6 @@ export const useWidgetEditor = () => {
       JSON.stringify(showAdvancedInToolbar),
     )
   }, [showAdvancedInToolbar])
-
-  useEffect(() => {
-    localStorage.setItem(
-      'widget-editor-require-name-entry',
-      JSON.stringify(requireNameEntryOnSave),
-    )
-  }, [requireNameEntryOnSave])
 
   useEffect(() => {
     localStorage.setItem(
@@ -569,7 +593,9 @@ export const useWidgetEditor = () => {
         // Show notification
         setNotification({
           open: true,
-          message: `Widget "${widget.name}" loaded in ${shouldEditMode ? 'edit' : 'preview'} mode`,
+          message: `Widget "${widget.name}" loaded in ${
+            shouldEditMode ? 'edit' : 'preview'
+          } mode`,
           severity: 'success',
         })
       }
@@ -617,7 +643,7 @@ export const useWidgetEditor = () => {
         handleSaveWidget()
       }
 
-      // Toggle edit/preview mode with Ctrl+E
+      // Cycle between editor view modes with Ctrl+E
       if (e.ctrlKey && e.key === 'e') {
         e.preventDefault()
         toggleEditMode()
@@ -964,50 +990,14 @@ export const useWidgetEditor = () => {
     isMajorUpdate: boolean = false,
     requestedName?: string,
   ) => {
-    // Handle default or blank name according to setting
-    let nameToSave = requestedName?.trim() || widgetData.name.trim() || ''
-    const existingNames = savedWidgets.map((w) => w.name)
-    if (!nameToSave || nameToSave === 'New Widget') {
-      if (requireNameEntryOnSave) {
-        // Prevent multiple dialogs by checking flag
-        if (!isSaveDialogRequested) {
-          setIsSaveDialogRequested(true)
-          // Signal to parent component to show the custom save dialog
-          document.dispatchEvent(
-            new CustomEvent('showSaveWidgetDialog', {
-              detail: {
-                defaultName: nameToSave,
-                editorId: editorId,
-              },
-            }),
-          )
-          return // Exit and wait for dialog response
-        } else {
-          // Dialog already requested, wait for response
-          return
-        }
-      } else {
-        // Auto-generate random name
-        do {
-          nameToSave = `Widget-${Math.random().toString(36).substr(2, 5)}`
-        } while (existingNames.includes(nameToSave))
-        setNotification({
-          open: true,
-          message: `Auto-generated name: ${nameToSave}`,
-          severity: 'info',
-        })
-      }
-      // Update widgetData name for saving
-      setWidgetData((prev) => ({ ...prev, name: nameToSave }))
-    }
-    if (!nameToSave) {
-      setNotification({
-        open: true,
-        message: 'Please enter a widget name',
-        severity: 'error',
-      })
-      return
-    }
+    const currentWidget = currentWidgetId
+      ? savedWidgets.find((widget) => widget.id === currentWidgetId)
+      : undefined
+    let nameToSave = getUniqueWidgetName(
+      requestedName ?? widgetData.name,
+      savedWidgets,
+      currentWidget?.id,
+    )
 
     if (widgetData.components.length === 0) {
       setNotification({
@@ -1022,8 +1012,7 @@ export const useWidgetEditor = () => {
       // Always set this flag to prevent save/update operations from being recorded in history
       setIsUndoRedoAction(true)
 
-      // Find if we already have a widget with this name to replace
-      const existingWidget = savedWidgets.find((w) => w.name === nameToSave)
+      const existingWidget = currentWidget
 
       // Prepare basic widget data for saving
       const widgetToSave = {
@@ -1062,6 +1051,7 @@ export const useWidgetEditor = () => {
         if (updatedWidget) {
           setWidgetData((prev) => ({
             ...prev,
+            name: nameToSave,
             id: updatedWidget.id,
             version: updatedWidget.version,
           }))
@@ -1071,7 +1061,9 @@ export const useWidgetEditor = () => {
 
         setNotification({
           open: true,
-          message: `Widget "${nameToSave}" updated successfully${isMajorUpdate ? ' with major version bump' : ''}`,
+          message: `Widget "${nameToSave}" updated successfully${
+            isMajorUpdate ? ' with major version bump' : ''
+          }`,
           severity: 'success',
         })
       }
@@ -1186,7 +1178,9 @@ export const useWidgetEditor = () => {
 
     setNotification({
       open: true,
-      message: `Widget "${widget.name}" loaded in ${shouldEnterEditMode ? 'both' : 'preview'} mode`,
+      message: `Widget "${widget.name}" loaded in ${
+        shouldEnterEditMode ? 'both' : 'preview'
+      } mode`,
       severity: 'success',
     })
   }
@@ -1324,9 +1318,19 @@ export const useWidgetEditor = () => {
     }
   }
 
-  // Toggle edit/preview mode
+  // Cycle through both/edit/preview view modes
   const toggleEditMode = () => {
-    setViewMode((prev) => (prev === 'preview' ? 'edit' : 'preview'))
+    setViewMode((prev) => {
+      if (prev === 'both') {
+        return 'edit'
+      }
+
+      if (prev === 'edit') {
+        return 'preview'
+      }
+
+      return 'both'
+    })
   }
 
   // Utility function to load saved widgets
@@ -1373,8 +1377,6 @@ export const useWidgetEditor = () => {
     setShowDeleteDashboardConfirmation,
     showAdvancedInToolbar,
     setShowAdvancedInToolbar,
-    requireNameEntryOnSave,
-    setRequireNameEntryOnSave,
     deleteConfirmOpen,
     componentToDelete,
     widgetToDelete,

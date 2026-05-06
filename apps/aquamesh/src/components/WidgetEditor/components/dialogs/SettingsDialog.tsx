@@ -33,22 +33,22 @@ import AccentColorPicker from '../../../../theme/AccentColorPicker'
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
-  showTooltips: boolean
-  onShowTooltipsChange: (value: boolean) => void
-  showDeleteConfirmation: boolean
-  onShowDeleteConfirmationChange: (value: boolean) => void
-  showComponentPaletteHelp: boolean
-  onShowComponentPaletteHelpChange: (value: boolean) => void
-  showDeleteWidgetConfirmation: boolean
-  onShowDeleteWidgetConfirmationChange: (value: boolean) => void
+  title?: string
+  scope?: 'editor' | 'global'
+  showTooltips?: boolean
+  onShowTooltipsChange?: (value: boolean) => void
+  showDeleteConfirmation?: boolean
+  onShowDeleteConfirmationChange?: (value: boolean) => void
+  showComponentPaletteHelp?: boolean
+  onShowComponentPaletteHelpChange?: (value: boolean) => void
+  showDeleteWidgetConfirmation?: boolean
+  onShowDeleteWidgetConfirmationChange?: (value: boolean) => void
   showDeleteDashboardConfirmation?: boolean
   onShowDeleteDashboardConfirmationChange?: (value: boolean) => void
   showAdvancedInToolbar?: boolean
   onShowAdvancedInToolbarChange?: (value: boolean) => void
-  showDeleteTemplateConfirmation: boolean
-  onShowDeleteTemplateConfirmationChange: (value: boolean) => void
-  showRequireNameEntryOnSave: boolean
-  onShowRequireNameEntryOnSaveChange: (value: boolean) => void
+  showDeleteTemplateConfirmation?: boolean
+  onShowDeleteTemplateConfirmationChange?: (value: boolean) => void
 }
 
 // Keyboard shortcut card component
@@ -135,9 +135,12 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   onShowAdvancedInToolbarChange,
   showDeleteTemplateConfirmation,
   onShowDeleteTemplateConfirmationChange,
-  showRequireNameEntryOnSave,
-  onShowRequireNameEntryOnSaveChange,
+  title = 'Widget Editor Settings',
+  scope = 'editor',
 }) => {
+  const showEditorSettings = scope === 'editor'
+  const showGlobalSettings = scope === 'global'
+
   // Create safe handlers for all possibly undefined callbacks
   const handleTooltipsChange = (checked: boolean) => {
     if (onShowTooltipsChange) {
@@ -161,10 +164,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     if (onShowDeleteDashboardConfirmationChange) {
       onShowDeleteDashboardConfirmationChange(checked)
     }
-  }
-
-  const handleRequireNameEntryChange = (checked: boolean) => {
-    onShowRequireNameEntryOnSaveChange(checked)
   }
 
   const handleDeleteTemplateConfirmationChange = (checked: boolean) => {
@@ -209,7 +208,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             fontWeight="bold"
             color="text.primary"
           >
-            Widget Editor Settings
+            {title}
           </Typography>
         </Box>
       </DialogTitle>
@@ -221,39 +220,50 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             fontWeight="medium"
             color="text.primary"
           >
-            Interface Options
+            {showGlobalSettings ? 'Application Options' : 'Editor Options'}
           </Typography>
 
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <ColorLensIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Accent Color
-                  </Typography>
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 2 }}
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Pick the highlight color used by navigation, dialogs,
-                  onboarding, and editor controls.
-                </Typography>
-                <Box sx={{ ml: 5 }}>
-                  <AccentColorPicker />
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <ColorLensIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Accent Color
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 2 }}
+                  >
+                    Pick the highlight color used by navigation, dialogs,
+                    onboarding, and editor controls.
+                  </Typography>
+                  <Box sx={{ ml: 5 }}>
+                    <AccentColorPicker />
+                  </Box>
                 </Box>
               </Box>
-            </Box>
-          </Paper>
+            </Paper>
+          )}
 
-          <Paper
+          {showEditorSettings && <Paper
             elevation={0}
             sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
           >
@@ -268,7 +278,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showTooltips}
+                    checked={Boolean(showTooltips)}
                     onChange={(e) => handleTooltipsChange(e.target.checked)}
                     color="primary"
                   />
@@ -283,9 +293,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Paper
+          {showEditorSettings && <Paper
             elevation={0}
             sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
           >
@@ -300,7 +310,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showComponentPaletteHelp}
+                    checked={Boolean(showComponentPaletteHelp)}
                     onChange={(e) =>
                       handleComponentPaletteHelpChange(e.target.checked)
                     }
@@ -316,9 +326,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Paper
+          {showEditorSettings && <Paper
             elevation={0}
             sx={{
               p: 2,
@@ -342,7 +352,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showAdvancedInToolbar}
+                    checked={Boolean(showAdvancedInToolbar)}
                     onChange={(e) =>
                       handleAdvancedInToolbarChange(e.target.checked)
                     }
@@ -359,54 +369,20 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SaveIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Require name entry on save
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showRequireNameEntryOnSave}
-                    onChange={(e) =>
-                      handleRequireNameEntryChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Prompt for a unique widget name when saving a new widget.
-                  Disable to auto-generate a name.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
+          {showGlobalSettings && <Divider sx={{ my: 3 }} />}
 
-          <Divider sx={{ my: 3 }} />
-
-          <Typography
+          {showGlobalSettings && <Typography
             variant="h6"
             gutterBottom
             fontWeight="medium"
             color="text.primary"
           >
             Confirmation Options
-          </Typography>
+          </Typography>}
 
-          <Paper
+          {showGlobalSettings && <Paper
             elevation={0}
             sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
           >
@@ -421,7 +397,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showDeleteDashboardConfirmation}
+                    checked={Boolean(showDeleteDashboardConfirmation)}
                     onChange={(e) =>
                       handleDeleteDashboardConfirmationChange(e.target.checked)
                     }
@@ -437,9 +413,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Paper
+          {showGlobalSettings && <Paper
             elevation={0}
             sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
           >
@@ -454,7 +430,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showDeleteTemplateConfirmation}
+                    checked={Boolean(showDeleteTemplateConfirmation)}
                     onChange={(e) =>
                       handleDeleteTemplateConfirmationChange(e.target.checked)
                     }
@@ -470,9 +446,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Paper
+          {showGlobalSettings && <Paper
             elevation={0}
             sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
           >
@@ -487,9 +463,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showDeleteWidgetConfirmation}
+                    checked={Boolean(showDeleteWidgetConfirmation)}
                     onChange={(e) =>
-                      onShowDeleteWidgetConfirmationChange(e.target.checked)
+                      onShowDeleteWidgetConfirmationChange?.(e.target.checked)
                     }
                     color="primary"
                   />
@@ -504,9 +480,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Paper
+          {showGlobalSettings && <Paper
             elevation={0}
             sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
           >
@@ -521,9 +497,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <Box sx={{ flexGrow: 1 }} />
                   <Switch
-                    checked={showDeleteConfirmation}
+                    checked={Boolean(showDeleteConfirmation)}
                     onChange={(e) =>
-                      onShowDeleteConfirmationChange(e.target.checked)
+                      onShowDeleteConfirmationChange?.(e.target.checked)
                     }
                     color="primary"
                   />
@@ -537,11 +513,13 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Paper>}
 
-          <Divider sx={{ my: 3, display: { xs: 'none', sm: 'flex' } }} />
+          {showEditorSettings && (
+            <Divider sx={{ my: 3, display: { xs: 'none', sm: 'flex' } }} />
+          )}
 
-          <Box
+          {showEditorSettings && <Box
             sx={{
               display: { xs: 'none', sm: 'flex' },
               alignItems: 'center',
@@ -554,9 +532,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             <Typography variant="h6" fontWeight="medium" color="text.primary">
               Keyboard Shortcuts
             </Typography>
-          </Box>
+          </Box>}
 
-          <Paper
+          {showEditorSettings && <Paper
             elevation={0}
             sx={{
               p: 3,
@@ -595,7 +573,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <Grid item xs={12} md={6}>
                 <ShortcutCard
                   icon={<EditIcon />}
-                  title="Switch between edit and preview views"
+                  title="Cycle through both, edit, and preview views"
                   shortcut="Ctrl + E"
                   color="#ff9800"
                 />
@@ -615,7 +593,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 />
               </Grid>
             </Grid>
-          </Paper>
+          </Paper>}
         </Box>
       </DialogContent>
 

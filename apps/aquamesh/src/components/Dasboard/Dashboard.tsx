@@ -28,6 +28,7 @@ import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
+import ConstructionIcon from '@mui/icons-material/Construction'
 import EditIcon from '@mui/icons-material/Edit'
 import ExtensionIcon from '@mui/icons-material/Extension'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
@@ -40,6 +41,7 @@ import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
   OPEN_DASHBOARD_EDITOR_EVENT,
+  OPEN_WIDGET_EDITOR_EVENT,
 } from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
@@ -97,6 +99,45 @@ type DashboardOnboardingStep = 'layout' | 'save' | 'complete' | 'done'
 
 const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
 const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
+const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const getUniqueDashboardName = (
+  requestedName: string,
+  dashboards: SavedDashboard[],
+  ignoreDashboardId?: string,
+) => {
+  const baseName = requestedName.trim() || DEFAULT_DASHBOARD_NAME
+  const usedNames = new Set(
+    dashboards
+      .filter((dashboard) => dashboard.id !== ignoreDashboardId)
+      .map((dashboard) => dashboard.name),
+  )
+
+  if (!usedNames.has(baseName)) {
+    return baseName
+  }
+
+  const suffixPattern = new RegExp(`^${escapeRegExp(baseName)} \\((\\d+)\\)$`)
+  let nextSuffix = 2
+
+  usedNames.forEach((name) => {
+    const match = name.match(suffixPattern)
+    if (match) {
+      nextSuffix = Math.max(nextSuffix, Number(match[1]) + 1)
+    }
+  })
+
+  let candidate = `${baseName} (${nextSuffix})`
+  while (usedNames.has(candidate)) {
+    nextSuffix += 1
+    candidate = `${baseName} (${nextSuffix})`
+  }
+
+  return candidate
+}
 
 const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
   if (!layout) {
@@ -503,7 +544,12 @@ const Dashboards = () => {
     id: string
     name: string
     layout: DashboardLayout
+    savedDashboardId?: string
   } | null>(null)
+  const [isEditingDashboardEditorTitle, setIsEditingDashboardEditorTitle] =
+    useState(false)
+  const [dashboardEditorTitleInput, setDashboardEditorTitleInput] =
+    useState('')
   const [dashboardWidgetsAnchorEl, setDashboardWidgetsAnchorEl] =
     useState<null | HTMLElement>(null)
   const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
@@ -520,6 +566,7 @@ const Dashboards = () => {
       const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
       return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
     })
+  const dashboardEditorTitleCancelRef = useRef(false)
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const selectedDashboardIsEmpty = !hasDashboardContent(
@@ -582,7 +629,7 @@ const Dashboards = () => {
     setDashboardEditorId(null)
     setDraftDashboard({
       id: `draft-dashboard-${Date.now()}`,
-      name: 'Create Dashboard',
+      name: DEFAULT_DASHBOARD_NAME,
       layout: {
         type: 'row',
         weight: 100,
@@ -597,6 +644,7 @@ const Dashboards = () => {
       id: `draft-dashboard-${Date.now()}`,
       name: dashboard.name,
       layout: dashboard.layout,
+      savedDashboardId: dashboard.id,
     })
     loadDashboardOptions()
   }
@@ -628,7 +676,62 @@ const Dashboards = () => {
     }
 
     setDashboardWidgetsAnchorEl(null)
+    setIsEditingDashboardEditorTitle(false)
     setDashboardEditorId(null)
+  }
+
+  const updateDashboardEditorTitle = (nextName: string) => {
+    const trimmedName = nextName.trim()
+
+    if (!trimmedName || !dashboardEditorDashboard) {
+      setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
+      setIsEditingDashboardEditorTitle(false)
+      return
+    }
+
+    if (dashboardEditorIsDraft) {
+      setDraftDashboard((currentDraft) =>
+        currentDraft ? { ...currentDraft, name: trimmedName } : currentDraft,
+      )
+    } else if (dashboardEditorDashboard.id) {
+      renameDashboard(dashboardEditorDashboard.id, trimmedName)
+      if (dashboardEditorIndex >= 0) {
+        setHasChanges((prev) => ({
+          ...prev,
+          [dashboardEditorIndex]: true,
+        }))
+      }
+    }
+
+    setDashboardName((currentName) =>
+      currentName === dashboardEditorDashboard.name ? trimmedName : currentName,
+    )
+    setDashboardEditorTitleInput(trimmedName)
+    setIsEditingDashboardEditorTitle(false)
+  }
+
+  const handleDashboardEditorTitleKeyDown = (
+    event: React.KeyboardEvent,
+  ) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      updateDashboardEditorTitle(dashboardEditorTitleInput)
+    }
+
+    if (event.key === 'Escape') {
+      dashboardEditorTitleCancelRef.current = true
+      setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
+      setIsEditingDashboardEditorTitle(false)
+    }
+  }
+
+  const handleDashboardEditorTitleBlur = () => {
+    if (dashboardEditorTitleCancelRef.current) {
+      dashboardEditorTitleCancelRef.current = false
+      return
+    }
+
+    updateDashboardEditorTitle(dashboardEditorTitleInput)
   }
 
   const addWidgetToDashboardEditor = (
@@ -665,6 +768,11 @@ const Dashboards = () => {
     setDashboardWidgetsAnchorEl(null)
   }
 
+  const handleCreateWidgetFromDashboardEditor = () => {
+    handleDashboardWidgetsMenuClose()
+    window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
+  }
+
   // Check if user is admin on component mount
   useEffect(() => {
     try {
@@ -684,6 +792,12 @@ const Dashboards = () => {
   useEffect(() => {
     loadDashboardOptions()
   }, [])
+
+  useEffect(() => {
+    if (!isEditingDashboardEditorTitle) {
+      setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
+    }
+  }, [dashboardEditorDashboard?.name, isEditingDashboardEditorTitle])
 
   useEffect(() => {
     const handleOpenDashboardEditor = () => {
@@ -758,20 +872,55 @@ const Dashboards = () => {
     }
   }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 
-  const handleSaveDialogOpen = (index: number) => {
+  const getSavedDashboardForEditor = () => {
+    if (!dashboardEditorDashboard) {
+      return null
+    }
+
+    if (dashboardEditorIsDraft && draftDashboard?.savedDashboardId) {
+      return (
+        DashboardStorage.getAll().find(
+          (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
+        ) || null
+      )
+    }
+
+    return DashboardStorage.getByName(dashboardEditorDashboard.name)
+  }
+
+  const dashboardEditorSavedDashboard = getSavedDashboardForEditor()
+  const dashboardEditorIsUpdating = Boolean(dashboardEditorSavedDashboard)
+
+  const populateDashboardDetailsForm = (
+    dashboardNameValue: string,
+    savedDashboard?: SavedDashboard | null,
+  ) => {
+    const nextFolder = savedDashboard?.folder || 'Default'
+
+    setDashboardName(dashboardNameValue)
+    setDashboardFolder(nextFolder)
+    setDashboardFolderColor(
+      normalizeFolderColor(
+        savedDashboard?.folderColor || DashboardStorage.getFolderColor(nextFolder),
+      ),
+    )
+    setDashboardDescription(savedDashboard?.description || '')
+    setDashboardTags(savedDashboard?.tags || ['dashboard'])
+    setIsPublic(isAdmin ? Boolean(savedDashboard?.isPublic) : false)
+    setTagInput('')
+  }
+
+  const handleDashboardDetailsOpen = (index: number) => {
     if (dashboardEditorIsDraft && draftDashboard) {
       if (!hasDashboardContent(draftDashboard.layout)) {
         return
       }
 
       setCurrentTabIndex(null)
-      setDashboardName('')
-      setDashboardFolder('Default')
-      setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
-      setDashboardDescription('')
-      setDashboardTags(['dashboard'])
-      setIsPublic(false)
-      setTagInput('')
+      populateDashboardDetailsForm(
+        draftDashboard.name || DEFAULT_DASHBOARD_NAME,
+        dashboardEditorSavedDashboard,
+      )
       setSaveDialogOpen(true)
       return
     }
@@ -782,46 +931,126 @@ const Dashboards = () => {
       return
     }
 
-    // Check if it's an update of an existing dashboard
     const existingDashboard = DashboardStorage.getByName(currentDashboard.name)
 
     if (existingDashboard) {
-      // Direct update without showing the dialog for existing dashboards
-      try {
-        if (hasDashboardContent(currentDashboard.layout)) {
-          const updatedDashboard: SavedDashboard = {
-            ...existingDashboard,
-            layout: currentDashboard.layout,
-            updatedAt: new Date().toISOString(),
-          }
-
-          DashboardStorage.save(updatedDashboard)
-          loadDashboardOptions()
-
-          // Mark this dashboard as no longer having changes
-          setHasChanges((prev) => ({
-            ...prev,
-            [index]: false,
-          }))
-          setDashboardEditing(currentDashboard.id, false)
-          if (dashboardEditorId === currentDashboard.id) {
-            setDashboardEditorId(null)
-          }
-        }
-      } catch (error) {
-        console.error('Error updating dashboard:', error)
-      }
-    } else {
-      // Show enhanced save dialog for new dashboards
       setCurrentTabIndex(index)
-      setDashboardName(currentDashboard.name || '')
-      setDashboardFolder('Default')
-      setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
-      setDashboardDescription('')
-      setDashboardTags(['dashboard'])
-      setIsPublic(false)
-      setTagInput('')
+      populateDashboardDetailsForm(currentDashboard.name, existingDashboard)
       setSaveDialogOpen(true)
+      return
+    }
+
+    setCurrentTabIndex(index)
+    populateDashboardDetailsForm(
+      currentDashboard.name || DEFAULT_DASHBOARD_NAME,
+      null,
+    )
+    setSaveDialogOpen(true)
+  }
+
+  const saveDashboardDirectly = (index: number) => {
+    const currentDashboard = openDashboards[index]
+
+    if (!currentDashboard || !hasDashboardContent(currentDashboard.layout)) {
+      return
+    }
+
+    try {
+      const existingDashboard = DashboardStorage.getByName(currentDashboard.name)
+      const dashboards = DashboardStorage.getAll()
+      const now = new Date().toISOString()
+      const nameToSave = existingDashboard
+        ? currentDashboard.name
+        : getUniqueDashboardName(
+            currentDashboard.name === 'Dashboard' ? DEFAULT_DASHBOARD_NAME : currentDashboard.name,
+            dashboards,
+          )
+
+      const dashboardToSave: SavedDashboard = existingDashboard
+        ? {
+            ...existingDashboard,
+            name: nameToSave,
+            layout: currentDashboard.layout,
+            updatedAt: now,
+          }
+        : {
+            id: `dashboard-${Date.now()}`,
+            name: nameToSave,
+            folder: 'Default',
+            folderColor: DashboardStorage.getFolderColor('Default'),
+            layout: currentDashboard.layout,
+            tags: ['dashboard'],
+            isPublic: isAdmin ? false : true,
+            createdAt: now,
+            updatedAt: now,
+          }
+
+      DashboardStorage.save(dashboardToSave)
+      loadDashboardOptions()
+
+      if (currentDashboard.name !== nameToSave) {
+        renameDashboard(currentDashboard.id, nameToSave)
+      }
+
+      setHasChanges((prev) => ({
+        ...prev,
+        [index]: false,
+      }))
+      setDashboardEditing(currentDashboard.id, false)
+      if (dashboardEditorId === currentDashboard.id) {
+        setDashboardEditorId(null)
+      }
+    } catch (error) {
+      console.error('Error saving dashboard:', error)
+    }
+  }
+
+  const saveDraftDashboardDirectly = () => {
+    if (!draftDashboard || !hasDashboardContent(draftDashboard.layout)) {
+      return
+    }
+
+    try {
+      const dashboards = DashboardStorage.getAll()
+      const existingDashboard = draftDashboard.savedDashboardId
+        ? dashboards.find(
+            (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
+          )
+        : undefined
+      const now = new Date().toISOString()
+      const nameToSave = existingDashboard
+        ? draftDashboard.name.trim() || existingDashboard.name
+        : getUniqueDashboardName(draftDashboard.name, dashboards)
+
+      const dashboardToSave: SavedDashboard = existingDashboard
+        ? {
+            ...existingDashboard,
+            name: nameToSave,
+            layout: draftDashboard.layout,
+            updatedAt: now,
+          }
+        : {
+            id: `dashboard-${Date.now()}`,
+            name: nameToSave,
+            folder: 'Default',
+            folderColor: DashboardStorage.getFolderColor('Default'),
+            layout: draftDashboard.layout,
+            tags: ['dashboard'],
+            isPublic: isAdmin ? false : true,
+            createdAt: now,
+            updatedAt: now,
+          }
+
+      DashboardStorage.save(dashboardToSave)
+      loadDashboardOptions()
+      addDashboard({
+        name: dashboardToSave.name,
+        layout: dashboardToSave.layout,
+      })
+      setDraftDashboard(null)
+      setDashboardEditorId(null)
+    } catch (error) {
+      console.error('Error saving dashboard:', error)
     }
   }
 
@@ -856,30 +1085,42 @@ const Dashboards = () => {
   }
 
   const handleSaveDashboard = () => {
-    if (draftDashboard && dashboardName.trim() !== '') {
+    if (draftDashboard) {
       if (!hasDashboardContent(draftDashboard.layout)) {
         return
       }
 
       try {
-        const newDashboard: SavedDashboard = {
-          id: `dashboard-${Date.now()}`,
-          name: dashboardName.trim(),
-          folder: dashboardFolder.trim() || 'Default',
+        const dashboards = DashboardStorage.getAll()
+        const existingDashboard = draftDashboard.savedDashboardId
+          ? dashboards.find(
+              (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
+            )
+          : undefined
+        const now = new Date().toISOString()
+        const nameToSave = existingDashboard
+          ? dashboardName.trim() || existingDashboard.name
+          : getUniqueDashboardName(dashboardName, dashboards)
+        const dashboardToSave: SavedDashboard = {
+          ...(existingDashboard || {
+            id: `dashboard-${Date.now()}`,
+            createdAt: now,
+          }),
+          name: nameToSave,
+          folder: normalizeFolderName(dashboardFolder),
           folderColor: normalizeFolderColor(dashboardFolderColor),
           layout: draftDashboard.layout,
           description: dashboardDescription.trim() || undefined,
           tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
           isPublic: isAdmin ? isPublic : true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          updatedAt: now,
         }
 
-        DashboardStorage.save(newDashboard)
+        DashboardStorage.save(dashboardToSave)
         loadDashboardOptions()
         addDashboard({
-          name: newDashboard.name,
-          layout: newDashboard.layout,
+          name: dashboardToSave.name,
+          layout: dashboardToSave.layout,
         })
         setDraftDashboard(null)
         setDashboardEditorId(null)
@@ -890,7 +1131,7 @@ const Dashboards = () => {
       return
     }
 
-    if (currentTabIndex !== null && dashboardName.trim() !== '') {
+    if (currentTabIndex !== null) {
       const currentDashboard = openDashboards[currentTabIndex]
 
       if (!currentDashboard || !hasDashboardContent(currentDashboard.layout)) {
@@ -899,24 +1140,34 @@ const Dashboards = () => {
 
       try {
         if (hasDashboardContent(currentDashboard.layout)) {
+          const dashboards = DashboardStorage.getAll()
+          const existingDashboard = DashboardStorage.getByName(
+            currentDashboard.name,
+          )
+          const now = new Date().toISOString()
+          const nameToSave = existingDashboard
+            ? dashboardName.trim() || existingDashboard.name
+            : getUniqueDashboardName(dashboardName, dashboards)
           const newDashboard: SavedDashboard = {
-            id: `dashboard-${Date.now()}`,
-            name: dashboardName.trim(),
-            folder: dashboardFolder.trim() || 'Default',
+            ...(existingDashboard || {
+              id: `dashboard-${Date.now()}`,
+              createdAt: now,
+            }),
+            name: nameToSave,
+            folder: normalizeFolderName(dashboardFolder),
             folderColor: normalizeFolderColor(dashboardFolderColor),
             layout: currentDashboard.layout,
             description: dashboardDescription.trim() || undefined,
             tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
             isPublic: isAdmin ? isPublic : true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            updatedAt: now,
           }
 
           DashboardStorage.save(newDashboard)
           loadDashboardOptions()
 
           // Update the dashboard name in the TabList
-          renameDashboard(currentDashboard.id, dashboardName)
+          renameDashboard(currentDashboard.id, nameToSave)
 
           // Mark this dashboard as no longer having changes
           setHasChanges((prev) => ({
@@ -938,11 +1189,11 @@ const Dashboards = () => {
 
   const handleDashboardEditorSave = () => {
     if (dashboardEditorIsDraft) {
-      handleSaveDialogOpen(-1)
+      saveDraftDashboardDirectly()
       return
     }
 
-    handleSaveDialogOpen(dashboardEditorIndex)
+    saveDashboardDirectly(dashboardEditorIndex)
   }
 
   return (
@@ -983,7 +1234,7 @@ const Dashboards = () => {
                           size="small"
                           onClick={(ev) => {
                             ev.stopPropagation()
-                            handleSaveDialogOpen(index)
+                            saveDashboardDirectly(index)
                           }}
                           sx={{
                             p: 0.5,
@@ -1180,18 +1431,52 @@ const Dashboards = () => {
               bgcolor: 'background.paper',
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="subtitle1"
-                fontWeight={700}
-                sx={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {dashboardEditorDashboard?.name || 'Dashboard'}
-              </Typography>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              {isEditingDashboardEditorTitle ? (
+                <TextField
+                  autoFocus
+                  size="small"
+                  variant="standard"
+                  value={dashboardEditorTitleInput}
+                  onChange={(event) =>
+                    setDashboardEditorTitleInput(event.target.value)
+                  }
+                  onBlur={handleDashboardEditorTitleBlur}
+                  onKeyDown={handleDashboardEditorTitleKeyDown}
+                  inputProps={{
+                    'aria-label': 'Dashboard title',
+                  }}
+                  sx={{
+                    maxWidth: 420,
+                    width: '100%',
+                    '& .MuiInputBase-input': {
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                    },
+                  }}
+                />
+              ) : (
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={700}
+                  onDoubleClick={() => {
+                    setDashboardEditorTitleInput(
+                      dashboardEditorDashboard?.name || '',
+                    )
+                    setIsEditingDashboardEditorTitle(true)
+                  }}
+                  title="Double-click to rename"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    cursor: 'text',
+                    maxWidth: 420,
+                  }}
+                >
+                  {dashboardEditorDashboard?.name || 'Dashboard'}
+                </Typography>
+              )}
             </Box>
             <Stack direction="row" spacing={1} alignItems="center">
               <Button
@@ -1206,7 +1491,12 @@ const Dashboards = () => {
                 variant="outlined"
                 startIcon={<ExtensionIcon />}
                 onClick={handleDashboardWidgetsMenuOpen}
-                sx={{ textTransform: 'none' }}
+                sx={{
+                  textTransform: 'none',
+                  '& .MuiButton-startIcon': {
+                    color: 'primary.main',
+                  },
+                }}
               >
                 Widgets
               </Button>
@@ -1235,6 +1525,16 @@ const Dashboards = () => {
                 >
                   My Widgets
                 </Typography>
+                <Divider sx={{ borderColor: 'divider' }} />
+                <MenuItem
+                  onClick={handleCreateWidgetFromDashboardEditor}
+                  sx={{ p: 1.5 }}
+                >
+                  <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>
+                    <ConstructionIcon fontSize="small" />
+                  </ListItemIcon>
+                  Create Widget
+                </MenuItem>
                 <Divider sx={{ borderColor: 'divider' }} />
                 {customWidgetPanels.length > 0 ? (
                   customWidgetPanels.map((topNavBarWidget) => (
@@ -1285,11 +1585,48 @@ const Dashboards = () => {
                 onClick={handleDashboardEditorSave}
                 sx={{ textTransform: 'none' }}
               >
-                Save
+                {dashboardEditorIsUpdating ? 'Update' : 'Save'}
               </Button>
+              <TooltipStyled title="Edit dashboard details">
+                <span>
+                  <IconButton
+                    aria-label="Edit dashboard details"
+                    disabled={dashboardEditorIsEmpty}
+                    onClick={() =>
+                      handleDashboardDetailsOpen(dashboardEditorIndex)
+                    }
+                    sx={{
+                      color: 'text.secondary',
+                      border: 1,
+                      borderColor: 'divider',
+                      width: 36,
+                      height: 36,
+                      '&:hover': {
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </TooltipStyled>
               <IconButton
                 aria-label="Close dashboard editor"
                 onClick={closeDashboardEditor}
+                sx={{
+                  color: 'text.primary',
+                  bgcolor: 'background.default',
+                  border: 1,
+                  borderColor: 'divider',
+                  width: 36,
+                  height: 36,
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'text.secondary',
+                  },
+                }}
               >
                 <CloseIcon width={20} height={20} />
               </IconButton>
@@ -1370,7 +1707,7 @@ const Dashboards = () => {
         onOpenInBuilder={loadSavedDashboardInBuilder}
       />
 
-      {/* Save Dashboard Dialog */}
+      {/* Dashboard Details Dialog */}
       <Dialog
         open={saveDialogOpen}
         onClose={handleSaveDialogClose}
@@ -1402,14 +1739,14 @@ const Dashboards = () => {
           >
             <Box>
               <Typography variant="h6" fontWeight="medium">
-                Save Dashboard
+                Dashboard Details
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
-                Configure your dashboard settings
+                Define the name, folder, color, and tags for this dashboard.
               </Typography>
             </Box>
             <IconButton
@@ -1712,8 +2049,7 @@ const Dashboards = () => {
             variant="contained"
             color="primary"
             disabled={
-              dashboardName.trim() === '' ||
-              dashboardName.trim() === 'Dashboard'
+              dashboardName.trim() === ''
             }
             startIcon={<SaveIcon />}
             sx={{
@@ -1724,7 +2060,7 @@ const Dashboards = () => {
               },
             }}
           >
-            Save
+            Save Details
           </Button>
         </DialogActions>
       </Dialog>

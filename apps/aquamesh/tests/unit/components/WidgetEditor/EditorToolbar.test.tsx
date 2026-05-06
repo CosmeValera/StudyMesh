@@ -86,6 +86,8 @@ describe('EditorToolbar Component', () => {
     isLatestVersion: true,
     currentWidgetVersion: '1.0',
     showAdvancedInToolbar: false,
+    widgetName: 'New Widget',
+    handleWidgetNameChange: vi.fn(),
   }
 
   beforeEach(() => {
@@ -100,7 +102,7 @@ describe('EditorToolbar Component', () => {
     )
 
     // Verify basic elements are rendered
-    expect(screen.getByText('Create Widget')).toBeInTheDocument()
+    expect(screen.getByText('New Widget')).toBeInTheDocument()
     expect(screen.getByLabelText('Widget editor view mode')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Both view' }),
@@ -127,6 +129,23 @@ describe('EditorToolbar Component', () => {
     const redoButton = within(redoSpan).getByRole('button')
     expect(undoButton).toBeDisabled()
     expect(redoButton).toBeDisabled()
+  })
+
+  it('edits the widget name from the toolbar on double click', () => {
+    render(
+      <ThemeProvider theme={darkTheme}>
+        <EditorToolbar {...mockProps} widgetName="Daily Operations" />
+      </ThemeProvider>,
+    )
+
+    fireEvent.doubleClick(screen.getByText('Daily Operations'))
+    fireEvent.change(screen.getByTestId('toolbar-widget-name-input'), {
+      target: { value: 'Ops Overview' },
+    })
+
+    expect(mockProps.handleWidgetNameChange).toHaveBeenCalledWith(
+      'Ops Overview',
+    )
   })
 
   it('enables undo/redo buttons when canUndo/canRedo are true', () => {

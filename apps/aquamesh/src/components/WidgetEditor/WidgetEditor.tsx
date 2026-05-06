@@ -7,13 +7,13 @@ import TemplateSelectionDialog from './components/dialogs/TemplateSelectionDialo
 import ExportImportDialog from './components/dialogs/ExportImportDialog'
 import WidgetVersioningDialog from './components/dialogs/WidgetVersioningDialog'
 import ComponentSearchDialog from './components/dialogs/ComponentSearchDialog'
-import SettingsDialog from './components/dialogs/SettingsDialog'
 import EditorToolbar from './components/core/EditorToolbar'
 import ComponentPalette from './components/core/ComponentPalette'
 import EditorCanvas from './components/core/EditorCanvas'
 import CustomWidgetPreview from './CustomWidget'
 import NotificationSystem from './components/ui/NotificationSystem'
 import DeleteConfirmationDialog from './components/dialogs/DeleteConfirmationDialog'
+import SettingsDialog from './components/dialogs/SettingsDialog'
 import { CustomWidget } from './WidgetStorage'
 import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
@@ -53,20 +53,12 @@ const WidgetEditor: React.FC<{
     showTooltips,
     setShowTooltips,
     showDeleteConfirmation,
-    setShowDeleteConfirmation,
     showComponentPaletteHelp,
     setShowComponentPaletteHelp,
     deleteConfirmOpen,
-    showDeleteWidgetConfirmation,
-    setShowDeleteWidgetConfirmation,
-    showDeleteDashboardConfirmation,
-    setShowDeleteDashboardConfirmation,
     showAdvancedInToolbar,
     setShowAdvancedInToolbar,
     showDeleteTemplateConfirmation,
-    setShowDeleteTemplateConfirmation,
-    requireNameEntryOnSave,
-    setRequireNameEntryOnSave,
 
     // Event handlers
     handleDragStart,
@@ -261,7 +253,9 @@ const WidgetEditor: React.FC<{
     const widget = customProps?.loadWidget
 
     if (widget) {
-      const initialWidgetKey = `${widget.id}-${customProps.initialEditMode ? 'edit' : 'preview'}`
+      const initialWidgetKey = `${widget.id}-${
+        customProps.initialEditMode ? 'edit' : 'preview'
+      }`
 
       if (loadedInitialWidgetKeyRef.current === initialWidgetKey) {
         return
@@ -324,10 +318,17 @@ const WidgetEditor: React.FC<{
     })
   }
 
-  // Check if we're updating an existing widget
-  const isUpdating = savedWidgets.some(
-    (widget) => widget.name === widgetData.name,
+  const currentSavedWidget = React.useMemo(
+    () =>
+      widgetData.id
+        ? savedWidgets.find((widget) => widget.id === widgetData.id)
+        : undefined,
+    [savedWidgets, widgetData.id],
   )
+
+  // Check if we're updating an existing widget. Use the saved widget id instead
+  // of the name so a fresh default "New Widget" is still treated as a new save.
+  const isUpdating = Boolean(currentSavedWidget)
 
   // Check if there are changes to save/update
   const hasChanges = React.useMemo(() => {
@@ -335,20 +336,19 @@ const WidgetEditor: React.FC<{
       return true // Always enable save for new widgets
     }
 
-    // Find the saved widget with the same name
-    const savedWidget = savedWidgets.find(
-      (widget) => widget.name === widgetData.name,
-    )
-    if (!savedWidget) {
+    if (!currentSavedWidget) {
       return true
     }
 
     const currentJson = JSON.stringify(widgetData.components)
-    const savedJson = JSON.stringify(savedWidget.components)
+    const savedJson = JSON.stringify(currentSavedWidget.components)
 
     // If we're previewing an older version without edits, treat as no changes
-    if (widgetData.version && widgetData.version !== savedWidget.version) {
-      const versions = WidgetStorage.getWidgetVersions(savedWidget.id)
+    if (
+      widgetData.version &&
+      widgetData.version !== currentSavedWidget.version
+    ) {
+      const versions = WidgetStorage.getWidgetVersions(currentSavedWidget.id)
       const matching = versions.find((v) => v.version === widgetData.version)
       if (matching && JSON.stringify(matching.components) === currentJson) {
         return false
@@ -357,7 +357,7 @@ const WidgetEditor: React.FC<{
 
     // Otherwise, compare current components to saved
     return savedJson !== currentJson
-  }, [widgetData, savedWidgets, isUpdating])
+  }, [currentSavedWidget, widgetData, isUpdating])
 
   React.useEffect(() => {
     if (
@@ -382,13 +382,11 @@ const WidgetEditor: React.FC<{
     if (!isUpdating) {
       return true // New widgets are always the latest
     }
-    // Find the saved widget for history lookup
-    const currentWidget = savedWidgets.find((w) => w.name === widgetData.name)
-    if (!currentWidget) {
+    if (!currentSavedWidget) {
       return true
     }
     // Get stored history versions (sorted newest first)
-    const versions = WidgetStorage.getWidgetVersions(currentWidget.id)
+    const versions = WidgetStorage.getWidgetVersions(currentSavedWidget.id)
     if (versions.length === 0) {
       return true
     }
@@ -398,7 +396,8 @@ const WidgetEditor: React.FC<{
       return [major, minor]
     }
     // Use loaded widgetData.version for UI (preview or saved), fallback to stored version
-    const loadedVersion = widgetData.version ?? currentWidget.version ?? '0.0'
+    const loadedVersion =
+      widgetData.version ?? currentSavedWidget.version ?? '0.0'
     const [majorCurr, minorCurr] = parseVersion(loadedVersion)
     const [majorHist, minorHist] = parseVersion(versions[0].version)
     // If loaded version is at or ahead of stored latest, consider latest
@@ -406,7 +405,7 @@ const WidgetEditor: React.FC<{
       majorCurr > majorHist ||
       (majorCurr === majorHist && minorCurr >= minorHist)
     )
-  }, [widgetData.version, savedWidgets, isUpdating])
+  }, [currentSavedWidget, widgetData.version, isUpdating])
 
   // Get the current widget version
   const currentWidgetVersion = React.useMemo(() => {
@@ -450,12 +449,11 @@ const WidgetEditor: React.FC<{
 
   // Open versioning dialog for a widget, marking the loaded preview version if any
   const handleOpenVersioningDialog = () => {
-    const currentWidget = savedWidgets.find((w) => w.name === widgetData.name)
-    if (currentWidget) {
+    if (currentSavedWidget) {
       // Prepare widget for dialog to reflect any previewed version and current components
       const dialogWidget: CustomWidget = {
-        ...currentWidget,
-        version: widgetData.version ?? currentWidget.version,
+        ...currentSavedWidget,
+        version: widgetData.version ?? currentSavedWidget.version,
         components: widgetData.components,
       }
       setCurrentVersioningWidget(dialogWidget)
@@ -606,11 +604,11 @@ const WidgetEditor: React.FC<{
         setViewMode={setViewMode}
         handleSaveWidget={handleSaveWidget}
         setShowWidgetList={setShowWidgetList}
+        setShowSettingsModal={setShowSettingsModal}
         handleUndo={handleUndo}
         handleRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
-        setShowSettingsModal={setShowSettingsModal}
         isUpdating={isUpdating}
         hasChanges={hasChanges}
         isEmpty={widgetData.components.length === 0}
@@ -624,6 +622,8 @@ const WidgetEditor: React.FC<{
         isLatestVersion={isLatestVersion}
         currentWidgetVersion={currentWidgetVersion}
         showAdvancedInToolbar={showAdvancedInToolbar}
+        widgetName={widgetData.name}
+        handleWidgetNameChange={handleWidgetNameChange}
       />
 
       {/* Main editor area */}
@@ -664,7 +664,6 @@ const WidgetEditor: React.FC<{
             <EditorCanvas
               editMode={editMode}
               widgetData={widgetData}
-              setWidgetData={setWidgetData}
               dropAreaRef={dropAreaRef}
               handleDrop={handleGuidedDrop}
               handleDragOver={handleDragOver}
@@ -682,7 +681,6 @@ const WidgetEditor: React.FC<{
               handleContainerDrop={handleContainerDrop}
               handleToggleFieldsetCollapse={handleToggleFieldsetCollapse}
               showSidebar={showSidebar}
-              handleWidgetNameChange={handleWidgetNameChange}
               activeContainerId={activeContainerId}
               onSelectContainer={setActiveContainerId}
               onAddStarterComponent={handleGuidedDirectAdd}
@@ -770,19 +768,19 @@ const WidgetEditor: React.FC<{
           isUpdating
             ? savedWidgets.find((w) => w.name === widgetData.name)
             : widgetData.components.length > 0
-              ? ({
-                  id: widgetData.id || `widget-${Date.now()}`,
-                  name: widgetData.name,
-                  components: widgetData.components,
-                  createdAt: widgetData.createdAt
-                    ? new Date(widgetData.createdAt).toISOString()
-                    : new Date().toISOString(),
-                  updatedAt: widgetData.updatedAt
-                    ? new Date(widgetData.updatedAt).toISOString()
-                    : new Date().toISOString(),
-                  version: widgetData.version || '1.0',
-                } as CustomWidget)
-              : null
+            ? ({
+                id: widgetData.id || `widget-${Date.now()}`,
+                name: widgetData.name,
+                components: widgetData.components,
+                createdAt: widgetData.createdAt
+                  ? new Date(widgetData.createdAt).toISOString()
+                  : new Date().toISOString(),
+                updatedAt: widgetData.updatedAt
+                  ? new Date(widgetData.updatedAt).toISOString()
+                  : new Date().toISOString(),
+                version: widgetData.version || '1.0',
+              } as CustomWidget)
+            : null
         }
         showDeleteTemplateConfirmation={showDeleteTemplateConfirmation}
       />
@@ -813,26 +811,14 @@ const WidgetEditor: React.FC<{
       <SettingsDialog
         open={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+        title="Widget Editor Settings"
+        scope="editor"
         showTooltips={showTooltips}
         onShowTooltipsChange={setShowTooltips}
-        showDeleteConfirmation={showDeleteConfirmation}
-        onShowDeleteConfirmationChange={setShowDeleteConfirmation}
         showComponentPaletteHelp={showComponentPaletteHelp}
         onShowComponentPaletteHelpChange={setShowComponentPaletteHelp}
-        showDeleteWidgetConfirmation={showDeleteWidgetConfirmation}
-        onShowDeleteWidgetConfirmationChange={setShowDeleteWidgetConfirmation}
-        showDeleteDashboardConfirmation={showDeleteDashboardConfirmation}
-        onShowDeleteDashboardConfirmationChange={
-          setShowDeleteDashboardConfirmation
-        }
         showAdvancedInToolbar={showAdvancedInToolbar}
         onShowAdvancedInToolbarChange={setShowAdvancedInToolbar}
-        showDeleteTemplateConfirmation={showDeleteTemplateConfirmation}
-        onShowDeleteTemplateConfirmationChange={
-          setShowDeleteTemplateConfirmation
-        }
-        showRequireNameEntryOnSave={requireNameEntryOnSave}
-        onShowRequireNameEntryOnSaveChange={setRequireNameEntryOnSave}
       />
 
       <DeleteConfirmationDialog

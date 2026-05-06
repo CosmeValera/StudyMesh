@@ -3,14 +3,12 @@ import {
   Box,
   Typography,
   Paper,
-  TextField,
   Button,
   Stack,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
-import EditIcon from '@mui/icons-material/Edit'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import InputIcon from '@mui/icons-material/Input'
 import TextFieldsIcon from '@mui/icons-material/TextFields'
@@ -28,16 +26,6 @@ interface EditorCanvasProps {
     updatedAt?: number
     version?: string
   }
-  setWidgetData: React.Dispatch<
-    React.SetStateAction<{
-      name: string
-      components: ComponentData[]
-      id?: string
-      createdAt?: number
-      updatedAt?: number
-      version?: string
-    }>
-  >
   dropAreaRef: React.RefObject<HTMLDivElement>
   handleDrop: (e: React.DragEvent) => void
   handleDragOver: (e: React.DragEvent) => void
@@ -56,7 +44,6 @@ interface EditorCanvasProps {
   /** Toggle collapse for FieldSet components */
   handleToggleFieldsetCollapse: (id: string) => void
   showSidebar: boolean
-  handleWidgetNameChange?: (name: string) => void
   activeContainerId?: string | null
   onSelectContainer?: (containerId: string) => void
   onAddStarterComponent?: (componentType: string) => void
@@ -69,7 +56,6 @@ interface EditorCanvasProps {
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
   editMode,
   widgetData,
-  setWidgetData,
   dropAreaRef,
   handleDrop,
   handleDragOver,
@@ -87,7 +73,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   handleContainerDrop,
   handleToggleFieldsetCollapse,
   showSidebar,
-  handleWidgetNameChange,
   activeContainerId,
   onSelectContainer,
   onAddStarterComponent,
@@ -159,128 +144,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         width: '100%',
       }}
     >
-      {/* Compact widget title header */}
-      <Paper
-        elevation={0}
-        sx={{
-          mb: isPhone ? 1 : 1.5,
-          px: isPhone ? 1 : 1.25,
-          py: isPhone ? 0.75 : 1,
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 1,
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={isPhone ? 0.75 : 1}
-          alignItems="center"
-          sx={{ minWidth: 0 }}
-        >
-          {editMode && (
-            <EditIcon
-              aria-hidden="true"
-              sx={{
-                color: 'primary.dark',
-                fontSize: isPhone ? 18 : 20,
-                flexShrink: 0,
-              }}
-            />
-          )}
-
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography
-              variant="caption"
-              component="div"
-              sx={{
-                color: 'text.secondary',
-                fontWeight: 700,
-                lineHeight: 1.1,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Widget name
-            </Typography>
-
-            {editMode ? (
-              <TextField
-                aria-label="Widget name"
-                placeholder="Name this widget"
-                value={widgetData.name}
-                onChange={(e) =>
-                  handleWidgetNameChange
-                    ? handleWidgetNameChange(e.target.value)
-                    : setWidgetData((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                }
-                variant="standard"
-                fullWidth
-                size="small"
-                data-testid="widget-name-input"
-                helperText={
-                  widgetData.name.trim()
-                    ? isPhone
-                      ? ''
-                      : 'Shown in dashboards and your saved widget library.'
-                    : 'Required before saving.'
-                }
-                FormHelperTextProps={{
-                  sx: {
-                    mx: 0,
-                    mt: 0.25,
-                    color: widgetData.name.trim()
-                      ? 'text.secondary'
-                      : 'warning.dark',
-                    fontSize: isPhone ? '0.68rem' : '0.72rem',
-                    lineHeight: 1.2,
-                  },
-                }}
-                onFocus={(e) => {
-                  e.target.select()
-                }}
-                sx={{
-                  mt: -0.25,
-                  '& .MuiInputBase-input': {
-                    color: 'text.primary',
-                    fontWeight: 700,
-                    fontSize: isPhone ? '0.95rem' : '1.05rem',
-                    lineHeight: 1.25,
-                    py: 0.25,
-                  },
-                  '& .MuiInput-underline:before': {
-                    borderBottomColor: 'transparent',
-                  },
-                  '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
-                    borderBottomColor: 'primary.light',
-                  },
-                  '& .MuiInput-underline:after': {
-                    borderBottomColor: 'primary.main',
-                  },
-                }}
-              />
-            ) : (
-              <Typography
-                variant={isPhone ? 'body2' : 'subtitle1'}
-                sx={{
-                  color: 'text.primary',
-                  fontWeight: 700,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  userSelect: 'none',
-                }}
-              >
-                {widgetData.name || 'Untitled widget'}
-              </Typography>
-            )}
-          </Box>
-        </Stack>
-      </Paper>
-
       {(showOnboardingSavePrompt || showOnboardingPlacePrompt) && (
         <Paper
           data-testid="widget-editor-save-coach"
@@ -321,7 +184,11 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                 }}
               >
                 {showOnboardingPlacePrompt
-                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget called ${widgetData.name || 'My First Widget'}, and click it to place it on the dashboard.`
+                  ? `Open ${
+                      isPhone ? 'Add' : 'Add Widget'
+                    }, choose the widget called ${
+                      widgetData.name || 'My First Widget'
+                    }, and click it to place it on the dashboard.`
                   : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the widget when it is ready to be reused.'}
               </Typography>
             </Box>
@@ -410,8 +277,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                           ? 'Tap any block in Building Blocks to add it here. You can experiment and adjust it after it lands here.'
                           : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
                         : isPhone
-                          ? 'Use a quick shortcut, then save it for dashboards.'
-                          : 'Use a shortcut for a concrete example, or drag any block from the palette.'}
+                        ? 'Use a quick shortcut, then save it for dashboards.'
+                        : 'Use a shortcut for a concrete example, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
@@ -512,8 +379,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                   ? isDragging
                     ? 'Drop it into your widget'
                     : showSidebar
-                      ? 'Add text, inputs, buttons, charts, and layout containers. Save it to reuse in any dashboard.'
-                      : 'Open the building blocks panel to add text, inputs, buttons, charts, and layout containers.'
+                    ? 'Add text, inputs, buttons, charts, and layout containers. Save it to reuse in any dashboard.'
+                    : 'Open the building blocks panel to add text, inputs, buttons, charts, and layout containers.'
                   : 'This widget has no saved content yet'}
               </Typography>
             )}
