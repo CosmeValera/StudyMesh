@@ -1118,7 +1118,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
           legendColor: '#7B1FA2',
           useCustomBorderColor: true,
           useCustomLegendColor: true,
-          padding: 2,
+          padding: 1.5,
           borderRadius: 8,
         },
         children: [
@@ -1126,8 +1126,8 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
             id: 'template-math-theory-text',
             type: 'Label',
             props: {
-              text: 'A derivative measures the rate of change of a function.\n\nPower rule: d/dx xⁿ = n·xⁿ⁻¹\nChain rule: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct rule: (fg)′ = f′g + fg′',
-              variant: 'body1',
+              text: 'Derivative = rate of change.\nPower: d/dx xⁿ = n·xⁿ⁻¹\nChain: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct: (fg)′ = f′g + fg′',
+              variant: 'body2',
               whiteSpace: 'pre-line',
             },
           },

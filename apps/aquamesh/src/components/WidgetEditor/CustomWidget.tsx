@@ -986,7 +986,13 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 
   return (
     <Paper
-      sx={{ p: 2, height: '100%', overflow: 'auto', position: 'relative' }}
+      sx={{
+        p: 2,
+        height: '100%',
+        boxSizing: 'border-box',
+        overflow: 'auto',
+        position: 'relative',
+      }}
     >
       {showWidgetName && widgetName && (
         <Typography variant="subtitle1" sx={{ mb: 2 }}>

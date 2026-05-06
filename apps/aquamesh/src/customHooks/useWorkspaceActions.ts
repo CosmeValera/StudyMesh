@@ -28,7 +28,7 @@ interface SavedDashboardRecord {
   updatedAt: string
 }
 
-const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v2'
+const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v4'
 
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
@@ -113,10 +113,20 @@ const saveTemplateWidget = ({
   tags: string[]
   refreshExisting?: boolean
 }) => {
-  let widget = WidgetStorage.getAllWidgets().find(
+  const savedWidgets = WidgetStorage.getAllWidgets()
+  let widget = savedWidgets.find(
     (savedWidget) => savedWidget.name === widgetName,
   )
   const template = cloneTemplate(templateId)
+
+  if (
+    widget &&
+    savedWidgets.filter((savedWidget) => savedWidget.id === widget!.id).length >
+      1
+  ) {
+    WidgetStorage.deleteWidget(widget.id)
+    widget = undefined
+  }
 
   if (template) {
     if (!widget) {
