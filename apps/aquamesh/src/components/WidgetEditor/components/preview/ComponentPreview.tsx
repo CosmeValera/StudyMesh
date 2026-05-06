@@ -13,7 +13,7 @@ import {
   Tooltip,
   InputAdornment,
   Badge,
-  useMediaQuery
+  useMediaQuery,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
@@ -39,7 +39,7 @@ import TooltipStyled from '../../../TooltipStyled'
 import theme from '../../../../theme'
 
 // Fix for type issues with MUI icons
-type IconType = React.ElementType;
+type IconType = React.ElementType
 
 const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   component,
@@ -62,12 +62,15 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   onToggleVisibility,
   showWidgetName,
   activeContainerId,
-  onSelectContainer
+  onSelectContainer,
 }) => {
-  const isCurrentTarget = dropTarget.id === component.id && dropTarget.isHovering
+  const isCurrentTarget =
+    dropTarget.id === component.id && dropTarget.isHovering
   const isHidden = Boolean(component.hidden)
   const isActiveContainer = activeContainerId === component.id
-  const isContainer = ['FieldSet', 'FlexBox', 'GridBox'].includes(component.type)
+  const isContainer = ['FieldSet', 'FlexBox', 'GridBox'].includes(
+    component.type,
+  )
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const actionButtonSize = isPhone ? 32 : 28
   const actionIconSize = isPhone ? '1.15rem' : '1.3rem'
@@ -79,14 +82,16 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   const renderComponent = () => {
     switch (component.type) {
       case 'SwitchEnable': {
-        const labelValue = component.props.label as string;
-        const customLabel = component.props.customLabelColor as string | undefined;
+        const labelValue = component.props.label as string
+        const customLabel = component.props.customLabelColor as
+          | string
+          | undefined
         // Always render label with custom label color or default black
         const labelNode = (
           <Typography component="span" sx={{ color: customLabel ?? '#000000' }}>
             {labelValue}
           </Typography>
-        );
+        )
         return (
           <FormControlLabel
             control={
@@ -94,44 +99,66 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 defaultChecked={component.props.defaultChecked as boolean}
                 disabled={Boolean(component.props.disabled)}
                 size={component.props.size as 'small' | 'medium'}
-                sx={component.props.useCustomColor ? {
-                  color: component.props.customColor as string,
-                  '& .MuiSwitch-track': {
-                    backgroundColor: component.props.customTrackColor as string
-                  }
-                } : undefined}
+                sx={
+                  component.props.useCustomColor
+                    ? {
+                        color: component.props.customColor as string,
+                        '& .MuiSwitch-track': {
+                          backgroundColor: component.props
+                            .customTrackColor as string,
+                        },
+                      }
+                    : undefined
+                }
                 onChange={(e) => {
                   if (component.props.showToast) {
-                    const isChecked = (e.target as HTMLInputElement).checked;
+                    const isChecked = (e.target as HTMLInputElement).checked
                     const message = isChecked
-                      ? (component.props.onMessage as string || 'Switch turned ON')
-                      : (component.props.offMessage as string || 'Switch turned OFF');
-                    const severity = component.props.toastSeverity as string || 'info';
+                      ? (component.props.onMessage as string) ||
+                        'Switch turned ON'
+                      : (component.props.offMessage as string) ||
+                        'Switch turned OFF'
+                    const severity =
+                      (component.props.toastSeverity as string) || 'info'
                     const customEvent = new CustomEvent('showWidgetToast', {
                       detail: { message, severity },
-                      bubbles: true
-                    });
-                    document.dispatchEvent(customEvent);
+                      bubbles: true,
+                    })
+                    document.dispatchEvent(customEvent)
                   }
                 }}
               />
             }
             label={labelNode}
-            labelPlacement={component.props.labelPlacement as 'end' | 'start' | 'top' | 'bottom' || 'end'}
+            labelPlacement={
+              (component.props.labelPlacement as
+                | 'end'
+                | 'start'
+                | 'top'
+                | 'bottom') || 'end'
+            }
           />
-        );
+        )
       }
       case 'FieldSet': {
-        const isCollapsed = component.props.collapsed as boolean;
-        const borderStyle = component.props.borderStyle as string || 'solid';
-        const borderRadius = (component.props.borderRadius as number) || 4;
-        const padding = (component.props.padding as number) || 2;
-        const useCustomBorderColor = Boolean(component.props.useCustomBorderColor);
-        const useCustomLegendColor = Boolean(component.props.useCustomLegendColor);
-        const borderColor = useCustomBorderColor ? (component.props.borderColor as string || '#cccccc') : '#cccccc';
-        const legendColor = useCustomLegendColor ? (component.props.legendColor as string || '#00C49A') : '#00C49A';
-        const iconPosition = component.props.iconPosition as string || 'start';
-        const animated = component.props.animated !== false;
+        const isCollapsed = component.props.collapsed as boolean
+        const borderStyle = (component.props.borderStyle as string) || 'solid'
+        const borderRadius = (component.props.borderRadius as number) || 4
+        const padding = (component.props.padding as number) || 2
+        const useCustomBorderColor = Boolean(
+          component.props.useCustomBorderColor,
+        )
+        const useCustomLegendColor = Boolean(
+          component.props.useCustomLegendColor,
+        )
+        const borderColor = useCustomBorderColor
+          ? (component.props.borderColor as string) || '#cccccc'
+          : '#cccccc'
+        const legendColor = useCustomLegendColor
+          ? (component.props.legendColor as string) || '#00C49A'
+          : '#00C49A'
+        const iconPosition = (component.props.iconPosition as string) || 'start'
+        const animated = component.props.animated !== false
 
         return (
           <Box
@@ -141,7 +168,9 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               borderRadius: borderRadius,
               p: padding,
               mt: 1.5, // Space for legend
-              bgcolor: isCurrentTarget ? 'rgba(0, 188, 162, 0.15)' : 'transparent',
+              bgcolor: isCurrentTarget
+                ? 'rgba(0, 188, 162, 0.15)'
+                : 'transparent',
               borderStyle: isCurrentTarget ? 'dashed' : borderStyle,
               transition: 'background-color 0.2s, border-color 0.2s',
             }}
@@ -151,15 +180,17 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             onDrop={(e) => handleContainerDrop(e, component.id)}
           >
             {/* Legend */}
-            <Box sx={{
-              position: 'absolute',
-              top: -10,
-              left: 10,
-              bgcolor: 'background.paper',
-              px: 1,
-              display: 'flex',
-              alignItems: 'center'
-            }}>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: -10,
+                left: 10,
+                bgcolor: 'background.paper',
+                px: 1,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
               {iconPosition === 'start' && (
                 <Box
                   component="span"
@@ -167,16 +198,20 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     cursor: 'pointer',
                     color: legendColor,
                     display: 'inline-flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
                   }}
                   onClick={(e) => {
-                    e.stopPropagation();
+                    e.stopPropagation()
                     if (onToggleCollapse) {
-                      onToggleCollapse(component.id);
+                      onToggleCollapse(component.id)
                     }
                   }}
                 >
-                  {isCollapsed ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowUpIcon fontSize="small" />}
+                  {isCollapsed ? (
+                    <KeyboardArrowDownIcon fontSize="small" />
+                  ) : (
+                    <KeyboardArrowUpIcon fontSize="small" />
+                  )}
                 </Box>
               )}
 
@@ -186,16 +221,16 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   color: legendColor,
                   fontWeight: 'bold',
                   mx: 0.5,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.stopPropagation()
                   if (onToggleCollapse) {
-                    onToggleCollapse(component.id);
+                    onToggleCollapse(component.id)
                   }
                 }}
               >
-                {component.props.legend as string || 'Field Set'}
+                {(component.props.legend as string) || 'Field Set'}
               </Typography>
 
               {iconPosition === 'end' && (
@@ -205,16 +240,20 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     cursor: 'pointer',
                     color: legendColor,
                     display: 'inline-flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
                   }}
                   onClick={(e) => {
-                    e.stopPropagation();
+                    e.stopPropagation()
                     if (onToggleCollapse) {
-                      onToggleCollapse(component.id);
+                      onToggleCollapse(component.id)
                     }
                   }}
                 >
-                  {isCollapsed ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowUpIcon fontSize="small" />}
+                  {isCollapsed ? (
+                    <KeyboardArrowDownIcon fontSize="small" />
+                  ) : (
+                    <KeyboardArrowUpIcon fontSize="small" />
+                  )}
                 </Box>
               )}
             </Box>
@@ -250,15 +289,25 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 <Box
                   sx={{
                     p: 2,
-                    border: editMode ? '1px dashed rgba(255, 255, 255, 0.2)' : 'none',
+                    border: editMode
+                      ? '1px dashed rgba(255, 255, 255, 0.2)'
+                      : 'none',
                     borderRadius: 1,
-                    bgcolor: isCurrentTarget ? 'rgba(0, 188, 162, 0.1)' : 'transparent',
+                    bgcolor: isCurrentTarget
+                      ? 'rgba(0, 188, 162, 0.1)'
+                      : 'transparent',
                     color: 'text.secondary',
                     textAlign: 'center',
-                    minHeight: editMode ? '60px' : 'auto'
+                    minHeight: editMode ? '60px' : 'auto',
                   }}
                 >
-                  {isDragging ? 'Drop block here' : (editMode ? (isPhone ? 'Tap blocks in Building Blocks to add them here' : 'Drag and drop blocks here') : 'Content will appear here')}
+                  {isDragging
+                    ? 'Drop block here'
+                    : editMode
+                      ? isPhone
+                        ? 'Tap blocks in Building Blocks to add them here'
+                        : 'Drag and drop blocks here'
+                      : 'Content will appear here'}
                 </Box>
               )}
             </Collapse>
@@ -268,14 +317,32 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
       case 'Label':
         return (
           <Typography
-            variant={(component.props.variant as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'subtitle1' | 'subtitle2' | 'body1' | 'body2') || 'body1'}
+            variant={
+              (component.props.variant as
+                | 'h1'
+                | 'h2'
+                | 'h3'
+                | 'h4'
+                | 'h5'
+                | 'h6'
+                | 'subtitle1'
+                | 'subtitle2'
+                | 'body1'
+                | 'body2') || 'body1'
+            }
             noWrap={Boolean(component.props.noWrap)}
             sx={{
               fontWeight: component.props.fontWeight as number,
               fontStyle: component.props.fontStyle as 'italic' | 'normal',
               textDecoration: component.props.textDecoration as string,
-              textAlign: component.props.textAlign as 'left' | 'center' | 'right' | 'justify',
-              color: component.props.useCustomColor ? component.props.customColor as string : '#000',
+              textAlign: component.props.textAlign as
+                | 'left'
+                | 'center'
+                | 'right'
+                | 'justify',
+              color: component.props.useCustomColor
+                ? (component.props.customColor as string)
+                : '#000',
               whiteSpace: component.props.noWrap ? 'nowrap' : 'normal',
               overflow: component.props.noWrap ? 'hidden' : 'visible',
               textOverflow: component.props.noWrap ? 'ellipsis' : 'clip',
@@ -286,20 +353,49 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         )
       case 'Button': {
         // Support custom text color // eslint-disable-line indent
-        const customTextColor = component.props.customTextColor as string | undefined; // eslint-disable-line indent
-        const clickAction = component.props.clickAction as string | undefined;
-        const toastMessage = (component.props.toastMessage as string) || 'Button clicked!';
-        const toastSeverity = (component.props.toastSeverity as string) || 'info';
-        const urlProp = component.props.url as string;
+        const customTextColor = component.props.customTextColor as
+          | string
+          | undefined // eslint-disable-line indent
+        const clickAction = component.props.clickAction as string | undefined
+        const toastMessage =
+          (component.props.toastMessage as string) || 'Button clicked!'
+        const toastSeverity =
+          (component.props.toastSeverity as string) || 'info'
+        const urlProp = component.props.url as string
         // Determine alignment based on props.alignment
-        const alignment = component.props.alignment as 'left' | 'center' | 'right' | undefined;
-        const alignItems = alignment === 'right' ? 'flex-end' : alignment === 'center' ? 'center' : 'flex-start';
+        const alignment = component.props.alignment as
+          | 'left'
+          | 'center'
+          | 'right'
+          | undefined
+        const alignItems =
+          alignment === 'right'
+            ? 'flex-end'
+            : alignment === 'center'
+              ? 'center'
+              : 'flex-start'
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems }}>
             <Button
-              variant={(component.props.variant as 'contained' | 'outlined' | 'text') || 'contained'}
-              color={(component.props.color as 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info') || 'primary'}
-              size={(component.props.size as 'small' | 'medium' | 'large') || 'medium'}
+              variant={
+                (component.props.variant as
+                  | 'contained'
+                  | 'outlined'
+                  | 'text') || 'contained'
+              }
+              color={
+                (component.props.color as
+                  | 'primary'
+                  | 'secondary'
+                  | 'success'
+                  | 'error'
+                  | 'warning'
+                  | 'info') || 'primary'
+              }
+              size={
+                (component.props.size as 'small' | 'medium' | 'large') ||
+                'medium'
+              }
               fullWidth={Boolean(component.props.fullWidth)}
               disabled={Boolean(component.props.disabled)}
               onClick={() => {
@@ -307,94 +403,152 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   const customEvent = new CustomEvent('showWidgetToast', {
                     detail: {
                       message: toastMessage,
-                      severity: toastSeverity
+                      severity: toastSeverity,
                     },
-                    bubbles: true
-                  });
-                  document.dispatchEvent(customEvent);
+                    bubbles: true,
+                  })
+                  document.dispatchEvent(customEvent)
                 } else if (clickAction === 'openUrl' && urlProp) {
-                  let url = urlProp;
+                  let url = urlProp
                   if (url && !url.match(/^https?:\/\//)) {
-                    url = `https://${url}`;
+                    url = `https://${url}`
                   }
-                  window.open(url, '_blank', 'noopener,noreferrer');
+                  window.open(url, '_blank', 'noopener,noreferrer')
                 }
               }}
               sx={{
                 fontWeight: component.props.fontWeight as number,
                 fontStyle: component.props.fontStyle as string,
                 textDecoration: component.props.textDecoration as string,
-                textAlign: component.props.textAlign as 'left' | 'center' | 'right' | 'justify',
-                ...(component.props.customColor ? {
-                  backgroundColor: component.props.variant === 'contained' ? component.props.customColor as string : 'transparent',
-                  borderColor: component.props.customColor as string,
-                  color: customTextColor ?? (component.props.variant === 'contained' ? '#fff' : component.props.customColor as string),
-                  '&:hover': {
-                    backgroundColor: component.props.variant === 'contained'
-                      ? component.props.customHoverColor || component.props.customColor
-                      : 'rgba(25, 118, 210, 0.04)',
-                    borderColor: component.props.customHoverColor || component.props.customColor
-                  }
-                } : {}),
-                ...(component.props.clickAction === 'openUrl' ? {
-                  '&::after': {
-                    content: '""',
-                    display: 'inline-block',
-                    width: '1em',
-                    height: '1em',
-                    marginLeft: '0.2em',
-                    backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z\'/%3E%3C/svg%3E")',
-                    backgroundSize: 'contain',
-                    verticalAlign: 'middle',
-                  }
-                } : {})
+                textAlign: component.props.textAlign as
+                  | 'left'
+                  | 'center'
+                  | 'right'
+                  | 'justify',
+                ...(component.props.customColor
+                  ? {
+                      backgroundColor:
+                        component.props.variant === 'contained'
+                          ? (component.props.customColor as string)
+                          : 'transparent',
+                      borderColor: component.props.customColor as string,
+                      color:
+                        customTextColor ??
+                        (component.props.variant === 'contained'
+                          ? '#fff'
+                          : (component.props.customColor as string)),
+                      '&:hover': {
+                        backgroundColor:
+                          component.props.variant === 'contained'
+                            ? component.props.customHoverColor ||
+                              component.props.customColor
+                            : 'rgba(25, 118, 210, 0.04)',
+                        borderColor:
+                          component.props.customHoverColor ||
+                          component.props.customColor,
+                      },
+                    }
+                  : {}),
+                ...(component.props.clickAction === 'openUrl'
+                  ? {
+                      '&::after': {
+                        content: '""',
+                        display: 'inline-block',
+                        width: '1em',
+                        height: '1em',
+                        marginLeft: '0.2em',
+                        backgroundImage:
+                          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z'/%3E%3C/svg%3E\")",
+                        backgroundSize: 'contain',
+                        verticalAlign: 'middle',
+                      },
+                    }
+                  : {}),
               }}
-              startIcon={component.props.showStartIcon ? (() => {
-                const iconName = component.props.iconName as string;
-                switch (iconName) {
-                  case 'add': return <AddIcon />;
-                  case 'delete': return <DeleteIcon />;
-                  case 'notification': return <NotificationsIcon />;
-                  case 'code': return <CodeIcon />;
-                  case 'settings': return <SettingsIcon />;
-                  case 'preview': return <PreviewIcon />;
-                  case 'openNew': return <OpenInNewIcon />;
-                  case 'save': return <SaveIcon />;
-                  case 'send': return <SendIcon />;
-                  case 'upload': return <CloudUploadIcon />;
-                  case 'check': return <CheckCircleIcon />;
-                  default: return <AddIcon />;
-                }
-              })() : undefined}
-              endIcon={component.props.showEndIcon ? (() => {
-                const iconName = component.props.iconName as string;
-                switch (iconName) {
-                  case 'add': return <AddIcon />;
-                  case 'delete': return <DeleteIcon />;
-                  case 'notification': return <NotificationsIcon />;
-                  case 'code': return <CodeIcon />;
-                  case 'settings': return <SettingsIcon />;
-                  case 'preview': return <PreviewIcon />;
-                  case 'openNew': return <OpenInNewIcon />;
-                  case 'save': return <SaveIcon />;
-                  case 'send': return <SendIcon />;
-                  case 'upload': return <CloudUploadIcon />;
-                  case 'check': return <CheckCircleIcon />;
-                  default: return <AddIcon />;
-                }
-              })() : undefined}
+              startIcon={
+                component.props.showStartIcon
+                  ? (() => {
+                      const iconName = component.props.iconName as string
+                      switch (iconName) {
+                        case 'add':
+                          return <AddIcon />
+                        case 'delete':
+                          return <DeleteIcon />
+                        case 'notification':
+                          return <NotificationsIcon />
+                        case 'code':
+                          return <CodeIcon />
+                        case 'settings':
+                          return <SettingsIcon />
+                        case 'preview':
+                          return <PreviewIcon />
+                        case 'openNew':
+                          return <OpenInNewIcon />
+                        case 'save':
+                          return <SaveIcon />
+                        case 'send':
+                          return <SendIcon />
+                        case 'upload':
+                          return <CloudUploadIcon />
+                        case 'check':
+                          return <CheckCircleIcon />
+                        default:
+                          return <AddIcon />
+                      }
+                    })()
+                  : undefined
+              }
+              endIcon={
+                component.props.showEndIcon
+                  ? (() => {
+                      const iconName = component.props.iconName as string
+                      switch (iconName) {
+                        case 'add':
+                          return <AddIcon />
+                        case 'delete':
+                          return <DeleteIcon />
+                        case 'notification':
+                          return <NotificationsIcon />
+                        case 'code':
+                          return <CodeIcon />
+                        case 'settings':
+                          return <SettingsIcon />
+                        case 'preview':
+                          return <PreviewIcon />
+                        case 'openNew':
+                          return <OpenInNewIcon />
+                        case 'save':
+                          return <SaveIcon />
+                        case 'send':
+                          return <SendIcon />
+                        case 'upload':
+                          return <CloudUploadIcon />
+                        case 'check':
+                          return <CheckCircleIcon />
+                        default:
+                          return <AddIcon />
+                      }
+                    })()
+                  : undefined
+              }
             >
               {component.props.text as string}
             </Button>
             {editMode && clickAction && (
               <>
                 {clickAction === 'toast' && (
-                  <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ mt: 1, display: 'block', color: 'text.secondary' }}
+                  >
                     Click Action: Show toast "{toastMessage}" ({toastSeverity})
                   </Typography>
                 )}
                 {clickAction === 'openUrl' && urlProp && (
-                  <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ mt: 1, display: 'block', color: 'text.secondary' }}
+                  >
                     Click Action: Open URL {urlProp}
                   </Typography>
                 )}
@@ -411,7 +565,10 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             defaultValue={component.props.defaultValue as string}
             fullWidth
             size={(component.props.size as 'small' | 'medium') || 'small'}
-            variant={(component.props.variant as 'outlined' | 'filled' | 'standard') || 'outlined'}
+            variant={
+              (component.props.variant as 'outlined' | 'filled' | 'standard') ||
+              'outlined'
+            }
             required={Boolean(component.props.required)}
             disabled={Boolean(component.props.disabled)}
             error={Boolean(component.props.error)}
@@ -422,24 +579,192 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             }
             type={component.props.type as string}
             InputProps={{
-              startAdornment: component.props.startAdornment && component.props.startAdornmentText ? (
-                <InputAdornment position="start">{component.props.startAdornmentText as string}</InputAdornment>
-              ) : undefined,
-              endAdornment: component.props.endAdornment && component.props.endAdornmentText ? (
-                <InputAdornment position="end">{component.props.endAdornmentText as string}</InputAdornment>
-              ) : undefined
+              startAdornment:
+                component.props.startAdornment &&
+                component.props.startAdornmentText ? (
+                  <InputAdornment position="start">
+                    {component.props.startAdornmentText as string}
+                  </InputAdornment>
+                ) : undefined,
+              endAdornment:
+                component.props.endAdornment &&
+                component.props.endAdornmentText ? (
+                  <InputAdornment position="end">
+                    {component.props.endAdornmentText as string}
+                  </InputAdornment>
+                ) : undefined,
             }}
           />
         )
+      case 'LongText': {
+        const title = (component.props.title as string) || ''
+        const text = (component.props.text as string) || ''
+        const callout = Boolean(component.props.callout)
+
+        return (
+          <Paper
+            elevation={0}
+            sx={{
+              p: callout ? 2 : 0,
+              border: callout ? '1px solid' : 'none',
+              borderColor: 'divider',
+              bgcolor: callout ? 'background.paper' : 'transparent',
+            }}
+          >
+            {title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {title}
+              </Typography>
+            )}
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {text}
+            </Typography>
+          </Paper>
+        )
+      }
+      case 'ListBlock': {
+        const items = String(component.props.items || '')
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean)
+        const ordered = Boolean(component.props.ordered)
+
+        return (
+          <Box>
+            {component.props.title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {component.props.title as string}
+              </Typography>
+            )}
+            <Box component={ordered ? 'ol' : 'ul'} sx={{ pl: 3, my: 0 }}>
+              {items.map((item, index) => (
+                <Typography
+                  component="li"
+                  variant="body2"
+                  key={`${item}-${index}`}
+                  sx={{ mb: 0.5 }}
+                >
+                  {item}
+                </Typography>
+              ))}
+            </Box>
+          </Box>
+        )
+      }
+      case 'ImageBlock': {
+        const src = (component.props.src as string) || ''
+        const caption = (component.props.caption as string) || ''
+
+        return (
+          <Box>
+            {src ? (
+              <Box
+                component="img"
+                src={src}
+                alt={
+                  (component.props.alt as string) ||
+                  caption ||
+                  'Knowledge image'
+                }
+                sx={{
+                  display: 'block',
+                  width: '100%',
+                  maxHeight: `${component.props.maxHeight || 260}px`,
+                  objectFit: 'contain',
+                  borderRadius: 1,
+                  bgcolor: 'background.default',
+                }}
+              />
+            ) : (
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Add an image URL to show a diagram or reference image.
+                </Typography>
+              </Paper>
+            )}
+            {caption && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mt: 0.75 }}
+              >
+                {caption}
+              </Typography>
+            )}
+          </Box>
+        )
+      }
+      case 'PdfBlock': {
+        const src = (component.props.src as string) || ''
+        const title = (component.props.title as string) || 'Reference PDF'
+
+        return (
+          <Box>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+                gap: 1,
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight={700}>
+                {title}
+              </Typography>
+              {src && (
+                <Button
+                  size="small"
+                  href={src}
+                  target="_blank"
+                  rel="noreferrer"
+                  endIcon={<OpenInNewIcon />}
+                >
+                  Open
+                </Button>
+              )}
+            </Box>
+            {src ? (
+              <Box
+                component="iframe"
+                title={title}
+                src={src}
+                sx={{
+                  width: '100%',
+                  height: `${component.props.height || 420}px`,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                }}
+              />
+            ) : (
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Add a PDF URL to embed notes, papers, or reference material.
+                </Typography>
+              </Paper>
+            )}
+          </Box>
+        )
+      }
       case 'FlexBox': {
-        const direction = (component.props.direction as 'row' | 'column' | 'row-reverse' | 'column-reverse') || 'row';
-        const justifyContent = (component.props.justifyContent as string) || 'flex-start';
-        const alignItems = (component.props.alignItems as string) || 'center';
-        const flexWrap = (component.props.wrap as 'wrap' | 'nowrap' | 'wrap-reverse') || 'wrap';
-        const spacing = (component.props.spacing as number) || 2;
-        const padding = (component.props.padding as number) || 1;
-        const useCustomColor = Boolean(component.props.useCustomColor);
-        const backgroundColor = useCustomColor ? (component.props.backgroundColor as string || 'transparent') : 'transparent';
+        const direction =
+          (component.props.direction as
+            | 'row'
+            | 'column'
+            | 'row-reverse'
+            | 'column-reverse') || 'row'
+        const justifyContent =
+          (component.props.justifyContent as string) || 'flex-start'
+        const alignItems = (component.props.alignItems as string) || 'center'
+        const flexWrap =
+          (component.props.wrap as 'wrap' | 'nowrap' | 'wrap-reverse') || 'wrap'
+        const spacing = (component.props.spacing as number) || 2
+        const padding = (component.props.padding as number) || 1
+        const useCustomColor = Boolean(component.props.useCustomColor)
+        const backgroundColor = useCustomColor
+          ? (component.props.backgroundColor as string) || 'transparent'
+          : 'transparent'
 
         return (
           <Box
@@ -451,10 +776,15 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               flexWrap: flexWrap,
               gap: spacing,
               p: padding,
-              border: isCurrentTarget || editMode ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+              border:
+                isCurrentTarget || editMode
+                  ? '1px solid rgba(255, 255, 255, 0.2)'
+                  : 'none',
               borderRadius: 1,
               minHeight: '50px',
-              bgcolor: isCurrentTarget ? 'rgba(0, 188, 162, 0.15)' : backgroundColor,
+              bgcolor: isCurrentTarget
+                ? 'rgba(0, 188, 162, 0.15)'
+                : backgroundColor,
               borderStyle: isCurrentTarget ? 'dashed' : 'solid',
               transition: 'background-color 0.2s, border-color 0.2s',
             }}
@@ -489,15 +819,17 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 />
               ))
             ) : (
-              <Box sx={{
-                width: '100%',
-                textAlign: 'center',
-                color: 'text.secondary',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '40px'
-              }}>
+              <Box
+                sx={{
+                  width: '100%',
+                  textAlign: 'center',
+                  color: 'text.secondary',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: '40px',
+                }}
+              >
                 {isDragging ? 'Drop block here' : 'Empty Flex Container'}
               </Box>
             )}
@@ -505,12 +837,16 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         )
       }
       case 'GridBox': {
-        const columns = (component.props.columns as number) || 1;
-        const cellPadding = (component.props.cellPadding as number) || 1;
-        const spacing = (component.props.spacing as number) || 2;
-        const useCustomColor = Boolean(component.props.useCustomColor);
-        const backgroundColor = useCustomColor ? (component.props.backgroundColor as string) : 'transparent';
-        const borderColor = useCustomColor ? (component.props.borderColor as string) : '#e0e0e0';
+        const columns = (component.props.columns as number) || 1
+        const cellPadding = (component.props.cellPadding as number) || 1
+        const spacing = (component.props.spacing as number) || 2
+        const useCustomColor = Boolean(component.props.useCustomColor)
+        const backgroundColor = useCustomColor
+          ? (component.props.backgroundColor as string)
+          : 'transparent'
+        const borderColor = useCustomColor
+          ? (component.props.borderColor as string)
+          : '#e0e0e0'
 
         return (
           <Box
@@ -519,10 +855,15 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               gridTemplateColumns: `repeat(${columns}, 1fr)`,
               gap: spacing,
               p: cellPadding,
-              border: isCurrentTarget || editMode ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+              border:
+                isCurrentTarget || editMode
+                  ? '1px solid rgba(255, 255, 255, 0.2)'
+                  : 'none',
               borderRadius: 1,
               minHeight: '50px',
-              bgcolor: isCurrentTarget ? 'rgba(0, 188, 162, 0.15)' : backgroundColor,
+              bgcolor: isCurrentTarget
+                ? 'rgba(0, 188, 162, 0.15)'
+                : backgroundColor,
               borderStyle: isCurrentTarget ? 'dashed' : 'solid',
               transition: 'background-color 0.2s, border-color 0.2s',
             }}
@@ -536,9 +877,11 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 <Box
                   key={child.id}
                   sx={{
-                    border: useCustomColor ? `1px solid ${borderColor}` : 'none',
+                    border: useCustomColor
+                      ? `1px solid ${borderColor}`
+                      : 'none',
                     borderRadius: 1,
-                    p: cellPadding
+                    p: cellPadding,
                   }}
                 >
                   <ComponentPreview
@@ -565,17 +908,19 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 </Box>
               ))
             ) : (
-              <Box sx={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                color: 'text.secondary',
-                gridColumn: `span ${columns}`,
-                minHeight: '40px'
-              }}>
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  color: 'text.secondary',
+                  gridColumn: `span ${columns}`,
+                  minHeight: '40px',
+                }}
+              >
                 {isDragging ? 'Drop block here' : 'Empty Grid Container'}
               </Box>
             )}
@@ -583,8 +928,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         )
       }
       case 'Chart': {
-        const chartType = component.props.chartType as string || 'pie'
-        const title = component.props.title as string || ''
+        const chartType = (component.props.chartType as string) || 'pie'
+        const title = (component.props.title as string) || ''
 
         // Parse data for the preview from the actual component data
         let chartData: {
@@ -596,28 +941,30 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
           }>
         } = {
           labels: [],
-          datasets: []
+          datasets: [],
         }
 
         try {
-          const dataString = component.props.data as string || '{}'
+          const dataString = (component.props.data as string) || '{}'
           if (dataString.trim().startsWith('<')) {
             // Basic XML parsing for demo purposes
             // In real app, would use proper XML parser
             // For now we'll skip XML in the preview
             chartData = {
               labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-              datasets: [{
-                label: 'Sales',
-                data: [30, 20, 15, 25, 10],
-                backgroundColor: [
-                  'rgba(255, 99, 132, 0.8)',
-                  'rgba(54, 162, 235, 0.8)',
-                  'rgba(255, 206, 86, 0.8)',
-                  'rgba(75, 192, 192, 0.8)',
-                  'rgba(153, 102, 255, 0.8)'
-                ]
-              }]
+              datasets: [
+                {
+                  label: 'Sales',
+                  data: [30, 20, 15, 25, 10],
+                  backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                  ],
+                },
+              ],
             }
           } else if (dataString.trim()) {
             // Parse JSON data
@@ -626,7 +973,28 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             // Use default data if not provided
             chartData = {
               labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-              datasets: [{
+              datasets: [
+                {
+                  label: 'Sales',
+                  data: [30, 20, 15, 25, 10],
+                  backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                  ],
+                },
+              ],
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing chart data:', error)
+          // Use default data on error
+          chartData = {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+            datasets: [
+              {
                 label: 'Sales',
                 data: [30, 20, 15, 25, 10],
                 backgroundColor: [
@@ -634,27 +1002,10 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   'rgba(54, 162, 235, 0.8)',
                   'rgba(255, 206, 86, 0.8)',
                   'rgba(75, 192, 192, 0.8)',
-                  'rgba(153, 102, 255, 0.8)'
-                ]
-              }]
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing chart data:", error)
-          // Use default data on error
-          chartData = {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-            datasets: [{
-              label: 'Sales',
-              data: [30, 20, 15, 25, 10],
-              backgroundColor: [
-                'rgba(255, 99, 132, 0.8)',
-                'rgba(54, 162, 235, 0.8)',
-                'rgba(255, 206, 86, 0.8)',
-                'rgba(75, 192, 192, 0.8)',
-                'rgba(153, 102, 255, 0.8)'
-              ]
-            }]
+                  'rgba(153, 102, 255, 0.8)',
+                ],
+              },
+            ],
           }
         }
 
@@ -676,17 +1027,17 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
 
   // If component is hidden and not in edit mode, don't render
   if (isHidden && !editMode) {
-    return null;
+    return null
   }
 
   // For non-container components, we can skip the Paper wrapper in non-edit mode
   if (!editMode && !isContainer) {
-    return renderComponent();
+    return renderComponent()
   }
 
   // Special case for FieldSet in non-edit mode - render directly without Paper wrapper
   if (!editMode && component.type === 'FieldSet') {
-    return renderComponent();
+    return renderComponent()
   }
 
   return (
@@ -694,32 +1045,51 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
       elevation={editMode ? 1 : 0}
       sx={{
         p: editMode ? (isPhone ? 1 : 2) : 0,
-        mb: editMode ? (isPhone ? 1 : 2) : (isPhone ? 0.5 : 1),
+        mb: editMode ? (isPhone ? 1 : 2) : isPhone ? 0.5 : 1,
         position: 'relative',
         borderRadius: 1,
         bgcolor: isActiveContainer
           ? 'rgba(0, 188, 162, 0.1)'
           : isCurrentTarget
             ? 'rgba(25, 118, 210, 0.05)'
-            : (isHidden && editMode ? 'rgba(0, 0, 0, 0.3)' : (editMode ? 'background.paper' : 'transparent')),
+            : isHidden && editMode
+              ? 'rgba(0, 0, 0, 0.3)'
+              : editMode
+                ? 'background.paper'
+                : 'transparent',
         border: isActiveContainer
           ? '2px solid #00C49A'
-          : (isCurrentTarget
-              ? '1px dashed #1976d2'
-              : editMode
-                ? (isHidden ? '1px solid rgba(255, 0, 0, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)')
-                : 'none'),
+          : isCurrentTarget
+            ? '1px dashed #1976d2'
+            : editMode
+              ? isHidden
+                ? '1px solid rgba(255, 0, 0, 0.4)'
+                : '1px solid rgba(255, 255, 255, 0.1)'
+              : 'none',
         opacity: isHidden && editMode ? 0.5 : 1,
         transition: 'all 0.2s ease',
-        boxShadow: isActiveContainer ? '0 0 0 1px #00C49A' : (editMode ? 1 : 'none'),
-        '&:hover': editMode && isContainer && onSelectContainer ? {
-          boxShadow: isActiveContainer ? '0 0 0 1px #00C49A' : '0 0 0 1px rgba(25, 118, 210, 0.3)',
-        } : undefined,
+        boxShadow: isActiveContainer
+          ? '0 0 0 1px #00C49A'
+          : editMode
+            ? 1
+            : 'none',
+        '&:hover':
+          editMode && isContainer && onSelectContainer
+            ? {
+                boxShadow: isActiveContainer
+                  ? '0 0 0 1px #00C49A'
+                  : '0 0 0 1px rgba(25, 118, 210, 0.3)',
+              }
+            : undefined,
       }}
-      onDragEnter={editMode ? (e) => handleContainerDragEnter(e, component.id) : undefined}
+      onDragEnter={
+        editMode ? (e) => handleContainerDragEnter(e, component.id) : undefined
+      }
       onDragOver={editMode ? handleContainerDragOver : undefined}
       onDragLeave={editMode ? handleContainerDragLeave : undefined}
-      onDrop={editMode ? (e) => handleContainerDrop(e, component.id) : undefined}
+      onDrop={
+        editMode ? (e) => handleContainerDrop(e, component.id) : undefined
+      }
     >
       {/* Render the component controls in edit mode */}
       {editMode && (
@@ -737,27 +1107,42 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               padding: isPhone ? '6px' : '4px',
               minWidth: actionButtonSize,
               minHeight: actionButtonSize,
-              fontSize: actionIconSize
-            }
+              fontSize: actionIconSize,
+            },
           }}
         >
           {/* Visibility toggle button */}
-          <TooltipStyled title={isHidden ? "Show block" : "Hide block"}>
+          <TooltipStyled title={isHidden ? 'Show block' : 'Hide block'}>
             <IconButton
               size="small"
-              onClick={() => onToggleVisibility && onToggleVisibility(component.id)}
+              onClick={() =>
+                onToggleVisibility && onToggleVisibility(component.id)
+              }
               sx={{ color: isHidden ? 'error.light' : 'success.light' }}
             >
-              {isHidden ?
-                <VisibilityOffIcon fontSize="small" sx={{ fontSize: actionIconSize }} /> :
-                <VisibilityIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
-              }
+              {isHidden ? (
+                <VisibilityOffIcon
+                  fontSize="small"
+                  sx={{ fontSize: actionIconSize }}
+                />
+              ) : (
+                <VisibilityIcon
+                  fontSize="small"
+                  sx={{ fontSize: actionIconSize }}
+                />
+              )}
             </IconButton>
           </TooltipStyled>
 
           {/* If this is a container component, add a button to select it as the active target for mobile */}
           {isContainer && onSelectContainer && (
-            <TooltipStyled title={isActiveContainer ? "Active target container" : "Make this the active target container"}>
+            <TooltipStyled
+              title={
+                isActiveContainer
+                  ? 'Active target container'
+                  : 'Make this the active target container'
+              }
+            >
               <IconButton
                 size="small"
                 onClick={() => {
@@ -769,10 +1154,15 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 }}
                 sx={{
                   color: isActiveContainer ? 'success.main' : 'info.main',
-                  bgcolor: isActiveContainer ? 'rgba(0, 188, 162, 0.1)' : 'transparent'
+                  bgcolor: isActiveContainer
+                    ? 'rgba(0, 188, 162, 0.1)'
+                    : 'transparent',
                 }}
               >
-                <TargetIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
+                <TargetIcon
+                  fontSize="small"
+                  sx={{ fontSize: actionIconSize }}
+                />
               </IconButton>
             </TooltipStyled>
           )}
@@ -791,7 +1181,10 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               onClick={() => onMoveUp(component.id)}
               sx={{ color: 'warning.light' }}
             >
-              <KeyboardArrowUpIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
+              <KeyboardArrowUpIcon
+                fontSize="small"
+                sx={{ fontSize: actionIconSize }}
+              />
             </IconButton>
           )}
 
@@ -801,7 +1194,10 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               onClick={() => onMoveDown(component.id)}
               sx={{ color: 'warning.light' }}
             >
-              <KeyboardArrowDownIcon fontSize="small" sx={{ fontSize: actionIconSize }} />
+              <KeyboardArrowDownIcon
+                fontSize="small"
+                sx={{ fontSize: actionIconSize }}
+              />
             </IconButton>
           )}
 
@@ -817,14 +1213,16 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
 
       {/* Component Type Label */}
       {editMode && (
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: isPhone ? 0.5 : 1 }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', mb: isPhone ? 0.5 : 1 }}
+        >
           {ComponentIcon && (
             <Box
               component={ComponentIcon}
               sx={{
                 mr: isPhone ? 0.5 : 1,
                 opacity: 0.7,
-                fontSize: isPhone ? '0.75rem' : '1.3rem'
+                fontSize: isPhone ? '0.75rem' : '1.3rem',
               }}
             />
           )}
@@ -833,10 +1231,11 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             sx={{
               color: 'text.secondary',
               fontFamily: 'monospace',
-              fontSize: isPhone ? '0.65rem' : undefined
+              fontSize: isPhone ? '0.65rem' : undefined,
             }}
           >
-            {component.type} {isHidden && "(Hidden)"} {isActiveContainer && "(Active Target)"}
+            {component.type} {isHidden && '(Hidden)'}{' '}
+            {isActiveContainer && '(Active Target)'}
           </Typography>
         </Box>
       )}

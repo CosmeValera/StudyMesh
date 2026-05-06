@@ -19,6 +19,7 @@ import LabelEditor from '../editors/LabelEditor'
 import FlexBoxEditor from '../editors/FlexBoxEditor'
 import GridBoxEditor from '../editors/GridBoxEditor'
 import FieldSetEditor from '../editors/FieldSetEditor'
+import KnowledgeBlockEditor from '../editors/KnowledgeBlockEditor'
 
 const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   open,
@@ -37,43 +38,47 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
     }>
   }>({
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-    datasets: [{
-      label: 'Sales',
-      data: [30, 20, 15, 25, 10],
-      backgroundColor: [
-        'rgba(255, 99, 132, 0.8)',
-        'rgba(54, 162, 235, 0.8)',
-        'rgba(255, 206, 86, 0.8)',
-        'rgba(75, 192, 192, 0.8)',
-        'rgba(153, 102, 255, 0.8)'
-      ]
-    }]
+    datasets: [
+      {
+        label: 'Sales',
+        data: [30, 20, 15, 25, 10],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+        ],
+      },
+    ],
   })
 
   useEffect(() => {
     if (component) {
       setEditedProps({ ...component.props })
-      
+
       // Parse chart data if it's a chart component
       if (component.type === 'Chart') {
         try {
-          const chartData = component.props.data as string || '{}'
+          const chartData = (component.props.data as string) || '{}'
           if (chartData.trim().startsWith('<')) {
             // Basic XML parsing logic here if needed
             // For now we'll skip XML support in the live preview
             setParsedChartData({
               labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-              datasets: [{
-                label: 'Sales',
-                data: [30, 20, 15, 25, 10],
-                backgroundColor: [
-                  'rgba(255, 99, 132, 0.8)',
-                  'rgba(54, 162, 235, 0.8)',
-                  'rgba(255, 206, 86, 0.8)',
-                  'rgba(75, 192, 192, 0.8)',
-                  'rgba(153, 102, 255, 0.8)'
-                ]
-              }]
+              datasets: [
+                {
+                  label: 'Sales',
+                  data: [30, 20, 15, 25, 10],
+                  backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                  ],
+                },
+              ],
             })
           } else {
             // Parse JSON data
@@ -81,21 +86,23 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
             setParsedChartData(data)
           }
         } catch (error) {
-          console.error("Error parsing chart data:", error)
+          console.error('Error parsing chart data:', error)
           // Set default data on error
           setParsedChartData({
             labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-            datasets: [{
-              label: 'Sales',
-              data: [30, 20, 15, 25, 10],
-              backgroundColor: [
-                'rgba(255, 99, 132, 0.8)',
-                'rgba(54, 162, 235, 0.8)',
-                'rgba(255, 206, 86, 0.8)',
-                'rgba(75, 192, 192, 0.8)',
-                'rgba(153, 102, 255, 0.8)'
-              ]
-            }]
+            datasets: [
+              {
+                label: 'Sales',
+                data: [30, 20, 15, 25, 10],
+                backgroundColor: [
+                  'rgba(255, 99, 132, 0.8)',
+                  'rgba(54, 162, 235, 0.8)',
+                  'rgba(255, 206, 86, 0.8)',
+                  'rgba(75, 192, 192, 0.8)',
+                  'rgba(153, 102, 255, 0.8)',
+                ],
+              },
+            ],
           })
         }
       }
@@ -106,7 +113,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   useEffect(() => {
     if (component?.type === 'Chart') {
       try {
-        const chartData = editedProps.data as string || '{}'
+        const chartData = (editedProps.data as string) || '{}'
         if (chartData.trim().startsWith('<')) {
           // Skip XML for now in the live preview
         } else if (chartData.trim()) {
@@ -118,7 +125,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
         // Silently fail during editing - this will happen as user types
         // We'll keep the last valid parsed data
         if (error instanceof Error) {
-          console.debug("Invalid JSON format while editing:", error.message)
+          console.debug('Invalid JSON format while editing:', error.message)
         }
       }
     }
@@ -139,48 +146,57 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
 
   // Dedicated handler for prop changes from child editors
   const handlePropsChange = (updatedChildProps: Record<string, unknown>) => {
-    setEditedProps(prevProps => ({
+    setEditedProps((prevProps) => ({
       ...prevProps,
-      ...updatedChildProps
-    }));
-  };
+      ...updatedChildProps,
+    }))
+  }
 
   const renderPropsEdit = () => {
     switch (component.type) {
       case 'SwitchEnable':
         // Pass the new handler
-        return <SwitchEditor props={editedProps} onChange={handlePropsChange} /> 
-      
+        return <SwitchEditor props={editedProps} onChange={handlePropsChange} />
+
       case 'FieldSet':
         // Pass the new handler
-        return <FieldSetEditor props={editedProps} onChange={handlePropsChange} />
-      
+        return (
+          <FieldSetEditor props={editedProps} onChange={handlePropsChange} />
+        )
+
       case 'Label':
         // Pass the new handler
         return <LabelEditor props={editedProps} onChange={handlePropsChange} />
-      
+
       case 'Button':
         // Pass the new handler
-        return <ButtonEditor props={editedProps} onChange={handlePropsChange} /> 
-      
+        return <ButtonEditor props={editedProps} onChange={handlePropsChange} />
+
       case 'TextField':
         // Pass the new handler
-        return <TextFieldEditor props={editedProps} onChange={handlePropsChange} />
-      
+        return (
+          <TextFieldEditor props={editedProps} onChange={handlePropsChange} />
+        )
+
       case 'FlexBox':
         // Pass the new handler
-        return <FlexBoxEditor props={editedProps} onChange={handlePropsChange} />
-      
+        return (
+          <FlexBoxEditor props={editedProps} onChange={handlePropsChange} />
+        )
+
       case 'GridBox':
         // Pass the new handler
-        return <GridBoxEditor props={editedProps} onChange={handlePropsChange} />
-      
+        return (
+          <GridBoxEditor props={editedProps} onChange={handlePropsChange} />
+        )
+
       case 'Chart': {
         const isPieChart = Boolean(
           (editedProps.chartType as string)?.toLowerCase() === 'pie' ||
-          ((editedProps.data as string) && (editedProps.data as string).includes('"type":"pie"'))
-        );
-        
+            ((editedProps.data as string) &&
+              (editedProps.data as string).includes('"type":"pie"')),
+        )
+
         if (isPieChart) {
           return (
             <PieChartEditor
@@ -189,15 +205,18 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
               title={(editedProps.title as string) || ''}
               description={(editedProps.description as string) || ''}
               onTitleChange={(title) => handlePropsChange({ title })}
-              onDescriptionChange={(description) => handlePropsChange({ description })}
+              onDescriptionChange={(description) =>
+                handlePropsChange({ description })
+              }
             />
-          );
+          )
         }
-        
+
         return (
           <Box>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              This chart type editor is not yet enhanced with a custom interface.
+              This chart type editor is not yet enhanced with a custom
+              interface.
             </Typography>
             <ChartPreview
               chartType="pie"
@@ -206,11 +225,21 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
               data={parsedChartData}
             />
           </Box>
-        );
+        )
       }
-      
+      case 'LongText':
+      case 'ListBlock':
+      case 'ImageBlock':
+      case 'PdfBlock':
+        return (
+          <KnowledgeBlockEditor
+            props={editedProps}
+            onChange={handlePropsChange}
+          />
+        )
+
       default:
-        return <Typography>No editable properties</Typography>;
+        return <Typography>No editable properties</Typography>
     }
   }
 
@@ -218,42 +247,54 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   const getDialogTitle = () => {
     switch (component.type) {
       case 'SwitchEnable':
-        return 'Edit Switch';
+        return 'Edit Switch'
       case 'FieldSet':
-        return 'Edit Field Set';
+        return 'Edit Field Set'
       case 'Label':
-        return 'Edit Text Label';
+        return 'Edit Text Label'
       case 'Button':
-        return 'Edit Button';
+        return 'Edit Button'
       case 'TextField':
-        return 'Edit Text Field';
+        return 'Edit Text Field'
       case 'FlexBox':
-        return 'Edit Flex Container';
+        return 'Edit Flex Container'
       case 'GridBox':
-        return 'Edit Grid Container';
+        return 'Edit Grid Container'
       case 'Chart':
-        return 'Edit Chart';
+        return 'Edit Chart'
+      case 'LongText':
+        return 'Edit Long Text'
+      case 'ListBlock':
+        return 'Edit List'
+      case 'ImageBlock':
+        return 'Edit Image'
+      case 'PdfBlock':
+        return 'Edit PDF'
       default:
-        return `Edit ${component.type}`;
+        return `Edit ${component.type}`
     }
   }
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
-          maxHeight: '90dvh'
-        }
+          maxHeight: '90dvh',
+        },
       }}
     >
       <DialogTitle>{getDialogTitle()}</DialogTitle>
-      <DialogContent dividers sx={{ p: 0 }}>{renderPropsEdit()}</DialogContent>
+      <DialogContent dividers sx={{ p: 0 }}>
+        {renderPropsEdit()}
+      </DialogContent>
       <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose} variant="outlined">Cancel</Button>
+        <Button onClick={onClose} variant="outlined">
+          Cancel
+        </Button>
         <Button onClick={handleSave} variant="contained" color="primary">
           Save
         </Button>
@@ -262,4 +303,4 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   )
 }
 
-export default EditComponentDialog 
+export default EditComponentDialog

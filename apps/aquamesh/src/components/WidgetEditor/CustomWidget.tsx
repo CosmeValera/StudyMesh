@@ -636,6 +636,159 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
             />
           </Box>
         )
+      case 'LongText': {
+        const title = (component.props.title as string) || ''
+        const text = (component.props.text as string) || ''
+        const callout = Boolean(component.props.callout)
+
+        return (
+          <Paper
+            key={component.id}
+            elevation={0}
+            sx={{
+              mb: 2,
+              p: callout ? 2 : 0,
+              border: callout ? '1px solid' : 'none',
+              borderColor: 'divider',
+              bgcolor: callout ? 'background.paper' : 'transparent',
+            }}
+          >
+            {title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {title}
+              </Typography>
+            )}
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {text}
+            </Typography>
+          </Paper>
+        )
+      }
+      case 'ListBlock': {
+        const items = String(component.props.items || '')
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean)
+        const ordered = Boolean(component.props.ordered)
+
+        return (
+          <Box key={component.id} sx={{ mb: 2 }}>
+            {component.props.title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {component.props.title as string}
+              </Typography>
+            )}
+            <Box component={ordered ? 'ol' : 'ul'} sx={{ pl: 3, my: 0 }}>
+              {items.map((item, index) => (
+                <Typography
+                  component="li"
+                  variant="body2"
+                  key={`${item}-${index}`}
+                  sx={{ mb: 0.5 }}
+                >
+                  {item}
+                </Typography>
+              ))}
+            </Box>
+          </Box>
+        )
+      }
+      case 'ImageBlock': {
+        const src = (component.props.src as string) || ''
+        const caption = (component.props.caption as string) || ''
+
+        return (
+          <Box key={component.id} sx={{ mb: 2 }}>
+            {src ? (
+              <Box
+                component="img"
+                src={src}
+                alt={
+                  (component.props.alt as string) ||
+                  caption ||
+                  'Knowledge image'
+                }
+                sx={{
+                  display: 'block',
+                  width: '100%',
+                  maxHeight: `${component.props.maxHeight || 260}px`,
+                  objectFit: 'contain',
+                  borderRadius: 1,
+                  bgcolor: 'background.default',
+                }}
+              />
+            ) : (
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Add an image URL to show a diagram or reference image.
+                </Typography>
+              </Paper>
+            )}
+            {caption && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mt: 0.75 }}
+              >
+                {caption}
+              </Typography>
+            )}
+          </Box>
+        )
+      }
+      case 'PdfBlock': {
+        const src = (component.props.src as string) || ''
+        const title = (component.props.title as string) || 'Reference PDF'
+
+        return (
+          <Box key={component.id} sx={{ mb: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+                gap: 1,
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight={700}>
+                {title}
+              </Typography>
+              {src && (
+                <Button
+                  size="small"
+                  href={src}
+                  target="_blank"
+                  rel="noreferrer"
+                  endIcon={<OpenInNewIcon />}
+                >
+                  Open
+                </Button>
+              )}
+            </Box>
+            {src ? (
+              <Box
+                component="iframe"
+                title={title}
+                src={src}
+                sx={{
+                  width: '100%',
+                  height: `${component.props.height || 420}px`,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                }}
+              />
+            ) : (
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Add a PDF URL to embed notes, papers, or reference material.
+                </Typography>
+              </Paper>
+            )}
+          </Box>
+        )
+      }
       case 'FlexBox': {
         // Prepare the flexbox style object
         const flexStyles = {
