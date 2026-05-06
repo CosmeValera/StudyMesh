@@ -1271,7 +1271,8 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
   {
     id: 'template-knowledge-tutorial',
     name: 'AquaMesh Tutorial Template',
-    description: 'A dashboard that explains widgets, dashboards, and blocks.',
+    description:
+      'A visual dashboard that explains dashboards, widgets, blocks, and the normal AquaMesh workflow.',
     category: 'Knowledge Workspace',
     components: [
       {
@@ -1283,108 +1284,163 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
           gutterBottom: true,
           useCustomColor: true,
           customColor: '#007C66',
-          fontWeight: 700,
+          fontWeight: 800,
         },
       },
       {
-        id: 'template-tutorial-intro',
-        type: 'FieldSet',
-        props: {
-          legend: 'The three ideas',
-          borderStyle: 'solid',
-          borderColor: '#007C66',
-          legendColor: '#007C66',
-          useCustomBorderColor: true,
-          useCustomLegendColor: true,
-          padding: 2,
-          borderRadius: 8,
-        },
+        id: 'template-tutorial-hero',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
         children: [
           {
-            id: 'template-tutorial-text',
-            type: 'Label',
+            id: 'template-tutorial-hero-copy',
+            type: 'LongText',
             props: {
-              text: 'Widgets are reusable pieces of knowledge.\nDashboards are pages where widgets live together.\nBlocks are the small parts inside a widget: labels, inputs, buttons, charts, and groups.',
-              variant: 'body1',
-              whiteSpace: 'pre-line',
+              __blockType: 'LongText',
+              title: 'The mental model',
+              text: 'AquaMesh has three layers:\n\n1. Blocks are the small pieces: text, lists, images, PDFs, inputs, buttons, charts, and layout groups.\n2. Widgets are reusable knowledge objects made from blocks.\n3. Dashboards are pages where widgets live together and can be arranged into a useful workspace.',
+              callout: true,
+            },
+          },
+          {
+            id: 'template-tutorial-dashboard-image',
+            type: 'ImageBlock',
+            props: {
+              __blockType: 'ImageBlock',
+              src: '/images/tutorial-dashboard-concept.svg',
+              alt: 'Dashboard canvas with widgets arranged inside it',
+              caption:
+                'A dashboard is the canvas. Widgets are the reusable pieces you place inside it.',
+              maxHeight: 280,
             },
           },
         ],
       },
       {
-        id: 'template-tutorial-blocks',
+        id: 'template-tutorial-workflow',
         type: 'GridBox',
-        props: { columns: 2, spacing: 2, responsive: true },
+        props: { columns: 3, spacing: 2, responsive: true },
         children: [
           {
-            id: 'template-tutorial-label-section',
-            type: 'FieldSet',
-            props: { legend: 'Label block', padding: 2, borderRadius: 8 },
-            children: [
-              {
-                id: 'template-tutorial-label-example',
-                type: 'Label',
-                props: {
-                  text: 'This is a label: text, theory, explanations, or titles.',
-                  variant: 'body1',
-                },
-              },
-            ],
-          },
-          {
-            id: 'template-tutorial-input-section',
-            type: 'FieldSet',
-            props: { legend: 'Input block', padding: 2, borderRadius: 8 },
-            children: [
-              {
-                id: 'template-tutorial-input-example',
-                type: 'TextField',
-                props: {
-                  label: 'This is an input',
-                  placeholder: 'Write a note or answer',
-                  fullWidth: true,
-                },
-              },
-            ],
-          },
-          {
-            id: 'template-tutorial-button-section',
-            type: 'FieldSet',
-            props: { legend: 'Button block', padding: 2, borderRadius: 8 },
-            children: [
-              {
-                id: 'template-tutorial-button-example',
-                type: 'Button',
-                props: {
-                  text: 'This is a button',
-                  variant: 'contained',
-                  showToast: true,
-                  toastMessage: 'Button clicked',
-                  toastSeverity: 'info',
-                },
-              },
-            ],
-          },
-          {
-            id: 'template-tutorial-chart-section',
-            type: 'FieldSet',
+            id: 'template-tutorial-widget-studio',
+            type: 'LongText',
             props: {
-              legend: 'Chart / graph block',
-              padding: 2,
-              borderRadius: 8,
+              __blockType: 'LongText',
+              title: '1. Create a widget',
+              text: 'Open Widget Studio when you want to build one reusable piece of knowledge. Focus only on the widget: choose blocks, edit them, preview, then save.',
+              callout: true,
             },
-            children: [
-              {
-                id: 'template-tutorial-chart-example',
-                type: 'Chart',
-                props: {
-                  title: 'This is a chart',
-                  chartType: 'pie',
-                  height: 220,
-                  data: `{"labels":["Labels","Inputs","Charts"],"datasets":[{"data":[35,30,35],"backgroundColor":["rgba(0,124,102,0.8)","rgba(25,118,210,0.8)","rgba(239,108,0,0.8)"]}]}`,
-                },
-              },
-            ],
+          },
+          {
+            id: 'template-tutorial-dashboard-builder',
+            type: 'LongText',
+            props: {
+              __blockType: 'LongText',
+              title: '2. Create a dashboard',
+              text: 'Open or create a dashboard, then use Widget → My Widgets to add saved widgets. Move widgets by dragging their tab and resize sections with the separators.',
+              callout: true,
+            },
+          },
+          {
+            id: 'template-tutorial-viewer',
+            type: 'LongText',
+            props: {
+              __blockType: 'LongText',
+              title: '3. View or edit later',
+              text: 'Saved dashboards open in viewer mode so they feel clean. Use the pencil when you want to go back into editing and change the layout or add more widgets.',
+              callout: true,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-tutorial-blocks-visual',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-tutorial-blocks-image',
+            type: 'ImageBlock',
+            props: {
+              __blockType: 'ImageBlock',
+              src: '/images/tutorial-blocks-concept.svg',
+              alt: 'Widget blocks including text, input, button, chart, image, and PDF',
+              caption:
+                'Blocks are the vocabulary of a widget. Combine them to explain, collect, calculate, or visualise information.',
+              maxHeight: 300,
+            },
+          },
+          {
+            id: 'template-tutorial-block-list',
+            type: 'ListBlock',
+            props: {
+              __blockType: 'ListBlock',
+              title: 'What each block is for',
+              items:
+                'Long Text: explanations, notes, wiki pages, study summaries\nList: concepts, steps, references, or checklists\nImage: diagrams, screenshots, sketches, reference visuals\nPDF: papers, docs, specs, manuals\nAnswer Box: collect values or notes\nButton: trigger actions or interactivity\nChart: visualise values\nLayout Groups: organise everything cleanly',
+              ordered: false,
+              interactiveChecklist: false,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-tutorial-mini-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'Mini example: a widget can mix content and controls',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#007C66',
+          legendColor: '#007C66',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-tutorial-mini-copy',
+            type: 'Label',
+            props: {
+              text: 'A widget can explain something, ask for input, include a button, and show a chart — all as one reusable object. Try typing a number below and pressing the button to append it to the chart.',
+              variant: 'body1',
+            },
+          },
+          {
+            id: 'template-tutorial-input-example',
+            type: 'TextField',
+            props: {
+              label: 'Value to add',
+              placeholder: 'Example: 12',
+              type: 'number',
+              fullWidth: true,
+              helperText: 'Type a number, then press the button below.',
+            },
+          },
+          {
+            id: 'template-tutorial-button-example',
+            type: 'Button',
+            props: {
+              text: 'Add input value to chart',
+              variant: 'contained',
+              color: 'primary',
+              clickAction: 'addChartValue',
+              chartLabelSource: 'static',
+              chartLabel: 'Input value',
+              chartValueSource: 'firstInput',
+              showToast: true,
+              toastSeverity: 'success',
+            },
+          },
+          {
+            id: 'template-tutorial-chart-example',
+            type: 'Chart',
+            props: {
+              title: 'Example chart',
+              chartType: 'pie',
+              height: 240,
+              description: 'Charts turn widget data into a visual summary.',
+              data: `{"labels":["Text","Inputs","Charts","Media"],"datasets":[{"data":[30,25,25,20],"backgroundColor":["rgba(0,124,102,0.8)","rgba(25,118,210,0.8)","rgba(251,140,0,0.8)","rgba(142,36,170,0.8)"]}]}`,
+            },
           },
         ],
       },
