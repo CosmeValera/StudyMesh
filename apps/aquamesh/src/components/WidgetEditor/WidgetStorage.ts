@@ -59,6 +59,9 @@ export const WIDGET_CATEGORIES = [
 const STORAGE_KEY = 'aquamesh_custom_widgets'
 const VERSION_STORAGE_KEY = 'aquamesh_widget_versions'
 
+const createWidgetId = () =>
+  `widget-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+
 /**
  * Storage utility for custom widgets
  */
@@ -86,7 +89,7 @@ class WidgetStorage {
     // Create a new widget with ID and timestamps
     const now = new Date().toISOString()
     const newWidget: CustomWidget = {
-      id: `widget-${Date.now()}`,
+      id: createWidgetId(),
       name: widget.name,
       components:
         widget.components && Array.isArray(widget.components)

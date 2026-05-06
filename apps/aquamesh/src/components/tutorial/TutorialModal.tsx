@@ -125,12 +125,45 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
 
   const options: TutorialOption[] = []
 
+  options.push(
+    {
+      title: 'Start with a guided knowledge dashboard',
+      description:
+        'Open a Mathematics or Tutorial starter dashboard first. They work like mini tutorials: formulas, notes, inputs, and charts are already arranged so the workspace has a clear purpose.',
+    },
+    {
+      icon: <ImportContactsIcon fontSize="large" color="primary" />,
+      image: placeholderImages.predefinedDashboards,
+      hasMultipleButtons: true,
+      buttons: [
+        {
+          text: 'Dashboard Basics',
+          action: () => {
+            setExplanationModalOpen(true)
+          },
+        },
+        {
+          text: 'Open Starters',
+          action: () => {
+            onClose()
+            const dashboardsButton = document.querySelector(
+              '[data-tutorial-id="dashboards-button"]',
+            )
+            if (dashboardsButton) {
+              ;(dashboardsButton as HTMLElement).click()
+            }
+          },
+        },
+      ],
+    },
+  )
+
   // Create Widget is the primary path for builder users.
   if (isAdmin) {
     options.push({
-      title: 'Create your first reusable widget',
+      title: 'Create your first reusable knowledge block',
       description:
-        'Open Create Widget and build something concrete: an operations summary, architecture site review, lab observation log, or task tracker.',
+        'Open Create Widget when you are ready to build your own formula card, revision tracker, research note, or project block.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'Start building',
       image: placeholderImages.customWidgetCreation,
@@ -146,9 +179,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     })
   } else {
     options.push({
-      title: 'Create your first reusable widget',
+      title: 'Create your first reusable knowledge block',
       description:
-        'The recommended path is to create one reusable widget for a real use case, then add it to a dashboard. Builder mode is required to save widgets.',
+        'The recommended path is to start from a dashboard example, then create one reusable block for your own notes. Builder mode is required to save widgets.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'View Quick Start',
       image: placeholderImages.customWidgetCreation,
@@ -160,9 +193,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
 
   options.push(
     {
-      title: 'Use the widget in a dashboard',
+      title: 'Use saved blocks in a dashboard',
       description:
-        'After saving, open Add Widget, choose your saved widget, and place it into the current dashboard.',
+        'After saving, open Add Widget, choose your saved block, and place it into the current knowledge dashboard.',
       icon: <DashboardIcon fontSize="large" color="primary" />,
       image: placeholderImages.predefinedWidgets,
       hasMultipleButtons: true,
@@ -188,9 +221,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
       ],
     },
     {
-      title: 'View an example dashboard',
+      title: 'View more starter dashboards',
       description:
-        'Use the dashboard menu when you want inspiration from a finished layout. Daily Operations is one example, not the only kind of workspace AquaMesh can organize.',
+        'Use the dashboard menu when you want a finished layout. Mathematics shows a multi-widget study dashboard; Tutorial explains the app concepts.',
       icon: <InfoIcon fontSize="large" color="primary" />,
       hasMultipleImages: true,
       images: [
@@ -228,7 +261,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   )
 
   // Determine which slides to display based on device and user role
-  const displayOptions = [options[0]]
+  const displayOptions = isMobile ? options.slice(0, 2) : options.slice(0, 3)
 
   // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {

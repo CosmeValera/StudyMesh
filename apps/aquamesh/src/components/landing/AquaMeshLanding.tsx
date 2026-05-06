@@ -14,54 +14,53 @@ import { useNavigate } from 'react-router-dom'
 import AddchartIcon from '@mui/icons-material/Addchart'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import SaveAltIcon from '@mui/icons-material/SaveAlt'
-import WidgetsIcon from '@mui/icons-material/Widgets'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import SupportAgentIcon from '@mui/icons-material/SupportAgent'
-import ArchitectureIcon from '@mui/icons-material/Architecture'
 import BiotechIcon from '@mui/icons-material/Biotech'
 import ImageIcon from '@mui/icons-material/Image'
-import NotesIcon from '@mui/icons-material/Notes'
+import SchoolIcon from '@mui/icons-material/School'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
 
 import { ReactComponent as Logo } from '../../../public/logo.svg'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
 
 const workflow = [
   {
-    title: 'Create Widget',
-    body: 'Name a widget for your work: an operations snapshot, site review, lab log, or task tracker.',
-    icon: <WidgetsIcon />,
+    title: 'Enter the workspace',
+    body: 'Start with a clean workspace, then open saved dashboards or create your own widgets when you need them.',
+    icon: <SchoolIcon />,
   },
   {
-    title: 'Add Blocks',
-    body: 'Add text, inputs, buttons, charts, and layout sections.',
+    title: 'Collect knowledge blocks',
+    body: 'Use long text, formulas, inputs, charts, images, and layout sections as visual notes.',
     icon: <AddchartIcon />,
   },
   {
-    title: 'Preview And Save',
-    body: 'Check the widget, save it to your library, and keep versions.',
+    title: 'Save reusable widgets',
+    body: 'Turn a formula card, revision tracker, or note section into a widget you can reuse.',
     icon: <SaveAltIcon />,
   },
   {
-    title: 'Add To Dashboard',
-    body: 'Place the saved widget into the dashboard canvas.',
+    title: 'Organize dashboards',
+    body: 'Keep study pages by subject, topic, or project and evolve them like a visual wiki.',
     icon: <DashboardCustomizeIcon />,
   },
 ]
 
 const useCases = [
   {
-    title: 'Operations hub',
-    body: 'Track orders, delayed work, tickets, status, and handoffs.',
-    icon: <SupportAgentIcon />,
+    title: 'Study wiki',
+    body: 'Build subject pages for mathematics, tutorials, biology, or exam revision.',
+    icon: <SchoolIcon />,
   },
   {
-    title: 'Architecture review',
-    body: 'Collect site notes, material choices, images, and decisions.',
-    icon: <ArchitectureIcon />,
+    title: 'Formula notebook',
+    body: 'Keep formulas, examples, charts, and doubts in one visual dashboard.',
+    icon: <MenuBookIcon />,
   },
   {
-    title: 'Biology field log',
-    body: 'Record observations, sample counts, charts, and next steps.',
+    title: 'Research board',
+    body: 'Pair images, notes, references, and observations for projects or labs.',
     icon: <BiotechIcon />,
   },
   {
@@ -70,32 +69,32 @@ const useCases = [
     icon: <TaskAltIcon />,
   },
   {
+    title: 'Operations hub',
+    body: 'Track orders, delayed work, tickets, status, and handoffs when you need a CRM-like view.',
+    icon: <SupportAgentIcon />,
+  },
+  {
     title: 'Image and notes board',
     body: 'Pair visual references with structured text and controls.',
     icon: <ImageIcon />,
-  },
-  {
-    title: 'Team handoff',
-    body: 'Capture notes and next actions in the same view.',
-    icon: <NotesIcon />,
   },
 ]
 
 const quickAnswers = [
   {
+    question: 'What is AquaMesh for?',
+    answer:
+      'AquaMesh is a visual knowledge wiki: notes, formulas, charts, images, and reusable widgets organized into dashboards.',
+  },
+  {
     question: 'What should I do first?',
     answer:
-      'Start with Create Widget. Pick one concrete use case, such as an operations summary, architecture site review, lab observation log, or task tracker. Save it, then reuse it in a dashboard.',
+      'Enter the workspace. From there you can create a dashboard, save it to a folder, or open existing dashboards.',
   },
   {
-    question: 'Which blocks should I start with?',
+    question: 'How are dashboards organized?',
     answer:
-      'Use a chart for trends, a label for status, an image for visual context, or a note field for follow-up.',
-  },
-  {
-    question: 'Where does my saved widget go?',
-    answer:
-      'Saved widgets appear in Add Widget so you can reuse them across dashboards and workspaces.',
+      'When you save a dashboard, choose a folder name. Dashboards with the same folder name appear together.',
   },
 ]
 
@@ -181,13 +180,12 @@ const AquaMeshLanding = () => {
               component="p"
               sx={{ fontWeight: 700, color: 'primary.dark', mb: 2 }}
             >
-              Create reusable workspace widgets without code.
+              Create a visual knowledge wiki from reusable widgets.
             </Typography>
             <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
-              Build reusable widgets from text, inputs, buttons, charts, images,
-              and layout blocks. Use them for operations, architecture reviews,
-              biology notes, project planning, or any workspace you need to
-              organize.
+              Turn study notes, formulas, charts, images, and questions into
+              visual dashboards. Start from subject examples, then adapt the
+              workspace into your own personal wiki.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
@@ -233,7 +231,7 @@ const AquaMeshLanding = () => {
 
         <Box sx={{ py: 5 }}>
           <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
-            Build one widget, then reuse it
+            Start from knowledge, then customize it
           </Typography>
           <Grid container spacing={2}>
             {workflow.map((step, index) => (
@@ -271,7 +269,7 @@ const AquaMeshLanding = () => {
 
         <Box sx={{ py: 5 }}>
           <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
-            Use AquaMesh for real work
+            Use AquaMesh as a visual wiki
           </Typography>
           <Grid container spacing={2}>
             {useCases.map((useCase) => (
@@ -344,7 +342,7 @@ const AquaMeshLanding = () => {
           }}
         >
           <Typography variant="h4" component="h2" fontWeight={850} mb={1}>
-            Ready to build your first workspace?
+            Ready to build your workspace?
           </Typography>
           <Typography
             sx={{
@@ -352,9 +350,7 @@ const AquaMeshLanding = () => {
               mb: 3,
             }}
           >
-            Enter the workspace, create one reusable widget, and place it
-            wherever it helps: a dashboard, review board, lab log, or task
-            space.
+            Enter the workspace, create dashboards, and organize them by folder.
           </Typography>
           <Button
             variant="contained"
