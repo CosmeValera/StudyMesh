@@ -125,6 +125,19 @@ const KnowledgeBlockEditor: React.FC<ComponentEditorProps> = ({
           <MenuItem value="bulleted">Bulleted</MenuItem>
           <MenuItem value="ordered">Numbered</MenuItem>
         </TextField>
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(props.interactiveChecklist)}
+                onChange={(event) =>
+                  update('interactiveChecklist', event.target.checked)
+                }
+              />
+            }
+            label="Make items checkable"
+          />
+        </Box>
       </Stack>
     )
   }

@@ -744,6 +744,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               >
                 <MenuItem value="toast">Show Message</MenuItem>
                 <MenuItem value="openUrl">Open Link</MenuItem>
+                <MenuItem value="addChartValue">Add Value to Chart</MenuItem>
                 <MenuItem value="none">None</MenuItem>
               </Select>
             </FormControl>
@@ -856,6 +857,71 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                 }}
               />
             </Grid>
+          )}
+
+          {props.clickAction === 'addChartValue' && (
+            <>
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Adds a new label/value pair to the first chart in this widget. Use an Answer Box when you want the user to type the label or value.
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth margin="dense" size="small">
+                  <InputLabel id="chart-label-source-label">Label Source</InputLabel>
+                  <Select
+                    labelId="chart-label-source-label"
+                    value={props.chartLabelSource || 'static'}
+                    onChange={(e) => handleChange('chartLabelSource', e.target.value)}
+                    label="Label Source"
+                  >
+                    <MenuItem value="static">Static label</MenuItem>
+                    <MenuItem value="firstInput">First Answer Box</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth margin="dense" size="small">
+                  <InputLabel id="chart-value-source-label">Value Source</InputLabel>
+                  <Select
+                    labelId="chart-value-source-label"
+                    value={props.chartValueSource || 'static'}
+                    onChange={(e) => handleChange('chartValueSource', e.target.value)}
+                    label="Value Source"
+                  >
+                    <MenuItem value="static">Static number</MenuItem>
+                    <MenuItem value="firstInput">First Answer Box</MenuItem>
+                    <MenuItem value="checkedListCount">Number of checked list items</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              {props.chartLabelSource !== 'firstInput' && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Chart Label"
+                    value={props.chartLabel || ''}
+                    onChange={(e) => handleChange('chartLabel', e.target.value)}
+                    margin="dense"
+                    size="small"
+                    placeholder="Task completed"
+                  />
+                </Grid>
+              )}
+              {props.chartValueSource === 'static' && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Chart Value"
+                    value={props.chartValue || 1}
+                    onChange={(e) => handleChange('chartValue', Number(e.target.value))}
+                    margin="dense"
+                    size="small"
+                  />
+                </Grid>
+              )}
+            </>
           )}
         </Grid>
       </TabPanelShared>

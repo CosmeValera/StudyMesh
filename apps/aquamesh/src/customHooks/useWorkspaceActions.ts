@@ -6,6 +6,7 @@ import { useLayout } from '../components/Layout/LayoutProvider'
 import WidgetStorage from '../components/WidgetEditor/WidgetStorage'
 import { cloneTemplate } from '../components/WidgetEditor/constants/templateWidgets'
 import { DashboardLayout } from '../state/store'
+import { normalizeFolderColor } from '../components/Dasboard/folderColors'
 
 export const OPEN_WIDGET_EDITOR_EVENT = 'aquamesh-open-widget-editor'
 export const OPEN_DASHBOARD_EDITOR_EVENT = 'aquamesh-open-dashboard-editor'
@@ -21,6 +22,7 @@ interface SavedDashboardRecord {
   id: string
   name: string
   folder?: string
+  folderColor?: string
   layout: DashboardLayout
   description?: string
   tags?: string[]
@@ -29,7 +31,7 @@ interface SavedDashboardRecord {
   updatedAt: string
 }
 
-const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v4'
+const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v7'
 
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
@@ -189,12 +191,14 @@ const saveStarterDashboard = (
     dashboards[existingIndex] = {
       ...dashboards[existingIndex],
       ...dashboard,
+      folderColor: normalizeFolderColor(dashboard.folderColor),
       updatedAt: now,
     }
   } else {
     dashboards.push({
       id: `dashboard-starter-${dashboard.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       ...dashboard,
+      folderColor: normalizeFolderColor(dashboard.folderColor),
       createdAt: now,
       updatedAt: now,
     })
@@ -243,6 +247,7 @@ export const ensureStarterDashboards = () => {
     saveStarterDashboard({
       name: 'Mathematics 1 — Derivatives',
       folder: 'Mathematics',
+      folderColor: '#1976D2',
       layout: createMathStarterLayout(
         mathWidgets.map((widget) => createCustomWidgetConfig(widget!)),
       ),
@@ -266,12 +271,37 @@ export const ensureStarterDashboards = () => {
     saveStarterDashboard({
       name: 'AquaMesh Tutorial',
       folder: 'Tutorial',
+      folderColor: '#007C66',
       layout: createLayoutWithComponent(
         createCustomWidgetConfig(tutorialWidget),
       ),
       description:
         'A starter dashboard that explains the basic AquaMesh concepts.',
       tags: ['tutorial', 'widgets', 'dashboards', 'blocks'],
+      isPublic: true,
+    })
+  }
+
+  const interactivityWidget = saveTemplateWidget({
+    widgetName: 'AquaMesh Interactivity',
+    templateId: 'template-aquamesh-interactivity',
+    description:
+      'A hands-on tutorial dashboard for buttons, checklists, answer boxes, and chart updates.',
+    tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
+    refreshExisting: true,
+  })
+
+  if (interactivityWidget) {
+    saveStarterDashboard({
+      name: 'AquaMesh Interactivity',
+      folder: 'Tutorial',
+      folderColor: '#007C66',
+      layout: createLayoutWithComponent(
+        createCustomWidgetConfig(interactivityWidget),
+      ),
+      description:
+        'A starter dashboard that demonstrates AquaMesh widget interactivity.',
+      tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
       isPublic: true,
     })
   }

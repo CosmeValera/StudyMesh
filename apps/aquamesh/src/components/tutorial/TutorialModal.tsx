@@ -8,7 +8,6 @@ import {
   Typography,
   Box,
   Grid,
-  Paper,
   IconButton,
   useTheme,
   useMediaQuery,
@@ -29,20 +28,7 @@ interface TutorialModalProps {
   onShowOnStartupToggle?: () => void
 }
 
-// Base64 placeholder images until real ones are created
-const placeholderImages = {
-  dashboardWidgetExplanation: '/images/understanding_dashboards.png',
-  predefinedDashboards: `/images/dashboards_topnavbar.png`,
-  predefinedWidgets: `/images/widgets_topnavbar.png`,
-  customWidgetCreation: `/images/widget_builder_overview.svg`,
-}
-
 // Define interfaces for the tutorial options
-interface TutorialImage {
-  src: string
-  alt: string
-}
-
 interface ButtonOption {
   text: string
   action: () => void
@@ -53,10 +39,7 @@ interface TutorialOption {
   description: string
   icon: React.ReactElement
   buttonText?: string
-  image?: string
   action?: () => void
-  hasMultipleImages?: boolean
-  images?: TutorialImage[]
   hasMultipleButtons?: boolean
   buttons?: ButtonOption[]
 }
@@ -125,38 +108,33 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
 
   const options: TutorialOption[] = []
 
-  options.push(
-    {
-      title: 'Start with a guided knowledge dashboard',
-      description:
-        'Open a Mathematics or Tutorial starter dashboard first. They work like mini tutorials: formulas, notes, inputs, and charts are already arranged so the workspace has a clear purpose.',
-    },
-    {
-      icon: <ImportContactsIcon fontSize="large" color="primary" />,
-      image: placeholderImages.predefinedDashboards,
-      hasMultipleButtons: true,
-      buttons: [
-        {
-          text: 'Dashboard Basics',
-          action: () => {
-            setExplanationModalOpen(true)
-          },
+  options.push({
+    title: 'Start with a guided knowledge dashboard',
+    description:
+      'Open a Mathematics or Tutorial starter dashboard first. They work like mini tutorials: formulas, notes, inputs, and charts are already arranged so the workspace has a clear purpose.',
+    icon: <ImportContactsIcon fontSize="large" color="primary" />,
+    hasMultipleButtons: true,
+    buttons: [
+      {
+        text: 'Dashboard Basics',
+        action: () => {
+          setExplanationModalOpen(true)
         },
-        {
-          text: 'Open Starters',
-          action: () => {
-            onClose()
-            const dashboardsButton = document.querySelector(
-              '[data-tutorial-id="dashboards-button"]',
-            )
-            if (dashboardsButton) {
-              ;(dashboardsButton as HTMLElement).click()
-            }
-          },
+      },
+      {
+        text: 'Open Starters',
+        action: () => {
+          onClose()
+          const dashboardsButton = document.querySelector(
+            '[data-tutorial-id="dashboards-button"]',
+          )
+          if (dashboardsButton) {
+            ;(dashboardsButton as HTMLElement).click()
+          }
         },
-      ],
-    },
-  )
+      },
+    ],
+  })
 
   // Create Widget is the primary path for builder users.
   if (isAdmin) {
@@ -166,7 +144,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
         'Open Add Widget, then choose Open Widget Editor when you are ready to build your own formula card, revision tracker, research note, or project block.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'Start building',
-      image: placeholderImages.customWidgetCreation,
       action: () => {
         onClose()
         const widgetsButton = document.querySelector(
@@ -192,7 +169,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
         'The recommended path is to start from a dashboard example, then create one reusable block for your own notes. Builder mode is required to save widgets.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'View Quick Start',
-      image: placeholderImages.customWidgetCreation,
       action: () => {
         setWidgetEditorModalOpen(true)
       },
@@ -205,7 +181,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
       description:
         'After saving, open Add Widget, choose your saved block, and place it into the current knowledge dashboard.',
       icon: <DashboardIcon fontSize="large" color="primary" />,
-      image: placeholderImages.predefinedWidgets,
       hasMultipleButtons: true,
       buttons: [
         {
@@ -233,17 +208,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
       description:
         'Use the dashboard menu when you want a finished layout. Mathematics shows a multi-widget study dashboard; Tutorial explains the app concepts.',
       icon: <InfoIcon fontSize="large" color="primary" />,
-      hasMultipleImages: true,
-      images: [
-        {
-          src: placeholderImages.predefinedDashboards,
-          alt: 'Dashboard menu illustration',
-        },
-        {
-          src: placeholderImages.dashboardWidgetExplanation,
-          alt: 'Example dashboard illustration',
-        },
-      ],
       hasMultipleButtons: true,
       buttons: [
         {
@@ -607,8 +571,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                     transitionDelay: `${displayOptions.length * 100}ms`,
                   }}
                 >
-                  <Paper
-                    elevation={3}
+                  <Box
                     sx={{
                       p: isMobile ? 2 : 3,
                       width: '100%',
@@ -657,7 +620,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                         Switch to a builder account to design and save widgets.
                       </Typography>
                     </Box>
-                  </Paper>
+                  </Box>
                 </Zoom>
               )}
 
@@ -674,169 +637,65 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                     key={index}
                   >
                     <Grid item xs={12} className="tutorial-option">
-                      <Paper
-                        elevation={3}
+                      <Box
                         sx={{
-                          p: isMobile ? 2 : 3,
+                          py: isMobile ? 2 : 3,
                           width: '100%',
                           display: 'flex',
                           flexDirection: 'column',
-                          alignItems: 'center',
-                          textAlign: 'center',
-                          transition:
-                            'transform 0.3s, box-shadow 0.3s, border 0.3s',
-                          '&:hover': {
-                            transform: isMobile ? 'none' : 'translateY(-8px)',
-                            boxShadow: isMobile
-                              ? undefined
-                              : '0 12px 24px rgba(16, 42, 45, 0.14)',
-                          },
-                          mb: isMobile ? 2 : 3,
-                          position: 'relative',
-                          overflow: 'hidden',
-                          bgcolor: 'background.paper',
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            height: '4px',
-                            background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
-                          },
-                          // Highlight the current slide
-                          border:
-                            currentSlide === index
-                              ? `2px solid ${theme.palette.primary.main}`
-                              : '2px solid rgba(0, 0, 0, 0.06)',
-                          boxShadow:
-                            currentSlide === index
-                              ? '0 0 20px rgba(0, 188, 162, 0.4)'
-                              : undefined,
+                          alignItems: 'stretch',
+                          textAlign: 'left',
+                          borderBottom:
+                            index === displayOptions.length - 1
+                              ? 'none'
+                              : '1px solid',
+                          borderColor: 'divider',
                         }}
                         id={`tutorial-option-${index}`}
                       >
                         <Box sx={{ width: '100%' }}>
                           <Box
-                            mb={isMobile ? 1 : 2}
+                            mb={1}
                             display="flex"
-                            justifyContent="center"
+                            justifyContent="flex-start"
+                            alignItems="center"
+                            gap={1.5}
                           >
-                            <div
-                              style={{
-                                background: 'rgba(0, 188, 162, 0.1)',
-                                borderRadius: '50%',
-                                width: isMobile ? '50px' : '60px',
-                                height: isMobile ? '50px' : '60px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                              }}
+                            {React.cloneElement(option.icon, {
+                              style: {
+                                fontSize: isMobile ? '28px' : '32px',
+                                color: theme.palette.primary.main,
+                              },
+                            })}
+                            <Typography
+                              variant={isMobile ? 'subtitle1' : 'h6'}
+                              fontWeight="bold"
+                              color="text.primary"
                             >
-                              {React.cloneElement(option.icon, {
-                                style: {
-                                  fontSize: isMobile ? '28px' : '32px',
-                                  color: theme.palette.primary.main,
-                                },
-                              })}
-                            </div>
+                              {option.title}
+                            </Typography>
                           </Box>
-                          <Typography
-                            variant={isMobile ? 'subtitle1' : 'h6'}
-                            fontWeight="bold"
-                            gutterBottom
-                            color="text.primary"
-                          >
-                            {option.title}
-                          </Typography>
                           <Typography
                             variant={isMobile ? 'body2' : 'body1'}
                             paragraph
                             color="text.secondary"
                             sx={{
-                              minHeight: isMobile ? '36px' : '48px',
+                              maxWidth: 760,
                               fontSize: isMobile ? '0.875rem' : undefined,
                             }}
                           >
                             {option.description}
                           </Typography>
 
-                          {/* Image with arrows */}
-                          <Box
-                            sx={{
-                              mt: isMobile ? 1 : 2,
-                              mb: isMobile ? 2 : 3,
-                              maxWidth: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            {option.hasMultipleImages && option.images ? (
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  justifyContent: 'center',
-                                  px: isMobile ? 1 : 2,
-                                  gap: isMobile ? 1 : 2,
-                                  flexDirection: 'row',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                {option.images.map((image, imgIndex) => (
-                                  <img
-                                    key={imgIndex}
-                                    src={image.src}
-                                    alt={image.alt}
-                                    style={{
-                                      maxWidth: isMobile ? '50%' : '30%',
-                                      maxHeight: '100%',
-                                      objectFit: 'contain',
-                                      border: '1px solid rgb(238, 238, 238)',
-                                      borderRadius: '8px',
-                                      backgroundColor: 'background.paper',
-                                      boxShadow:
-                                        '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                      transition: 'transform 0.2s ease',
-                                      marginBottom: isMobile ? '10px' : 0,
-                                    }}
-                                    className="hover-scale-image"
-                                  />
-                                ))}
-                              </Box>
-                            ) : option.image ? (
-                              <img
-                                src={option.image}
-                                alt={`${option.title} illustration`}
-                                style={{
-                                  maxWidth: isMobile ? '90%' : '65%',
-                                  maxHeight: '100%',
-                                  objectFit: 'contain',
-                                  border: '1px solid rgb(238, 238, 238)',
-                                  borderRadius: '8px',
-                                  backgroundColor: 'background.paper',
-                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                  transition: 'transform 0.2s ease',
-                                }}
-                                className="hover-scale-image"
-                              />
-                            ) : (
-                              <Typography color="text.secondary">
-                                Illustration placeholder
-                              </Typography>
-                            )}
-                          </Box>
-
                           {/* Render either multiple buttons or a single button */}
                           {option.hasMultipleButtons && option.buttons ? (
                             <Box
                               sx={{
                                 display: 'flex',
-                                justifyContent: 'center',
+                                justifyContent: 'flex-start',
                                 flexWrap: 'wrap',
                                 gap: isMobile ? 1 : 2,
-                                mt: isMobile ? 1 : 2,
+                                mt: isMobile ? 1 : 1.5,
                                 flexDirection: isMobile ? 'column' : 'row',
                               }}
                             >
@@ -890,7 +749,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                               size={isMobile ? 'small' : 'medium'}
                               onClick={option.action}
                               sx={{
-                                mt: isMobile ? 1 : 2,
+                                mt: isMobile ? 1 : 1.5,
                                 color: '#191919',
                                 fontWeight: 'bold',
                                 boxShadow: '0 2px 8px rgba(0, 188, 162, 0.4)',
@@ -910,7 +769,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
                             </Button>
                           )}
                         </Box>
-                      </Paper>
+                      </Box>
                     </Grid>
                   </Zoom>
                 ))}
@@ -1038,20 +897,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
         open={widgetEditorModalOpen}
         onClose={() => setWidgetEditorModalOpen(false)}
         onCloseTutorial={onClose}
-      />
-
-      {/* Add CSS for image hover effect */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-          .hover-scale-image {
-            transition: transform 0.3s ease;
-          }
-          .hover-scale-image:hover {
-            transform: scale(${isMobile ? '1.01' : '1.02'});
-          }
-        `,
-        }}
       />
     </>
   )

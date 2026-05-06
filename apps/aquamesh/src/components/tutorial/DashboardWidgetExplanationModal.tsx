@@ -7,32 +7,50 @@ import {
   Button,
   Typography,
   Box,
-  Grid,
-  Paper,
   IconButton,
-  useTheme,
-  useMediaQuery,
-  Fade,
+  Stack,
+  Chip,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import WidgetsIcon from '@mui/icons-material/Widgets'
+import ViewModuleIcon from '@mui/icons-material/ViewModule'
+import EditIcon from '@mui/icons-material/Edit'
 
 interface DashboardWidgetExplanationModalProps {
   open: boolean
   onClose: () => void
 }
 
+const workflowSteps = [
+  {
+    title: '1. Build a widget',
+    text: 'Use Widget Studio to combine blocks: text, lists, images, PDFs, inputs, buttons, charts, and layout groups.',
+  },
+  {
+    title: '2. Build a dashboard',
+    text: 'Create a dashboard, open Widget → My Widgets, add saved widgets, arrange them, resize the layout, and save.',
+  },
+  {
+    title: '3. View or edit later',
+    text: 'Saved dashboards open as a clean view. Use the pencil when you want to add widgets or change the layout.',
+  },
+]
+
+const blockTypes = [
+  'Text',
+  'List',
+  'Image',
+  'PDF',
+  'Input',
+  'Button',
+  'Chart',
+  'Layout',
+]
+
 const DashboardWidgetExplanationModal: React.FC<
   DashboardWidgetExplanationModalProps
 > = ({ open, onClose }) => {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-
-  // Example Dashboard and Widget images
-  const dashboardImage = `/images/understanding_dashboards.png`
-  const widgetImage = `/images/understanding_widgets.png`
-
   return (
     <Dialog
       open={open}
@@ -49,8 +67,6 @@ const DashboardWidgetExplanationModal: React.FC<
           borderColor: 'divider',
         },
       }}
-      TransitionComponent={Fade}
-      transitionDuration={500}
     >
       <DialogTitle
         id="explanation-dialog-title"
@@ -63,13 +79,8 @@ const DashboardWidgetExplanationModal: React.FC<
         }}
       >
         <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography
-            variant="h6"
-            component="div"
-            fontWeight="bold"
-            color="text.primary"
-          >
-            Dashboards and widgets
+          <Typography variant="h6" fontWeight="bold">
+            How AquaMesh is organised
           </Typography>
           <IconButton
             aria-label="close"
@@ -81,169 +92,91 @@ const DashboardWidgetExplanationModal: React.FC<
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
-        <Box my={4}>
-          <Grid container spacing={4}>
-            <Fade in={open} style={{ transitionDelay: '100ms' }}>
-              <Grid item xs={12} md={6}>
-                <Paper
-                  elevation={3}
-                  sx={{
-                    p: 3,
-                    height: '100%',
-                    bgcolor: 'background.paper',
-                    borderLeft: '4px solid',
-                    borderColor: 'primary.main',
-                    borderRadius: 2,
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                      borderColor: 'primary.dark',
-                    },
-                  }}
-                >
-                  <Box display="flex" alignItems="center" mb={2}>
-                    <DashboardIcon
-                      color="primary"
-                      sx={{ fontSize: 32, mr: 2 }}
-                    />
-                    <Typography
-                      variant="h5"
-                      fontWeight="bold"
-                      color="text.primary"
-                    >
-                      Dashboards
-                    </Typography>
-                  </Box>
-                  <Typography variant="body1" paragraph color="text.secondary">
-                    A dashboard is the page/canvas. Widgets live inside it:
-                    notes, charts, lists, PDFs, inputs, or any reusable block
-                    you build. Add widgets, arrange them, resize the layout, and
-                    save the dashboard when the page feels useful.
-                  </Typography>
-                  <Box mt={3} display="flex" justifyContent="center">
-                    <img
-                      src={dashboardImage}
-                      alt="Dashboard example"
-                      style={{
-                        maxWidth: '100%',
-                        border: '1px solid #eee',
-                        borderRadius: '4px',
-                      }}
-                    />
-                  </Box>
-                  <Typography
-                    variant="body1"
-                    paragraph
-                    sx={{ marginTop: '1rem' }}
-                    color="text.primary"
-                  >
-                    Quick steps:
-                  </Typography>
-                  <Box component="ul" sx={{ pl: 2 }}>
-                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
-                      <Typography variant="body1">
-                        <strong>Add widgets</strong> from Add Widget. One
-                        dashboard can contain several widgets.
-                      </Typography>
-                    </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
-                      <Typography variant="body1">
-                        <strong>Move widgets</strong> by dragging their tab/tag
-                        in the dashboard layout.
-                      </Typography>
-                    </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
-                      <Typography variant="body1">
-                        <strong>Resize widgets</strong> by dragging the
-                        separator between them once the dashboard has multiple
-                        widgets.
-                      </Typography>
-                    </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
-                      <Typography variant="body1">
-                        <strong>Save the dashboard</strong> when the view is
-                        ready
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Paper>
-              </Grid>
-            </Fade>
+      <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Stack spacing={3}>
+          <Box>
+            <Typography variant="h4" fontWeight={800} gutterBottom>
+              Three simple layers
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Blocks make widgets. Widgets make dashboards. Dashboards are the
+              pages you open, read, present, and edit when needed.
+            </Typography>
+          </Box>
 
-            <Fade in={open} style={{ transitionDelay: '300ms' }}>
-              <Grid item xs={12} md={6}>
-                <Paper
-                  elevation={3}
-                  sx={{
-                    p: 3,
-                    height: '100%',
-                    bgcolor: 'background.paper',
-                    borderLeft: '4px solid',
-                    borderColor: 'primary.main',
-                    borderRadius: 2,
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-                      borderColor: 'primary.dark',
-                    },
-                  }}
-                >
-                  <Box display="flex" alignItems="center" mb={2}>
-                    <WidgetsIcon color="primary" sx={{ fontSize: 32, mr: 2 }} />
-                    <Typography
-                      variant="h5"
-                      fontWeight="bold"
-                      color="text.primary"
-                    >
-                      Widgets
-                    </Typography>
-                  </Box>
-                  <Typography variant="body1" paragraph color="text.secondary">
-                    Widgets are reusable pieces of a dashboard. Build one in the
-                    Widget Editor with text, inputs, buttons, charts, lists,
-                    images, PDFs, or layout blocks, then reuse it on any
-                    dashboard.
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+              <ViewModuleIcon color="primary" sx={{ mt: 0.4 }} />
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Blocks
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  The smallest pieces inside a widget: explanations, lists,
+                  diagrams, PDFs, answers, buttons, charts, and layout helpers.
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 1 }}>
+                  {blockTypes.map((block) => (
+                    <Chip key={block} label={block} size="small" />
+                  ))}
+                </Stack>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+              <WidgetsIcon color="primary" sx={{ mt: 0.4 }} />
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Widgets
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Reusable knowledge objects you create once and then place on
+                  one or many dashboards.
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+              <DashboardIcon color="primary" sx={{ mt: 0.4 }} />
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Dashboards
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  The final workspace view: combine widgets, drag their tabs to
+                  reposition them, resize separators, and save the layout.
+                </Typography>
+              </Box>
+            </Box>
+          </Stack>
+
+          <Box
+            sx={{
+              borderTop: 1,
+              borderColor: 'divider',
+              pt: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <EditIcon color="primary" />
+              <Typography variant="h6" fontWeight={700}>
+                Typical workflow
+              </Typography>
+            </Box>
+            <Stack component="ol" spacing={1.25} sx={{ pl: 2.5, m: 0 }}>
+              {workflowSteps.map((step) => (
+                <Box component="li" key={step.title}>
+                  <Typography variant="body1" fontWeight={700}>
+                    {step.title}
                   </Typography>
-                  <Box mt={3} display="flex" justifyContent="center">
-                    <img
-                      src={widgetImage}
-                      alt="Widget example"
-                      style={{
-                        maxWidth: '100%',
-                        border: '1px solid #eee',
-                        borderRadius: '4px',
-                      }}
-                    />
-                  </Box>
-                  <Typography
-                    variant="body1"
-                    paragraph
-                    sx={{ marginTop: '1rem' }}
-                    color="text.primary"
-                  >
-                    Quick steps:
+                  <Typography variant="body2" color="text.secondary">
+                    {step.text}
                   </Typography>
-                  <Box component="ul" sx={{ pl: 2 }}>
-                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
-                      <Typography variant="body1">
-                        <strong>Open Widget Editor</strong> from Add Widget
-                      </Typography>
-                    </Box>
-                    <Box component="li" sx={{ mb: 1 }} color="text.primary">
-                      <Typography variant="body1">
-                        <strong>Add building blocks</strong>, preview, and save
-                        the widget. Saved widgets appear back inside Add Widget.
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Paper>
-              </Grid>
-            </Fade>
-          </Grid>
-        </Box>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+        </Stack>
       </DialogContent>
 
       <DialogActions
@@ -255,26 +188,8 @@ const DashboardWidgetExplanationModal: React.FC<
           borderColor: 'divider',
         }}
       >
-        <Button
-          onClick={onClose}
-          color="primary"
-          variant="contained"
-          sx={{
-            bgcolor: 'primary.light',
-            color: '#191919',
-            px: 3,
-            py: 1,
-            '&:hover': {
-              bgcolor: 'primary.main',
-              transform: 'translateY(-3px)',
-              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
-            },
-            transition: 'all 0.2s ease',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          }}
-        >
-          Got it!
+        <Button onClick={onClose} color="primary" variant="contained">
+          Got it
         </Button>
       </DialogActions>
     </Dialog>
