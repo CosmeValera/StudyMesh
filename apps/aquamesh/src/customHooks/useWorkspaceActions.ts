@@ -6,6 +6,7 @@ import { useLayout } from '../components/Layout/LayoutProvider'
 import WidgetStorage from '../components/WidgetEditor/WidgetStorage'
 import { cloneTemplate } from '../components/WidgetEditor/constants/templateWidgets'
 import { DashboardLayout } from '../state/store'
+import { normalizeFolderColor } from '../components/Dasboard/folderColors'
 
 export const OPEN_WIDGET_MENU_EVENT = 'aquamesh-open-widget-menu'
 
@@ -20,6 +21,7 @@ interface SavedDashboardRecord {
   id: string
   name: string
   folder?: string
+  folderColor?: string
   layout: DashboardLayout
   description?: string
   tags?: string[]
@@ -188,12 +190,14 @@ const saveStarterDashboard = (
     dashboards[existingIndex] = {
       ...dashboards[existingIndex],
       ...dashboard,
+      folderColor: normalizeFolderColor(dashboard.folderColor),
       updatedAt: now,
     }
   } else {
     dashboards.push({
       id: `dashboard-starter-${dashboard.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       ...dashboard,
+      folderColor: normalizeFolderColor(dashboard.folderColor),
       createdAt: now,
       updatedAt: now,
     })
@@ -242,6 +246,7 @@ export const ensureStarterDashboards = () => {
     saveStarterDashboard({
       name: 'Mathematics 1 — Derivatives',
       folder: 'Mathematics',
+      folderColor: '#1976D2',
       layout: createMathStarterLayout(
         mathWidgets.map((widget) => createCustomWidgetConfig(widget!)),
       ),
@@ -265,6 +270,7 @@ export const ensureStarterDashboards = () => {
     saveStarterDashboard({
       name: 'AquaMesh Tutorial',
       folder: 'Tutorial',
+      folderColor: '#007C66',
       layout: createLayoutWithComponent(
         createCustomWidgetConfig(tutorialWidget),
       ),
@@ -288,6 +294,7 @@ export const ensureStarterDashboards = () => {
     saveStarterDashboard({
       name: 'AquaMesh Interactivity',
       folder: 'Tutorial',
+      folderColor: '#007C66',
       layout: createLayoutWithComponent(
         createCustomWidgetConfig(interactivityWidget),
       ),

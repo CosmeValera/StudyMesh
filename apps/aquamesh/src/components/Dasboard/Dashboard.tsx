@@ -29,6 +29,12 @@ import DashboardLayoutView from '../Layout/Layout'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import { useWorkspaceActions } from '../../customHooks/useWorkspaceActions'
+import {
+  DEFAULT_FOLDER_COLOR,
+  FOLDER_COLOR_PRESETS,
+  normalizeFolderColor,
+  normalizeFolderName,
+} from './folderColors'
 import './tabs.scss'
 
 // Define custom dashboard type for localStorage
@@ -36,6 +42,7 @@ interface SavedDashboard {
   id: string
   name: string
   folder?: string
+  folderColor?: string
   layout: DashboardLayout
   description?: string
   tags?: string[]
@@ -116,6 +123,17 @@ const DashboardStorage = {
     } catch (error) {
       console.error('Failed to delete dashboard', error)
     }
+  },
+
+  getFolderColor: (folder: string): string => {
+    const folderName = normalizeFolderName(folder)
+    const dashboard = DashboardStorage.getAll().find(
+      (savedDashboard) =>
+        normalizeFolderName(savedDashboard.folder) === folderName &&
+        savedDashboard.folderColor,
+    )
+
+    return normalizeFolderColor(dashboard?.folderColor)
   },
 
   // Check if the current layout is different from the saved one
@@ -295,6 +313,8 @@ const Dashboards = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [dashboardName, setDashboardName] = useState('')
   const [dashboardFolder, setDashboardFolder] = useState('Default')
+  const [dashboardFolderColor, setDashboardFolderColor] =
+    useState(DEFAULT_FOLDER_COLOR)
   const [dashboardDescription, setDashboardDescription] = useState('')
   const [dashboardTags, setDashboardTags] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
@@ -441,6 +461,7 @@ const Dashboards = () => {
       setCurrentTabIndex(index)
       setDashboardName(currentDashboard.name || '')
       setDashboardFolder('Default')
+      setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
       setDashboardDescription('')
       setDashboardTags(['dashboard'])
       setIsPublic(false)
@@ -453,6 +474,7 @@ const Dashboards = () => {
     setSaveDialogOpen(false)
     setDashboardName('')
     setDashboardFolder('Default')
+    setDashboardFolderColor(DEFAULT_FOLDER_COLOR)
     setDashboardDescription('')
     setDashboardTags([])
     setIsPublic(false)
@@ -487,6 +509,7 @@ const Dashboards = () => {
             id: `dashboard-${Date.now()}`,
             name: dashboardName.trim(),
             folder: dashboardFolder.trim() || 'Default',
+            folderColor: normalizeFolderColor(dashboardFolderColor),
             layout: currentDashboard.layout,
             description: dashboardDescription.trim() || undefined,
             tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
@@ -790,7 +813,13 @@ const Dashboards = () => {
             fullWidth
             variant="outlined"
             value={dashboardFolder}
-            onChange={(e) => setDashboardFolder(e.target.value)}
+            onChange={(e) => {
+              const nextFolder = e.target.value
+              setDashboardFolder(nextFolder)
+              setDashboardFolderColor(
+                DashboardStorage.getFolderColor(nextFolder),
+              )
+            }}
             helperText="Dashboards with the same folder name are grouped together."
             InputLabelProps={{
               shrink: true,
@@ -812,6 +841,49 @@ const Dashboards = () => {
               },
             }}
           />
+
+          <Box sx={{ mt: 2, mb: 1 }}>
+            <Typography variant="subtitle2" color="text.primary" gutterBottom>
+              Folder color
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                flexWrap: 'wrap',
+              }}
+            >
+              {FOLDER_COLOR_PRESETS.map((color) => (
+                <IconButton
+                  key={color}
+                  size="small"
+                  aria-label={`Use folder color ${color}`}
+                  onClick={() => setDashboardFolderColor(color)}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    border: '2px solid',
+                    borderColor:
+                      normalizeFolderColor(dashboardFolderColor) === color
+                        ? 'text.primary'
+                        : 'divider',
+                    bgcolor: color,
+                    '&:hover': { bgcolor: color, opacity: 0.85 },
+                  }}
+                />
+              ))}
+              <TextField
+                type="color"
+                label="Custom"
+                value={normalizeFolderColor(dashboardFolderColor)}
+                onChange={(e) => setDashboardFolderColor(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 96 }}
+              />
+            </Box>
+          </Box>
 
           <TextField
             margin="normal"

@@ -41,11 +41,18 @@ import { useDashboards } from './DashboardProvider'
 import { DefaultDashboard } from './fixture'
 import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
 import DeleteConfirmationDialog from '../WidgetEditor/components/dialogs/DeleteConfirmationDialog'
+import {
+  DEFAULT_FOLDER_COLOR,
+  FOLDER_COLOR_PRESETS,
+  normalizeFolderColor,
+  normalizeFolderName,
+} from './folderColors'
 
 interface SavedDashboard {
   id: string
   name: string
   folder?: string
+  folderColor?: string
   layout: Layout
   description?: string
   tags?: string[]
@@ -172,6 +179,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             id: string
             name: string
             folder?: string
+            folderColor?: string
             layout: Layout
             description?: string
             tags?: string[]
@@ -181,7 +189,8 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
           }) => ({
             id: dashboard.id,
             name: dashboard.name,
-            folder: dashboard.folder?.trim() || 'Default',
+            folder: normalizeFolderName(dashboard.folder),
+            folderColor: normalizeFolderColor(dashboard.folderColor),
             layout: dashboard.layout,
             description: dashboard.description || 'No description',
             tags: dashboard.tags || ['dashboard'],
@@ -411,9 +420,24 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   // Function to save edited dashboard
   const handleSaveEditedDashboard = (editedDashboard: SavedDashboard) => {
     try {
-      const updatedDashboards = dashboards.map((dashboard) =>
-        dashboard.id === editedDashboard.id ? editedDashboard : dashboard,
+      const editedFolder = normalizeFolderName(editedDashboard.folder)
+      const editedFolderColor = normalizeFolderColor(
+        editedDashboard.folderColor,
       )
+      const updatedDashboards = dashboards.map((dashboard) => {
+        const nextDashboard =
+          dashboard.id === editedDashboard.id ? editedDashboard : dashboard
+
+        if (normalizeFolderName(nextDashboard.folder) === editedFolder) {
+          return {
+            ...nextDashboard,
+            folder: editedFolder,
+            folderColor: editedFolderColor,
+          }
+        }
+
+        return nextDashboard
+      })
       setDashboards(updatedDashboards)
       localStorage.setItem(
         'customDashboards',
@@ -800,8 +824,10 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                     ml: 1,
                                     height: 20,
                                     fontSize: '0.7rem',
-                                    bgcolor: 'action.hover',
-                                    color: 'text.secondary',
+                                    bgcolor: `${normalizeFolderColor(dashboard.folderColor)}22`,
+                                    color: normalizeFolderColor(
+                                      dashboard.folderColor,
+                                    ),
                                   }}
                                 />
                                 {dashboard.isPublic && (
@@ -1074,6 +1100,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
 }) => {
   const [name, setName] = useState('')
   const [folder, setFolder] = useState('Default')
+  const [folderColor, setFolderColor] = useState(DEFAULT_FOLDER_COLOR)
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
@@ -1084,6 +1111,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
     if (dashboard) {
       setName(dashboard.name)
       setFolder(dashboard.folder || 'Default')
+      setFolderColor(normalizeFolderColor(dashboard.folderColor))
       setDescription(dashboard.description || '')
       setTags(dashboard.tags || [])
       setIsPublic(dashboard.isPublic || false)
@@ -1096,7 +1124,8 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
       const updatedDashboard: SavedDashboard = {
         ...dashboard,
         name: name.trim(),
-        folder: folder.trim() || 'Default',
+        folder: normalizeFolderName(folder),
+        folderColor: normalizeFolderColor(folderColor),
         description: description.trim() || 'No description',
         tags: tags.length > 0 ? tags : ['dashboard'],
         isPublic,
@@ -1224,6 +1253,52 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
               },
             }}
           />
+
+          <Box sx={{ mt: 2, mb: 1 }}>
+            <Typography variant="subtitle2" color="text.primary" gutterBottom>
+              Folder color
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                flexWrap: 'wrap',
+              }}
+            >
+              {FOLDER_COLOR_PRESETS.map((color) => (
+                <IconButton
+                  key={color}
+                  size="small"
+                  aria-label={`Use folder color ${color}`}
+                  onClick={() => setFolderColor(color)}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    border: '2px solid',
+                    borderColor:
+                      normalizeFolderColor(folderColor) === color
+                        ? 'text.primary'
+                        : 'divider',
+                    bgcolor: color,
+                    '&:hover': { bgcolor: color, opacity: 0.85 },
+                  }}
+                />
+              ))}
+              <TextField
+                type="color"
+                label="Custom"
+                value={normalizeFolderColor(folderColor)}
+                onChange={(e) => setFolderColor(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 96 }}
+              />
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              The color is applied to every dashboard in this folder.
+            </Typography>
+          </Box>
 
           <TextField
             fullWidth
