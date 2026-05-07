@@ -44,6 +44,8 @@ interface TutorialOption {
   buttons?: ButtonOption[]
 }
 
+const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
+
 const TutorialModal: React.FC<TutorialModalProps> = ({
   open,
   onClose,
@@ -94,15 +96,26 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   }, [open])
 
   useEffect(() => {
-    // Check user role from localStorage
-    try {
-      const storedUserData = localStorage.getItem('userData')
-      if (storedUserData) {
-        const userData = JSON.parse(storedUserData)
-        setIsAdmin(userData.id === 'admin' && userData.role === 'ADMIN_ROLE')
+    const readUserRole = () => {
+      try {
+        const storedUserData = localStorage.getItem('userData')
+        if (storedUserData) {
+          const userData = JSON.parse(storedUserData)
+          setIsAdmin(userData.id === 'admin' && userData.role === 'ADMIN_ROLE')
+          return
+        }
+        setIsAdmin(false)
+      } catch (error) {
+        console.error('Failed to parse user data', error)
+        setIsAdmin(false)
       }
-    } catch (error) {
-      console.error('Failed to parse user data', error)
+    }
+
+    readUserRole()
+    window.addEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+
+    return () => {
+      window.removeEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
     }
   }, [])
 
@@ -111,7 +124,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
   options.push({
     title: 'Open Dashboard',
     description:
-      'Open a saved or starter dashboard in the workspace.',
+      'Open a saved dashboard or starter example from the Dashboards menu.',
     icon: <ImportContactsIcon fontSize="large" color="primary" />,
     hasMultipleButtons: true,
     buttons: [
@@ -141,7 +154,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     options.push({
       title: 'Create Widget',
       description:
-        'Build one reusable Daily Operations widget, preview it, and save it.',
+        'Build one reusable widget: add a layout block, place content inside it, preview, and save.',
       icon: <CreateIcon fontSize="large" color="primary" />,
       buttonText: 'Start building',
       action: () => {
@@ -171,7 +184,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     {
       title: 'Create Dashboard',
       description:
-        'Start a dashboard, add saved widgets, arrange them, and save.',
+        'Start a dashboard, add your saved widget from Widgets, arrange it, save it, then reopen it from Dashboards.',
       icon: <DashboardIcon fontSize="large" color="primary" />,
       hasMultipleButtons: true,
       buttons: [
@@ -198,7 +211,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({
     {
       title: 'View more starter dashboards',
       description:
-        'Use the dashboard menu when you want a finished layout. Mathematics shows a multi-widget study dashboard; Tutorial explains the app concepts.',
+        'Use the dashboard menu for finished layouts. Mathematics, content load, and grouping tutorials show different dashboard patterns.',
       icon: <InfoIcon fontSize="large" color="primary" />,
       hasMultipleButtons: true,
       buttons: [

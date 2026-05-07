@@ -114,7 +114,7 @@ const WidgetEditorExplanationModal: React.FC<
     {
       title: 'Create Widget Quick Start',
       content:
-        'Create one reusable widget: add blocks, preview, save, then place it from Create Dashboard > Widgets.',
+        'Create one reusable widget: add a layout block, place a content block inside it, preview, save, then place it from Create Dashboard > Widgets.',
     },
     {
       title: 'Build The Widget',
@@ -129,8 +129,8 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Add Building Blocks',
           icon: <WidgetsIcon />,
           content: isMobile
-            ? 'Tap text, answer boxes, buttons, charts, and groups to add them to your widget.'
-            : 'Drag text, answer boxes, buttons, charts, and groups from the left panel into your widget.',
+            ? 'Tap a layout group first, then tap text, lists, inputs, buttons, or charts to add content inside it.'
+            : 'Drag one layout group first, then drag text, lists, inputs, buttons, or charts inside it.',
         },
         {
           title: 'Arrange The Canvas',
@@ -159,7 +159,7 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Use In Dashboard',
           icon: <WidgetsIcon />,
           content:
-            'Open Create Dashboard, choose Widgets, and place your saved widget on the dashboard.',
+            'Open Create Dashboard, choose Widgets, place your saved widget, save the dashboard, then reopen it later from Dashboards.',
         },
       ],
     },

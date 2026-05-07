@@ -36,7 +36,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import EditIcon from '@mui/icons-material/Edit'
 import PublicIcon from '@mui/icons-material/Public'
 import LockIcon from '@mui/icons-material/Lock'
-import { Layout } from '../../types/types'
+import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import { DefaultDashboard } from './fixture'
 import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
@@ -53,7 +53,7 @@ interface SavedDashboard {
   name: string
   folder?: string
   folderColor?: string
-  layout: Layout
+  layout: DashboardLayout
   description?: string
   tags?: string[]
   isPublic?: boolean
@@ -186,7 +186,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             name: string
             folder?: string
             folderColor?: string
-            layout: Layout
+            layout: DashboardLayout
             description?: string
             tags?: string[]
             isPublic?: boolean
@@ -216,16 +216,36 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   }
 
   // Calculate the number of components in a layout
-  const calculateComponentsCount = (layout: Layout): number => {
-    let count = 0
-
+  const calculateComponentsCount = (layout: DashboardLayout): number => {
     // Define NodeType interface for better type safety
     interface NodeType {
       type?: string
       component?: string | unknown
+      config?: {
+        customProps?: {
+          components?: unknown
+        }
+      }
       children?: NodeType[]
       weight?: number
       name?: string
+    }
+
+    const countWidgetBlocks = (components?: unknown): number => {
+      if (!Array.isArray(components)) {
+        return 0
+      }
+
+      return components.reduce((sum, component) => {
+        if (!component || typeof component !== 'object') {
+          return sum
+        }
+
+        const children =
+          'children' in component ? component.children : undefined
+
+        return sum + 1 + countWidgetBlocks(children)
+      }, 0)
     }
 
     // Count tabs with components
@@ -235,6 +255,14 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       }
 
       if (node.type === 'tab' && node.component) {
+        if (node.component === 'CustomWidget') {
+          const widgetBlocks = countWidgetBlocks(
+            node.config?.customProps?.components,
+          )
+
+          return widgetBlocks || 1
+        }
+
         return 1
       }
 
@@ -248,8 +276,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       return 0
     }
 
-    count = countTabs(layout as unknown as NodeType)
-    return count
+    return countTabs(layout as unknown as NodeType)
   }
 
   // Load dashboards when dialog opens

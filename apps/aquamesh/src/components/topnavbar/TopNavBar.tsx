@@ -26,6 +26,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
 import SettingsIcon from '@mui/icons-material/Settings'
+import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
@@ -47,6 +48,20 @@ interface UserData {
   role: string
 }
 
+const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
+
+const adminUser: UserData = {
+  id: 'admin',
+  name: 'Admin',
+  role: 'ADMIN_ROLE',
+}
+
+const viewerUser: UserData = {
+  id: 'viewer',
+  name: 'Viewer',
+  role: 'VIEWER_ROLE',
+}
+
 // Define component props interface
 interface TopNavBarProps {
   open?: boolean
@@ -61,6 +76,7 @@ interface ButtonWithLabelProps {
   sx?: React.CSSProperties | Record<string, unknown>
   'data-tutorial-id'?: string
   title?: string
+  disabled?: boolean
 }
 
 const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
@@ -151,13 +167,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   )
   const [showDeleteTemplateConfirmation, setShowDeleteTemplateConfirmation] =
     useStoredBoolean('widget-editor-delete-template-confirmation', true)
-  const [userData, setUserData] = useState<UserData>({
-    id: 'admin',
-    name: 'Admin User',
-    role: 'ADMIN_ROLE',
-  })
+  const [userData, setUserData] = useState<UserData>(adminUser)
+  const isAdmin = userData.id === 'admin' && userData.role === 'ADMIN_ROLE'
   const userModeLabel =
-    userData.role === 'ADMIN_ROLE' ? 'Builder mode' : 'Viewer mode'
+    isAdmin ? 'Builder mode' : 'Viewer mode'
 
   const { openCreateWidget, openCreateDashboard } = useWorkspaceActions()
   const navigate = useNavigate()
@@ -183,6 +196,25 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
   useEffect(() => {
     const handleOpenWidgetEditor = (event: Event) => {
+      let parsedUserData = userData
+
+      try {
+        const storedUserData = localStorage.getItem('userData')
+        parsedUserData = storedUserData
+          ? (JSON.parse(storedUserData) as UserData)
+          : userData
+      } catch (error) {
+        console.error('Failed to parse user data from localStorage', error)
+      }
+
+      const canEdit =
+        parsedUserData.id === 'admin' &&
+        parsedUserData.role === 'ADMIN_ROLE'
+
+      if (!canEdit) {
+        return
+      }
+
       const customEvent = event as CustomEvent<{
         loadWidget?: CustomWidget
         initialEditMode?: boolean
@@ -199,7 +231,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         handleOpenWidgetEditor,
       )
     }
-  }, [])
+  }, [userData])
 
   // Handle opening and closing dropdowns
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -215,6 +247,15 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     // Clear user data from localStorage
     localStorage.removeItem('userData')
     navigate('/')
+  }
+
+  const switchUser = (nextUser: UserData) => {
+    localStorage.setItem('userData', JSON.stringify(nextUser))
+    setUserData(nextUser)
+    window.dispatchEvent(
+      new CustomEvent(USER_ROLE_CHANGED_EVENT, { detail: nextUser }),
+    )
+    handleClose()
   }
 
   return (
@@ -270,10 +311,18 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create Dashboard"
                 onClick={() => openCreateDashboard()}
                 data-tutorial-id="create-dashboard-button"
+                disabled={!isAdmin}
+                title={
+                  isAdmin
+                    ? 'Create Dashboard'
+                    : 'Viewer mode cannot create dashboards'
+                }
+                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
               />
             ) : (
               <Button
                 onClick={() => openCreateDashboard()}
+                disabled={!isAdmin}
                 sx={{
                   color: 'foreground.contrastPrimary',
                   display: 'flex',
@@ -281,6 +330,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   minWidth: 'auto',
                   mx: 1,
                   px: 2,
+                  opacity: isAdmin ? 1 : 0.45,
                 }}
                 startIcon={<DashboardCustomizeIcon />}
                 data-tutorial-id="create-dashboard-button"
@@ -296,10 +346,16 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create Widget"
                 onClick={() => openCreateWidget()}
                 data-tutorial-id="create-widget-button"
+                disabled={!isAdmin}
+                title={
+                  isAdmin ? 'Create Widget' : 'Viewer mode cannot create widgets'
+                }
+                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
               />
             ) : (
               <Button
                 onClick={() => openCreateWidget()}
+                disabled={!isAdmin}
                 sx={{
                   color: 'foreground.contrastPrimary',
                   display: 'flex',
@@ -307,6 +363,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   minWidth: 'auto',
                   mx: 1,
                   px: 2,
+                  opacity: isAdmin ? 1 : 0.45,
                 }}
                 startIcon={<ConstructionIcon />}
                 data-tutorial-id="create-widget-button"
@@ -384,9 +441,28 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   border: 1,
                   borderColor: 'divider',
                   minWidth: 260,
+                  mt: 1,
+                  overflow: 'hidden',
                 },
               }}
             >
+              <Box
+                sx={{
+                  px: 2,
+                  pt: 1.5,
+                  pb: 1,
+                  bgcolor: 'background.default',
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={800}>
+                  {userData.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {userModeLabel}
+                </Typography>
+              </Box>
               <Box sx={{ px: 2, py: 1.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Brightness6Icon
@@ -418,7 +494,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   setIsSettingsOpen(true)
                   handleClose()
                 }}
-                sx={{ color: 'text.primary' }}
+                sx={{ marginTop: 1, paddingTop: 0.5, paddingBottom: 0.5, color: 'text.primary'  }}
               >
                 <ListItemIcon>
                   <SettingsIcon
@@ -443,6 +519,19 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   />
                 </ListItemIcon>
                 Help / tutorial
+              </MenuItem>
+              <Divider sx={{ borderColor: 'divider' }} />
+              <MenuItem
+                onClick={() => switchUser(isAdmin ? viewerUser : adminUser)}
+                sx={{ color: 'text.primary' }}
+              >
+                <ListItemIcon>
+                  <SwitchAccountIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
+                </ListItemIcon>
+                {isAdmin ? 'Log in as Viewer' : 'Log in as Admin'}
               </MenuItem>
               <Divider sx={{ borderColor: 'divider' }} />
               <MenuItem onClick={handleLogout} sx={{ color: 'text.primary' }}>

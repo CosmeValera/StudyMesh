@@ -63,19 +63,72 @@
   }
 
   &:has(.flexlayout__tabset-selected) {
-    outline: 2px solid var(--primary-light);
+    outline: 2px solid var(--primary-main);
+    // outline-offset: -1px;
   }
 }
 
 .flexlayout__splitter {
-  background-color: var(--grey-200);
+  background-color: transparent;
+  position: relative;
+  z-index: 0 !important;
+
+  &::after {
+    content: '';
+    display: block;
+    position: absolute;
+    background-color: var(--surface-border, var(--grey-200));
+    opacity: 0;
+  }
+
+  &.flexlayout__splitter_vert::after {
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+    transform: translateX(-50%);
+  }
+
+  &.flexlayout__splitter_horz::after {
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    transform: translateY(-50%);
+  }
 
   &:hover {
-    background-color: var(--primary-light);
+    background-color: transparent;
+
+    &::after {
+      background-color: var(--primary-main);
+      opacity: 1;
+    }
+
+    &.flexlayout__splitter_vert::after {
+      width: 2px;
+    }
+
+    &.flexlayout__splitter_horz::after {
+      height: 2px;
+    }
   }
 
   &.flexlayout__splitter_drag {
-    background-color: var(--background-bar-medium);
+    background-color: transparent;
+
+    &::after {
+      background-color: var(--primary-main);
+      opacity: 1;
+    }
+
+    &.flexlayout__splitter_vert::after {
+      width: 2px;
+    }
+
+    &.flexlayout__splitter_horz::after {
+      height: 2px;
+    }
   }
 }
 
@@ -119,8 +172,6 @@
     &.flexlayout__tab_button--selected {
       color: var(--foreground-primary);
       background-color: var(--background-bar-medium);
-      border: 1px solid var(--primary-main);
-      border-bottom: 1px solid var(--primary-main);
     }
 
     .flexlayout__tab_button_trailing {

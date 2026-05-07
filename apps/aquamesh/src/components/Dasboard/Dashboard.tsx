@@ -32,6 +32,7 @@ import ConstructionIcon from '@mui/icons-material/Construction'
 import EditIcon from '@mui/icons-material/Edit'
 import ExtensionIcon from '@mui/icons-material/Extension'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout } from '../../state/store'
@@ -100,6 +101,7 @@ type DashboardOnboardingStep = 'layout' | 'save' | 'complete' | 'done'
 const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
 const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -592,6 +594,9 @@ const Dashboards = () => {
     widget.name.includes('Custom'),
   )
   const savedDashboardsLabel = isPhone ? 'Saved' : 'Saved Dashboards'
+  const visibleDashboardOptions = isAdmin
+    ? dashboardOptions
+    : dashboardOptions.filter((dashboard) => dashboard.isPublic)
 
   const loadDashboardOptions = () => {
     ensureStarterDashboards()
@@ -617,6 +622,10 @@ const Dashboards = () => {
   }
 
   const openDashboardEditor = (dashboardId: string) => {
+    if (!isAdmin) {
+      return
+    }
+
     setDraftDashboard(null)
     const dashboardIndex = openDashboards.findIndex(
       (dashboard) => dashboard.id === dashboardId,
@@ -631,6 +640,10 @@ const Dashboards = () => {
   }
 
   const createDashboardInEditor = () => {
+    if (!isAdmin) {
+      return
+    }
+
     setDashboardEditorId(null)
     setDraftDashboard({
       id: `draft-dashboard-${Date.now()}`,
@@ -742,6 +755,10 @@ const Dashboards = () => {
   const addWidgetToDashboardEditor = (
     item: DashboardEditorWidgetConfig & { id?: string },
   ) => {
+    if (!isAdmin) {
+      return
+    }
+
     if (!dashboardEditorDashboard) {
       return
     }
@@ -766,6 +783,10 @@ const Dashboards = () => {
   const handleDashboardWidgetsMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>,
   ) => {
+    if (!isAdmin) {
+      return
+    }
+
     setDashboardWidgetsAnchorEl(event.currentTarget)
   }
 
@@ -774,25 +795,47 @@ const Dashboards = () => {
   }
 
   const handleCreateWidgetFromDashboardEditor = () => {
+    if (!isAdmin) {
+      return
+    }
+
     handleDashboardWidgetsMenuClose()
     window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
   }
 
   // Check if user is admin on component mount
   useEffect(() => {
-    try {
-      const userData = localStorage.getItem('userData')
-      if (userData) {
-        const parsedData = JSON.parse(userData)
-        setIsAdmin(
-          parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
-        )
+    const readUserRole = () => {
+      try {
+        const userData = localStorage.getItem('userData')
+        if (userData) {
+          const parsedData = JSON.parse(userData)
+          setIsAdmin(
+            parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
+          )
+          if (
+            parsedData.id !== 'admin' ||
+            parsedData.role !== 'ADMIN_ROLE'
+          ) {
+            closeDashboardEditor()
+          }
+          return
+        }
+        setIsAdmin(false)
+        closeDashboardEditor()
+      } catch (error) {
+        console.error('Failed to parse user data', error)
+        setIsAdmin(false)
       }
-    } catch (error) {
-      console.error('Failed to parse user data', error)
-      setIsAdmin(false)
     }
-  }, [])
+
+    readUserRole()
+    window.addEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+
+    return () => {
+      window.removeEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+    }
+  }, [dashboardEditorId, dashboardEditorIsDraft])
 
   useEffect(() => {
     loadDashboardOptions()
@@ -806,6 +849,10 @@ const Dashboards = () => {
 
   useEffect(() => {
     const handleOpenDashboardEditor = () => {
+      if (!isAdmin) {
+        return
+      }
+
       createDashboardInEditor()
     }
 
@@ -820,7 +867,7 @@ const Dashboards = () => {
         handleOpenDashboardEditor,
       )
     }
-  })
+  }, [isAdmin])
 
   // Check if current dashboards have changes compared to saved dashboards
   useEffect(() => {
@@ -984,7 +1031,7 @@ const Dashboards = () => {
         ? {
             ...existingDashboard,
             name: nameToSave,
-            layout: currentDashboard.layout,
+            layout: currentDashboard.layout as DashboardLayout,
             updatedAt: now,
           }
         : {
@@ -992,7 +1039,7 @@ const Dashboards = () => {
             name: nameToSave,
             folder: 'Default',
             folderColor: DashboardStorage.getFolderColor('Default'),
-            layout: currentDashboard.layout,
+            layout: currentDashboard.layout as DashboardLayout,
             tags: ['dashboard'],
             isPublic: isAdmin ? false : true,
             createdAt: now,
@@ -1174,7 +1221,7 @@ const Dashboards = () => {
             name: nameToSave,
             folder: normalizeFolderName(dashboardFolder),
             folderColor: normalizeFolderColor(dashboardFolderColor),
-            layout: currentDashboard.layout,
+            layout: currentDashboard.layout as DashboardLayout,
             description: dashboardDescription.trim() || undefined,
             tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
             isPublic: isAdmin ? isPublic : true,
@@ -1202,12 +1249,32 @@ const Dashboards = () => {
   }
 
   const handleDashboardEditorSave = () => {
+    if (!isAdmin) {
+      return
+    }
+
     if (dashboardEditorIsDraft) {
       saveDraftDashboardDirectly()
       return
     }
 
     saveDashboardDirectly(dashboardEditorIndex)
+  }
+
+  const handleOpenDashboardEditorInWorkspace = () => {
+    if (
+      dashboardEditorIsEmpty ||
+      dashboardEditorHasUnsavedChanges ||
+      !dashboardEditorSavedDashboard
+    ) {
+      return
+    }
+
+    addDashboard({
+      name: dashboardEditorSavedDashboard.name,
+      layout: dashboardEditorSavedDashboard.layout,
+    })
+    closeDashboardEditor()
   }
 
   return (
@@ -1239,7 +1306,8 @@ const Dashboards = () => {
                   {dashboard.name}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {hasChanges[index] &&
+                  {isAdmin &&
+                    hasChanges[index] &&
                     hasDashboardContent(dashboard.layout) && (
                       <TooltipStyled title="Save Dashboard">
                         <IconButton
@@ -1261,7 +1329,8 @@ const Dashboards = () => {
                         </IconButton>
                       </TooltipStyled>
                     )}
-                  {dashboard.layout?.children &&
+                  {isAdmin &&
+                    dashboard.layout?.children &&
                     dashboard.layout.children.length > 0 && (
                       <TooltipStyled title="Edit Dashboard">
                         <IconButton
@@ -1312,39 +1381,41 @@ const Dashboards = () => {
               </Tab>
             )
           })}
-          <Button
-            size="small"
-            variant="text"
-            disableRipple
-            data-testid="add-dashboard-button"
-            sx={{
-              position: 'relative',
-              top: '3px',
-              marginBottom: '8px',
-              minWidth: 'fit-content',
-              display: 'flex',
-              alignItems: 'middle',
-              gap: '8px',
-              fontSize: '13px',
-              p: '4px 12px',
-              color: 'primary.light',
-              transition: 'all .25s ease',
-              '.MuiButton-startIcon': {
-                transition: 'all .25s ease',
-                m: 0,
+          {isAdmin && (
+            <Button
+              size="small"
+              variant="text"
+              disableRipple
+              data-testid="add-dashboard-button"
+              sx={{
+                position: 'relative',
+                top: '3px',
+                marginBottom: '8px',
+                minWidth: 'fit-content',
+                display: 'flex',
+                alignItems: 'middle',
+                gap: '8px',
+                fontSize: '13px',
+                p: '4px 12px',
                 color: 'primary.light',
-              },
-              ':hover': {
-                backgroundColor: 'transparent',
-                color: 'primary.main',
+                transition: 'all .25s ease',
                 '.MuiButton-startIcon': {
-                  color: 'primary.main',
+                  transition: 'all .25s ease',
+                  m: 0,
+                  color: 'primary.light',
                 },
-              },
-            }}
-            startIcon={<AddIcon width={16} height={16} />}
-            onClick={createEmptyDashboardTab}
-          />
+                ':hover': {
+                  backgroundColor: 'transparent',
+                  color: 'primary.main',
+                  '.MuiButton-startIcon': {
+                    color: 'primary.main',
+                  },
+                },
+              }}
+              startIcon={<AddIcon width={16} height={16} />}
+              onClick={createEmptyDashboardTab}
+            />
+          )}
         </TabList>
         {openDashboards.map((dashboard, index) => {
           const isEmptyDashboard = !hasDashboardContent(dashboard.layout)
@@ -1379,7 +1450,7 @@ const Dashboards = () => {
                       onCreateDashboard={() =>
                         openDashboardEditor(dashboard.id)
                       }
-                      dashboardOptions={dashboardOptions}
+                      dashboardOptions={visibleDashboardOptions}
                       onOpenDashboard={openSavedDashboardFromEmptyState}
                     />
                   ) : (
@@ -1408,7 +1479,7 @@ const Dashboards = () => {
           isAdmin={isAdmin}
           hasDashboard={false}
           onCreateDashboard={createDashboardInEditor}
-          dashboardOptions={dashboardOptions}
+          dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}
         />
       )}
@@ -1568,16 +1639,18 @@ const Dashboards = () => {
                   My Widgets
                 </Typography>
                 <Divider sx={{ borderColor: 'divider' }} />
-                <MenuItem
-                  onClick={handleCreateWidgetFromDashboardEditor}
-                  sx={{ p: 1.5 }}
-                >
-                  <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>
-                    <ConstructionIcon fontSize="small" />
-                  </ListItemIcon>
-                  Create Widget
-                </MenuItem>
-                <Divider sx={{ borderColor: 'divider' }} />
+                {isAdmin && (
+                  <MenuItem
+                    onClick={handleCreateWidgetFromDashboardEditor}
+                    sx={{ p: 1.5 }}
+                  >
+                    <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>
+                      <ConstructionIcon fontSize="small" />
+                    </ListItemIcon>
+                    Create Widget
+                  </MenuItem>
+                )}
+                {isAdmin && <Divider sx={{ borderColor: 'divider' }} />}
                 {customWidgetPanels.length > 0 ? (
                   customWidgetPanels.map((topNavBarWidget) => (
                     <Box key={topNavBarWidget.name}>
@@ -1639,6 +1712,28 @@ const Dashboards = () => {
                 }}
               >
                 {dashboardEditorIsUpdating ? 'Update' : 'Save'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<OpenInBrowserIcon />}
+                disabled={
+                  dashboardEditorIsEmpty ||
+                  dashboardEditorHasUnsavedChanges ||
+                  !dashboardEditorSavedDashboard
+                }
+                onClick={handleOpenDashboardEditorInWorkspace}
+                sx={{
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    mr: { xs: 0.5, sm: 1 },
+                  },
+                }}
+              >
+                Open in Workspace
               </Button>
               <TooltipStyled title="Edit dashboard details">
                 <span>
@@ -1732,6 +1827,10 @@ const Dashboards = () => {
                   key={dashboardEditorDashboard.id}
                   layout={dashboardEditorDashboard.layout}
                   updateLayout={(model) => {
+                    if (!isAdmin) {
+                      return
+                    }
+
                     if (dashboardEditorIsDraft) {
                       setDraftDashboard((currentDraft) =>
                         currentDraft

@@ -714,7 +714,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
         id: 'template-math-title',
         type: 'Label',
         props: {
-          text: 'Mathematics 1 — Derivatives',
+          text: 'Mathematics 1 - Derivatives',
           variant: 'h4',
           gutterBottom: true,
           useCustomColor: true,
@@ -771,7 +771,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                 id: 'template-math-formula-label',
                 type: 'Label',
                 props: {
-                  text: 'Power rule: d/dx xⁿ = n·xⁿ⁻¹\nChain rule: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct rule: (fg)′ = f′g + fg′',
+                  text: 'Power rule: d/dx x^n = n*x^(n-1)\nChain rule: d/dx f(g(x)) = f prime(g(x))*g prime(x)\nProduct rule: (fg) prime = f prime*g + f*g prime',
                   variant: 'body1',
                   whiteSpace: 'pre-line',
                 },
@@ -973,7 +973,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
         id: 'template-math-chart-title',
         type: 'Label',
         props: {
-          text: 'Mathematics 1 — Chart',
+          text: 'Mathematics 1 - Chart',
           variant: 'h5',
           gutterBottom: true,
           useCustomColor: true,
@@ -1026,7 +1026,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
         id: 'template-math-example-title',
         type: 'Label',
         props: {
-          text: 'Mathematics 1 — Derivatives Example',
+          text: 'Mathematics 1 - Derivatives Example',
           variant: 'h5',
           gutterBottom: true,
           useCustomColor: true,
@@ -1052,7 +1052,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
             id: 'template-math-example-text',
             type: 'Label',
             props: {
-              text: 'Example: f(x)=3x⁴ - 2x² + 7\nf′(x)=12x³ - 4x\n\nWhy: apply the power rule to each term.',
+              text: 'Example: f(x)=3x^4 - 2x^2 + 7\nf prime(x)=12x^3 - 4x\n\nWhy: apply the power rule to each term.',
               variant: 'body1',
               whiteSpace: 'pre-line',
             },
@@ -1062,7 +1062,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
             type: 'TextField',
             props: {
               label: 'Try one yourself',
-              placeholder: 'Derivative of x³ + 5x?',
+              placeholder: 'Derivative of x^3 + 5x?',
               fullWidth: true,
               variant: 'outlined',
               helperText:
@@ -1086,7 +1086,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
         id: 'template-math-theory-title',
         type: 'Label',
         props: {
-          text: 'Mathematics 1 — Theory Derivatives',
+          text: 'Mathematics 1 - Theory Derivatives',
           variant: 'h5',
           gutterBottom: true,
           useCustomColor: true,
@@ -1112,7 +1112,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
             id: 'template-math-theory-text',
             type: 'Label',
             props: {
-              text: 'Derivative = rate of change.\nPower: d/dx xⁿ = n·xⁿ⁻¹\nChain: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct: (fg)′ = f′g + fg′',
+              text: 'Derivative = rate of change.\nPower: d/dx x^n = n*x^(n-1)\nChain: d/dx f(g(x)) = f prime(g(x))*g prime(x)\nProduct: (fg) prime = f prime*g + f*g prime',
               variant: 'body2',
               whiteSpace: 'pre-line',
             },
@@ -1249,6 +1249,395 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
+  },
+  {
+    id: 'template-content-load-reference-pack',
+    name: 'Content Load Reference Pack Template',
+    description:
+      'A heavier reference widget that combines PDF, image, long text, list, chart, and summary text blocks.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-content-load-title',
+        type: 'Label',
+        props: {
+          text: 'Content Load Reference Pack',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#D81B60',
+          fontWeight: 800,
+        },
+      },
+      {
+        id: 'template-content-load-overview',
+        type: 'LongText',
+        props: {
+          __blockType: 'LongText',
+          title: 'Reference brief',
+          text: 'Use this widget when a dashboard needs to carry several kinds of reference material at once. It includes a PDF for source material, an image for visual context, a long note for interpretation, a checklist for review steps, and a compact chart with short commentary.',
+          callout: true,
+        },
+      },
+      {
+        id: 'template-content-load-media-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-content-load-pdf',
+            type: 'PdfBlock',
+            props: {
+              __blockType: 'PdfBlock',
+              src: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+              title: 'Reference PDF',
+              height: 420,
+            },
+          },
+          {
+            id: 'template-content-load-image',
+            type: 'ImageBlock',
+            props: {
+              __blockType: 'ImageBlock',
+              src: '/images/tutorial-blocks-concept.svg',
+              alt: 'Reference blocks arranged in a widget',
+              caption:
+                'Use image blocks for diagrams, screenshots, maps, or quick visual references.',
+              maxHeight: 320,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-content-load-notes-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-content-load-reading-notes',
+            type: 'LongText',
+            props: {
+              __blockType: 'LongText',
+              title: 'Reading notes',
+              text: 'Summarize the important findings here. Keep the note practical: what the source says, why it matters, what decisions it affects, and what still needs verification.',
+              callout: false,
+            },
+          },
+          {
+            id: 'template-content-load-checklist',
+            type: 'ListBlock',
+            props: {
+              __blockType: 'ListBlock',
+              title: 'Review checklist',
+              items:
+                'Open and scan the PDF\nCompare the diagram with the source\nCapture key definitions\nMark unresolved questions\nUpdate the chart summary',
+              ordered: false,
+              interactiveChecklist: true,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-content-load-mix',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-content-load-chart',
+            type: 'Chart',
+            props: {
+              title: 'Reference Coverage',
+              chartType: 'pie',
+              height: 260,
+              description:
+                'A compact chart for coverage, confidence, or source mix.',
+              data: `{"labels":["PDF","Image","Notes","Checklist"],"datasets":[{"data":[35,20,30,15],"backgroundColor":["rgba(216,27,96,0.8)","rgba(25,118,210,0.8)","rgba(0,124,102,0.8)","rgba(251,140,0,0.8)"]}]}`,
+            },
+          },
+          {
+            id: 'template-content-load-summary',
+            type: 'FieldSet',
+            props: {
+              legend: 'Short synthesis',
+              padding: 2,
+              borderRadius: 8,
+              borderColor: '#D81B60',
+              legendColor: '#D81B60',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+            },
+            children: [
+              {
+                id: 'template-content-load-summary-text',
+                type: 'Label',
+                props: {
+                  text: 'This mixed area pairs a small chart with a plain text summary so the widget can show both evidence and interpretation in one place.',
+                  variant: 'body1',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['content', 'pdf', 'image', 'long text', 'reference'],
+  },
+  {
+    id: 'template-grouping-layout-tutorial',
+    name: 'Grouping Layout Tutorial Template',
+    description:
+      'A practical tutorial that demonstrates FieldSet, FlexBox, and GridBox layout groups with nested examples.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-grouping-title',
+        type: 'Label',
+        props: {
+          text: 'Grouping Layout Tutorial',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#007C66',
+          fontWeight: 800,
+        },
+      },
+      {
+        id: 'template-grouping-intro',
+        type: 'LongText',
+        props: {
+          __blockType: 'LongText',
+          title: 'What grouping blocks do',
+          text: 'Grouping blocks control how other blocks sit together. FieldSet gives a named section, FlexBox lines items up in a row or column, and GridBox creates repeated columns for dashboards or comparisons.',
+          callout: true,
+        },
+      },
+      {
+        id: 'template-grouping-fieldset-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'FieldSet: named section',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#007C66',
+          legendColor: '#007C66',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-grouping-fieldset-copy',
+            type: 'Label',
+            props: {
+              text: 'Use FieldSet when the content has one clear topic and benefits from a visible title.',
+              variant: 'body1',
+            },
+          },
+          {
+            id: 'template-grouping-fieldset-nested-list',
+            type: 'ListBlock',
+            props: {
+              __blockType: 'ListBlock',
+              title: 'Good FieldSet uses',
+              items:
+                'Reference details\nA form section\nA status summary\nA collapsible explanation',
+              ordered: false,
+              interactiveChecklist: false,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-grouping-flex-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'FlexBox: align related items',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#1976D2',
+          legendColor: '#1976D2',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-grouping-flex-copy',
+            type: 'LongText',
+            props: {
+              __blockType: 'LongText',
+              title: 'FlexBox pattern',
+              text: 'Use FlexBox when items should sit beside each other, wrap when space is tight, or stack in a controlled order. It works well for compact status rows and action groups.',
+              callout: false,
+            },
+          },
+          {
+            id: 'template-grouping-flex-row',
+            type: 'FlexBox',
+            props: {
+              direction: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'stretch',
+              spacing: 2,
+              wrap: 'wrap',
+            },
+            children: [
+              {
+                id: 'template-grouping-flex-item-one',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Status',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-flex-item-one-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Ready',
+                      variant: 'h6',
+                      useCustomColor: true,
+                      customColor: '#2E7D32',
+                      fontWeight: 700,
+                    },
+                  },
+                ],
+              },
+              {
+                id: 'template-grouping-flex-item-two',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Owner',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-flex-item-two-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Team A',
+                      variant: 'h6',
+                      useCustomColor: true,
+                      customColor: '#1976D2',
+                      fontWeight: 700,
+                    },
+                  },
+                ],
+              },
+              {
+                id: 'template-grouping-flex-item-three',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Next step',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-flex-item-three-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Review',
+                      variant: 'h6',
+                      useCustomColor: true,
+                      customColor: '#EF6C00',
+                      fontWeight: 700,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-grouping-grid-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'GridBox: repeat columns',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#7B1FA2',
+          legendColor: '#7B1FA2',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-grouping-grid-copy',
+            type: 'Label',
+            props: {
+              text: 'Use GridBox when each child should occupy a predictable column. This is useful for dashboards, comparisons, and side by side examples.',
+              variant: 'body1',
+            },
+          },
+          {
+            id: 'template-grouping-grid-inner',
+            type: 'GridBox',
+            props: { columns: 3, spacing: 2, responsive: true },
+            children: [
+              {
+                id: 'template-grouping-grid-card-one',
+                type: 'LongText',
+                props: {
+                  __blockType: 'LongText',
+                  title: 'Column 1',
+                  text: 'A note can sit in one grid column.',
+                  callout: true,
+                },
+              },
+              {
+                id: 'template-grouping-grid-card-two',
+                type: 'ListBlock',
+                props: {
+                  __blockType: 'ListBlock',
+                  title: 'Column 2',
+                  items: 'Point A\nPoint B\nPoint C',
+                  ordered: false,
+                  interactiveChecklist: false,
+                },
+              },
+              {
+                id: 'template-grouping-grid-card-three',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Column 3',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-grid-card-three-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Nested groups are useful when a grid item needs its own title.',
+                      variant: 'body2',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-grouping-summary',
+        type: 'ListBlock',
+        props: {
+          __blockType: 'ListBlock',
+          title: 'Rule of thumb',
+          items:
+            'FieldSet: name and contain a topic\nFlexBox: align a small row or column\nGridBox: create repeatable columns\nNested groups: combine these patterns for real dashboards',
+          ordered: false,
+          interactiveChecklist: false,
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['tutorial', 'grouping', 'layout', 'fieldset', 'flex', 'grid'],
   },
   {
     id: 'template-knowledge-tutorial',

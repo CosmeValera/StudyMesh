@@ -11,8 +11,8 @@ import {
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import HomeIcon from '@mui/icons-material/Home'
 import FolderIcon from '@mui/icons-material/Folder'
+import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
-import { Layout } from '../../types/types'
 import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
@@ -20,13 +20,15 @@ import {
   normalizeFolderName,
 } from './folderColors'
 
+const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
+
 // Define saved dashboard type
 interface SavedDashboard {
   id: string
   name: string
   folder?: string
   folderColor?: string
-  layout: Layout
+  layout: DashboardLayout
   description?: string
   tags?: string[]
   isPublic?: boolean
@@ -76,7 +78,7 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   )
 }
 
-const hasDashboardContent = (layout?: Layout): boolean => {
+const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   if (!layout) {
     return false
   }
@@ -108,17 +110,28 @@ const DashboardOptionsMenu: React.FC = () => {
 
   // Determine if current user is admin
   useEffect(() => {
-    try {
-      const userData = localStorage.getItem('userData')
-      if (userData) {
-        const parsedData = JSON.parse(userData)
-        setIsAdmin(
-          parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
-        )
+    const readUserRole = () => {
+      try {
+        const userData = localStorage.getItem('userData')
+        if (userData) {
+          const parsedData = JSON.parse(userData)
+          setIsAdmin(
+            parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
+          )
+          return
+        }
+        setIsAdmin(false)
+      } catch (error) {
+        console.error('Failed to parse user data', error)
+        setIsAdmin(false)
       }
-    } catch (error) {
-      console.error('Failed to parse user data', error)
-      setIsAdmin(false)
+    }
+
+    readUserRole()
+    window.addEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+
+    return () => {
+      window.removeEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
     }
   }, [])
 
@@ -169,7 +182,10 @@ const DashboardOptionsMenu: React.FC = () => {
   }
 
   // Create a dashboard with predefined layout
-  const createDashboardWithLayout = (dashboardName: string, layout: Layout) => {
+  const createDashboardWithLayout = (
+    dashboardName: string,
+    layout: DashboardLayout,
+  ) => {
     const focusedDashboard = openDashboards[selectedDashboard]
 
     if (focusedDashboard && !hasDashboardContent(focusedDashboard.layout)) {
@@ -248,18 +264,24 @@ const DashboardOptionsMenu: React.FC = () => {
                     <Typography
                       sx={{
                         px: 2,
-                        py: 1,
+                        py: 1.1,
                         fontWeight: 'bold',
-                        mt: 1,
+                        mt: 0.75,
                         color: 'text.primary',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
+                        bgcolor: `${folderColor}24`,
+                        borderLeft: '4px solid',
+                        borderLeftColor: folderColor,
                       }}
                     >
                       <FolderIcon
                         fontSize="small"
-                        sx={{ color: folderColor }}
+                        sx={{
+                          color: folderColor,
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))',
+                        }}
                       />
                       {folderName}
                     </Typography>
