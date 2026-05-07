@@ -65,6 +65,8 @@ interface SavedDashboard {
 interface SavedDashboardsDialogProps {
   open: boolean
   onClose: () => void
+  initialSearchTerm?: string
+  initialSearchKey?: number
   mode?: 'workspace' | 'builder'
   onOpenInBuilder?: (dashboard: SavedDashboard) => void
 }
@@ -89,6 +91,8 @@ type SortOption =
 const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   open,
   onClose,
+  initialSearchTerm = '',
+  initialSearchKey = 0,
   mode = 'workspace',
   onOpenInBuilder,
 }) => {
@@ -283,10 +287,10 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   useEffect(() => {
     if (open) {
       loadDashboards()
-      setSearchTerm('')
+      setSearchTerm(initialSearchTerm)
       setSortBy('dateNewest')
     }
-  }, [open])
+  }, [initialSearchKey, initialSearchTerm, open])
 
   // Handle opening a dashboard
   const handleOpenDashboard = (dashboard: SavedDashboard) => {

@@ -5,15 +5,22 @@ import {
   MenuItem,
   Divider,
   Typography,
+  Box,
+  IconButton,
+  Tooltip,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import HomeIcon from '@mui/icons-material/Home'
 import FolderIcon from '@mui/icons-material/Folder'
+import EditIcon from '@mui/icons-material/Edit'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
-import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
+import {
+  ensureStarterDashboards,
+  OPEN_SAVED_DASHBOARDS_EVENT,
+} from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
   normalizeFolderColor,
@@ -209,6 +216,19 @@ const DashboardOptionsMenu: React.FC = () => {
     createDashboardWithLayout(dashboard.name, dashboard.layout)
   }
 
+  const openSavedDashboardsForFolder = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    folderName: string,
+  ) => {
+    event.stopPropagation()
+    handleClose()
+    window.dispatchEvent(
+      new CustomEvent(OPEN_SAVED_DASHBOARDS_EVENT, {
+        detail: { searchTerm: folderName },
+      }),
+    )
+  }
+
   return (
     <>
       {isPhone || isTablet ? (
@@ -262,9 +282,10 @@ const DashboardOptionsMenu: React.FC = () => {
                 return (
                   <React.Fragment key={folderName}>
                     <Typography
+                      component="div"
                       sx={{
                         px: 2,
-                        py: 1.1,
+                        py: 0.6,
                         fontWeight: 'bold',
                         mt: 0.75,
                         color: 'text.primary',
@@ -283,7 +304,36 @@ const DashboardOptionsMenu: React.FC = () => {
                           filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))',
                         }}
                       />
-                      {folderName}
+                      <Box
+                        component="span"
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {folderName}
+                      </Box>
+                      <Tooltip title={`Show ${folderName} in Saved Dashboards`}>
+                        <IconButton
+                          size="small"
+                          aria-label={`Show ${folderName} in Saved Dashboards`}
+                          onClick={(event) =>
+                            openSavedDashboardsForFolder(event, folderName)
+                          }
+                          sx={{
+                            color: folderColor,
+                            p: 0.5,
+                            '&:hover': {
+                              bgcolor: `${folderColor}22`,
+                            },
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Typography>
                     <Divider sx={{ borderColor: 'divider' }} />
                     {[...dashboards].reverse().map((dashboard) => (

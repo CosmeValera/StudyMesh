@@ -42,6 +42,7 @@ import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
   OPEN_DASHBOARD_EDITOR_EVENT,
+  OPEN_SAVED_DASHBOARDS_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
 } from '../../customHooks/useWorkspaceActions'
 import {
@@ -559,6 +560,12 @@ const Dashboards = () => {
   const [dashboardWidgetsAnchorEl, setDashboardWidgetsAnchorEl] =
     useState<null | HTMLElement>(null)
   const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
+  const [dashboardLibraryInitialSearch, setDashboardLibraryInitialSearch] =
+    useState('')
+  const [
+    dashboardLibraryInitialSearchKey,
+    setDashboardLibraryInitialSearchKey,
+  ] = useState(0)
   const dashboardOnboardingLayoutBaseline = useRef<{
     dashboardId: string
     layoutJson: string
@@ -868,6 +875,30 @@ const Dashboards = () => {
       )
     }
   }, [isAdmin])
+
+  useEffect(() => {
+    const handleOpenSavedDashboards = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        searchTerm?: string
+      }>
+
+      setDashboardLibraryInitialSearch(customEvent.detail?.searchTerm || '')
+      setDashboardLibraryInitialSearchKey((currentKey) => currentKey + 1)
+      setDashboardLibraryOpen(true)
+    }
+
+    window.addEventListener(
+      OPEN_SAVED_DASHBOARDS_EVENT,
+      handleOpenSavedDashboards,
+    )
+
+    return () => {
+      window.removeEventListener(
+        OPEN_SAVED_DASHBOARDS_EVENT,
+        handleOpenSavedDashboards,
+      )
+    }
+  }, [])
 
   // Check if current dashboards have changes compared to saved dashboards
   useEffect(() => {
@@ -1580,7 +1611,13 @@ const Dashboards = () => {
               <Button
                 variant="outlined"
                 startIcon={<FolderOpenIcon />}
-                onClick={() => setDashboardLibraryOpen(true)}
+                onClick={() => {
+                  setDashboardLibraryInitialSearch('')
+                  setDashboardLibraryInitialSearchKey(
+                    (currentKey) => currentKey + 1,
+                  )
+                  setDashboardLibraryOpen(true)
+                }}
                 sx={{
                   textTransform: 'none',
                   minWidth: 0,
@@ -1858,6 +1895,8 @@ const Dashboards = () => {
           setDashboardLibraryOpen(false)
           loadDashboardOptions()
         }}
+        initialSearchTerm={dashboardLibraryInitialSearch}
+        initialSearchKey={dashboardLibraryInitialSearchKey}
         mode="builder"
         onOpenInBuilder={loadSavedDashboardInBuilder}
       />

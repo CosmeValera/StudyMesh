@@ -14,6 +14,7 @@ import { normalizeFolderColor } from '../components/Dasboard/folderColors'
 
 export const OPEN_WIDGET_EDITOR_EVENT = 'aquamesh-open-widget-editor'
 export const OPEN_DASHBOARD_EDITOR_EVENT = 'aquamesh-open-dashboard-editor'
+export const OPEN_SAVED_DASHBOARDS_EVENT = 'aquamesh-open-saved-dashboards'
 
 export interface WorkspaceComponentConfig {
   id?: string
