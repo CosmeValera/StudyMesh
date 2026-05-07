@@ -10,31 +10,31 @@ declare const __webpack_share_scopes__: { [key: string]: unknown }
 //////////////////
 ///// LAYOUT /////
 export interface Layout {
-  type: 'row';
-  weight?: number;
-  children: (Row | Tabset)[];
+  type: 'row'
+  weight?: number
+  children: (Row | Tabset)[]
 }
 
 interface Row {
-  type: 'row';
-  weight: number;
-  children: (Row | Tabset)[];
+  type: 'row'
+  weight: number
+  children: (Row | Tabset)[]
 }
 
 interface Tabset {
-  type: 'tabset';
-  weight: number;
-  active?: boolean;
-  children: Tab[];
+  type: 'tabset'
+  weight: number
+  active?: boolean
+  children: Tab[]
 }
 
 interface Tab {
-  type: 'tab';
-  name: string;
-  component?: unknown;
+  type: 'tab'
+  name: string
+  component?: unknown
   config?: {
-    customProps?: Record<string, unknown>;
-  };
+    customProps?: Record<string, unknown>
+  }
 }
 ///// END: LAYOUT /////
 ///////////////////////

@@ -5,6 +5,7 @@ This directory contains shared UI components used across the different widget ed
 ## Available Components
 
 ### TabPanel
+
 A simple tab panel component that shows/hides content based on the selected tab.
 
 ```jsx
@@ -14,6 +15,7 @@ A simple tab panel component that shows/hides content based on the selected tab.
 ```
 
 ### ComponentPreview
+
 A standardized preview container for showing widget previews.
 
 ```jsx
@@ -23,22 +25,20 @@ A standardized preview container for showing widget previews.
 ```
 
 ### EditorTabs
+
 Navigation tabs for the editor interfaces.
 
 ```jsx
 const editorTabs = [
   { label: 'Basic', id: 'basic-tab' },
-  { label: 'Advanced', id: 'advanced-tab' }
-];
+  { label: 'Advanced', id: 'advanced-tab' },
+]
 
-<EditorTabs 
-  value={tabValue} 
-  onChange={handleTabChange}
-  tabs={editorTabs}
-/>
+;<EditorTabs value={tabValue} onChange={handleTabChange} tabs={editorTabs} />
 ```
 
 ### TextStylingControls
+
 Controls for applying text styling (bold, italic, underline, font weight).
 
 ```jsx
@@ -52,16 +52,15 @@ Controls for applying text styling (bold, italic, underline, font weight).
 ```
 
 ### TextAlignmentControls
+
 Controls for text alignment (left, center, right, justify).
 
 ```jsx
-<TextAlignmentControls
-  textAlign={textAlign}
-  onChange={handleTextAlignChange}
-/>
+<TextAlignmentControls textAlign={textAlign} onChange={handleTextAlignChange} />
 ```
 
 ### CustomColorControl
+
 A control for selecting and applying a custom color with color picker.
 
 ```jsx
@@ -75,6 +74,7 @@ A control for selecting and applying a custom color with color picker.
 ```
 
 ### DualColorPicker
+
 A dual color picker for components that need two colors (like button and hover colors).
 
 ```jsx
@@ -91,6 +91,7 @@ A dual color picker for components that need two colors (like button and hover c
 ```
 
 ### ColorPickerModal
+
 A modal dialog for picking colors with a color wheel and preset options.
 
 ```jsx
@@ -112,26 +113,24 @@ A modal dialog for picking colors with a color wheel and preset options.
 ## Example
 
 ```jsx
-import { 
-  TabPanel, 
-  ComponentPreview, 
-  TextStylingControls
-} from '../shared/SharedEditorComponents';
+import {
+  TabPanel,
+  ComponentPreview,
+  TextStylingControls,
+} from '../shared/SharedEditorComponents'
 
 // In your component:
 const MyEditor = ({ props, onChange }) => {
   // State setup...
-  
+
   const handleTextStyleChange = (prop, value) => {
     // Handle the change...
-  };
-  
+  }
+
   return (
     <Box>
-      <ComponentPreview>
-        {/* Preview content */}
-      </ComponentPreview>
-      
+      <ComponentPreview>{/* Preview content */}</ComponentPreview>
+
       <TabPanel value={tabValue} index={0} id="my-editor">
         <TextStylingControls
           fontWeight={fontWeight}
@@ -142,6 +141,6 @@ const MyEditor = ({ props, onChange }) => {
         />
       </TabPanel>
     </Box>
-  );
-};
-``` 
+  )
+}
+```

@@ -17,10 +17,7 @@ import { CustomWidget } from './WidgetStorage'
 import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
 import { cloneTemplate } from './constants/templateWidgets'
-
-type OnboardingStep = 'choose' | 'save' | 'place'
-
-const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 // Main Widget Editor component
 const WidgetEditor: React.FC<{
@@ -120,16 +117,6 @@ const WidgetEditor: React.FC<{
   const [saveDialogDefaultName, setSaveDialogDefaultName] = React.useState('')
   const loadedInitialWidgetKeyRef = React.useRef<string | null>(null)
 
-  const [onboardingStep, setOnboardingStep] =
-    React.useState<OnboardingStep>('choose')
-  const [onboardingDismissed] = React.useState(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    return window.localStorage.getItem(WIDGET_EDITOR_ONBOARDING_KEY) === 'true'
-  })
-
   // State to track current widget for versioning
   const [currentVersioningWidget, setCurrentVersioningWidget] =
     React.useState<CustomWidget | null>(null)
@@ -139,7 +126,6 @@ const WidgetEditor: React.FC<{
     setShowSidebar(!showSidebar)
   }
 
-  const onboardingActive = editMode && !onboardingDismissed
   const defaultEditViewMode = isPhone ? 'edit' : 'both'
   const showEditorPane = viewMode === 'both' || viewMode === 'edit'
   const showPreviewPane = viewMode === 'both' || viewMode === 'preview'
@@ -159,33 +145,30 @@ const WidgetEditor: React.FC<{
 
   const handleGuidedDrop = React.useCallback(
     (event: React.DragEvent) => {
+      const componentType = event.dataTransfer.getData('componentType')
       handleDrop(event)
-      if (onboardingActive) {
-        setOnboardingStep('save')
+      if (componentType) {
+        dispatchWorkspaceOnboardingEvent({
+          type: 'component-added',
+          componentType,
+          componentId: activeContainerId || undefined,
+        })
       }
     },
-    [handleDrop, onboardingActive],
+    [activeContainerId, handleDrop],
   )
 
   const handleGuidedDirectAdd = React.useCallback(
     (componentType: string) => {
       handleDirectAdd(componentType)
-      if (onboardingActive) {
-        setOnboardingStep('save')
-      }
+      dispatchWorkspaceOnboardingEvent({
+        type: 'component-added',
+        componentType,
+        componentId: activeContainerId || undefined,
+      })
     },
-    [handleDirectAdd, onboardingActive],
+    [activeContainerId, handleDirectAdd],
   )
-
-  React.useEffect(() => {
-    if (!onboardingActive) {
-      return
-    }
-
-    if (widgetData.components.length > 0 && onboardingStep === 'choose') {
-      setOnboardingStep('save')
-    }
-  }, [onboardingActive, onboardingStep, widgetData.components.length])
 
   // Listen for loadWidgetInEditor events from widget management
   React.useEffect(() => {
@@ -329,24 +312,6 @@ const WidgetEditor: React.FC<{
     return savedJson !== currentJson
   }, [currentSavedWidget, widgetData, isUpdating])
 
-  React.useEffect(() => {
-    if (
-      onboardingActive &&
-      onboardingStep === 'save' &&
-      widgetData.components.length > 0 &&
-      isUpdating &&
-      !hasChanges
-    ) {
-      setOnboardingStep('place')
-    }
-  }, [
-    hasChanges,
-    isUpdating,
-    onboardingActive,
-    onboardingStep,
-    widgetData.components.length,
-  ])
-
   // Check if the current widget (including any loaded preview) is the latest version
   const isLatestVersion = React.useMemo(() => {
     if (!isUpdating) {
@@ -397,9 +362,6 @@ const WidgetEditor: React.FC<{
 
     setViewMode(defaultEditViewMode)
     handleLoadWidget(operationsWidget, true)
-    if (onboardingActive) {
-      setOnboardingStep('save')
-    }
   }
 
   // Handler for when import is complete
@@ -495,6 +457,30 @@ const WidgetEditor: React.FC<{
   }
 
   const deleteConfirmProps = getDeleteConfirmationProps()
+  const handleSelectContainer = React.useCallback(
+    (containerId: string) => {
+      setActiveContainerId(containerId)
+      if (containerId) {
+        dispatchWorkspaceOnboardingEvent({
+          type: 'container-selected',
+          componentId: containerId,
+        })
+      }
+    },
+    [setActiveContainerId],
+  )
+
+  const handleGuidedSaveComponent = React.useCallback(
+    (updatedComponent: Parameters<typeof handleSaveComponent>[0]) => {
+      handleSaveComponent(updatedComponent)
+      dispatchWorkspaceOnboardingEvent({
+        type: 'component-edit-saved',
+        componentId: updatedComponent.id,
+        componentType: updatedComponent.type,
+      })
+    },
+    [handleSaveComponent],
+  )
 
   return (
     <Box
@@ -560,10 +546,8 @@ const WidgetEditor: React.FC<{
             showTooltips={showTooltips}
             handleDirectAdd={handleGuidedDirectAdd}
             activeContainerId={activeContainerId}
-            setActiveContainerId={setActiveContainerId}
+            setActiveContainerId={handleSelectContainer}
             widgetData={widgetData}
-            onboardingActive={onboardingActive}
-            onboardingStep={onboardingStep}
           />
         )}
 
@@ -598,12 +582,10 @@ const WidgetEditor: React.FC<{
               handleToggleFieldsetCollapse={handleToggleFieldsetCollapse}
               showSidebar={showSidebar}
               activeContainerId={activeContainerId}
-              onSelectContainer={setActiveContainerId}
+              onSelectContainer={handleSelectContainer}
               onAddStarterComponent={handleGuidedDirectAdd}
               onStartOperationsWidget={handleStartOperationsWidget}
               onUseTemplate={() => setShowTemplateDialog(true)}
-              onboardingActive={onboardingActive}
-              onboardingStep={onboardingStep}
             />
           </Box>
         )}
@@ -656,7 +638,7 @@ const WidgetEditor: React.FC<{
       <EditComponentDialog
         open={editDialogOpen}
         component={currentEditComponent}
-        onSave={handleSaveComponent}
+        onSave={handleGuidedSaveComponent}
         onClose={() => setEditDialogOpen(false)}
       />
 

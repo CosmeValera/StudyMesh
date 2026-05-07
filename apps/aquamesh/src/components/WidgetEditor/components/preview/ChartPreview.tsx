@@ -20,12 +20,12 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   chartType,
   title,
   description,
-  data
+  data,
 }) => {
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const chartTitle = String(title || '')
   const chartDescription = String(description || '')
-  
+
   // Generate colors for the pie segments and legend - consistent colors for both
   const colors = React.useMemo(() => {
     const baseColors = [
@@ -38,7 +38,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       'rgba(199, 199, 199, 0.8)',
       'rgba(83, 102, 255, 0.8)',
       'rgba(178, 102, 255, 0.8)',
-      'rgba(255, 102, 130, 0.8)'
+      'rgba(255, 102, 130, 0.8)',
     ]
 
     // Handle case where data is incomplete or malformed
@@ -58,7 +58,9 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
     // Otherwise generate colors from our base palette
     const colorLen = baseColors.length
     const totalLabels = data.labels.length
-    return Array(totalLabels).fill(0).map((_, i) => baseColors[i % colorLen])
+    return Array(totalLabels)
+      .fill(0)
+      .map((_, i) => baseColors[i % colorLen])
   }, [data])
 
   // Calculate percentages for pie chart segments
@@ -67,31 +69,31 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
     if (!data?.datasets?.[0]?.data?.length || !data?.labels?.length) {
       return []
     }
-    
+
     const values = data.datasets[0].data
     const total = values.reduce((a, b) => a + b, 0)
-    
+
     // If total is zero, return empty segments to avoid dividing by zero
     if (total === 0) {
       return []
     }
-    
+
     // First pass: calculate percentages
     let segments = values.map((value, index) => {
       const percentage = (value / total) * 100
-      return { 
-        value, 
+      return {
+        value,
         percentage,
         startDegree: 0,
         endDegree: 0,
         color: colors[index] || colors[0], // Fallback to first color if index out of bounds
-        label: data.labels[index] || `Item ${index + 1}` // Fallback label
+        label: data.labels[index] || `Item ${index + 1}`, // Fallback label
       }
     })
-    
+
     // Second pass: calculate start and end degrees
     let currentDegree = 0
-    segments = segments.map(segment => {
+    segments = segments.map((segment) => {
       const segmentDegrees = (segment.percentage / 100) * 360
       const startDegree = currentDegree
       const endDegree = currentDegree + segmentDegrees
@@ -99,10 +101,10 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       return {
         ...segment,
         startDegree,
-        endDegree
+        endDegree,
       }
     })
-    
+
     return segments
   }, [data, colors])
 
@@ -110,33 +112,37 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   React.useEffect(() => {
     console.log(`Rendering chart of type: ${chartType || 'pie'}`)
   }, [chartType])
-  
+
   // Render pie chart
   const renderPieChart = () => {
     if (!segments || segments.length === 0) {
       // Show placeholder if no valid data is available
       return (
-        <Box sx={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          width: '100%'
-        }}>
-          <Box sx={{
-            // If it's phone it should be 70px
-            width: isPhone ? '70px' : '120px',
-            height: isPhone ? '70px' : '120px',
-            borderRadius: '50%',
-            position: 'relative',
-            aspectRatio: '1/1',
-            background: 'rgba(200, 200, 200, 0.2)',
-            boxShadow: '0 6px 16px rgba(0,0,0,0.05)',
+        <Box
+          sx={{
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center'
-          }}>
+            justifyContent: 'center',
+            height: '100%',
+            width: '100%',
+          }}
+        >
+          <Box
+            sx={{
+              // If it's phone it should be 70px
+              width: isPhone ? '70px' : '120px',
+              height: isPhone ? '70px' : '120px',
+              borderRadius: '50%',
+              position: 'relative',
+              aspectRatio: '1/1',
+              background: 'rgba(200, 200, 200, 0.2)',
+              boxShadow: '0 6px 16px rgba(0,0,0,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <Typography variant="body2" color="text.secondary">
               No data available
             </Typography>
@@ -146,56 +152,63 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
     }
 
     // Generate CSS for conic-gradient based on calculated segments
-    const conicGradient = `conic-gradient(${
-      segments.map(segment => 
-        `${segment.color} ${segment.startDegree}deg ${segment.endDegree}deg`
-      ).join(', ')
-    })`
+    const conicGradient = `conic-gradient(${segments
+      .map(
+        (segment) =>
+          `${segment.color} ${segment.startDegree}deg ${segment.endDegree}deg`,
+      )
+      .join(', ')})`
 
     return (
-      <Box sx={{ 
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        width: '100%'
-      }}>
-        <Box sx={{
-          width: isPhone ? '70px' : '120px',
-          height: isPhone ? '70px' : '120px',
-          borderRadius: '50%',
-          position: 'relative',
-          aspectRatio: '1/1',
-          background: conicGradient,
-          boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
-          '&::before': {
-            content: '""',
-            display: 'block',
-            width: '50%',
-            height: '50%',
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          width: '100%',
+        }}
+      >
+        <Box
+          sx={{
+            width: isPhone ? '70px' : '120px',
+            height: isPhone ? '70px' : '120px',
             borderRadius: '50%',
-            backgroundColor: 'white',
-            position: 'absolute',
-            top: '25%',
-            left: '25%',
-            boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)',
-          }
-        }} />
-        
+            position: 'relative',
+            aspectRatio: '1/1',
+            background: conicGradient,
+            boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+            '&::before': {
+              content: '""',
+              display: 'block',
+              width: '50%',
+              height: '50%',
+              borderRadius: '50%',
+              backgroundColor: 'white',
+              position: 'absolute',
+              top: '25%',
+              left: '25%',
+              boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)',
+            },
+          }}
+        />
+
         {/* Legend */}
         {/* If it's phone everything should be smaller */}
-        <Box sx={{ 
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          maxWidth: '100%',
-          width: '100%',
-          marginTop: isPhone ? 1 : 2,
-          gap: isPhone ? 0.5 : 1
-        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            maxWidth: '100%',
+            width: '100%',
+            marginTop: isPhone ? 1 : 2,
+            gap: isPhone ? 0.5 : 1,
+          }}
+        >
           {segments.map((segment, index) => (
-            <Box 
+            <Box
               key={index}
               sx={{
                 display: 'flex',
@@ -205,18 +218,20 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                 backgroundColor: 'rgba(0,0,0,0.04)',
               }}
             >
-              <Box sx={{
-                minWidth: isPhone ? 10 : 12,
-                minHeight: isPhone ? 10 : 12,
-                borderRadius: '3px',
-                backgroundColor: segment.color,
-                marginRight: isPhone ? 0.5 : 1,
-              }} />
-              <Typography 
-                variant="caption" 
-                sx={{ 
+              <Box
+                sx={{
+                  minWidth: isPhone ? 10 : 12,
+                  minHeight: isPhone ? 10 : 12,
+                  borderRadius: '3px',
+                  backgroundColor: segment.color,
+                  marginRight: isPhone ? 0.5 : 1,
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
                   fontSize: isPhone ? '0.5rem' : '0.65rem',
-                  fontWeight: 500
+                  fontWeight: 500,
                 }}
               >
                 {segment.label} ({segment.value})
@@ -240,20 +255,27 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           position: 'relative',
           overflow: 'hidden',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
         }}
       >
         {/* Title inside the paper component */}
         {chartTitle && (
-          <Typography variant="subtitle1" sx={{ mb: 2, alignSelf: 'flex-start' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ mb: 2, alignSelf: 'flex-start' }}
+          >
             {chartTitle}
           </Typography>
         )}
         {renderPieChart()}
       </Paper>
-      
+
       {chartDescription && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontSize: '0.8rem' }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 1, fontSize: '0.8rem' }}
+        >
           {chartDescription}
         </Typography>
       )}
@@ -261,4 +283,4 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   )
 }
 
-export default ChartPreview 
+export default ChartPreview

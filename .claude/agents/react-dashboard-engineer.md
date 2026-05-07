@@ -69,4 +69,3 @@ For UI behavior, prefer focused unit tests first, then Playwright for full workf
 - Mention changed files.
 - Explain the main architectural choice in one or two sentences.
 - Report exact commands run and whether they passed.
-

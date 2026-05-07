@@ -13,6 +13,7 @@ Many dashboards begin as a developer request: someone needs a form, chart, contr
 - **Recover earlier versions:** Use widget version history when you need to restore previous work.
 
 ## ✨ Key Features
+
 - **No-Code Widget Editor:** Build custom widgets without programming knowledge
 - **Rich Component Library:** Pre-built UI elements, containers, and visualization tools
 - **Dynamic Dashboard System:** Drag, resize, and position widgets in flexible layouts
@@ -41,6 +42,7 @@ npm start
 That's it! The AquaMesh application and all its components will be up and running.
 
 ## ⚙️ Technology Stack
+
 - **React:** Frontend framework for building user interfaces
 - **flexlayout-react:** Layout system for resizable and repositionable widgets
 - **react-tabs:** Tab management for multiple dashboard views
@@ -53,6 +55,7 @@ That's it! The AquaMesh application and all its components will be up and runnin
 The most rewarding aspect was solving the technical challenges for designing an intuitive way for users to customize widgets while keeping everything working smoothly.
 
 ---
+
 ### 📚 Additional Resources
 
 - Check out the [TUTORIAL.md](./readme_docs/TUTORIAL.md) for more information and images

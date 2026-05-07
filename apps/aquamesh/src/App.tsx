@@ -12,6 +12,7 @@ import {
 import TopNavBar from './components/topnavbar/TopNavBar'
 import Main from './components/Main'
 import Dashboards from './components/Dasboard/Dashboard'
+import WorkspaceOnboarding from './components/onboarding/WorkspaceOnboarding'
 import DashboardProvider from './components/Dasboard/DashboardProvider'
 import LayoutProvider from './components/Layout/LayoutProvider'
 import AquaMeshLanding from './components/landing/AquaMeshLanding'
@@ -102,6 +103,7 @@ const WorkspacePage = () => {
       <TopNavBar open={menuOpen} setOpen={setMenuOpen} />
       <Main mt={8} sx={{ position: 'relative' }}>
         <Dashboards />
+        <WorkspaceOnboarding />
       </Main>
     </Box>
   )

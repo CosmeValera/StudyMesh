@@ -266,6 +266,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
+                    activeContainerId={activeContainerId}
+                    onSelectContainer={onSelectContainer}
                   />
                 ))
               ) : (
@@ -778,6 +780,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   handleContainerDrop={handleContainerDrop}
                   onToggleVisibility={onToggleVisibility}
                   showWidgetName={showWidgetName}
+                  activeContainerId={activeContainerId}
+                  onSelectContainer={onSelectContainer}
                 />
               ))
             ) : (
@@ -866,6 +870,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
+                    activeContainerId={activeContainerId}
+                    onSelectContainer={onSelectContainer}
                   />
                 </Box>
               ))
@@ -1107,6 +1113,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             >
               <IconButton
                 size="small"
+                data-onboarding-id="component-target-control"
                 onClick={() => {
                   if (activeContainerId && activeContainerId === component.id) {
                     onSelectContainer('')
@@ -1131,6 +1138,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
 
           <IconButton
             size="small"
+            data-onboarding-id="component-edit-control"
             onClick={() => onEdit(component.id)}
             sx={{ color: 'info.light' }}
           >

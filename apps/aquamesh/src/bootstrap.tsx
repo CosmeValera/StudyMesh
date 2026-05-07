@@ -12,9 +12,7 @@ import '@fontsource/jetbrains-mono/500.css'
 const rootElement = document.getElementById('root')
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <App />
-  )
+  root.render(<App />)
 } else {
   console.error('No se encontró el elemento raíz')
 }

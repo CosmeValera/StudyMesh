@@ -295,7 +295,12 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
         <Button onClick={onClose} variant="outlined">
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="contained" color="primary">
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          color="primary"
+          data-onboarding-id="component-dialog-save"
+        >
           Save
         </Button>
       </DialogActions>

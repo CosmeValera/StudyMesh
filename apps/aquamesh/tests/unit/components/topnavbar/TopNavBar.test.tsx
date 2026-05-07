@@ -7,6 +7,7 @@ import * as useTopNavBarWidgetsModule from '../../../../src/customHooks/useTopNa
 import * as LayoutProviderModule from '../../../../src/components/Layout/LayoutProvider'
 import * as DashboardProviderModule from '../../../../src/components/Dasboard/DashboardProvider'
 import { OPEN_DASHBOARD_EDITOR_EVENT } from '../../../../src/customHooks/useWorkspaceActions'
+import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../../src/components/onboarding/onboardingEvents'
 
 // Mock custom hooks and providers
 vi.mock('../../../../src/customHooks/useTopNavBarWidgets', () => ({
@@ -32,13 +33,10 @@ vi.mock('../../../../src/components/Dasboard/DashboardOptionsMenu', () => ({
   ),
 }))
 
-vi.mock(
-  '../../../../src/components/WidgetEditor/WidgetEditor',
-  () => ({
-    __esModule: true,
-    default: () => <div data-testid="widget-editor">Widget Editor</div>,
-  }),
-)
+vi.mock('../../../../src/components/WidgetEditor/WidgetEditor', () => ({
+  __esModule: true,
+  default: () => <div data-testid="widget-editor">Widget Editor</div>,
+}))
 
 vi.mock('../../../../src/components/shared/ThemeModeToggle', () => ({
   __esModule: true,
@@ -213,7 +211,10 @@ describe('TopNavBar Component', () => {
 
   it('dispatches the dashboard builder event when Create Dashboard is clicked', () => {
     const dashboardEditorListener = vi.fn()
-    window.addEventListener(OPEN_DASHBOARD_EDITOR_EVENT, dashboardEditorListener)
+    window.addEventListener(
+      OPEN_DASHBOARD_EDITOR_EVENT,
+      dashboardEditorListener,
+    )
 
     render(
       <BrowserRouter>
@@ -228,6 +229,34 @@ describe('TopNavBar Component', () => {
       OPEN_DASHBOARD_EDITOR_EVENT,
       dashboardEditorListener,
     )
+  })
+
+  it('replays the workspace tutorial from application settings', async () => {
+    const resetListener = vi.fn()
+    window.addEventListener(AQUAMESH_ONBOARDING_RESET_EVENT, resetListener)
+
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Admin User Builder mode/i }),
+    )
+    fireEvent.click(await screen.findByText('Settings'))
+    fireEvent.click(await screen.findByRole('button', { name: /^replay$/i }))
+
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'aquamesh-workspace-onboarding-v1',
+      JSON.stringify({
+        status: 'active',
+        stepId: 'create-dashboard',
+      }),
+    )
+    expect(resetListener).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener(AQUAMESH_ONBOARDING_RESET_EVENT, resetListener)
   })
 
   it('navigates to the landing page when logout is clicked', async () => {

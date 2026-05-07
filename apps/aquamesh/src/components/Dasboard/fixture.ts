@@ -1,7 +1,7 @@
 import { DashboardLayout } from '../../state/store'
 
 export interface DefaultDashboard {
-  name: string;
+  name: string
   layout?: DashboardLayout
 }
 

@@ -62,11 +62,7 @@ export const updateComponentById = (
     if (component.children && component.children.length > 0) {
       return {
         ...component,
-        children: updateComponentById(
-          id,
-          updatedComponent,
-          component.children,
-        ),
+        children: updateComponentById(id, updatedComponent, component.children),
       }
     }
 
@@ -112,56 +108,56 @@ export const moveComponent = (
   const componentIndex = components.findIndex((c) => c.id === id)
   if (componentIndex !== -1) {
     const newComponents = [...components]
-    
+
     // If moving up and not at the top
     if (direction === 'up' && componentIndex > 0) {
       const temp = newComponents[componentIndex]
       newComponents[componentIndex] = newComponents[componentIndex - 1]
       newComponents[componentIndex - 1] = temp
     }
-    
+
     // If moving down and not at the bottom
     if (direction === 'down' && componentIndex < newComponents.length - 1) {
       const temp = newComponents[componentIndex]
       newComponents[componentIndex] = newComponents[componentIndex + 1]
       newComponents[componentIndex + 1] = temp
     }
-    
+
     return newComponents
   }
-  
+
   // Look for the component in children
   return components.map((component) => {
     if (!component.children || component.children.length === 0) {
       return component
     }
-    
+
     // Check if this component contains the target in its children
     const childIndex = component.children.findIndex((c) => c.id === id)
     if (childIndex !== -1) {
       const newChildren = [...component.children]
-      
+
       // If moving up and not at the top
       if (direction === 'up' && childIndex > 0) {
         const temp = newChildren[childIndex]
         newChildren[childIndex] = newChildren[childIndex - 1]
         newChildren[childIndex - 1] = temp
       }
-      
+
       // If moving down and not at the bottom
       if (direction === 'down' && childIndex < newChildren.length - 1) {
         const temp = newChildren[childIndex]
         newChildren[childIndex] = newChildren[childIndex + 1]
         newChildren[childIndex + 1] = temp
       }
-      
+
       return { ...component, children: newChildren }
     }
-    
+
     // Recursively check this component's children
     return {
       ...component,
       children: moveComponent(id, direction, component.children),
     }
   })
-} 
+}

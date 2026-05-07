@@ -16,18 +16,18 @@ const SavedWidgetsDialog: React.FC<SavedWidgetsDialogProps> = ({
   widgets,
   onClose,
   onLoad,
-  onDelete
+  onDelete,
 }) => {
   // Handler for preview (load in view mode)
   const handlePreview = (widget: CustomWidget) => {
     onLoad(widget, false) // false = view mode
   }
-  
+
   // Handler for edit (load in edit mode)
   const handleEdit = (widget: CustomWidget) => {
     onLoad(widget, true) // true = edit mode
   }
-  
+
   return (
     <WidgetManagementModal
       open={open}

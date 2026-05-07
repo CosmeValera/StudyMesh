@@ -39,4 +39,3 @@ Fast, read-only agent for searching and analyzing the AquaMesh monorepo. It must
 - Line numbers when relevant.
 - Brief code snippets only.
 - End with the next most useful file to inspect if implementation will follow.
-

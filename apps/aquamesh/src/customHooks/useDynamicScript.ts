@@ -1,4 +1,4 @@
-import React from "react"
+import React from 'react'
 
 const useDynamicScript = ({ url }: { url: string }) => {
   const [ready, setReady] = React.useState(false)
@@ -9,10 +9,10 @@ const useDynamicScript = ({ url }: { url: string }) => {
       return
     }
 
-    const element = document.createElement("script")
+    const element = document.createElement('script')
 
     element.src = url
-    element.type = "text/javascript"
+    element.type = 'text/javascript'
     element.async = true
 
     setReady(false)

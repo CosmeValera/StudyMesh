@@ -26,6 +26,7 @@ import {
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 
@@ -182,6 +183,7 @@ const DashboardOptionsMenu: React.FC = () => {
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     loadSavedDashboards() // Refresh the list when opening menu
     setAnchorEl(event.currentTarget)
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-menu-opened' })
   }
 
   const handleClose = () => {
@@ -214,6 +216,11 @@ const DashboardOptionsMenu: React.FC = () => {
   // Load a saved dashboard
   const loadCustomDashboard = (dashboard: SavedDashboard) => {
     createDashboardWithLayout(dashboard.name, dashboard.layout)
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboard.id,
+      dashboardName: dashboard.name,
+    })
   }
 
   const openSavedDashboardsForFolder = (
@@ -237,6 +244,7 @@ const DashboardOptionsMenu: React.FC = () => {
           label={'Dashboards'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
+          data-onboarding-id="topnav-dashboards"
         />
       ) : (
         <Button
@@ -252,6 +260,7 @@ const DashboardOptionsMenu: React.FC = () => {
           startIcon={<HomeIcon />}
           endIcon={<KeyboardArrowDownIcon />}
           data-tutorial-id="dashboards-button"
+          data-onboarding-id="topnav-dashboards"
         >
           Dashboards
         </Button>
@@ -339,6 +348,8 @@ const DashboardOptionsMenu: React.FC = () => {
                     {[...dashboards].reverse().map((dashboard) => (
                       <MenuItem
                         key={dashboard.id}
+                        data-onboarding-id="topnav-saved-dashboard"
+                        data-dashboard-id={dashboard.id}
                         onClick={() => loadCustomDashboard(dashboard)}
                         sx={{ p: 1.5 }}
                       >

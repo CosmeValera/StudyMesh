@@ -14,12 +14,11 @@ export default defineConfig({
   testDir: './tests/e2e',
   /* Run tests in files in parallel */
   fullyParallel: true,
-  
+
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   // FOR PIPELINE / JENKINS use open 'never'
   // reporter: [['html', { open: 'never' }]],
   reporter: 'html',
-
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
