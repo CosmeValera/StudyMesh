@@ -72,9 +72,8 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
   'create-dashboard': {
     id: 'create-dashboard',
     targetId: 'create-dashboard-empty',
-    progress: 'Step 1 of 17',
-    instruction: () => 'Create a dashboard from the empty workspace.',
-    actionLabel: 'Create Dashboard',
+    progress: 'Step 1 of 17 | Step 1 of 3 (Dashboard Creation)',
+    instruction: () => 'Create a dashboard from the empty workspace.'
   },
   'open-widgets': {
     id: 'open-widgets',
@@ -87,14 +86,13 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'create-widget',
     targetId: 'dashboard-widget-create',
     progress: 'Step 3 of 17',
-    instruction: () => 'Choose Create Widget from this menu.',
-    actionLabel: 'Create Widget',
+    instruction: () => 'Choose Create Widget from this menu.'
   },
   'add-group': {
     id: 'add-group',
     targetId: 'palette-item-FieldSet',
     progress: 'Step 4 of 17',
-    instruction: () => 'Add a Field Set group to start a reusable widget.',
+    instruction: () => 'Add a Grouped Section to start a reusable widget.',
   },
   'select-group': {
     id: 'select-group',
@@ -107,7 +105,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'add-component',
     targetId: 'palette-item-Label',
     progress: 'Step 6 of 17',
-    instruction: () => 'Add a Label inside the active group.',
+    instruction: () => 'Add a Label inside the active group (click the item, or drag it inside the group).',
   },
   'tune-component': {
     id: 'tune-component',
@@ -120,7 +118,6 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     targetId: 'widget-editor-save',
     progress: 'Step 8 of 17',
     instruction: () => 'Save the widget so it can be reused in dashboards.',
-    actionLabel: 'Save Widget',
   },
   'close-widget': {
     id: 'close-widget',
@@ -128,7 +125,6 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     progress: 'Step 9 of 17',
     instruction: (state) =>
       `Close Create Widget and return to the dashboard editor${state.createdWidgetName ? ` with "${state.createdWidgetName}" saved` : ''}.`,
-    actionLabel: 'Close',
   },
   'add-saved-widget': {
     id: 'add-saved-widget',
@@ -136,6 +132,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     progress: 'Step 10 of 17',
     instruction: (state) =>
       `Add ${state.createdWidgetName || 'your saved widget'} to the dashboard.`,
+    actionLabel: 'Widgets',
   },
   'add-second-widget': {
     id: 'add-second-widget',
@@ -181,7 +178,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
   done: {
     id: 'done',
     progress: 'Step 17 of 17',
-    instruction: () => 'Dashboard opened in the workspace.',
+    instruction: () => 'Dashboard opened in the workspace. You have completed the onboarding! 🥳 Feel free to explore and build more dashboards and widgets. You can reactivate the tutorial in settings whenever you want.',
   },
 }
 
