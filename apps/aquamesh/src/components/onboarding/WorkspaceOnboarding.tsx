@@ -69,115 +69,135 @@ const stepOrder: WorkspaceOnboardingStepId[] = [
 ]
 
 const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
+  // Widget building steps
   'create-widget': {
     id: 'create-widget',
     targetId: 'dashboard-widget-create',
-    progress: 'Step 1 of 17',
+    progress: 'Step 1 of 3: Create a widget',
     instruction: () => 'Click Create Widget from the top menu.'
   },
   'add-group': {
     id: 'add-group',
     targetId: 'palette-item-FieldSet',
-    progress: 'Step 2 of 17',
+    progress: 'Step 1 of 3: Create a widget',
     instruction: () => 'Add a Grouped Section to start a reusable widget.',
   },
   'select-group': {
     id: 'select-group',
     targetId: 'component-target-control',
-    progress: 'Step 3 of 17',
+    progress: 'Step 1 of 3: Create a widget',
     instruction: () =>
       'Select the group target so the next block lands inside it.',
   },
   'add-component': {
     id: 'add-component',
     targetId: 'palette-item-Label',
-    progress: 'Step 4 of 17',
-    instruction: () => 'Add a Display Text inside the active group (click the item).',
+    progress: 'Step 1 of 3: Create a widget',
+    instruction: () =>
+      'Add a Display Text inside the active group (click the item).',
   },
   'tune-component': {
     id: 'tune-component',
     targetId: 'component-edit-control',
-    progress: 'Step 5 of 17',
+    progress: 'Step 1 of 3: Create a widget',
     instruction: () => 'Edit a block, then save the component settings.',
   },
   'save-widget': {
     id: 'save-widget',
     targetId: 'widget-editor-save',
-    progress: 'Step 6 of 17',
-    instruction: () => 'Save the widget so it can be reused in dashboards.',
+    progress: 'Step 1 of 3: Create a widget',
+    instruction: () =>
+      'Save the widget so it can be reused in dashboards.',
   },
   'close-widget': {
     id: 'close-widget',
     targetId: 'close-create-widget',
-    progress: 'Step 7 of 17',
+    progress: 'Step 1 of 3: Create a widget',
     instruction: (state) =>
-      `Close Create Widget${state.createdWidgetName ? ` with "${state.createdWidgetName}" saved` : ''}.`,
+      `Close Create Widget${
+        state.createdWidgetName
+          ? ` with "${state.createdWidgetName}" saved`
+          : ''
+      }.`,
   },
+
+  // Dashboard building steps
   'create-dashboard': {
     id: 'create-dashboard',
     targetId: 'create-dashboard',
-    progress: 'Step 8 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: () => 'Click Create Dashboard from the top menu.'
   },
   'open-widgets': {
     id: 'open-widgets',
     targetId: 'dashboard-editor-widgets',
-    progress: 'Step 9 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: () => 'Open Widgets in the dashboard editor.',
     actionLabel: 'Widgets',
   },
   'add-saved-widget': {
     id: 'add-saved-widget',
     targetId: 'dashboard-widget-saved',
-    progress: 'Step 10 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: (state) =>
-      `Add ${state.createdWidgetName || 'your saved widget'} to the dashboard.`
+      `Add ${
+        state.createdWidgetName || 'your saved widget'
+      } to the dashboard.`
   },
   'add-second-widget': {
     id: 'add-second-widget',
     targetId: 'dashboard-editor-widgets',
-    progress: 'Step 11 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: () => 'Add one more widget so the dashboard has two tabs.',
     actionLabel: 'Widgets',
   },
   'split-layout': {
     id: 'split-layout',
     targetId: 'flexlayout-tab',
-    progress: 'Step 12 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: (state) =>
-      `Grab a widget tab, for example '${state.createdWidgetName || 'your saved widget'}', and drag it into a new area to split the layout.`,
+      `Grab a widget tab, for example '${
+        state.createdWidgetName || 'your saved widget'
+      }', and drag it into a new area to split the layout.`,
   },
   'save-dashboard': {
     id: 'save-dashboard',
     targetId: 'dashboard-editor-save',
-    progress: 'Step 13 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: (state) =>
-      `Save the dashboard '${state.savedDashboardName || 'your saved dashboard'}'  so it appears in Dashboards.`,
+      `Save the dashboard '${
+        state.savedDashboardName || 'your saved dashboard'
+      }' so it appears in Dashboards.`,
   },
   'close-dashboard': {
     id: 'close-dashboard',
     targetId: 'dashboard-editor-close',
-    progress: 'Step 14 of 17',
+    progress: 'Step 2 of 3: Create a dashboard',
     instruction: () => 'Close the dashboard editor.',
     actionLabel: 'Close',
   },
+
+  // Dashboard opening steps
   'open-dashboard-menu': {
     id: 'open-dashboard-menu',
     targetId: 'topnav-dashboards',
-    progress: 'Step 15 of 17',
+    progress: 'Step 3 of 3: Open the dashboard',
     instruction: () => 'Open Dashboards from the top menu.',
   },
   'open-saved-dashboard': {
     id: 'open-saved-dashboard',
     targetId: 'topnav-saved-dashboard',
-    progress: 'Step 16 of 17',
+    progress: 'Step 3 of 3: Open the dashboard',
     instruction: (state) =>
-      `Open the Dashboard you just created '${state.savedDashboardName || 'your saved dashboard'}' from this menu.`,
+      `Open the Dashboard you just created '${
+        state.savedDashboardName || 'your saved dashboard'
+      }' from this menu.`,
   },
   done: {
     id: 'done',
-    progress: 'Step 17 of 17',
-    instruction: () => 'Dashboard opened in the workspace. You have completed the onboarding! 🥳 Feel free to explore and build more dashboards and widgets. You can reactivate the tutorial in settings whenever you want.',
+    progress: 'Complete',
+    instruction: () =>
+      'Dashboard opened in the workspace. You have completed the onboarding! 🥳 Feel free to explore and build more dashboards and widgets. You can reactivate the tutorial in settings whenever you want.',
   },
 }
 
