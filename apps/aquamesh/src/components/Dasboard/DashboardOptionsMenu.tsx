@@ -224,7 +224,7 @@ const DashboardOptionsMenu: React.FC = () => {
     handleClose()
     window.dispatchEvent(
       new CustomEvent(OPEN_SAVED_DASHBOARDS_EVENT, {
-        detail: { searchTerm: folderName },
+        detail: { folderFilter: folderName },
       }),
     )
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Box,
   Typography,
@@ -18,6 +18,7 @@ import {
   Chip,
   Paper,
   Stack,
+  Autocomplete,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -356,7 +357,8 @@ const DashboardEmptyState = ({
                 .map(([folderName, dashboards]) => {
                   const folderColor = normalizeFolderColor(
                     dashboards.find((dashboard) => dashboard.folderColor)
-                      ?.folderColor || DashboardStorage.getFolderColor(folderName),
+                      ?.folderColor ||
+                      DashboardStorage.getFolderColor(folderName),
                   )
 
                   return (
@@ -411,18 +413,18 @@ const DashboardEmptyState = ({
                                 {dashboard.name}
                               </Typography>
                               {dashboard.description && (
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: 'text.secondary',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  display: 'block',
-                                }}
-                              >
-                                {dashboard.description}
-                              </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: 'text.secondary',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    display: 'block',
+                                  }}
+                                >
+                                  {dashboard.description}
+                                </Typography>
                               )}
                             </Box>
                           </Button>
@@ -555,12 +557,13 @@ const Dashboards = () => {
   } | null>(null)
   const [isEditingDashboardEditorTitle, setIsEditingDashboardEditorTitle] =
     useState(false)
-  const [dashboardEditorTitleInput, setDashboardEditorTitleInput] =
-    useState('')
+  const [dashboardEditorTitleInput, setDashboardEditorTitleInput] = useState('')
   const [dashboardWidgetsAnchorEl, setDashboardWidgetsAnchorEl] =
     useState<null | HTMLElement>(null)
   const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
   const [dashboardLibraryInitialSearch, setDashboardLibraryInitialSearch] =
+    useState('')
+  const [dashboardLibraryInitialFolder, setDashboardLibraryInitialFolder] =
     useState('')
   const [
     dashboardLibraryInitialSearchKey,
@@ -604,6 +607,17 @@ const Dashboards = () => {
   const visibleDashboardOptions = isAdmin
     ? dashboardOptions
     : dashboardOptions.filter((dashboard) => dashboard.isPublic)
+  const dashboardFolderOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          dashboardOptions.map((dashboard) =>
+            normalizeFolderName(dashboard.folder),
+          ),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [dashboardOptions],
+  )
 
   const loadDashboardOptions = () => {
     ensureStarterDashboards()
@@ -735,9 +749,7 @@ const Dashboards = () => {
     setIsEditingDashboardEditorTitle(false)
   }
 
-  const handleDashboardEditorTitleKeyDown = (
-    event: React.KeyboardEvent,
-  ) => {
+  const handleDashboardEditorTitleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
       event.preventDefault()
       updateDashboardEditorTitle(dashboardEditorTitleInput)
@@ -820,10 +832,7 @@ const Dashboards = () => {
           setIsAdmin(
             parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
           )
-          if (
-            parsedData.id !== 'admin' ||
-            parsedData.role !== 'ADMIN_ROLE'
-          ) {
+          if (parsedData.id !== 'admin' || parsedData.role !== 'ADMIN_ROLE') {
             closeDashboardEditor()
           }
           return
@@ -879,10 +888,12 @@ const Dashboards = () => {
   useEffect(() => {
     const handleOpenSavedDashboards = (event: Event) => {
       const customEvent = event as CustomEvent<{
+        folderFilter?: string
         searchTerm?: string
       }>
 
       setDashboardLibraryInitialSearch(customEvent.detail?.searchTerm || '')
+      setDashboardLibraryInitialFolder(customEvent.detail?.folderFilter || '')
       setDashboardLibraryInitialSearchKey((currentKey) => currentKey + 1)
       setDashboardLibraryOpen(true)
     }
@@ -993,7 +1004,8 @@ const Dashboards = () => {
     setDashboardFolder(nextFolder)
     setDashboardFolderColor(
       normalizeFolderColor(
-        savedDashboard?.folderColor || DashboardStorage.getFolderColor(nextFolder),
+        savedDashboard?.folderColor ||
+          DashboardStorage.getFolderColor(nextFolder),
       ),
     )
     setDashboardDescription(savedDashboard?.description || '')
@@ -1048,13 +1060,17 @@ const Dashboards = () => {
     }
 
     try {
-      const existingDashboard = DashboardStorage.getByName(currentDashboard.name)
+      const existingDashboard = DashboardStorage.getByName(
+        currentDashboard.name,
+      )
       const dashboards = DashboardStorage.getAll()
       const now = new Date().toISOString()
       const nameToSave = existingDashboard
         ? currentDashboard.name
         : getUniqueDashboardName(
-            currentDashboard.name === 'Dashboard' ? DEFAULT_DASHBOARD_NAME : currentDashboard.name,
+            currentDashboard.name === 'Dashboard'
+              ? DEFAULT_DASHBOARD_NAME
+              : currentDashboard.name,
             dashboards,
           )
 
@@ -1338,29 +1354,6 @@ const Dashboards = () => {
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {isAdmin &&
-                    hasChanges[index] &&
-                    hasDashboardContent(dashboard.layout) && (
-                      <TooltipStyled title="Save Dashboard">
-                        <IconButton
-                          aria-label={`Save dashboard ${dashboard.name}`}
-                          data-testid={`save-dashboard-${index}`}
-                          size="small"
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            saveDashboardDirectly(index)
-                          }}
-                          sx={{
-                            p: 0.5,
-                            mr: 0.5,
-                            color: 'primary.light',
-                            '&:hover': { color: 'primary.main' },
-                          }}
-                        >
-                          <SaveIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </TooltipStyled>
-                    )}
-                  {isAdmin &&
                     dashboard.layout?.children &&
                     dashboard.layout.children.length > 0 && (
                       <TooltipStyled title="Edit Dashboard">
@@ -1613,6 +1606,7 @@ const Dashboards = () => {
                 startIcon={<FolderOpenIcon />}
                 onClick={() => {
                   setDashboardLibraryInitialSearch('')
+                  setDashboardLibraryInitialFolder('')
                   setDashboardLibraryInitialSearchKey(
                     (currentKey) => currentKey + 1,
                   )
@@ -1896,6 +1890,7 @@ const Dashboards = () => {
           loadDashboardOptions()
         }}
         initialSearchTerm={dashboardLibraryInitialSearch}
+        initialFolderFilter={dashboardLibraryInitialFolder}
         initialSearchKey={dashboardLibraryInitialSearchKey}
         mode="builder"
         onOpenInBuilder={loadSavedDashboardInBuilder}
@@ -2003,41 +1998,56 @@ const Dashboards = () => {
             }}
           />
 
-          <TextField
-            margin="normal"
-            id="folder"
-            label="Folder"
-            type="text"
-            fullWidth
-            variant="outlined"
+          <Autocomplete
+            freeSolo
+            options={dashboardFolderOptions}
             value={dashboardFolder}
-            onChange={(e) => {
-              const nextFolder = e.target.value
+            inputValue={dashboardFolder}
+            onChange={(_, nextValue) => {
+              const nextFolder = nextValue || ''
               setDashboardFolder(nextFolder)
               setDashboardFolderColor(
                 DashboardStorage.getFolderColor(nextFolder),
               )
             }}
-            helperText="Dashboards with the same folder name are grouped together."
-            InputLabelProps={{
-              shrink: true,
-              sx: { color: 'text.secondary' },
+            onInputChange={(_, nextInputValue) => {
+              setDashboardFolder(nextInputValue)
+              setDashboardFolderColor(
+                DashboardStorage.getFolderColor(nextInputValue),
+              )
             }}
-            InputProps={{
-              sx: {
-                bgcolor: 'background.paper',
-                color: 'text.primary',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'divider',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                margin="normal"
+                id="folder"
+                label="Folder"
+                fullWidth
+                variant="outlined"
+                helperText="Dashboards with the same folder name are grouped together."
+                InputLabelProps={{
+                  ...params.InputLabelProps,
+                  shrink: true,
+                  sx: { color: 'text.secondary' },
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
+              />
+            )}
           />
 
           <Box sx={{ mt: 2, mb: 1 }}>
@@ -2242,9 +2252,7 @@ const Dashboards = () => {
             onClick={handleSaveDashboard}
             variant="contained"
             color="primary"
-            disabled={
-              dashboardName.trim() === ''
-            }
+            disabled={dashboardName.trim() === ''}
             startIcon={<SaveIcon />}
             sx={{
               bgcolor: 'primary.dark',

@@ -24,12 +24,14 @@ import {
   Switch,
   FormControlLabel,
   Menu,
+  Autocomplete,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
 import DashboardIcon from '@mui/icons-material/Dashboard'
+import FolderIcon from '@mui/icons-material/Folder'
 import SearchIcon from '@mui/icons-material/Search'
 import SortIcon from '@mui/icons-material/Sort'
 import CloseIcon from '@mui/icons-material/Close'
@@ -66,6 +68,7 @@ interface SavedDashboardsDialogProps {
   open: boolean
   onClose: () => void
   initialSearchTerm?: string
+  initialFolderFilter?: string
   initialSearchKey?: number
   mode?: 'workspace' | 'builder'
   onOpenInBuilder?: (dashboard: SavedDashboard) => void
@@ -77,6 +80,8 @@ interface EditDashboardDialogProps {
   onClose: () => void
   dashboard: SavedDashboard | null
   onSave: (dashboard: SavedDashboard) => void
+  folderOptions: string[]
+  folderColorsByName: Record<string, string>
 }
 
 // Sort types
@@ -92,6 +97,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   open,
   onClose,
   initialSearchTerm = '',
+  initialFolderFilter = '',
   initialSearchKey = 0,
   mode = 'workspace',
   onOpenInBuilder,
@@ -108,6 +114,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
 
   // Filter state
   const [showPublicOnly, setShowPublicOnly] = useState(false)
+  const [folderFilter, setFolderFilter] = useState('')
 
   // Dashboard state
   const [dashboards, setDashboards] = useState<SavedDashboard[]>([])
@@ -288,9 +295,12 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     if (open) {
       loadDashboards()
       setSearchTerm(initialSearchTerm)
+      setFolderFilter(
+        initialFolderFilter ? normalizeFolderName(initialFolderFilter) : '',
+      )
       setSortBy('dateNewest')
     }
-  }, [initialSearchKey, initialSearchTerm, open])
+  }, [initialFolderFilter, initialSearchKey, initialSearchTerm, open])
 
   // Handle opening a dashboard
   const handleOpenDashboard = (dashboard: SavedDashboard) => {
@@ -392,21 +402,61 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     setSortBy(e.target.value as SortOption)
   }
 
+  const handleFolderFilterChange = (e: SelectChangeEvent) => {
+    setFolderFilter(e.target.value)
+  }
+
   // Handle public filter toggle
   const handlePublicFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setShowPublicOnly(e.target.checked)
   }
 
-  // Filter dashboards based on search term, public filter, and user role
-  const filteredDashboards = useMemo(() => {
+  const roleVisibleDashboards = useMemo(() => {
     let filtered = dashboards
 
     // If not admin, only show public dashboards
     if (!isAdmin) {
       filtered = filtered.filter((dashboard) => dashboard.isPublic)
-    } else if (showPublicOnly) {
+    }
+
+    return filtered
+  }, [dashboards, isAdmin])
+
+  const folderOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        roleVisibleDashboards.map((dashboard) =>
+          normalizeFolderName(dashboard.folder),
+        ),
+      ),
+    ).sort((a, b) => a.localeCompare(b))
+  }, [roleVisibleDashboards])
+
+  const folderColorsByName = useMemo(() => {
+    return dashboards.reduce<Record<string, string>>((colors, dashboard) => {
+      const folderName = normalizeFolderName(dashboard.folder)
+
+      if (!colors[folderName]) {
+        colors[folderName] = normalizeFolderColor(dashboard.folderColor)
+      }
+
+      return colors
+    }, {})
+  }, [dashboards])
+
+  // Filter dashboards based on search term, folder, public filter, and user role
+  const filteredDashboards = useMemo(() => {
+    let filtered = roleVisibleDashboards
+
+    if (isAdmin && showPublicOnly) {
       // Admin user with public filter enabled
       filtered = filtered.filter((dashboard) => dashboard.isPublic)
+    }
+
+    if (folderFilter) {
+      filtered = filtered.filter(
+        (dashboard) => normalizeFolderName(dashboard.folder) === folderFilter,
+      )
     }
 
     // Apply search filter if there's a search term
@@ -422,7 +472,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     }
 
     return filtered
-  }, [dashboards, searchTerm, showPublicOnly, isAdmin])
+  }, [folderFilter, roleVisibleDashboards, searchTerm, showPublicOnly, isAdmin])
 
   // Sort filtered dashboards
   const sortedDashboards = useMemo(() => {
@@ -577,7 +627,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         >
           {/* Search, Sort, and Filter Controls */}
           <Grid container spacing={2} sx={{ mb: 3, mt: 1 }}>
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 placeholder="Search dashboards..."
@@ -623,7 +673,48 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small" variant="outlined">
+                <InputLabel
+                  id="folder-filter-label"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  Folder
+                </InputLabel>
+                <Select
+                  labelId="folder-filter-label"
+                  value={folderFilter}
+                  onChange={handleFolderFilterChange}
+                  label="Folder"
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <FolderIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                  }}
+                >
+                  <MenuItem value="">All Folders</MenuItem>
+                  {folderOptions.map((folderName) => (
+                    <MenuItem key={folderName} value={folderName}>
+                      {folderName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small" variant="outlined">
                 <InputLabel id="sort-by-label" sx={{ color: 'text.secondary' }}>
                   Sort By
@@ -663,7 +754,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={2}>
               {isAdmin && (
                 <FormControlLabel
                   control={
@@ -700,6 +791,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 ? 'No dashboards found'
                 : `Showing ${sortedDashboards.length} dashboard${sortedDashboards.length !== 1 ? 's' : ''}`}
               {searchTerm && ` matching "${searchTerm}"`}
+              {folderFilter && ` in "${folderFilter}"`}
               {!isAdmin && ' (only showing public dashboards)'}
             </Typography>
           </Box>
@@ -727,14 +819,18 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
               <Typography color="text.primary" variant="h6" gutterBottom>
                 {searchTerm
                   ? 'No Matching Dashboards'
-                  : 'No Dashboards Available'}
+                  : folderFilter
+                    ? 'No Dashboards In Folder'
+                    : 'No Dashboards Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
-                  : !isAdmin
-                    ? 'No public dashboards are currently available'
-                    : 'No dashboards have been saved yet'}
+                  : folderFilter
+                    ? 'Select a different folder or clear the folder filter'
+                    : !isAdmin
+                      ? 'No public dashboards are currently available'
+                      : 'No dashboards have been saved yet'}
               </Typography>
             </Paper>
           ) : (
@@ -1130,6 +1226,8 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         onClose={() => setEditDialogOpen(false)}
         dashboard={dashboardToEdit}
         onSave={handleSaveEditedDashboard}
+        folderOptions={folderOptions}
+        folderColorsByName={folderColorsByName}
       />
     </>
   )
@@ -1141,6 +1239,8 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
   onClose,
   dashboard,
   onSave,
+  folderOptions,
+  folderColorsByName,
 }) => {
   const [name, setName] = useState('')
   const [folder, setFolder] = useState('Default')
@@ -1149,6 +1249,17 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
   const [tags, setTags] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
   const [tagInput, setTagInput] = useState('')
+
+  const updateFolder = (nextFolder: string) => {
+    setFolder(nextFolder)
+
+    const normalizedFolder = normalizeFolderName(nextFolder)
+    const existingFolderColor = folderColorsByName[normalizedFolder]
+
+    if (existingFolderColor) {
+      setFolderColor(existingFolderColor)
+    }
+  }
 
   // Initialize form values when dashboard changes
   useEffect(() => {
@@ -1273,29 +1384,45 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
             }}
           />
 
-          <TextField
-            fullWidth
-            label="Folder"
+          <Autocomplete
+            freeSolo
+            options={folderOptions}
             value={folder}
-            onChange={(e) => setFolder(e.target.value)}
-            margin="normal"
-            helperText="Dashboards with the same folder name are grouped in the dashboard menu."
-            InputLabelProps={{ shrink: true, sx: { color: 'text.secondary' } }}
-            InputProps={{
-              sx: {
-                bgcolor: 'background.paper',
-                color: 'text.primary',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'divider',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-              },
+            inputValue={folder}
+            onChange={(_, nextValue) => updateFolder(nextValue || '')}
+            onInputChange={(_, nextInputValue) => {
+              updateFolder(nextInputValue)
             }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                label="Folder"
+                margin="normal"
+                helperText="Dashboards with the same folder name are grouped in the dashboard menu."
+                InputLabelProps={{
+                  ...params.InputLabelProps,
+                  shrink: true,
+                  sx: { color: 'text.secondary' },
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
+              />
+            )}
           />
 
           <Box sx={{ mt: 2, mb: 1 }}>
