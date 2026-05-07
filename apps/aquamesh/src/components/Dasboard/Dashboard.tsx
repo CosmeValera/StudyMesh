@@ -1340,18 +1340,25 @@ const Dashboards = () => {
 
             return (
               <Tab key={dashboard.id}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    flex: '1 0 0',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    marginLeft: '0.5rem',
-                  }}
+                <TooltipStyled
+                  title={dashboard.name}
+                  placement="bottom"
+                  enterTouchDelay={1000}
                 >
-                  {dashboard.name}
-                </Typography>
+                  <Typography
+                    component="span"
+                    variant="subtitle2"
+                    sx={{
+                      flex: '1 0 0',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginLeft: '0.5rem',
+                    }}
+                  >
+                    {dashboard.name}
+                  </Typography>
+                </TooltipStyled>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {isAdmin &&
                     dashboard.layout?.children &&
