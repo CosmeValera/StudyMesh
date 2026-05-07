@@ -49,8 +49,6 @@ interface StepDefinition {
 }
 
 const stepOrder: WorkspaceOnboardingStepId[] = [
-  'create-dashboard',
-  'open-widgets',
   'create-widget',
   'add-group',
   'select-group',
@@ -58,6 +56,8 @@ const stepOrder: WorkspaceOnboardingStepId[] = [
   'tune-component',
   'save-widget',
   'close-widget',
+  'create-dashboard',
+  'open-widgets',
   'add-saved-widget',
   'add-second-widget',
   'split-layout',
@@ -69,70 +69,69 @@ const stepOrder: WorkspaceOnboardingStepId[] = [
 ]
 
 const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
-  'create-dashboard': {
-    id: 'create-dashboard',
-    targetId: 'create-dashboard-empty',
-    progress: 'Step 1 of 17 | Step 1 of 3 (Dashboard Creation)',
-    instruction: () => 'Create a dashboard from the empty workspace.'
-  },
-  'open-widgets': {
-    id: 'open-widgets',
-    targetId: 'dashboard-editor-widgets',
-    progress: 'Step 2 of 17',
-    instruction: () => 'Open Widgets in the dashboard editor.',
-    actionLabel: 'Widgets',
-  },
   'create-widget': {
     id: 'create-widget',
     targetId: 'dashboard-widget-create',
-    progress: 'Step 3 of 17',
-    instruction: () => 'Choose Create Widget from this menu.'
+    progress: 'Step 1 of 17',
+    instruction: () => 'Click Create Widget from the top menu.'
   },
   'add-group': {
     id: 'add-group',
     targetId: 'palette-item-FieldSet',
-    progress: 'Step 4 of 17',
+    progress: 'Step 2 of 17',
     instruction: () => 'Add a Grouped Section to start a reusable widget.',
   },
   'select-group': {
     id: 'select-group',
     targetId: 'component-target-control',
-    progress: 'Step 5 of 17',
+    progress: 'Step 3 of 17',
     instruction: () =>
       'Select the group target so the next block lands inside it.',
   },
   'add-component': {
     id: 'add-component',
     targetId: 'palette-item-Label',
-    progress: 'Step 6 of 17',
-    instruction: () => 'Add a Label inside the active group (click the item, or drag it inside the group).',
+    progress: 'Step 4 of 17',
+    instruction: () => 'Add a Display Text inside the active group (click the item).',
   },
   'tune-component': {
     id: 'tune-component',
     targetId: 'component-edit-control',
-    progress: 'Step 7 of 17',
+    progress: 'Step 5 of 17',
     instruction: () => 'Edit a block, then save the component settings.',
   },
   'save-widget': {
     id: 'save-widget',
     targetId: 'widget-editor-save',
-    progress: 'Step 8 of 17',
+    progress: 'Step 6 of 17',
     instruction: () => 'Save the widget so it can be reused in dashboards.',
   },
   'close-widget': {
     id: 'close-widget',
     targetId: 'close-create-widget',
-    progress: 'Step 9 of 17',
+    progress: 'Step 7 of 17',
     instruction: (state) =>
-      `Close Create Widget and return to the dashboard editor${state.createdWidgetName ? ` with "${state.createdWidgetName}" saved` : ''}.`,
+      `Close Create Widget${state.createdWidgetName ? ` with "${state.createdWidgetName}" saved` : ''}.`,
+  },
+  'create-dashboard': {
+    id: 'create-dashboard',
+    targetId: 'create-dashboard',
+    progress: 'Step 8 of 17',
+    instruction: () => 'Click Create Dashboard from the top menu.'
+  },
+  'open-widgets': {
+    id: 'open-widgets',
+    targetId: 'dashboard-editor-widgets',
+    progress: 'Step 9 of 17',
+    instruction: () => 'Open Widgets in the dashboard editor.',
+    actionLabel: 'Widgets',
   },
   'add-saved-widget': {
     id: 'add-saved-widget',
     targetId: 'dashboard-widget-saved',
     progress: 'Step 10 of 17',
     instruction: (state) =>
-      `Add ${state.createdWidgetName || 'your saved widget'} to the dashboard.`,
-    actionLabel: 'Widgets',
+      `Add ${state.createdWidgetName || 'your saved widget'} to the dashboard.`
   },
   'add-second-widget': {
     id: 'add-second-widget',
@@ -145,14 +144,15 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'split-layout',
     targetId: 'flexlayout-tab',
     progress: 'Step 12 of 17',
-    instruction: () => 'Drag a tab into a new area to split the layout.',
+    instruction: (state) =>
+      `Grab a widget tab, for example '${state.createdWidgetName || 'your saved widget'}', and drag it into a new area to split the layout.`,
   },
   'save-dashboard': {
     id: 'save-dashboard',
     targetId: 'dashboard-editor-save',
     progress: 'Step 13 of 17',
-    instruction: () => 'Save the dashboard so it appears in Dashboards.',
-    actionLabel: 'Save',
+    instruction: (state) =>
+      `Save the dashboard '${state.savedDashboardName || 'your saved dashboard'}'  so it appears in Dashboards.`,
   },
   'close-dashboard': {
     id: 'close-dashboard',
@@ -165,15 +165,14 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'open-dashboard-menu',
     targetId: 'topnav-dashboards',
     progress: 'Step 15 of 17',
-    instruction: () => 'Open Dashboards from the top navigation.',
-    actionLabel: 'Dashboards',
+    instruction: () => 'Open Dashboards from the top menu.',
   },
   'open-saved-dashboard': {
     id: 'open-saved-dashboard',
     targetId: 'topnav-saved-dashboard',
     progress: 'Step 16 of 17',
     instruction: (state) =>
-      `Open ${state.savedDashboardName || 'your saved dashboard'} from this menu.`,
+      `Open the Dashboard you just created '${state.savedDashboardName || 'your saved dashboard'}' from this menu.`,
   },
   done: {
     id: 'done',
@@ -182,16 +181,13 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
   },
 }
 
-export const createInitialWorkspaceOnboardingState =
-  (): WorkspaceOnboardingState => ({
-    status: 'active',
-    stepId: 'create-dashboard',
-  })
-
 const defaultState: WorkspaceOnboardingState = {
   status: 'active',
-  stepId: 'create-dashboard',
+  stepId: 'create-widget',
 }
+
+export const createInitialWorkspaceOnboardingState =
+  (): WorkspaceOnboardingState => defaultState
 
 const readStoredState = (): WorkspaceOnboardingState => {
   if (typeof window === 'undefined') {
@@ -348,6 +344,14 @@ const getTarget = (targetId?: string, state?: WorkspaceOnboardingState) => {
     ) as HTMLElement | null
   }
 
+  if (targetId === 'component-edit-control') {
+    const matches = document.querySelectorAll(
+      `[data-onboarding-id="${targetId}"]`,
+    )
+
+    return (matches[1] || matches[0] || null) as HTMLElement | null
+  }
+
   return document.querySelector(
     `[data-onboarding-id="${targetId}"]`,
   ) as HTMLElement | null
@@ -414,31 +418,65 @@ const WorkspaceOnboarding = () => {
   }, [])
 
   React.useEffect(() => {
-    if (state.status !== 'active') {
-      return
+    if (state.status !== 'active') return
+
+    let timeout: number | undefined
+    let highlightedTarget: HTMLElement | null = null
+    let cancelled = false
+
+    let previousOutline = ''
+    let previousOutlineOffset = ''
+    let previousScrollMargin = ''
+
+    const clearHighlight = () => {
+      if (!highlightedTarget) return
+
+      highlightedTarget.style.outline = previousOutline
+      highlightedTarget.style.outlineOffset = previousOutlineOffset
+      highlightedTarget.style.scrollMargin = previousScrollMargin
+
+      highlightedTarget = null
     }
 
-    const step = stepDefinitions[state.stepId]
-    const target = getTarget(step.targetId, state)
-    if (!target) {
-      return
+    const applyHighlight = () => {
+      if (cancelled) return
+
+      const step = stepDefinitions[state.stepId]
+      const target = getTarget(step.targetId, state)
+
+      if (!target) {
+        timeout = window.setTimeout(applyHighlight, 100)
+        return
+      }
+
+      highlightedTarget = target
+      previousOutline = target.style.outline
+      previousOutlineOffset = target.style.outlineOffset
+      previousScrollMargin = target.style.scrollMargin
+
+      target.style.outline = '3px solid #00C49A'
+      target.style.outlineOffset = '3px'
+      target.style.scrollMargin = '96px'
+      target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }
 
-    const previousOutline = target.style.outline
-    const previousOutlineOffset = target.style.outlineOffset
-    const previousScrollMargin = target.style.scrollMargin
-    target.style.outline = '3px solid #00C49A'
-    target.style.outlineOffset = '3px'
-    target.style.scrollMargin = '96px'
-    target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    applyHighlight()
 
     return () => {
-      target.style.outline = previousOutline
-      target.style.outlineOffset = previousOutlineOffset
-      target.style.scrollMargin = previousScrollMargin
-    }
-  }, [state])
+      cancelled = true
 
+      if (timeout) {
+        window.clearTimeout(timeout)
+      }
+
+      clearHighlight()
+    }
+  }, [
+    state.status,
+    state.stepId,
+    state.createdWidgetId,
+    state.savedDashboardId,
+  ])
   React.useEffect(() => {
     if (!state.showDone) {
       return
@@ -446,7 +484,7 @@ const WorkspaceOnboarding = () => {
 
     const timeout = window.setTimeout(() => {
       setState((current) => ({ ...current, showDone: false }))
-    }, 3000)
+    }, 10000)
 
     return () => window.clearTimeout(timeout)
   }, [state.showDone])
@@ -495,7 +533,7 @@ const WorkspaceOnboarding = () => {
         right: { xs: 12, sm: 16 },
         left: { xs: 12, sm: 'auto' },
         width: { xs: 'auto', sm: 360 },
-        zIndex: 1500,
+        zIndex: 1301,
         p: 1.5,
         borderRadius: 1,
         border: '1px solid',
@@ -517,11 +555,6 @@ const WorkspaceOnboarding = () => {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} justifyContent="flex-end">
-          {step.actionLabel && target && (
-            <Button size="small" variant="contained" onClick={handleAction}>
-              {step.actionLabel}
-            </Button>
-          )}
           {state.stepId !== 'done' && (
             <Button size="small" variant="text" onClick={handleSkip}>
               Skip

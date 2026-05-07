@@ -333,7 +333,6 @@ const DashboardEmptyState = ({
               variant="contained"
               startIcon={<DashboardCustomizeIcon />}
               onClick={onCreateDashboard}
-              data-onboarding-id="create-dashboard-empty"
               sx={{
                 bgcolor: 'primary.dark',
                 color: 'primary.contrastText',
@@ -1604,7 +1603,6 @@ const Dashboards = () => {
                 {isAdmin && (
                   <MenuItem
                     onClick={handleCreateWidgetFromDashboardEditor}
-                    data-onboarding-id="dashboard-widget-create"
                     sx={{ p: 1.5 }}
                   >
                     <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>

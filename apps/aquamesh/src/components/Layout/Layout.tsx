@@ -98,7 +98,7 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
   }, [layout, readOnly])
 
   return (
-    <div data-onboarding-id="flexlayout-tab" style={{ height: '100%' }}>
+    <div style={{ height: '100%' }}>
       <Layout
         ref={ref}
         model={model}

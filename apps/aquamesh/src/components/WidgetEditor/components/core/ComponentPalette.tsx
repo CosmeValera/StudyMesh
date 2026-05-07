@@ -47,16 +47,16 @@ const groupByCategory = (components: ComponentType[]) => {
 
 // Define the component palette groups and expand state
 const PALETTE_GROUPS = [
+  'Layout Containers',
   'UI Components',
   'Knowledge Blocks',
-  'Layout Containers',
   'Chart Components',
 ]
 const MOBILE_CONTENT_LAYOUT_GROUP = 'Content and layout'
 const PALETTE_GROUP_LABELS: Record<string, string> = {
+  'Layout Containers': 'Layout Helpers',
   'UI Components': 'Content and Controls',
   'Knowledge Blocks': 'Knowledge Blocks',
-  'Layout Containers': 'Layout Helpers',
   'Chart Components': 'Charts',
   [MOBILE_CONTENT_LAYOUT_GROUP]: 'Content and layout',
 }
@@ -266,7 +266,7 @@ const ComponentPalette = ({
         ).map((category) => {
           const groupCategories =
             isPhone && category === MOBILE_CONTENT_LAYOUT_GROUP
-              ? ['UI Components', 'Knowledge Blocks', 'Layout Containers']
+              ? ['Layout Containers', 'UI Components', 'Knowledge Blocks']
               : [category]
           const components = groupCategories.flatMap(
             (groupCategory) => groupedComponents[groupCategory] || [],

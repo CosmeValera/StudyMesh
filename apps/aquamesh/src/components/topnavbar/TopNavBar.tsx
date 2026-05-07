@@ -311,6 +311,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create Dashboard"
                 onClick={() => openCreateDashboard()}
                 data-tutorial-id="create-dashboard-button"
+                data-onboarding-id="create-dashboard"
                 disabled={!isAdmin}
                 title={
                   isAdmin
@@ -334,6 +335,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 }}
                 startIcon={<DashboardCustomizeIcon />}
                 data-tutorial-id="create-dashboard-button"
+                data-onboarding-id="create-dashboard"
               >
                 Create Dashboard
               </Button>
@@ -346,6 +348,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create Widget"
                 onClick={() => openCreateWidget()}
                 data-tutorial-id="create-widget-button"
+                data-onboarding-id="dashboard-widget-create"
                 disabled={!isAdmin}
                 title={
                   isAdmin
@@ -369,6 +372,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 }}
                 startIcon={<ConstructionIcon />}
                 data-tutorial-id="create-widget-button"
+                data-onboarding-id="dashboard-widget-create"
               >
                 Create Widget
               </Button>
