@@ -6,6 +6,18 @@ AquaMesh is an npm/Turborepo monorepo. Application code lives in `apps/`: `apps/
 
 Within each app, source files are in `src/`, public assets are in `public/`, and build output goes to `dist/`. AquaMesh tests are split into `apps/aquamesh/tests/unit` and `apps/aquamesh/tests/e2e`.
 
+## Product Direction & Core Workflows
+
+AquaMesh is evolving from a dashboard builder into a knowledge wiki for students and similar users. Widgets and dashboards should help people organize notes, data, references, and learning materials into reusable views.
+
+Keep the three primary workflows clearly separated in the main AquaMesh experience:
+
+- Create a widget.
+- Create a dashboard.
+- Open a dashboard in the main workspace.
+
+The first two workflows are intentionally modal-driven because creating a widget and creating a dashboard are distinct setup processes. Opening a dashboard should take the user into the main workspace rather than sharing the same modal flow.
+
 ## Build, Test, and Development Commands
 
 Run commands from the repository root unless noted:
