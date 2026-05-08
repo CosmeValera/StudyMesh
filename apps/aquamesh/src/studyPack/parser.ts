@@ -1,0 +1,580 @@
+import {
+  StudyListObject,
+  StudyObject,
+  StudyPack,
+  StudyPackParseOptions,
+  StudyPackSourceFormat,
+  StudyResourceObject,
+  StudyTableObject,
+} from './types'
+
+interface LineRecord {
+  text: string
+  lineNumber: number
+}
+
+const DEFAULT_TITLE = 'Study Pack'
+
+const slugify = (value: string): string => {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return slug || 'study-pack'
+}
+
+const cleanCell = (value: string): string => value.trim().replace(/^"|"$/g, '')
+
+const buildId = (packId: string, kind: string, index: number): string =>
+  `${packId}-${kind}-${index + 1}`
+
+const normalizeNewlines = (source: string): string =>
+  source.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
+const getLines = (source: string): LineRecord[] =>
+  normalizeNewlines(source)
+    .split('\n')
+    .map((text, index) => ({ text: text.trimEnd(), lineNumber: index + 1 }))
+
+const isMarkdownTableDivider = (line: string): boolean =>
+  /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)
+
+const splitPipeRow = (line: string): string[] =>
+  line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cleanCell)
+
+const parseCsvRow = (line: string): string[] => {
+  const cells: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    const nextCharacter = line[index + 1]
+
+    if (character === '"' && nextCharacter === '"') {
+      current += '"'
+      index += 1
+    } else if (character === '"') {
+      inQuotes = !inQuotes
+    } else if (character === ',' && !inQuotes) {
+      cells.push(cleanCell(current))
+      current = ''
+    } else {
+      current += character
+    }
+  }
+
+  cells.push(cleanCell(current))
+  return cells
+}
+
+const looksLikeCsv = (lines: LineRecord[]): boolean => {
+  const rows = lines.filter((line) => line.text.trim())
+  if (rows.length < 2) {
+    return false
+  }
+
+  const columnCounts = rows.map((line) => parseCsvRow(line.text).length)
+  return (
+    columnCounts[0] > 1 &&
+    columnCounts.every((count) => count === columnCounts[0])
+  )
+}
+
+const detectFormat = (
+  source: string,
+  requestedFormat?: StudyPackSourceFormat,
+): StudyPackSourceFormat => {
+  if (requestedFormat && requestedFormat !== 'paste') {
+    return requestedFormat
+  }
+
+  const lines = getLines(source)
+  if (
+    lines.some((line, index) => {
+      const nextLine = lines[index + 1]
+      return (
+        line.text.includes('|') &&
+        Boolean(nextLine) &&
+        isMarkdownTableDivider(nextLine.text)
+      )
+    })
+  ) {
+    return 'markdown-table'
+  }
+
+  if (looksLikeCsv(lines)) {
+    return 'csv'
+  }
+
+  if (
+    lines.some((line) =>
+      /^(#{1,6}\s+|q:\s+|a:\s+|[-*]\s+\[[ xX]\]\s+|.+\s+::\s+.+)/.test(
+        line.text.trim(),
+      ),
+    )
+  ) {
+    return 'quick-syntax'
+  }
+
+  if (lines.some((line) => /^#{1,6}\s+/.test(line.text.trim()))) {
+    return 'markdown'
+  }
+
+  return requestedFormat || 'text'
+}
+
+const inferTitle = (source: string, options: StudyPackParseOptions): string => {
+  if (options.title?.trim()) {
+    return options.title.trim()
+  }
+
+  const heading = getLines(source).find((line) =>
+    /^#{1,2}\s+/.test(line.text.trim()),
+  )
+  if (heading) {
+    return heading.text.replace(/^#{1,6}\s+/, '').trim()
+  }
+
+  return DEFAULT_TITLE
+}
+
+const createResource = (
+  packId: string,
+  index: number,
+  line: LineRecord,
+  label: string,
+  url: string,
+  tags: string[],
+): StudyResourceObject => {
+  const lowerUrl = url.toLowerCase()
+  const resourceType = lowerUrl.endsWith('.pdf')
+    ? 'pdf'
+    : /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/.test(lowerUrl)
+      ? 'image'
+      : 'link'
+
+  return {
+    id: buildId(packId, 'resource', index),
+    kind: 'resource',
+    sourceLine: line.lineNumber,
+    tags,
+    url,
+    label: label || url,
+    resourceType,
+  }
+}
+
+const parseMarkdownTables = (
+  lines: LineRecord[],
+  packId: string,
+  defaultTags: string[],
+): StudyTableObject[] => {
+  const tables: StudyTableObject[] = []
+
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const line = lines[index]
+    const divider = lines[index + 1]
+
+    if (!line.text.includes('|') || !isMarkdownTableDivider(divider.text)) {
+      continue
+    }
+
+    const headers = splitPipeRow(line.text)
+    const rows: string[][] = []
+    let cursor = index + 2
+
+    while (cursor < lines.length && lines[cursor].text.includes('|')) {
+      rows.push(splitPipeRow(lines[cursor].text))
+      cursor += 1
+    }
+
+    tables.push({
+      id: buildId(packId, 'table', tables.length),
+      kind: 'table',
+      title: `Table ${tables.length + 1}`,
+      sourceLine: line.lineNumber,
+      tags: defaultTags,
+      headers,
+      rows,
+    })
+
+    index = cursor - 1
+  }
+
+  return tables
+}
+
+const getMarkdownTableLineNumbers = (lines: LineRecord[]): Set<number> => {
+  const lineNumbers = new Set<number>()
+
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const line = lines[index]
+    const divider = lines[index + 1]
+
+    if (!line.text.includes('|') || !isMarkdownTableDivider(divider.text)) {
+      continue
+    }
+
+    lineNumbers.add(line.lineNumber)
+    lineNumbers.add(divider.lineNumber)
+
+    let cursor = index + 2
+    while (cursor < lines.length && lines[cursor].text.includes('|')) {
+      lineNumbers.add(lines[cursor].lineNumber)
+      cursor += 1
+    }
+
+    index = cursor - 1
+  }
+
+  return lineNumbers
+}
+
+const parseCsv = (
+  lines: LineRecord[],
+  packId: string,
+  defaultTags: string[],
+): StudyObject[] => {
+  const rows = lines.filter((line) => line.text.trim())
+  const parsedRows = rows.map((line) => parseCsvRow(line.text))
+  const headers = parsedRows[0] || []
+  const dataRows = parsedRows.slice(1)
+  const normalizedHeaders = headers.map((header) => header.toLowerCase())
+  const termIndex = normalizedHeaders.findIndex((header) =>
+    ['term', 'word', 'concept'].includes(header),
+  )
+  const definitionIndex = normalizedHeaders.findIndex((header) =>
+    ['definition', 'answer', 'meaning'].includes(header),
+  )
+  const questionIndex = normalizedHeaders.findIndex(
+    (header) => header === 'question',
+  )
+  const answerIndex = normalizedHeaders.findIndex(
+    (header) => header === 'answer',
+  )
+
+  if (termIndex >= 0 && definitionIndex >= 0) {
+    return dataRows.map((row, index) => ({
+      id: buildId(packId, 'term', index),
+      kind: 'term',
+      sourceLine: rows[index + 1]?.lineNumber || index + 2,
+      tags: defaultTags,
+      term: row[termIndex] || '',
+      definition: row[definitionIndex] || '',
+    }))
+  }
+
+  if (questionIndex >= 0 && answerIndex >= 0) {
+    return dataRows.map((row, index) => ({
+      id: buildId(packId, 'qa', index),
+      kind: 'qa',
+      sourceLine: rows[index + 1]?.lineNumber || index + 2,
+      tags: defaultTags,
+      question: row[questionIndex] || '',
+      answer: row[answerIndex] || '',
+    }))
+  }
+
+  return [
+    {
+      id: buildId(packId, 'table', 0),
+      kind: 'table',
+      title: 'CSV Table',
+      sourceLine: rows[0]?.lineNumber || 1,
+      tags: defaultTags,
+      headers,
+      rows: dataRows,
+    },
+  ]
+}
+
+const flushParagraph = (
+  objects: StudyObject[],
+  packId: string,
+  paragraphLines: LineRecord[],
+  title: string | undefined,
+  defaultTags: string[],
+): void => {
+  const body = paragraphLines
+    .map((line) => line.text.trim())
+    .join('\n')
+    .trim()
+  if (!body) {
+    return
+  }
+
+  objects.push({
+    id: buildId(packId, 'note', objects.length),
+    kind: 'note',
+    title,
+    sourceLine: paragraphLines[0]?.lineNumber || 1,
+    tags: defaultTags,
+    body,
+  })
+}
+
+const parseTextLike = (
+  lines: LineRecord[],
+  packId: string,
+  defaultTags: string[],
+): StudyObject[] => {
+  const objects: StudyObject[] = []
+  const paragraphLines: LineRecord[] = []
+  const tableLineNumbers = getMarkdownTableLineNumbers(lines)
+  let currentHeading: string | undefined
+  let pendingQuestion: { question: string; line: LineRecord } | undefined
+  let listBuffer: StudyListObject | undefined
+
+  const flushList = () => {
+    if (listBuffer && listBuffer.items.length > 0) {
+      objects.push(listBuffer)
+    }
+    listBuffer = undefined
+  }
+
+  const flushText = () => {
+    flushParagraph(
+      objects,
+      packId,
+      paragraphLines.splice(0),
+      currentHeading,
+      defaultTags,
+    )
+  }
+
+  for (const line of lines) {
+    const trimmed = line.text.trim()
+    const headingMatch = trimmed.match(/^#{1,6}\s+(.+)$/)
+    const quickSyntaxMatch = trimmed.match(
+      /^(Flashcard|Quiz|Checklist|Definition|Formula|Example)::\s*(.*)$/i,
+    )
+    const qaQuestionMatch = trimmed.match(/^(?:q|question):\s*(.+)$/i)
+    const qaAnswerMatch = trimmed.match(/^(?:a|answer):\s*(.+)$/i)
+    const termMatch = trimmed.match(/^(.+?)\s*::\s*(.+)$/)
+    const unorderedMatch = trimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
+    const markdownLinkMatch = trimmed.match(
+      /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/,
+    )
+    const bareUrlMatch = trimmed.match(/(https?:\/\/\S+)/)
+
+    if (!trimmed) {
+      flushText()
+      flushList()
+      continue
+    }
+
+    if (tableLineNumbers.has(line.lineNumber)) {
+      flushText()
+      flushList()
+      continue
+    }
+
+    if (headingMatch) {
+      flushText()
+      flushList()
+      currentHeading = headingMatch[1].trim()
+      continue
+    }
+
+    if (quickSyntaxMatch) {
+      flushText()
+      flushList()
+      const label = quickSyntaxMatch[1].toLowerCase()
+      const body = quickSyntaxMatch[2].trim()
+
+      if (!body) {
+        currentHeading = quickSyntaxMatch[1]
+        continue
+      }
+
+      if (label === 'flashcard' || label === 'quiz') {
+        const [question, answer] = body
+          .split(/\s+(?:\||->)\s+/)
+          .map((value) => value.trim())
+
+        if (question && answer) {
+          objects.push({
+            id: buildId(packId, 'qa', objects.length),
+            kind: 'qa',
+            title: label === 'quiz' ? 'Quiz' : 'Flashcard',
+            sourceLine: line.lineNumber,
+            tags: defaultTags,
+            question,
+            answer,
+          })
+        } else {
+          pendingQuestion = { question: body, line }
+        }
+        continue
+      }
+
+      if (label === 'checklist') {
+        objects.push({
+          id: buildId(packId, 'list', objects.length),
+          kind: 'list',
+          title: 'Checklist',
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          items: body
+            .split(/;|\n/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+          ordered: false,
+          checklist: true,
+        })
+        continue
+      }
+
+      if (label === 'definition') {
+        const definitionParts = body.split(/\s+-\s+|:\s+/)
+        const term =
+          definitionParts.length > 1 ? definitionParts[0] : currentHeading
+        const definition =
+          definitionParts.length > 1
+            ? definitionParts.slice(1).join(': ')
+            : body
+
+        objects.push({
+          id: buildId(packId, 'term', objects.length),
+          kind: 'term',
+          title: currentHeading,
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          term: term || 'Definition',
+          definition,
+        })
+        continue
+      }
+
+      objects.push({
+        id: buildId(packId, 'note', objects.length),
+        kind: 'note',
+        title: quickSyntaxMatch[1],
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        body,
+      })
+      continue
+    }
+
+    if (qaQuestionMatch) {
+      flushText()
+      flushList()
+      pendingQuestion = { question: qaQuestionMatch[1].trim(), line }
+      continue
+    }
+
+    if (qaAnswerMatch && pendingQuestion) {
+      objects.push({
+        id: buildId(packId, 'qa', objects.length),
+        kind: 'qa',
+        title: currentHeading,
+        sourceLine: pendingQuestion.line.lineNumber,
+        tags: defaultTags,
+        question: pendingQuestion.question,
+        answer: qaAnswerMatch[1].trim(),
+      })
+      pendingQuestion = undefined
+      continue
+    }
+
+    if (termMatch) {
+      flushText()
+      flushList()
+      objects.push({
+        id: buildId(packId, 'term', objects.length),
+        kind: 'term',
+        title: currentHeading,
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        term: termMatch[1].trim(),
+        definition: termMatch[2].trim(),
+      })
+      continue
+    }
+
+    if (unorderedMatch || orderedMatch) {
+      flushText()
+      const checklist = Boolean(unorderedMatch?.[1])
+      const ordered = Boolean(orderedMatch)
+      const item = (unorderedMatch?.[2] || orderedMatch?.[1] || '').trim()
+
+      if (
+        !listBuffer ||
+        listBuffer.ordered !== ordered ||
+        listBuffer.checklist !== checklist
+      ) {
+        flushList()
+        listBuffer = {
+          id: buildId(packId, 'list', objects.length),
+          kind: 'list',
+          title: currentHeading,
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          items: [],
+          ordered,
+          checklist,
+        }
+      }
+
+      listBuffer.items.push(item)
+      continue
+    }
+
+    if (markdownLinkMatch || bareUrlMatch) {
+      flushText()
+      flushList()
+      const label = markdownLinkMatch?.[1] || currentHeading || 'Reference'
+      const url = markdownLinkMatch?.[2] || bareUrlMatch?.[1] || ''
+      objects.push(
+        createResource(packId, objects.length, line, label, url, defaultTags),
+      )
+      continue
+    }
+
+    paragraphLines.push(line)
+  }
+
+  if (pendingQuestion) {
+    paragraphLines.push({
+      text: `Q: ${pendingQuestion.question}`,
+      lineNumber: pendingQuestion.line.lineNumber,
+    })
+  }
+
+  flushText()
+  flushList()
+
+  return objects
+}
+
+export const parseStudyPack = (
+  source: string,
+  options: StudyPackParseOptions = {},
+): StudyPack => {
+  const title = inferTitle(source, options)
+  const packId = options.packId || slugify(title)
+  const sourceFormat = detectFormat(source, options.sourceFormat)
+  const lines = getLines(source)
+  const defaultTags = options.defaultTags || []
+  const tableObjects = parseMarkdownTables(lines, packId, defaultTags)
+  const objects =
+    sourceFormat === 'csv'
+      ? parseCsv(lines, packId, defaultTags)
+      : [...tableObjects, ...parseTextLike(lines, packId, defaultTags)]
+  const warnings =
+    objects.length === 0
+      ? ['No study objects were detected in the source.']
+      : []
+
+  return {
+    id: packId,
+    title,
+    sourceFormat,
+    objects,
+    warnings,
+  }
+}

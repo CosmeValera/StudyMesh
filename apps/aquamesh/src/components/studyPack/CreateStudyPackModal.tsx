@@ -1,0 +1,532 @@
+import React, { useMemo, useState } from 'react'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import {
+  createStudyPackWidgets,
+  parseStudyPack,
+  StudyObject,
+  StudyObjectKind,
+  StudyPackSourceFormat,
+} from '../../studyPack'
+
+type ReviewType = StudyObjectKind | 'ignore'
+
+interface ReviewItem {
+  object: StudyObject
+  title: string
+  type: ReviewType
+}
+
+interface CreateStudyPackModalProps {
+  open: boolean
+  onClose: () => void
+  onCreatePack: (payload: {
+    name: string
+    widgets: ReturnType<typeof createStudyPackWidgets>
+  }) => void
+}
+
+const sourceOptions: Array<{
+  label: string
+  value: StudyPackSourceFormat
+}> = [
+  { label: 'Pasted notes', value: 'paste' },
+  { label: 'Markdown', value: 'markdown' },
+  { label: 'Plain text', value: 'text' },
+  { label: 'CSV', value: 'csv' },
+]
+
+const reviewTypeOptions: Array<{
+  label: string
+  value: ReviewType
+}> = [
+  { label: 'Definition', value: 'term' },
+  { label: 'Flashcard / quiz', value: 'qa' },
+  { label: 'Checklist / list', value: 'list' },
+  { label: 'Table', value: 'table' },
+  { label: 'Resource', value: 'resource' },
+  { label: 'Long text', value: 'note' },
+  { label: 'Ignore', value: 'ignore' },
+]
+
+const getObjectTitle = (object: StudyObject) => {
+  if (object.title) {
+    return object.title
+  }
+
+  switch (object.kind) {
+    case 'term':
+      return object.term
+    case 'qa':
+      return object.question
+    case 'list':
+      return object.checklist ? 'Checklist' : 'Study list'
+    case 'table':
+      return object.title || 'Study table'
+    case 'resource':
+      return object.label
+    case 'note':
+    default:
+      return 'Study note'
+  }
+}
+
+const getObjectPreview = (object: StudyObject) => {
+  switch (object.kind) {
+    case 'term':
+      return object.definition
+    case 'qa':
+      return object.answer
+    case 'list':
+      return object.items.slice(0, 3).join(' / ')
+    case 'table':
+      return `${object.headers.length} columns, ${object.rows.length} rows`
+    case 'resource':
+      return object.url
+    case 'note':
+    default:
+      return object.body
+  }
+}
+
+const getCounts = (items: ReviewItem[]) =>
+  items.reduce<Record<string, number>>((counts, item) => {
+    if (item.type !== 'ignore') {
+      counts[item.type] = (counts[item.type] || 0) + 1
+    }
+
+    return counts
+  }, {})
+
+const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
+  objects.map((object) => ({
+    object,
+    title: getObjectTitle(object),
+    type: object.kind,
+  }))
+
+const applyReviewItem = (item: ReviewItem): StudyObject | null => {
+  if (item.type === 'ignore') {
+    return null
+  }
+
+  if (item.type === item.object.kind) {
+    return { ...item.object, title: item.title }
+  }
+
+  const preview = getObjectPreview(item.object)
+  const base = {
+    ...item.object,
+    kind: item.type,
+    title: item.title,
+  }
+
+  if (item.type === 'note') {
+    return {
+      ...base,
+      kind: 'note',
+      body: preview,
+    }
+  }
+
+  if (item.type === 'list') {
+    return {
+      ...base,
+      kind: 'list',
+      items: preview
+        .split(/\n|\/|,/)
+        .map((value) => value.trim())
+        .filter(Boolean),
+      ordered: false,
+      checklist: false,
+    }
+  }
+
+  return { ...item.object, title: item.title }
+}
+
+const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
+  open,
+  onClose,
+  onCreatePack,
+}) => {
+  const [step, setStep] = useState<'source' | 'review'>('source')
+  const [sourceText, setSourceText] = useState('')
+  const [sourceFormat, setSourceFormat] =
+    useState<StudyPackSourceFormat>('paste')
+  const [packTitle, setPackTitle] = useState('Study Pack')
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
+  const [error, setError] = useState('')
+
+  const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
+
+  const reset = () => {
+    setStep('source')
+    setSourceText('')
+    setSourceFormat('paste')
+    setPackTitle('Study Pack')
+    setReviewItems([])
+    setError('')
+  }
+
+  const handleClose = () => {
+    reset()
+    onClose()
+  }
+
+  const parseCurrentSource = () => {
+    if (!sourceText.trim()) {
+      setError('Add notes before continuing.')
+      return
+    }
+
+    const parsed = parseStudyPack(sourceText, {
+      title: packTitle,
+      sourceFormat,
+      defaultTags: ['study-pack'],
+    })
+    setPackTitle(parsed.title)
+    setReviewItems(toReviewItems(parsed.objects))
+    setError(parsed.warnings[0] || '')
+    setStep('review')
+  }
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (!['md', 'txt', 'csv'].includes(extension || '')) {
+      setError('Use .md, .txt, or .csv files.')
+      return
+    }
+
+    const text = await file.text()
+    setSourceText(text)
+    setPackTitle(file.name.replace(/\.[^.]+$/, '') || 'Study Pack')
+    setSourceFormat(
+      extension === 'csv' ? 'csv' : extension === 'md' ? 'markdown' : 'text',
+    )
+    setError('')
+  }
+
+  const updateReviewItem = (index: number, updates: Partial<ReviewItem>) => {
+    setReviewItems((items) =>
+      items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...updates } : item,
+      ),
+    )
+  }
+
+  const removeReviewItem = (index: number) => {
+    setReviewItems((items) =>
+      items.filter((_, itemIndex) => itemIndex !== index),
+    )
+  }
+
+  const moveReviewItem = (index: number, direction: -1 | 1) => {
+    setReviewItems((items) => {
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= items.length) {
+        return items
+      }
+
+      const nextItems = [...items]
+      const [item] = nextItems.splice(index, 1)
+      nextItems.splice(nextIndex, 0, item)
+      return nextItems
+    })
+  }
+
+  const createPack = () => {
+    const objects = reviewItems
+      .map(applyReviewItem)
+      .filter((object): object is StudyObject => Boolean(object))
+
+    if (objects.length === 0) {
+      setError('Keep at least one study item.')
+      return
+    }
+
+    const widgets = createStudyPackWidgets({
+      id: packTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      title: packTitle.trim() || 'Study Pack',
+      sourceFormat,
+      objects,
+      warnings: [],
+    })
+
+    onCreatePack({
+      name: packTitle.trim() || 'Study Pack',
+      widgets,
+    })
+    handleClose()
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: 'background.paper',
+          borderRadius: 2,
+          minHeight: { xs: '100dvh', md: 680 },
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <AutoStoriesIcon color="primary" />
+            <Box>
+              <Typography variant="h6" fontWeight={800}>
+                Create study pack
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Paste notes, review AquaMesh guesses, then create a dashboard.
+              </Typography>
+            </Box>
+          </Stack>
+          <IconButton
+            aria-label="Close Create study pack"
+            onClick={handleClose}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+      <Divider />
+      <DialogContent sx={{ bgcolor: 'background.default' }}>
+        {error && (
+          <Alert severity={step === 'review' ? 'info' : 'error'} sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {step === 'source' ? (
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                label="Pack title"
+                value={packTitle}
+                onChange={(event) => setPackTitle(event.target.value)}
+                fullWidth
+              />
+              <TextField
+                select
+                label="Source type"
+                value={sourceFormat}
+                onChange={(event) =>
+                  setSourceFormat(event.target.value as StudyPackSourceFormat)
+                }
+                sx={{ minWidth: { md: 220 } }}
+              >
+                {sourceOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+            <TextField
+              label="Paste notes"
+              value={sourceText}
+              onChange={(event) => setSourceText(event.target.value)}
+              fullWidth
+              multiline
+              minRows={16}
+              placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)\n\n- [ ] I can explain what a derivative means`}
+            />
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Upload .md, .txt, or .csv
+              <input
+                hidden
+                type="file"
+                accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
+                onChange={handleFileUpload}
+              />
+            </Button>
+          </Stack>
+        ) : (
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  flex: 1,
+                  border: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <TextField
+                  label="Pack title"
+                  value={packTitle}
+                  onChange={(event) => setPackTitle(event.target.value)}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                />
+                <Typography variant="subtitle2" gutterBottom>
+                  AquaMesh found
+                </Typography>
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  {Object.entries(counts).map(([kind, count]) => (
+                    <Chip key={kind} label={`${count} ${kind}`} />
+                  ))}
+                </Stack>
+              </Paper>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  flex: 1.6,
+                  border: 1,
+                  borderColor: 'divider',
+                  maxHeight: 500,
+                  overflow: 'auto',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  {reviewItems.map((item, index) => (
+                    <Paper
+                      key={item.object.id}
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        border: 1,
+                        borderColor: 'divider',
+                        bgcolor: 'background.paper',
+                      }}
+                    >
+                      <Stack spacing={1}>
+                        <Stack
+                          direction={{ xs: 'column', md: 'row' }}
+                          spacing={1}
+                          alignItems={{ md: 'center' }}
+                        >
+                          <TextField
+                            label="Title"
+                            value={item.title}
+                            onChange={(event) =>
+                              updateReviewItem(index, {
+                                title: event.target.value,
+                              })
+                            }
+                            fullWidth
+                          />
+                          <TextField
+                            select
+                            label="Detected as"
+                            value={item.type}
+                            onChange={(event) =>
+                              updateReviewItem(index, {
+                                type: event.target.value as ReviewType,
+                              })
+                            }
+                            sx={{ minWidth: 190 }}
+                          >
+                            {reviewTypeOptions.map((option) => (
+                              <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </Stack>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {getObjectPreview(item.object)}
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            size="small"
+                            onClick={() => moveReviewItem(index, -1)}
+                            disabled={index === 0}
+                          >
+                            Move up
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => moveReviewItem(index, 1)}
+                            disabled={index === reviewItems.length - 1}
+                          >
+                            Move down
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => removeReviewItem(index)}
+                          >
+                            Remove
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Paper>
+            </Stack>
+          </Stack>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+        {step === 'review' && (
+          <Button onClick={() => setStep('source')}>Back</Button>
+        )}
+        <Button onClick={handleClose}>Cancel</Button>
+        {step === 'source' ? (
+          <Button variant="contained" onClick={parseCurrentSource}>
+            Continue
+          </Button>
+        ) : (
+          <Button variant="contained" onClick={createPack}>
+            Create pack
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+export default CreateStudyPackModal

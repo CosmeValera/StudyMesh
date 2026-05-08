@@ -16,6 +16,7 @@ vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   __esModule: true,
   OPEN_DASHBOARD_EDITOR_EVENT: 'aquamesh-open-dashboard-editor',
   OPEN_WIDGET_EDITOR_EVENT: 'aquamesh-open-widget-editor',
+  OPEN_STUDY_PACK_EVENT: 'aquamesh-open-study-pack',
   ensureStarterDashboards: vi.fn(),
   useWorkspaceActions: vi.fn(),
 }))
@@ -129,6 +130,8 @@ describe('Dashboards', () => {
       ensureDashboardAndAddComponent: vi.fn(),
       openCreateWidget: openCreateWidgetMock,
       openCreateDashboard: openCreateDashboardMock,
+      openCreateStudyPack: vi.fn(),
+      createStudyPackDashboard: vi.fn(),
       openOperationsExample: openOperationsExampleMock,
       openWidgetMenu: openWidgetMenuMock,
     })

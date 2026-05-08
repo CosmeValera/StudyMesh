@@ -229,6 +229,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
       }
       case 'LongText':
       case 'ListBlock':
+      case 'TableBlock':
       case 'ImageBlock':
       case 'PdfBlock':
         return (
@@ -266,6 +267,8 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
         return 'Edit Long Text'
       case 'ListBlock':
         return 'Edit List'
+      case 'TableBlock':
+        return 'Edit Table'
       case 'ImageBlock':
         return 'Edit Image'
       case 'PdfBlock':

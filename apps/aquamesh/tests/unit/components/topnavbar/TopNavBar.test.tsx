@@ -6,7 +6,10 @@ import TopNavBar from '../../../../src/components/topnavbar/TopNavBar'
 import * as useTopNavBarWidgetsModule from '../../../../src/customHooks/useTopNavBarWidgets'
 import * as LayoutProviderModule from '../../../../src/components/Layout/LayoutProvider'
 import * as DashboardProviderModule from '../../../../src/components/Dasboard/DashboardProvider'
-import { OPEN_DASHBOARD_EDITOR_EVENT } from '../../../../src/customHooks/useWorkspaceActions'
+import {
+  OPEN_DASHBOARD_EDITOR_EVENT,
+  OPEN_STUDY_PACK_EVENT,
+} from '../../../../src/customHooks/useWorkspaceActions'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../../src/components/onboarding/onboardingEvents'
 
 // Mock custom hooks and providers
@@ -36,6 +39,12 @@ vi.mock('../../../../src/components/Dasboard/DashboardOptionsMenu', () => ({
 vi.mock('../../../../src/components/WidgetEditor/WidgetEditor', () => ({
   __esModule: true,
   default: () => <div data-testid="widget-editor">Widget Editor</div>,
+}))
+
+vi.mock('../../../../src/components/studyPack/CreateStudyPackModal', () => ({
+  __esModule: true,
+  default: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="study-pack-modal">Study Pack Modal</div> : null,
 }))
 
 vi.mock('../../../../src/components/shared/ThemeModeToggle', () => ({
@@ -159,9 +168,13 @@ describe('TopNavBar Component', () => {
       setSelectedDashboard: vi.fn(),
       removeDashboard: vi.fn(),
       addDashboard: addDashboardMock,
+      replaceDashboard: vi.fn(),
       updateLayout: vi.fn(),
       updateDashboardLayout: updateDashboardLayoutMock,
       renameDashboard: vi.fn(),
+      editingDashboardIds: [],
+      setDashboardEditing: vi.fn(),
+      isDashboardEditing: vi.fn(),
     })
   })
 
@@ -177,6 +190,9 @@ describe('TopNavBar Component', () => {
     expect(screen.getByTestId('dashboard-options-menu')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /create widget/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create study pack/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /create dashboard/i }),
@@ -229,6 +245,35 @@ describe('TopNavBar Component', () => {
       OPEN_DASHBOARD_EDITOR_EVENT,
       dashboardEditorListener,
     )
+  })
+
+  it('opens Create Study Pack without opening Widget or Dashboard', async () => {
+    const dashboardEditorListener = vi.fn()
+    const studyPackListener = vi.fn()
+    window.addEventListener(
+      OPEN_DASHBOARD_EDITOR_EVENT,
+      dashboardEditorListener,
+    )
+    window.addEventListener(OPEN_STUDY_PACK_EVENT, studyPackListener)
+
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /create study pack/i }))
+
+    expect(studyPackListener).toHaveBeenCalledTimes(1)
+    expect(dashboardEditorListener).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('study-pack-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('widget-editor')).not.toBeInTheDocument()
+
+    window.removeEventListener(
+      OPEN_DASHBOARD_EDITOR_EVENT,
+      dashboardEditorListener,
+    )
+    window.removeEventListener(OPEN_STUDY_PACK_EVENT, studyPackListener)
   })
 
   it('replays the workspace tutorial from application settings', async () => {

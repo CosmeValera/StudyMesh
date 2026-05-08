@@ -14,6 +14,12 @@ import {
   InputAdornment,
   Badge,
   useMediaQuery,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
@@ -612,6 +618,78 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 </Typography>
               ))}
             </Box>
+          </Box>
+        )
+      }
+      case 'TableBlock': {
+        const title = (component.props.title as string) || ''
+        const headers = Array.isArray(component.props.headers)
+          ? (component.props.headers as string[])
+          : []
+        const rows = Array.isArray(component.props.rows)
+          ? (component.props.rows as string[][])
+          : []
+        const columnCount = Math.max(
+          headers.length,
+          ...rows.map((row) => row.length),
+          1,
+        )
+
+        return (
+          <Box>
+            {title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {title}
+              </Typography>
+            )}
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ overflowX: 'auto' }}
+            >
+              <Table size="small">
+                {headers.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header, index) => (
+                        <TableCell
+                          key={`${header}-${index}`}
+                          sx={{ fontWeight: 700 }}
+                        >
+                          {header}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                )}
+                <TableBody>
+                  {rows.length > 0 ? (
+                    rows.map((row, rowIndex) => (
+                      <TableRow key={`table-row-${rowIndex}`}>
+                        {Array.from({ length: columnCount }, (_, cellIndex) => (
+                          <TableCell
+                            key={`table-cell-${rowIndex}-${cellIndex}`}
+                          >
+                            {row[cellIndex] || ''}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={Math.max(headers.length, 1)}
+                        align="center"
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Add rows to this table.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )
       }

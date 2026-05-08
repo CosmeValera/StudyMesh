@@ -11,10 +11,13 @@ import {
 } from '../components/WidgetEditor/constants/starterWidgetTemplates'
 import { DashboardLayout } from '../state/store'
 import { normalizeFolderColor } from '../components/Dasboard/folderColors'
+import { createStudyPackDashboardLayout } from '../studyPack'
+import { ComponentData } from '../components/WidgetEditor/types/types'
 
 export const OPEN_WIDGET_EDITOR_EVENT = 'aquamesh-open-widget-editor'
 export const OPEN_DASHBOARD_EDITOR_EVENT = 'aquamesh-open-dashboard-editor'
 export const OPEN_SAVED_DASHBOARDS_EVENT = 'aquamesh-open-saved-dashboards'
+export const OPEN_STUDY_PACK_EVENT = 'aquamesh-open-study-pack'
 
 export interface WorkspaceComponentConfig {
   id?: string
@@ -186,6 +189,54 @@ const getSavedDashboards = (): SavedDashboardRecord[] => {
     console.error('Failed to read saved dashboards', error)
     return []
   }
+}
+
+const getUniqueSavedDashboardName = (
+  requestedName: string,
+  dashboards: SavedDashboardRecord[],
+) => {
+  const baseName = requestedName.trim() || 'Study Pack'
+  const usedNames = new Set(dashboards.map((dashboard) => dashboard.name))
+
+  if (!usedNames.has(baseName)) {
+    return baseName
+  }
+
+  let suffix = 2
+  let candidate = `${baseName} (${suffix})`
+  while (usedNames.has(candidate)) {
+    suffix += 1
+    candidate = `${baseName} (${suffix})`
+  }
+
+  return candidate
+}
+
+const saveStudyPackDashboard = (
+  name: string,
+  layout: DashboardLayout,
+): SavedDashboardRecord => {
+  const dashboards = getSavedDashboards()
+  const now = new Date().toISOString()
+  const dashboard: SavedDashboardRecord = {
+    id: `study-pack-dashboard-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+    name: getUniqueSavedDashboardName(name, dashboards),
+    folder: 'Study Packs',
+    folderColor: '#007C66',
+    layout,
+    description: 'Generated from student notes.',
+    tags: ['study-pack', 'notes'],
+    isPublic: false,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  window.localStorage.setItem(
+    'customDashboards',
+    JSON.stringify([...dashboards, dashboard]),
+  )
+
+  return dashboard
 }
 
 const countWidgetComponents = (components?: unknown): number => {
@@ -510,6 +561,50 @@ export const useWorkspaceActions = () => {
     window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
   }, [])
 
+  const openCreateStudyPack = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PACK_EVENT))
+  }, [])
+
+  const createStudyPackDashboard = useCallback(
+    ({
+      name,
+      widgets,
+    }: {
+      name: string
+      widgets: Array<{
+        name: string
+        components: ComponentData[]
+        category?: string
+        tags?: string[]
+        description?: string
+        version?: string
+        author?: string
+      }>
+    }) => {
+      const savedWidgets = widgets.map((widget) =>
+        WidgetStorage.saveWidget({
+          name: widget.name,
+          components: widget.components,
+          category: widget.category || 'Study Pack',
+          tags: widget.tags || ['study-pack'],
+          description: widget.description || 'Generated from student notes.',
+          version: widget.version || '1.0',
+          author: widget.author || 'AquaMesh',
+        }),
+      )
+      const layout = createStudyPackDashboardLayout(savedWidgets)
+      const dashboard = saveStudyPackDashboard(name, layout)
+
+      addDashboard({
+        name: dashboard.name,
+        layout: dashboard.layout,
+      })
+
+      return dashboard
+    },
+    [addDashboard],
+  )
+
   const openTemplateDashboard = useCallback(
     ({
       widgetName,
@@ -601,6 +696,8 @@ export const useWorkspaceActions = () => {
     ensureDashboardAndAddComponent,
     openCreateWidget,
     openCreateDashboard,
+    openCreateStudyPack,
+    createStudyPackDashboard,
     openOperationsExample,
     openMathExample,
     openTutorialExample,

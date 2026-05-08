@@ -10,6 +10,7 @@ import ImageIcon from '@mui/icons-material/Image'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'
 import SubjectIcon from '@mui/icons-material/Subject'
+import TableChartIcon from '@mui/icons-material/TableChart'
 import { ComponentType } from '../types/types'
 
 // Building blocks that can be added to a widget.
@@ -119,6 +120,23 @@ export const COMPONENT_TYPES: ComponentType[] = [
     icon: FormatListBulletedIcon,
     tooltip:
       'Adds a clean list for concepts, steps, references, or quick study bullets.',
+  },
+  {
+    type: 'TableBlock',
+    label: 'Table',
+    defaultProps: {
+      __blockType: 'TableBlock',
+      title: 'Reference table',
+      headers: ['Concept', 'Definition', 'Example'],
+      rows: [
+        ['Term', 'Short explanation', 'Use case'],
+        ['Related idea', 'How it connects', 'Practice note'],
+      ],
+    },
+    category: 'Knowledge Blocks',
+    icon: TableChartIcon,
+    tooltip:
+      'Adds a structured table for comparisons, definitions, references, or study data.',
   },
   {
     type: 'ImageBlock',
