@@ -1,0 +1,39 @@
+Rundeck:
+
+# Why Rundeck?
+It supports SRE (Site Reliability Engineering), one of the main ideas of SRE is to reduce TOIL. Toil is repetitive and manual tasks that are necessary for the system but are time-consuming and do not provide long-term value.
+For doing this, Rundeck promotes workload automation. For this it allows to execute or schedule jobs to be automated.
+Rundeck is great for orchestrating procedures.
+
+# How it works:
+- Projects are workspaces inside your Rundeck.
+- Jobs are the workflows that you define and execute.
+- Steps are the individual actions that make up the workflow. For instance, you can execute commands, scripts or plugins.
+- Nodes are the remotes endpoints against which a step executes. For instance, physical machines, virtual machines, containers, databases...
+
+🚀 Getting Started
+# Create container to run Rundeck
+docker run -d --name rundeck -p 4440:4440 -v data:/home/rundeck/server/data rundeck/rundeck:4.14.0
+# Open browser
+localhost:4440
+
+#.@-$#.@-$#.@-$#.@-$#.@-$#.@-$#.@-$#.@-$
+#.@-$#.@-$#.@-$#.@-$#.@-$#.@-$#.@-$#.@-$
+
+# Difference Ansible and Rundeck #
+Ansible:
+- Ansible is a configuration management tool that focuses on automation.
+- With Ansible, you define tasks or playbooks that describe the desired state of your infrastructure.
+- You then execute these playbooks using the Ansible command-line interface (CLI) or by integrating Ansible into other tools or workflows.
+- Ansible typically operates in a push model, where the control machine pushes configurations or commands to the target machines over SSH.
+- It's commonly used for tasks such as software installation, configuration management, and application deployment.
+
+Rundeck:
+- Rundeck is an operations automation tool that provides a web-based interface for executing tasks and workflows.
+- With Rundeck, you define jobs or workflows that consist of one or more steps (commands or scripts).
+- Users can then trigger these jobs manually through the Rundeck web interface or via API calls.
+- Rundeck can execute tasks on remote machines, similar to Ansible, but it also supports executing tasks on the Rundeck server itself.
+- It's often used for tasks such as ad-hoc command execution, job scheduling, and workflow orchestration.
+
+So, while both Ansible and Rundeck can be used for automation and executing tasks on remote machines, Ansible is more focused on configuration management and operates in a push model, while Rundeck provides a centralized platform for managing and executing operations tasks with a web-based interface.
+# END: Difference Ansible and Rundeck #
