@@ -1,0 +1,66 @@
+nginX:
+Load Balance-> Para webs con mucha demanda, hay un proxi de nginX que actua como puerta de entrada
+Caching-> Si es una página está se cachea, de está forma si se pide mil veces, no hace falta recrearla de 0 cada vez.
+Security-> .
+Compression and Segmentation->.
+
+Puede actuar como Proxy Server o como Web Server.
+
+El fichero de conf se suele llamar: 'nginx.conf', y se suele poner en '/etc/nginx'.
+
+Un ejemplo:
+'
+server {
+	listen 80;
+	server_name example.com www.example.com;
+	
+	location / {
+		root /var/www/example.com;
+		index index.html index.htm;
+	}
+}
+'
+
+Pero este ejemplo es inseguro ya q estamos devolviendo el html, a cualquiera q mande una petición a http:80. En su lugar lo q se podría hacer es declarar 2 servers, y que uno de ellos actue como proxy para q redirija al otro server, y este otro server implementa el ssl-> https, para la seguridad, y es el que devuelve el html.
+
+Para hacer balanceo de carga, se usa upstream, como aquí:
+'
+http {
+	upstream myapp1 {
+		server srv1.example.com;
+		server srv2.example.com;
+		server srv3.example.com;
+	}
+	
+	server {
+		listen 80;
+		
+		location / {
+			proxy_pass http://myapp1;
+		}
+	}
+}
+'
+
+By default it uses round-robin (It is 1->1, 2->2, 3->1, 4->2, 5->1, ...).
+But you can change the method it to use the least connected server like this:
+'
+upstream myapp1 {
+	least_conn;
+	server srv1.example.com;
+	server srv2.example.com;
+	server srv3.example.com;
+}
+'
+
+Configuration in nginX is quite Straightforward, and granular.
+
+NginX can also be used as a K8s Ingress controller (Kubernetes)
+
+
+Apache vs NginX:
+Date: 1994 | 2005
+Highly customizable and extensible | Faster and more lightweight
+Good choice for dynamic content handling and legacy support | Best suited for high-performance environments and serving static content
+Hard configuration | Simple configuration
+X | More popular in the container world
