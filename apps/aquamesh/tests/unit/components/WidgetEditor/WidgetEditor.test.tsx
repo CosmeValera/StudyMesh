@@ -54,18 +54,13 @@ vi.mock(
     __esModule: true,
     default: ({
       handleDragStart,
-      onboardingStep,
     }: {
       handleDragStart: (
         event: React.DragEvent<HTMLDivElement>,
         type: string,
       ) => void
-      onboardingStep: string | null
     }) => (
-      <div
-        data-testid="component-palette"
-        data-onboarding-step={onboardingStep}
-      >
+      <div data-testid="component-palette">
         <div
           data-testid="palette-drag-source"
           draggable
@@ -235,7 +230,7 @@ describe('WidgetEditor view modes', () => {
     expect(screen.getByTestId('custom-widget-preview')).toBeInTheDocument()
   })
 
-  it('keeps step 1 mounted when starting a guided drag', () => {
+  it('dispatches palette drag without mounting the old inline coach state', () => {
     hookStateRef.current = {
       ...createHookState(),
       widgetData: {
@@ -252,9 +247,8 @@ describe('WidgetEditor view modes', () => {
       expect.anything(),
       'Label',
     )
-    expect(screen.getByTestId('component-palette')).toHaveAttribute(
+    expect(screen.getByTestId('component-palette')).not.toHaveAttribute(
       'data-onboarding-step',
-      'choose',
     )
   })
 

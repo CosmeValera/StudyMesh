@@ -711,10 +711,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   isEmpty
                     ? 'Empty Widget'
                     : isUpdating && !hasChanges
-                    ? 'No changes'
-                    : isUpdating
-                    ? 'Update Widget'
-                    : 'Save Widget'
+                      ? 'No changes'
+                      : isUpdating
+                        ? 'Update Widget'
+                        : 'Save Widget'
                 }
               >
                 <span>
@@ -723,12 +723,13 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                       isEmpty
                         ? 'Empty Widget'
                         : isUpdating && !hasChanges
-                        ? 'No changes'
-                        : isUpdating
-                        ? 'Update Widget'
-                        : 'Save Widget'
+                          ? 'No changes'
+                          : isUpdating
+                            ? 'Update Widget'
+                            : 'Save Widget'
                     }
                     color="inherit"
+                    data-onboarding-id="widget-editor-save"
                     onClick={handleSaveButtonClick}
                     disabled={
                       !editMode || (!hasChanges && isUpdating) || isEmpty
@@ -769,6 +770,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 variant="contained"
                 color="primary"
                 onClick={handleSaveButtonClick}
+                data-onboarding-id="widget-editor-save"
                 size="small"
                 disabled={!editMode || (!hasChanges && isUpdating) || isEmpty}
                 startIcon={<SaveIcon />}
@@ -785,10 +787,10 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 {isEmpty
                   ? 'Empty Widget'
                   : isUpdating && !hasChanges
-                  ? 'No changes'
-                  : isUpdating
-                  ? 'Update Widget'
-                  : 'Save Widget'}
+                    ? 'No changes'
+                    : isUpdating
+                      ? 'Update Widget'
+                      : 'Save Widget'}
               </Button>
             )}
           </Box>

@@ -18,16 +18,16 @@ Diagnoses failures by identifying the layer where the bug originates before sugg
 
 ## Triage: Identify The Layer
 
-| Symptom | Likely Layer | Where To Look |
-| --- | --- | --- |
-| Component does not render | React component or props | `apps/aquamesh/src/components` |
-| Widget editor action fails | Widget editor state/storage | `apps/aquamesh/src/components/WidgetEditor` |
-| Saved dashboard/widget disappears | Persistence or global state | `apps/aquamesh/src/state`, storage helpers |
-| Layout drag/resize/tab behavior breaks | Layout integration | `apps/aquamesh/src/components/Layout` |
-| Federated app fails to load | Module federation | `apps/aquamesh/src/moduleFederation`, webpack configs |
-| Unit test fails in DOM setup | Vitest/test setup | `apps/aquamesh/vitest.config.ts`, `src/setupTests.js` |
-| E2E test flakes or times out | Playwright workflow/timing | `apps/aquamesh/tests/e2e`, Playwright config |
-| Styling regression | SCSS/theme conflict | component SCSS, `style`, theme files |
+| Symptom                                | Likely Layer                | Where To Look                                         |
+| -------------------------------------- | --------------------------- | ----------------------------------------------------- |
+| Component does not render              | React component or props    | `apps/aquamesh/src/components`                        |
+| Widget editor action fails             | Widget editor state/storage | `apps/aquamesh/src/components/WidgetEditor`           |
+| Saved dashboard/widget disappears      | Persistence or global state | `apps/aquamesh/src/state`, storage helpers            |
+| Layout drag/resize/tab behavior breaks | Layout integration          | `apps/aquamesh/src/components/Layout`                 |
+| Federated app fails to load            | Module federation           | `apps/aquamesh/src/moduleFederation`, webpack configs |
+| Unit test fails in DOM setup           | Vitest/test setup           | `apps/aquamesh/vitest.config.ts`, `src/setupTests.js` |
+| E2E test flakes or times out           | Playwright workflow/timing  | `apps/aquamesh/tests/e2e`, Playwright config          |
+| Styling regression                     | SCSS/theme conflict         | component SCSS, `style`, theme files                  |
 
 ## Diagnostic Steps
 
@@ -54,4 +54,3 @@ Report:
 3. The likely root cause.
 4. The smallest fix.
 5. The verification command to run.
-

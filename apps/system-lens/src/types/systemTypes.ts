@@ -6,4 +6,4 @@ export interface SystemData {
   cpu: number;
   memory: number;
   network: number;
-} 
+}

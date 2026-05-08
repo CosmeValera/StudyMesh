@@ -49,8 +49,6 @@ interface EditorCanvasProps {
   onAddStarterComponent?: (componentType: string) => void
   onStartOperationsWidget?: () => void
   onUseTemplate?: () => void
-  onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | 'place' | null
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
@@ -78,29 +76,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   onAddStarterComponent,
   onStartOperationsWidget,
   onUseTemplate,
-  onboardingActive = false,
-  onboardingStep = null,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-
-  const showOnboardingChoosePrompt =
-    editMode &&
-    onboardingActive &&
-    widgetData.components.length === 0 &&
-    onboardingStep === 'choose'
-
-  const showOnboardingSavePrompt =
-    editMode &&
-    onboardingActive &&
-    widgetData.components.length > 0 &&
-    onboardingStep === 'save'
-
-  const showOnboardingPlacePrompt =
-    editMode &&
-    onboardingActive &&
-    widgetData.components.length > 0 &&
-    onboardingStep === 'place'
 
   // Render the component hierarchy
   const renderComponents = (components: ComponentData[]) => {
@@ -144,58 +122,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         width: '100%',
       }}
     >
-      {(showOnboardingSavePrompt || showOnboardingPlacePrompt) && (
-        <Paper
-          data-testid="widget-editor-save-coach"
-          sx={{
-            mb: isPhone ? 1 : 1.5,
-            p: isPhone ? 1.25 : 1.5,
-            border: '1px solid',
-            borderColor: 'primary.light',
-            borderRadius: 1,
-            bgcolor: 'background.accentSoft',
-            boxShadow: 'none',
-          }}
-        >
-          <Stack
-            direction={isPhone ? 'column' : 'row'}
-            spacing={1}
-            alignItems={isPhone ? 'flex-start' : 'center'}
-            justifyContent="space-between"
-          >
-            <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: 'text.primary',
-                  fontWeight: 700,
-                  mb: 0.25,
-                }}
-              >
-                {showOnboardingPlacePrompt
-                  ? 'Step 3: add it to your dashboard'
-                  : 'Step 2: tune it, then save it'}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: 'text.secondary',
-                  fontSize: isPhone ? '0.78rem' : undefined,
-                }}
-              >
-                {showOnboardingPlacePrompt
-                  ? `Open ${
-                      isPhone ? 'Add' : 'Add Widget'
-                    }, choose the widget called ${
-                      widgetData.name || 'My First Widget'
-                    }, and click it to place it on the dashboard.`
-                  : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the widget when it is ready to be reused.'}
-              </Typography>
-            </Box>
-          </Stack>
-        </Paper>
-      )}
-
       {/* Drop area */}
       <Paper
         ref={dropAreaRef}
@@ -209,8 +135,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
               : 'background.accentSurface'
             : 'background.paper',
           border: editMode ? '2px dashed' : '1px solid',
-          outline: showOnboardingChoosePrompt ? '3px solid' : 'none',
-          outlineColor: 'primary.main',
+          outline: 'none',
           borderColor: editMode ? 'primary.light' : 'divider',
           outlineOffset: 3,
           borderRadius: 1,
@@ -261,9 +186,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         mb: 0.5,
                       }}
                     >
-                      {showOnboardingChoosePrompt
-                        ? 'Start with one block'
-                        : 'Build your first reusable widget'}
+                      Build your first reusable widget
                     </Typography>
                     <Typography
                       variant="body2"
@@ -272,97 +195,91 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         fontSize: isPhone ? '0.78rem' : undefined,
                       }}
                     >
-                      {showOnboardingChoosePrompt
-                        ? isPhone
-                          ? 'Tap any block in Building Blocks to add it here. You can experiment and adjust it after it lands here.'
-                          : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
-                        : isPhone
-                          ? 'Start from a working operations summary, then save it for dashboards.'
-                          : 'Start from a working operations summary, or drag any block from the palette.'}
+                      {isPhone
+                        ? 'Start from a working operations summary, then save it for dashboards.'
+                        : 'Start from a working operations summary, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
-                  {!showOnboardingChoosePrompt && (
-                    <Stack
-                      direction={isPhone ? 'column' : 'row'}
-                      spacing={1}
-                      useFlexGap
-                      flexWrap="wrap"
+                  <Stack
+                    direction={isPhone ? 'column' : 'row'}
+                    spacing={1}
+                    useFlexGap
+                    flexWrap="wrap"
+                  >
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<DashboardCustomizeIcon />}
+                      onClick={onStartOperationsWidget}
+                      disabled={!onStartOperationsWidget}
+                      sx={{ borderRadius: 1, textTransform: 'none' }}
                     >
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<DashboardCustomizeIcon />}
-                        onClick={onStartOperationsWidget}
-                        disabled={!onStartOperationsWidget}
-                        sx={{ borderRadius: 1, textTransform: 'none' }}
-                      >
-                        Daily Operations widget
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<AutoGraphIcon />}
-                        onClick={() => onAddStarterComponent?.('Chart')}
-                        disabled={!onAddStarterComponent}
-                        sx={{
-                          display: { xs: 'none', sm: 'inline-flex' },
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                          borderColor: 'primary.dark',
-                        }}
-                      >
-                        Chart block
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<TextFieldsIcon />}
-                        onClick={() => onAddStarterComponent?.('Label')}
-                        disabled={!onAddStarterComponent}
-                        sx={{
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                          borderColor: 'primary.dark',
-                        }}
-                      >
-                        Status text
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<InputIcon />}
-                        onClick={() => onAddStarterComponent?.('TextField')}
-                        disabled={!onAddStarterComponent}
-                        sx={{
-                          display: { xs: 'none', sm: 'inline-flex' },
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                          borderColor: 'primary.dark',
-                        }}
-                      >
-                        Notes field
-                      </Button>
-                      <Button
-                        variant="text"
-                        size="small"
-                        startIcon={<ViewModuleIcon />}
-                        onClick={onUseTemplate}
-                        disabled={!onUseTemplate}
-                        sx={{
-                          display: { xs: 'none', sm: 'inline-flex' },
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                        }}
-                      >
-                        Browse templates
-                      </Button>
-                    </Stack>
-                  )}
+                      Daily Operations widget
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<AutoGraphIcon />}
+                      onClick={() => onAddStarterComponent?.('Chart')}
+                      disabled={!onAddStarterComponent}
+                      sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
+                    >
+                      Chart block
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<TextFieldsIcon />}
+                      onClick={() => onAddStarterComponent?.('Label')}
+                      disabled={!onAddStarterComponent}
+                      sx={{
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
+                    >
+                      Status text
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<InputIcon />}
+                      onClick={() => onAddStarterComponent?.('TextField')}
+                      disabled={!onAddStarterComponent}
+                      sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
+                    >
+                      Notes field
+                    </Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<ViewModuleIcon />}
+                      onClick={onUseTemplate}
+                      disabled={!onUseTemplate}
+                      sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                      }}
+                    >
+                      Browse templates
+                    </Button>
+                  </Stack>
                 </Stack>
               </Box>
             ) : (

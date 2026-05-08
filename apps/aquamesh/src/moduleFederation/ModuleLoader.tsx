@@ -14,17 +14,17 @@ import { StateDashboard } from '../state/store'
 import { DynamicMicrofrontendProps } from './DynamicMicrofrontend'
 
 interface ModuleLoaderProps extends DynamicMicrofrontendProps {
-  url: string;
-  changeWidgetData: (data: Partial<StateDashboard>) => void;
-  getCurrentView: () => StateDashboard | undefined;
+  url: string
+  changeWidgetData: (data: Partial<StateDashboard>) => void
+  getCurrentView: () => StateDashboard | undefined
 }
 
 interface ComponentCache {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  [key: string]: any
 }
 
-type LazyComponentType = React.LazyExoticComponent<React.ComponentType<unknown>>;
+type LazyComponentType = React.LazyExoticComponent<React.ComponentType<unknown>>
 
 const ModuleLoader: React.FC<ModuleLoaderProps> = (props) => {
   const [Component, setComponent] = useState<React.FC<ModuleLoaderProps>>()
@@ -37,7 +37,7 @@ const ModuleLoader: React.FC<ModuleLoaderProps> = (props) => {
     }
 
     // Initialize the share scope
-    await __webpack_init_sharing__("default")
+    await __webpack_init_sharing__('default')
     const container = (window as ComponentCache)[scope]
 
     // Initialize the container
@@ -57,12 +57,24 @@ const ModuleLoader: React.FC<ModuleLoaderProps> = (props) => {
       }
 
       if (failed) {
-        setComponent(() => () => <StatusPage componentLine={`Error loading ${props.component}`} urlLine={`Components from ${props.url} are not available`} status={'error'} />)
+        setComponent(() => () => (
+          <StatusPage
+            componentLine={`Error loading ${props.component}`}
+            urlLine={`Components from ${props.url} are not available`}
+            status={'error'}
+          />
+        ))
         return
       }
 
       if (!ready) {
-        setComponent(() => () => <StatusPage componentLine={props.component} urlLine={props.url} status={'loading'}/>)
+        setComponent(() => () => (
+          <StatusPage
+            componentLine={props.component}
+            urlLine={props.url}
+            status={'loading'}
+          />
+        ))
         return
       }
 
@@ -72,12 +84,16 @@ const ModuleLoader: React.FC<ModuleLoaderProps> = (props) => {
         setComponent(() => componentCache[props.component])
       } else {
         try {
-          const LoadedComponent: LazyComponentType = React.lazy(() => loadComponent(scope, `./${module}`))
+          const LoadedComponent: LazyComponentType = React.lazy(() =>
+            loadComponent(scope, `./${module}`),
+          )
           componentCache[props.component] = LoadedComponent
           setComponent(() => LoadedComponent)
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
-          setComponent(() => () => <p>Error loading component: {props.component}</p>)
+          setComponent(() => () => (
+            <p>Error loading component: {props.component}</p>
+          ))
         }
       }
     }
@@ -85,11 +101,7 @@ const ModuleLoader: React.FC<ModuleLoaderProps> = (props) => {
     fetchComponent()
   }, [props.component, props.url, ready, failed])
 
-  return (
-    <>
-      {Component ? <Component {...props} /> : <p>Loading...</p>}
-    </>
-  )
+  return <>{Component ? <Component {...props} /> : <p>Loading...</p>}</>
 }
 
 export default ModuleLoader

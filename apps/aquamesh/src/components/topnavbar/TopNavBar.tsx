@@ -40,6 +40,7 @@ import DashboardWidgetExplanationModal from '../tutorial/DashboardWidgetExplanat
 import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 // Define user data type
 interface UserData {
@@ -169,8 +170,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     useStoredBoolean('widget-editor-delete-template-confirmation', true)
   const [userData, setUserData] = useState<UserData>(adminUser)
   const isAdmin = userData.id === 'admin' && userData.role === 'ADMIN_ROLE'
-  const userModeLabel =
-    isAdmin ? 'Builder mode' : 'Viewer mode'
+  const userModeLabel = isAdmin ? 'Builder mode' : 'Viewer mode'
 
   const { openCreateWidget, openCreateDashboard } = useWorkspaceActions()
   const navigate = useNavigate()
@@ -208,8 +208,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       }
 
       const canEdit =
-        parsedUserData.id === 'admin' &&
-        parsedUserData.role === 'ADMIN_ROLE'
+        parsedUserData.id === 'admin' && parsedUserData.role === 'ADMIN_ROLE'
 
       if (!canEdit) {
         return
@@ -221,6 +220,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       }>
       setWidgetEditorPayload(customEvent.detail || null)
       setWidgetEditorOpen(true)
+      dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-opened' })
     }
 
     window.addEventListener(OPEN_WIDGET_EDITOR_EVENT, handleOpenWidgetEditor)
@@ -303,7 +303,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             ) : (
               <DashboardOptionsMenu />
             )}
-            
+
             {/* Create Dashboard */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
@@ -311,6 +311,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create Dashboard"
                 onClick={() => openCreateDashboard()}
                 data-tutorial-id="create-dashboard-button"
+                data-onboarding-id="create-dashboard"
                 disabled={!isAdmin}
                 title={
                   isAdmin
@@ -334,6 +335,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 }}
                 startIcon={<DashboardCustomizeIcon />}
                 data-tutorial-id="create-dashboard-button"
+                data-onboarding-id="create-dashboard"
               >
                 Create Dashboard
               </Button>
@@ -346,9 +348,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create Widget"
                 onClick={() => openCreateWidget()}
                 data-tutorial-id="create-widget-button"
+                data-onboarding-id="dashboard-widget-create"
                 disabled={!isAdmin}
                 title={
-                  isAdmin ? 'Create Widget' : 'Viewer mode cannot create widgets'
+                  isAdmin
+                    ? 'Create Widget'
+                    : 'Viewer mode cannot create widgets'
                 }
                 sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
               />
@@ -367,6 +372,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 }}
                 startIcon={<ConstructionIcon />}
                 data-tutorial-id="create-widget-button"
+                data-onboarding-id="dashboard-widget-create"
               >
                 Create Widget
               </Button>
@@ -494,7 +500,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   setIsSettingsOpen(true)
                   handleClose()
                 }}
-                sx={{ marginTop: 1, paddingTop: 0.5, paddingBottom: 0.5, color: 'text.primary'  }}
+                sx={{
+                  marginTop: 1,
+                  paddingTop: 0.5,
+                  paddingBottom: 0.5,
+                  color: 'text.primary',
+                }}
               >
                 <ListItemIcon>
                   <SettingsIcon
@@ -579,7 +590,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       <Dialog
         fullScreen
         open={widgetEditorOpen}
-        onClose={() => setWidgetEditorOpen(false)}
+        onClose={() => {
+          setWidgetEditorOpen(false)
+          dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
+        }}
         PaperProps={{
           sx: {
             bgcolor: 'background.default',
@@ -612,7 +626,13 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             </Typography>
             <IconButton
               aria-label="Close Create Widget"
-              onClick={() => setWidgetEditorOpen(false)}
+              data-onboarding-id="close-create-widget"
+              onClick={() => {
+                setWidgetEditorOpen(false)
+                dispatchWorkspaceOnboardingEvent({
+                  type: 'widget-editor-closed',
+                })
+              }}
               sx={{
                 color: 'text.primary',
                 bgcolor: 'background.default',

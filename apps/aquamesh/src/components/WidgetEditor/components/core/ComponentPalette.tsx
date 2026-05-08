@@ -28,8 +28,6 @@ interface ComponentPaletteProps {
   activeContainerId?: string | null
   setActiveContainerId?: (id: string | null) => void
   widgetData?: any // To lookup container name
-  onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | 'place' | null
 }
 
 // Helper function to group components by category
@@ -49,16 +47,16 @@ const groupByCategory = (components: ComponentType[]) => {
 
 // Define the component palette groups and expand state
 const PALETTE_GROUPS = [
+  'Layout Containers',
   'UI Components',
   'Knowledge Blocks',
-  'Layout Containers',
   'Chart Components',
 ]
 const MOBILE_CONTENT_LAYOUT_GROUP = 'Content and layout'
 const PALETTE_GROUP_LABELS: Record<string, string> = {
+  'Layout Containers': 'Layout Helpers',
   'UI Components': 'Content and Controls',
   'Knowledge Blocks': 'Knowledge Blocks',
-  'Layout Containers': 'Layout Helpers',
   'Chart Components': 'Charts',
   [MOBILE_CONTENT_LAYOUT_GROUP]: 'Content and layout',
 }
@@ -73,8 +71,6 @@ const ComponentPalette = ({
   activeContainerId,
   setActiveContainerId,
   widgetData,
-  onboardingActive = false,
-  onboardingStep = null,
 }: ComponentPaletteProps) => {
   // Responsive width based on screen size
   const theme = useTheme()
@@ -192,45 +188,6 @@ const ComponentPalette = ({
         Edit Building Blocks
       </Typography>
 
-      {onboardingActive && onboardingStep === 'choose' && (
-        <Box
-          data-testid="widget-editor-palette-coach"
-          sx={{
-            m: isPhone ? 0.75 : 1,
-            p: isPhone ? 1 : 1.25,
-            border: '1px solid',
-            borderColor: 'primary.light',
-            borderRadius: 1,
-            bgcolor: 'background.accentSoft',
-            boxShadow: (theme) => `0 0 0 3px ${theme.palette.action.hover}`,
-          }}
-        >
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'block',
-              color: 'primary.dark',
-              fontWeight: 700,
-              mb: 0.5,
-            }}
-          >
-            Step 1
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.primary',
-              fontSize: isPhone ? '0.72rem' : '0.82rem',
-              lineHeight: 1.35,
-            }}
-          >
-            {isPhone
-              ? 'Tap any block below to add it to your widget.'
-              : 'Grab a block below and drag it into your widget canvas.'}
-          </Typography>
-        </Box>
-      )}
-
       {/* Active container indicator for mobile */}
       {activeContainerId && activeContainerInfo && (
         <Box
@@ -309,7 +266,7 @@ const ComponentPalette = ({
         ).map((category) => {
           const groupCategories =
             isPhone && category === MOBILE_CONTENT_LAYOUT_GROUP
-              ? ['UI Components', 'Knowledge Blocks', 'Layout Containers']
+              ? ['Layout Containers', 'UI Components', 'Knowledge Blocks']
               : [category]
           const components = groupCategories.flatMap(
             (groupCategory) => groupedComponents[groupCategory] || [],

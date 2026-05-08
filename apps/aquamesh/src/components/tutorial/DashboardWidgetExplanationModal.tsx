@@ -107,8 +107,8 @@ const DashboardWidgetExplanationModal: React.FC<
               Three simple layers
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Blocks make widgets. Widgets make dashboards. Start by creating
-              a dashboard, build one reusable widget, then place and save it.
+              Blocks make widgets. Widgets make dashboards. Start by creating a
+              dashboard, build one reusable widget, then place and save it.
             </Typography>
           </Box>
 

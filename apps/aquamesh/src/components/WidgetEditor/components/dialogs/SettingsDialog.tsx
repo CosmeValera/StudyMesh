@@ -27,8 +27,12 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
+import ReplayIcon from '@mui/icons-material/Replay'
 
 import AccentColorPicker from '../../../../theme/AccentColorPicker'
+import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
+
+const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
 
 interface SettingsDialogProps {
   open: boolean
@@ -172,6 +176,18 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
   }
 
+  const handleReplayTutorial = () => {
+    window.localStorage.setItem(
+      WORKSPACE_ONBOARDING_KEY,
+      JSON.stringify({
+        status: 'active',
+        stepId: 'create-dashboard',
+      }),
+    )
+    window.dispatchEvent(new CustomEvent(AQUAMESH_ONBOARDING_RESET_EVENT))
+    onClose()
+  }
+
   return (
     <Dialog
       open={open}
@@ -263,337 +279,451 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             </Paper>
           )}
 
-          {showEditorSettings && <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <InfoOutlinedIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ReplayIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography fontWeight="medium" color="text.primary">
-                    Show Helpful Tips
+                    Replay Workspace Tutorial
                   </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showTooltips)}
-                    onChange={(e) => handleTooltipsChange(e.target.checked)}
-                    color="primary"
-                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Restart the guided dashboard and widget tutorial from the
+                    first step.
+                  </Typography>
                 </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleReplayTutorial}
+                  sx={{ ml: 2, whiteSpace: 'nowrap' }}
                 >
-                  Show short explanations when hovering over building blocks in
-                  the palette.
-                </Typography>
+                  Replay
+                </Button>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
 
-          {showEditorSettings && <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <HelpOutlineIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Show Building Blocks Help
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showComponentPaletteHelp)}
-                    onChange={(e) =>
-                      handleComponentPaletteHelpChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Show the help text at the bottom of the Building Blocks panel.
-                </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <InfoOutlinedIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Show Helpful Tips
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showTooltips)}
+                      onChange={(e) => handleTooltipsChange(e.target.checked)}
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show short explanations when hovering over building blocks
+                    in the palette.
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
 
-          {showEditorSettings && <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              mb: 2,
-              bgcolor: 'background.default',
-              borderRadius: 2,
-              display: { xs: 'none', lg: 'block' },
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SearchIcon
-                    fontSize="small"
-                    sx={{ mr: 1.5, color: 'primary.main' }}
-                  />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Show Advanced Features in Toolbar
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showAdvancedInToolbar)}
-                    onChange={(e) =>
-                      handleAdvancedInToolbarChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Display Templates, Export/Import, and Version History buttons
-                  directly in the toolbar for easy access.
-                </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <HelpOutlineIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Show Building Blocks Help
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showComponentPaletteHelp)}
+                      onChange={(e) =>
+                        handleComponentPaletteHelpChange(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show the help text at the bottom of the Building Blocks
+                    panel.
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
+
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+                display: { xs: 'none', lg: 'block' },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <SearchIcon
+                      fontSize="small"
+                      sx={{ mr: 1.5, color: 'primary.main' }}
+                    />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Show Advanced Features in Toolbar
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showAdvancedInToolbar)}
+                      onChange={(e) =>
+                        handleAdvancedInToolbarChange(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Display Templates, Export/Import, and Version History
+                    buttons directly in the toolbar for easy access.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
 
           {showGlobalSettings && <Divider sx={{ my: 3 }} />}
 
-          {showGlobalSettings && <Typography
-            variant="h6"
-            gutterBottom
-            fontWeight="medium"
-            color="text.primary"
-          >
-            Confirmation Options
-          </Typography>}
+          {showGlobalSettings && (
+            <Typography
+              variant="h6"
+              gutterBottom
+              fontWeight="medium"
+              color="text.primary"
+            >
+              Confirmation Options
+            </Typography>
+          )}
 
-          {showGlobalSettings && <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DashboardIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Dashboard Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showDeleteDashboardConfirmation)}
-                    onChange={(e) =>
-                      handleDeleteDashboardConfirmationChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Show a confirmation dialog when deleting dashboards.
-                </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DashboardIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Dashboard Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteDashboardConfirmation)}
+                      onChange={(e) =>
+                        handleDeleteDashboardConfirmationChange(
+                          e.target.checked,
+                        )
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting dashboards.
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
 
-          {showGlobalSettings && <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Template Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showDeleteTemplateConfirmation)}
-                    onChange={(e) =>
-                      handleDeleteTemplateConfirmationChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Show a confirmation dialog when deleting templates.
-                </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Template Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteTemplateConfirmation)}
+                      onChange={(e) =>
+                        handleDeleteTemplateConfirmationChange(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting templates.
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
 
-          {showGlobalSettings && <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <WidgetsIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Widget Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showDeleteWidgetConfirmation)}
-                    onChange={(e) =>
-                      onShowDeleteWidgetConfirmationChange?.(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Show a confirmation dialog when deleting widgets from the
-                  library.
-                </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <WidgetsIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Widget Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteWidgetConfirmation)}
+                      onChange={(e) =>
+                        onShowDeleteWidgetConfirmationChange?.(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting widgets from the
+                    library.
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
 
-          {showGlobalSettings && <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Block Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={Boolean(showDeleteConfirmation)}
-                    onChange={(e) =>
-                      onShowDeleteConfirmationChange?.(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
                 >
-                  Show a confirmation dialog when deleting blocks.
-                </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Block Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteConfirmation)}
+                      onChange={(e) =>
+                        onShowDeleteConfirmationChange?.(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting blocks.
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </Paper>}
+            </Paper>
+          )}
 
           {showEditorSettings && (
             <Divider sx={{ my: 3, display: { xs: 'none', sm: 'flex' } }} />
           )}
 
-          {showEditorSettings && <Box
-            sx={{
-              display: { xs: 'none', sm: 'flex' },
-              alignItems: 'center',
-              mb: 2.5,
-            }}
-          >
-            <KeyboardIcon
-              sx={{ mr: 1.5, color: 'primary.main', fontSize: 28 }}
-            />
-            <Typography variant="h6" fontWeight="medium" color="text.primary">
-              Keyboard Shortcuts
-            </Typography>
-          </Box>}
+          {showEditorSettings && (
+            <Box
+              sx={{
+                display: { xs: 'none', sm: 'flex' },
+                alignItems: 'center',
+                mb: 2.5,
+              }}
+            >
+              <KeyboardIcon
+                sx={{ mr: 1.5, color: 'primary.main', fontSize: 28 }}
+              />
+              <Typography variant="h6" fontWeight="medium" color="text.primary">
+                Keyboard Shortcuts
+              </Typography>
+            </Box>
+          )}
 
-          {showEditorSettings && <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              mb: 2,
-              bgcolor: 'background.default',
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              display: { xs: 'none', sm: 'block' },
-            }}
-          >
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <ShortcutCard
-                  icon={<UndoIcon />}
-                  title="Undo"
-                  shortcut="Ctrl + Z"
-                  color="#3f51b5"
-                />
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                display: { xs: 'none', sm: 'block' },
+              }}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <ShortcutCard
+                    icon={<UndoIcon />}
+                    title="Undo"
+                    shortcut="Ctrl + Z"
+                    color="#3f51b5"
+                  />
 
-                <ShortcutCard
-                  icon={<RedoIcon />}
-                  title="Redo"
-                  shortcut="Ctrl + Y"
-                  color="#3f51b5"
-                />
+                  <ShortcutCard
+                    icon={<RedoIcon />}
+                    title="Redo"
+                    shortcut="Ctrl + Y"
+                    color="#3f51b5"
+                  />
 
-                <ShortcutCard
-                  icon={<SaveIcon />}
-                  title="Save Widget"
-                  shortcut="Ctrl + S"
-                  color="#4caf50"
-                />
+                  <ShortcutCard
+                    icon={<SaveIcon />}
+                    title="Save Widget"
+                    shortcut="Ctrl + S"
+                    color="#4caf50"
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <ShortcutCard
+                    icon={<EditIcon />}
+                    title="Cycle through both, edit, and preview views"
+                    shortcut="Ctrl + E"
+                    color="#ff9800"
+                  />
+
+                  <ShortcutCard
+                    icon={<FolderOpenIcon />}
+                    title="Open or close saved widgets"
+                    shortcut="Ctrl + O"
+                    color="#9c27b0"
+                  />
+
+                  <ShortcutCard
+                    icon={<SettingsIcon />}
+                    title="Open or close settings"
+                    shortcut="Ctrl + ,"
+                    color="#2196f3"
+                  />
+                </Grid>
               </Grid>
-
-              <Grid item xs={12} md={6}>
-                <ShortcutCard
-                  icon={<EditIcon />}
-                  title="Cycle through both, edit, and preview views"
-                  shortcut="Ctrl + E"
-                  color="#ff9800"
-                />
-
-                <ShortcutCard
-                  icon={<FolderOpenIcon />}
-                  title="Open or close saved widgets"
-                  shortcut="Ctrl + O"
-                  color="#9c27b0"
-                />
-
-                <ShortcutCard
-                  icon={<SettingsIcon />}
-                  title="Open or close settings"
-                  shortcut="Ctrl + ,"
-                  color="#2196f3"
-                />
-              </Grid>
-            </Grid>
-          </Paper>}
+            </Paper>
+          )}
         </Box>
       </DialogContent>
 

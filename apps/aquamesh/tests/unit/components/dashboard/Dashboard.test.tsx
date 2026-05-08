@@ -170,9 +170,7 @@ describe('Dashboards', () => {
 
     render(<Dashboards />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /create dashboard/i }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /create dashboard/i }))
 
     expect(
       screen.getAllByText('Create Dashboard').length,
@@ -192,20 +190,12 @@ describe('Dashboards', () => {
 
     render(<Dashboards />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /create dashboard/i }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /create dashboard/i }))
 
     expect(screen.getByText('New Dashboard')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /^saved$/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /widgets/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /^save$/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /widgets/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /edit dashboard details/i }),
     ).toBeInTheDocument()

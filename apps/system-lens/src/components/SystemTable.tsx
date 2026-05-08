@@ -1,35 +1,44 @@
-import React from 'react'
-import { SystemData } from '../types/systemTypes'
-import StatusBadge from './StatusBadge'
+import React from "react";
+import { SystemData } from "../types/systemTypes";
+import StatusBadge from "./StatusBadge";
 
 interface SystemTableProps {
-  systemData: SystemData[]
-  isCompact?: boolean
-  onAction: (id: number) => void
+  systemData: SystemData[];
+  isCompact?: boolean;
+  onAction: (id: number) => void;
 }
 
-const SystemTable: React.FC<SystemTableProps> = ({ 
-  systemData, 
+const SystemTable: React.FC<SystemTableProps> = ({
+  systemData,
   isCompact = false,
-  onAction 
+  onAction,
 }) => {
   // Progress bar template for resource usage
   const resourceProgressBar = (value: number, color: string) => {
     return (
-      <div className="w-full surface-200 border-round overflow-hidden" style={{ height: '0.5rem' }}>
-        <div className={color} style={{ width: `${value}%`, height: '100%' }}></div>
+      <div
+        className="w-full surface-200 border-round overflow-hidden"
+        style={{ height: "0.5rem" }}
+      >
+        <div
+          className={color}
+          style={{ width: `${value}%`, height: "100%" }}
+        ></div>
       </div>
-    )
-  }
+    );
+  };
 
   // Action button template
   const actionButtonTemplate = (id: number) => {
     return (
-      <button className="p-button p-button-rounded p-button-text" onClick={() => onAction(id)}>
+      <button
+        className="p-button p-button-rounded p-button-text"
+        onClick={() => onAction(id)}
+      >
         <i className="pi pi-cog"></i>
       </button>
-    )
-  }
+    );
+  };
 
   if (isCompact) {
     // Compact table (SM breakpoint)
@@ -39,24 +48,28 @@ const SystemTable: React.FC<SystemTableProps> = ({
           <table className="p-datatable-table w-full pt-5">
             <thead className="p-datatable-thead">
               <tr>
-                <th style={{ width: '5%' }}>ID</th>
-                <th style={{ width: '35%' }}>System Name</th>
-                <th style={{ width: '20%' }}>Status</th>
-                <th style={{ width: '20%' }}>Resource</th>
-                <th style={{ width: '20%' }}>Actions</th>
+                <th style={{ width: "5%" }}>ID</th>
+                <th style={{ width: "35%" }}>System Name</th>
+                <th style={{ width: "20%" }}>Status</th>
+                <th style={{ width: "20%" }}>Resource</th>
+                <th style={{ width: "20%" }}>Actions</th>
               </tr>
             </thead>
             <tbody className="p-datatable-tbody">
               {systemData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center">No system data available</td>
+                  <td colSpan={5} className="text-center">
+                    No system data available
+                  </td>
                 </tr>
               ) : (
-                systemData.map(item => (
+                systemData.map((item) => (
                   <tr key={item.id} className="p-selectable-row">
                     <td>{item.id}</td>
                     <td className="font-medium">{item.name}</td>
-                    <td><StatusBadge status={item.status} /></td>
+                    <td>
+                      <StatusBadge status={item.status} />
+                    </td>
                     <td>
                       <div className="flex flex-column gap-1">
                         <span className="text-xs">CPU: {item.cpu}%</span>
@@ -76,7 +89,7 @@ const SystemTable: React.FC<SystemTableProps> = ({
           </table>
         </div>
       </div>
-    )
+    );
   }
 
   // Full table (MD and up breakpoints)
@@ -86,42 +99,46 @@ const SystemTable: React.FC<SystemTableProps> = ({
         <table className="p-datatable-table w-full pt-5">
           <thead className="p-datatable-thead">
             <tr>
-              <th style={{ width: '5%' }}>ID</th>
-              <th style={{ width: '20%' }}>System Name</th>
-              <th style={{ width: '15%' }}>Status</th>
-              <th style={{ width: '15%' }}>CPU Usage %</th>
-              <th style={{ width: '15%' }}>Memory Usage %</th>
-              <th style={{ width: '15%' }}>Network Usage %</th>
-              <th style={{ width: '10%' }}>Actions</th>
+              <th style={{ width: "5%" }}>ID</th>
+              <th style={{ width: "20%" }}>System Name</th>
+              <th style={{ width: "15%" }}>Status</th>
+              <th style={{ width: "15%" }}>CPU Usage %</th>
+              <th style={{ width: "15%" }}>Memory Usage %</th>
+              <th style={{ width: "15%" }}>Network Usage %</th>
+              <th style={{ width: "10%" }}>Actions</th>
             </tr>
           </thead>
           <tbody className="p-datatable-tbody">
             {systemData.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center">No system data available</td>
+                <td colSpan={7} className="text-center">
+                  No system data available
+                </td>
               </tr>
             ) : (
-              systemData.map(item => (
+              systemData.map((item) => (
                 <tr key={item.id} className="p-selectable-row">
                   <td>{item.id}</td>
                   <td className="font-medium">{item.name}</td>
-                  <td><StatusBadge status={item.status} /></td>
+                  <td>
+                    <StatusBadge status={item.status} />
+                  </td>
                   <td>
                     <div className="flex align-items-center">
                       <div className="mr-2">{item.cpu}%</div>
-                      {resourceProgressBar(item.cpu, 'bg-blue-500')}
+                      {resourceProgressBar(item.cpu, "bg-blue-500")}
                     </div>
                   </td>
                   <td>
                     <div className="flex align-items-center">
                       <div className="mr-2">{item.memory}%</div>
-                      {resourceProgressBar(item.memory, 'bg-purple-500')}
+                      {resourceProgressBar(item.memory, "bg-purple-500")}
                     </div>
                   </td>
                   <td>
                     <div className="flex align-items-center">
                       <div className="mr-2">{item.network}%</div>
-                      {resourceProgressBar(item.network, 'bg-orange-500')}
+                      {resourceProgressBar(item.network, "bg-orange-500")}
                     </div>
                   </td>
                   <td>
@@ -136,7 +153,7 @@ const SystemTable: React.FC<SystemTableProps> = ({
         </table>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default SystemTable 
+export default SystemTable;

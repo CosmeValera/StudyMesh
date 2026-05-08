@@ -1,80 +1,110 @@
-import React, { ReactNode, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useFetch } from "../services/useFetch";
 import { Toast } from "primereact/toast";
 
 type MifProviderProps = {
-    children: ReactNode;
-    aquamesh: string;
-}
+  children: ReactNode;
+  aquamesh: string;
+};
 
 type MifValueProp = {
-    key: string,
-    value: string,
-    readOnly: boolean
-}
+  key: string;
+  value: string;
+  readOnly: boolean;
+};
 
 export enum ServiceType {
-    CONFIG
+  CONFIG,
 }
 
 // Define the interface for the AppContext
 export interface AppContextType {
-    aquamesh: string;
-    patchMrpfVariable: (key: string, value: string, dom?: string) => Promise<boolean>;
-    getMSubStatValues: () => { loading: boolean; dataMm: MifValueProp[]; error: any };
-    getSpr4Values: () => { loading: boolean; dataStm: MifValueProp[]; error: any };
+  aquamesh: string;
+  patchMrpfVariable: (
+    key: string,
+    value: string,
+    dom?: string,
+  ) => Promise<boolean>;
+  getMSubStatValues: () => {
+    loading: boolean;
+    dataMm: MifValueProp[];
+    error: any;
+  };
+  getSpr4Values: () => {
+    loading: boolean;
+    dataStm: MifValueProp[];
+    error: any;
+  };
 }
 
-export default function MifProvider({children, aquamesh} : MifProviderProps) {
-    const { loading, data, error } = useFetch(aquamesh, "prime", ServiceType.CONFIG);
+export default function MifProvider({ children, aquamesh }: MifProviderProps) {
+  const { loading, data, error } = useFetch(
+    aquamesh,
+    "prime",
+    ServiceType.CONFIG,
+  );
 
-    const [dataMm, setDataMm] = useState<MifValueProp[]>([]);
-    const [dataStm, setDataStm] = useState<MifValueProp[]>([]);
-    
-    const toast = useRef<Toast>(null);
+  const [dataMm, setDataMm] = useState<MifValueProp[]>([]);
+  const [dataStm, setDataStm] = useState<MifValueProp[]>([]);
 
-    useEffect(() => {
-        const filteredResMm = data.filter((instance: {key: string, value: string, readOnly: boolean}) => 
-            instance.key === 'MMSATSTAT_PROCESSING');
-        
-        const filteredResStm = data.filter((instance: {key: string, value: string, readOnly: boolean}) => 
-            instance.key === 'MAIN_PROCESSING' || 
-            instance.key === 'MRM_PROCESSING' || 
-            instance.key === 'MSBD_PROCESSING' || 
-            instance.key === 'MRPF_PROCESSING');
-    
-        setDataMm(filteredResMm);
-        setDataStm(filteredResStm);
-    }, [data]);
+  const toast = useRef<Toast>(null);
 
-    const getMSubStatValues = () => {
-        return { loading, dataMm, error };
-    }
-    
-    const getSpr4Values = () => {
-        return { loading, dataStm, error };
-    }
+  useEffect(() => {
+    const filteredResMm = data.filter(
+      (instance: { key: string; value: string; readOnly: boolean }) =>
+        instance.key === "MMSATSTAT_PROCESSING",
+    );
 
-    const patchMrpfVariable = async (key: string, value: string) => {
-        await new Promise(resolve => setTimeout(resolve, 10));
-        return true;
-    }
+    const filteredResStm = data.filter(
+      (instance: { key: string; value: string; readOnly: boolean }) =>
+        instance.key === "MAIN_PROCESSING" ||
+        instance.key === "MRM_PROCESSING" ||
+        instance.key === "MSBD_PROCESSING" ||
+        instance.key === "MRPF_PROCESSING",
+    );
 
-    return (
-        <AppContext.Provider value={{
-            aquamesh,
-            patchMrpfVariable,
-            getMSubStatValues,
-            getSpr4Values
-        }}>
-            <Toast ref={toast} />
-            {children}
-        </AppContext.Provider>
-    )
+    setDataMm(filteredResMm);
+    setDataStm(filteredResStm);
+  }, [data]);
+
+  const getMSubStatValues = () => {
+    return { loading, dataMm, error };
+  };
+
+  const getSpr4Values = () => {
+    return { loading, dataStm, error };
+  };
+
+  const patchMrpfVariable = async (key: string, value: string) => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    return true;
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        aquamesh,
+        patchMrpfVariable,
+        getMSubStatValues,
+        getSpr4Values,
+      }}
+    >
+      <Toast ref={toast} />
+      {children}
+    </AppContext.Provider>
+  );
 }
 
-export const AppContext = React.createContext<AppContextType>({} as AppContextType);
+export const AppContext = React.createContext<AppContextType>(
+  {} as AppContextType,
+);
 
 export const useApp = () => {
-    return useContext(AppContext);
-}
+  return useContext(AppContext);
+};

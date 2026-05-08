@@ -43,7 +43,6 @@ import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
   OPEN_DASHBOARD_EDITOR_EVENT,
-  OPEN_SAVED_DASHBOARDS_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
 } from '../../customHooks/useWorkspaceActions'
 import {
@@ -52,6 +51,7 @@ import {
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import './tabs.scss'
 
 interface DashboardEditorWidgetConfig {
@@ -98,12 +98,9 @@ interface SavedDashboard {
   updatedAt: string
 }
 
-type DashboardOnboardingStep = 'layout' | 'save' | 'complete' | 'done'
-
-const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
-const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
 const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
+const OPEN_SAVED_DASHBOARDS_EVENT = 'aquamesh-open-saved-dashboards'
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -143,18 +140,6 @@ const getUniqueDashboardName = (
   return candidate
 }
 
-const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
-  if (!layout) {
-    return false
-  }
-
-  if (layout.component === 'CustomWidget') {
-    return true
-  }
-
-  return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
-}
-
 const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   if (!layout) {
     return false
@@ -165,6 +150,30 @@ const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   }
 
   return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
+}
+
+const countDashboardNodes = (
+  layout?: DashboardLayout,
+): { tabCount: number; tabsetCount: number } => {
+  if (!layout) {
+    return { tabCount: 0, tabsetCount: 0 }
+  }
+
+  const childCounts = (layout.children || []).reduce(
+    (counts, child) => {
+      const next = countDashboardNodes(child)
+      return {
+        tabCount: counts.tabCount + next.tabCount,
+        tabsetCount: counts.tabsetCount + next.tabsetCount,
+      }
+    },
+    { tabCount: 0, tabsetCount: 0 },
+  )
+
+  return {
+    tabCount: childCounts.tabCount + (layout.type === 'tab' ? 1 : 0),
+    tabsetCount: childCounts.tabsetCount + (layout.type === 'tabset' ? 1 : 0),
+  }
 }
 
 // Dashboard Storage utilities
@@ -441,82 +450,6 @@ const DashboardEmptyState = ({
   )
 }
 
-interface DashboardOnboardingCoachProps {
-  step: Exclude<DashboardOnboardingStep, 'done'>
-  hasUnsavedChanges: boolean
-  dashboardName: string
-  onGotIt: () => void
-}
-
-const DashboardOnboardingCoach = ({
-  step,
-  hasUnsavedChanges,
-  dashboardName,
-  onGotIt,
-}: DashboardOnboardingCoachProps) => {
-  const theme = useTheme()
-  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  const isLayoutStep = step === 'layout'
-  const isCompleteStep = step === 'complete'
-  const dashboardMenuName = isPhone ? 'Dash' : 'Dashboards'
-
-  return (
-    <Paper
-      data-testid={`dashboard-onboarding-coach-${step}`}
-      elevation={6}
-      sx={{
-        position: 'absolute',
-        top: { xs: 'auto', sm: 12 },
-        bottom: { xs: 8, sm: 'auto' },
-        right: { xs: 8, sm: 12 },
-        left: { xs: 8, sm: 'auto' },
-        zIndex: 1300,
-        width: { xs: 'auto', sm: 420 },
-        p: { xs: 1.25, sm: 1.5 },
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'primary.light',
-        bgcolor: 'background.accentSoft',
-        color: 'text.primary',
-      }}
-    >
-      <Stack spacing={1}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-          {isLayoutStep
-            ? 'Arrange dashboard'
-            : isCompleteStep
-              ? 'Dashboard saved'
-              : 'Save dashboard'}
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{ color: 'text.secondary', lineHeight: 1.45 }}
-        >
-          {isCompleteStep
-            ? `You can reopen "${dashboardName}" later from ${dashboardMenuName}.`
-            : isLayoutStep
-              ? 'Drag a widget tab or resize a section. Save when the layout is ready.'
-              : hasUnsavedChanges
-                ? 'Save this dashboard so it appears in Dashboards.'
-                : 'This dashboard is saved. You can reopen it later from Dashboards.'}
-        </Typography>
-        {isCompleteStep && (
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button
-              size="small"
-              variant="contained"
-              onClick={onGotIt}
-              sx={{ textTransform: 'none' }}
-            >
-              Got it
-            </Button>
-          </Stack>
-        )}
-      </Stack>
-    </Paper>
-  )
-}
-
 const Dashboards = () => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -569,19 +502,6 @@ const Dashboards = () => {
     dashboardLibraryInitialSearchKey,
     setDashboardLibraryInitialSearchKey,
   ] = useState(0)
-  const dashboardOnboardingLayoutBaseline = useRef<{
-    dashboardId: string
-    layoutJson: string
-  } | null>(null)
-  const [dashboardOnboardingStep, setDashboardOnboardingStep] =
-    useState<DashboardOnboardingStep>(() => {
-      if (typeof window === 'undefined') {
-        return 'layout'
-      }
-
-      const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
-      return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
-    })
   const dashboardEditorTitleCancelRef = useRef(false)
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
@@ -624,24 +544,6 @@ const Dashboards = () => {
     setDashboardOptions([...DashboardStorage.getAll()].reverse())
   }
 
-  const completeDashboardOnboarding = () => {
-    setDashboardOnboardingStep('done')
-  }
-
-  const persistDashboardOnboardingDone = () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'done')
-      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
-    }
-  }
-
-  const advanceDashboardOnboarding = () => {
-    setDashboardOnboardingStep('save')
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'save')
-    }
-  }
-
   const openDashboardEditor = (dashboardId: string) => {
     if (!isAdmin) {
       return
@@ -658,6 +560,7 @@ const Dashboards = () => {
 
     setDashboardEditing(dashboardId, true)
     setDashboardEditorId(dashboardId)
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
   }
 
   const createDashboardInEditor = () => {
@@ -675,6 +578,7 @@ const Dashboards = () => {
         children: [],
       },
     })
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
   }
 
   const loadSavedDashboardInBuilder = (dashboard: SavedDashboard) => {
@@ -698,12 +602,22 @@ const Dashboards = () => {
         name: dashboard.name,
         layout: dashboard.layout,
       })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-dashboard-opened',
+        dashboardId: dashboard.id,
+        dashboardName: dashboard.name,
+      })
       return
     }
 
     addDashboard({
       name: dashboard.name,
       layout: dashboard.layout,
+    })
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboard.id,
+      dashboardName: dashboard.name,
     })
   }
 
@@ -717,6 +631,7 @@ const Dashboards = () => {
     setDashboardWidgetsAnchorEl(null)
     setIsEditingDashboardEditorTitle(false)
     setDashboardEditorId(null)
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-closed' })
   }
 
   const updateDashboardEditorTitle = (nextName: string) => {
@@ -784,6 +699,7 @@ const Dashboards = () => {
 
     if (dashboardEditorIsEmpty) {
       const nextLayout = createLayoutWithComponent(item)
+      const counts = countDashboardNodes(nextLayout)
 
       if (dashboardEditorIsDraft) {
         setDraftDashboard((currentDraft) =>
@@ -793,10 +709,44 @@ const Dashboards = () => {
         updateDashboardLayout(dashboardEditorIndex, nextLayout)
       }
 
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-widget-added',
+        widgetId:
+          typeof item.customProps?.widgetId === 'string'
+            ? item.customProps.widgetId
+            : item.id,
+        widgetName: item.name,
+        ...counts,
+      })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-layout-changed',
+        ...counts,
+      })
+
       return
     }
 
     addComponent(item)
+    setTimeout(() => {
+      const counts = countDashboardNodes(dashboardEditorDashboard.layout)
+      const nextCounts = {
+        tabCount: Math.max(2, counts.tabCount + 1),
+        tabsetCount: Math.max(1, counts.tabsetCount),
+      }
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-widget-added',
+        widgetId:
+          typeof item.customProps?.widgetId === 'string'
+            ? item.customProps.widgetId
+            : item.id,
+        widgetName: item.name,
+        ...nextCounts,
+      })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-layout-changed',
+        ...nextCounts,
+      })
+    }, 0)
   }
 
   const handleDashboardWidgetsMenuOpen = (
@@ -807,6 +757,7 @@ const Dashboards = () => {
     }
 
     setDashboardWidgetsAnchorEl(event.currentTarget)
+    dispatchWorkspaceOnboardingEvent({ type: 'widgets-menu-opened' })
   }
 
   const handleDashboardWidgetsMenuClose = () => {
@@ -924,47 +875,6 @@ const Dashboards = () => {
 
     setHasChanges(changes)
   }, [openDashboards])
-
-  useEffect(() => {
-    const currentDashboard = openDashboards[selectedDashboard]
-    const currentLayout = currentDashboard?.layout
-    const hasWidget = hasPlacedSavedWidget(currentLayout)
-
-    const currentChangeStateKnown = Object.prototype.hasOwnProperty.call(
-      hasChanges,
-      selectedDashboard,
-    )
-
-    if (
-      dashboardOnboardingStep === 'save' &&
-      hasWidget &&
-      currentChangeStateKnown &&
-      !hasChanges[selectedDashboard]
-    ) {
-      setDashboardOnboardingStep('complete')
-      persistDashboardOnboardingDone()
-      return
-    }
-
-    if (dashboardOnboardingStep !== 'layout' || !hasWidget) {
-      dashboardOnboardingLayoutBaseline.current = null
-      return
-    }
-
-    const dashboardId = currentDashboard?.id || String(selectedDashboard)
-    const layoutJson = JSON.stringify(currentLayout || {})
-    const baseline = dashboardOnboardingLayoutBaseline.current
-
-    if (!baseline || baseline.dashboardId !== dashboardId) {
-      dashboardOnboardingLayoutBaseline.current = { dashboardId, layoutJson }
-      return
-    }
-
-    if (baseline.layoutJson !== layoutJson) {
-      dashboardOnboardingLayoutBaseline.current = null
-      advanceDashboardOnboarding()
-    }
-  }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
 
   const getSavedDashboardForEditor = () => {
     if (!dashboardEditorDashboard) {
@@ -1095,6 +1005,11 @@ const Dashboards = () => {
 
       DashboardStorage.save(dashboardToSave)
       loadDashboardOptions()
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-saved',
+        dashboardId: dashboardToSave.id,
+        dashboardName: dashboardToSave.name,
+      })
 
       if (currentDashboard.name !== nameToSave) {
         renameDashboard(currentDashboard.id, nameToSave)
@@ -1147,6 +1062,11 @@ const Dashboards = () => {
 
       DashboardStorage.save(dashboardToSave)
       loadDashboardOptions()
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-saved',
+        dashboardId: dashboardToSave.id,
+        dashboardName: dashboardToSave.name,
+      })
       setDraftDashboard((currentDraft) =>
         currentDraft
           ? {
@@ -1226,6 +1146,11 @@ const Dashboards = () => {
 
         DashboardStorage.save(dashboardToSave)
         loadDashboardOptions()
+        dispatchWorkspaceOnboardingEvent({
+          type: 'dashboard-saved',
+          dashboardId: dashboardToSave.id,
+          dashboardName: dashboardToSave.name,
+        })
         setDraftDashboard((currentDraft) =>
           currentDraft
             ? {
@@ -1277,6 +1202,11 @@ const Dashboards = () => {
 
           DashboardStorage.save(newDashboard)
           loadDashboardOptions()
+          dispatchWorkspaceOnboardingEvent({
+            type: 'dashboard-saved',
+            dashboardId: newDashboard.id,
+            dashboardName: newDashboard.name,
+          })
 
           // Update the dashboard name in the TabList
           renameDashboard(currentDashboard.id, nameToSave)
@@ -1320,6 +1250,11 @@ const Dashboards = () => {
     addDashboard({
       name: dashboardEditorSavedDashboard.name,
       layout: dashboardEditorSavedDashboard.layout,
+    })
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboardEditorSavedDashboard.id,
+      dashboardName: dashboardEditorSavedDashboard.name,
     })
     closeDashboardEditor()
   }
@@ -1450,11 +1385,6 @@ const Dashboards = () => {
         </TabList>
         {openDashboards.map((dashboard, index) => {
           const isEmptyDashboard = !hasDashboardContent(dashboard.layout)
-          const showDashboardOnboarding =
-            index === selectedDashboard &&
-            dashboardOnboardingStep !== 'done' &&
-            hasPlacedSavedWidget(dashboard.layout)
-
           return (
             <TabPanel key={dashboard.id}>
               <Box
@@ -1466,14 +1396,6 @@ const Dashboards = () => {
                 }}
               >
                 <Box sx={{ position: 'relative', flex: '1' }}>
-                  {showDashboardOnboarding && (
-                    <DashboardOnboardingCoach
-                      step={dashboardOnboardingStep}
-                      hasUnsavedChanges={Boolean(hasChanges[index])}
-                      dashboardName={dashboard.name}
-                      onGotIt={completeDashboardOnboarding}
-                    />
-                  )}
                   {isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}
@@ -1636,6 +1558,7 @@ const Dashboards = () => {
                 variant="outlined"
                 startIcon={<ExtensionIcon />}
                 onClick={handleDashboardWidgetsMenuOpen}
+                data-onboarding-id="dashboard-editor-widgets"
                 sx={{
                   textTransform: 'none',
                   minWidth: 0,
@@ -1695,6 +1618,12 @@ const Dashboards = () => {
                       {topNavBarWidget.items.map((item) => (
                         <MenuItem
                           key={item.name}
+                          data-onboarding-id="dashboard-widget-saved"
+                          data-widget-id={
+                            typeof item.customProps?.widgetId === 'string'
+                              ? item.customProps.widgetId
+                              : undefined
+                          }
                           onClick={() => {
                             addWidgetToDashboardEditor({
                               id: `panel-${Date.now()}`,
@@ -1738,6 +1667,7 @@ const Dashboards = () => {
                     !dashboardEditorHasUnsavedChanges)
                 }
                 onClick={handleDashboardEditorSave}
+                data-onboarding-id="dashboard-editor-save"
                 sx={{
                   textTransform: 'none',
                   minWidth: 0,
@@ -1802,6 +1732,7 @@ const Dashboards = () => {
               <IconButton
                 aria-label="Close dashboard editor"
                 onClick={closeDashboardEditor}
+                data-onboarding-id="dashboard-editor-close"
                 sx={{
                   color: 'text.primary',
                   bgcolor: 'background.default',

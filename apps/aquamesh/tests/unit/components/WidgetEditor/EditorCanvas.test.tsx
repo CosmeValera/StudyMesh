@@ -214,18 +214,14 @@ describe('EditorCanvas first-widget guide', () => {
   it('uses the standard canvas prompt while the guided drag is active', () => {
     renderEditorCanvas({
       isDragging: true,
-      onboardingActive: true,
-      onboardingStep: 'choose',
     })
 
     expect(screen.getByText('Drop it into your widget')).toBeInTheDocument()
     expect(screen.queryByText(/^Step 2$/)).not.toBeInTheDocument()
   })
 
-  it('shows the edit and save guidance after the first component exists', () => {
+  it('does not render the removed inline edit and save guidance after the first component exists', () => {
     renderEditorCanvas({
-      onboardingActive: true,
-      onboardingStep: 'save',
       widgetData: {
         name: 'New Widget',
         components: [
@@ -238,9 +234,9 @@ describe('EditorCanvas first-widget guide', () => {
       },
     })
 
-    expect(screen.getByTestId('widget-editor-save-coach')).toHaveTextContent(
-      'Step 2: tune it, then save it',
-    )
+    expect(
+      screen.queryByTestId('widget-editor-save-coach'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /show again/i }),
     ).not.toBeInTheDocument()

@@ -18,7 +18,7 @@ import {
   Tabs,
   Tab,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
 } from '@mui/material'
 import FormatBoldIcon from '@mui/icons-material/FormatBold'
 import FormatItalicIcon from '@mui/icons-material/FormatItalic'
@@ -34,7 +34,7 @@ import theme from '../../../../theme'
 const DEFAULT_COLORS = [
   '#2196F3', // blue
   '#F44336', // red
-  '#4CAF50', // green  
+  '#4CAF50', // green
   '#FF9800', // orange
   '#9C27B0', // purple
   '#795548', // brown
@@ -47,39 +47,39 @@ const DEFAULT_COLORS = [
 // ============= TYPES =============
 
 export interface TextStyleProps {
-  fontWeight?: number;
-  isBold?: boolean;
-  isItalic?: boolean;
-  hasUnderline?: boolean;
-  textAlign?: string;
-  onChange: (prop: string, value: unknown) => void;
+  fontWeight?: number
+  isBold?: boolean
+  isItalic?: boolean
+  hasUnderline?: boolean
+  textAlign?: string
+  onChange: (prop: string, value: unknown) => void
 }
 
 export interface ColorPickerProps {
-  open: boolean;
-  currentColor: string;
-  onClose: () => void;
-  onSave: (color: string) => void;
-  title?: string;
+  open: boolean
+  currentColor: string
+  onClose: () => void
+  onSave: (color: string) => void
+  title?: string
 }
 
 export interface CustomColorProps {
-  useCustomColor: boolean;
-  customColor: string;
-  onColorChange: (color: string) => void;
-  onToggleCustomColor: (useCustom: boolean) => void;
-  label?: string;
+  useCustomColor: boolean
+  customColor: string
+  onColorChange: (color: string) => void
+  onToggleCustomColor: (useCustom: boolean) => void
+  label?: string
 }
 
 export interface TabPanelProps {
-  children: React.ReactNode;
-  value: number;
-  index: number;
-  id?: string;
+  children: React.ReactNode
+  value: number
+  index: number
+  id?: string
 }
 
 export interface PreviewProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 // ============= COMPONENTS =============
@@ -87,7 +87,12 @@ export interface PreviewProps {
 /**
  * Reusable TabPanel component
  */
-export const TabPanelShared: React.FC<TabPanelProps> = ({ children, value, index, id = 'widget' }) => {
+export const TabPanelShared: React.FC<TabPanelProps> = ({
+  children,
+  value,
+  index,
+  id = 'widget',
+}) => {
   return (
     <div
       role="tabpanel"
@@ -95,11 +100,7 @@ export const TabPanelShared: React.FC<TabPanelProps> = ({ children, value, index
       id={`${id}-tabpanel-${index}`}
       aria-labelledby={`${id}-tab-${index}`}
     >
-      {value === index && (
-        <Box sx={{ p: 2 }}>
-          {children}
-        </Box>
-      )}
+      {value === index && <Box sx={{ p: 2 }}>{children}</Box>}
     </div>
   )
 }
@@ -109,23 +110,29 @@ export const TabPanelShared: React.FC<TabPanelProps> = ({ children, value, index
  */
 export const ComponentPreview: React.FC<PreviewProps> = ({ children }) => {
   return (
-    <Paper 
-      variant="outlined" 
-      sx={{ 
-        mb: 2, 
-        p: 2, 
-        display: 'flex', 
+    <Paper
+      variant="outlined"
+      sx={{
+        mb: 2,
+        p: 2,
+        display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center', 
+        alignItems: 'center',
         bgcolor: 'transparent',
         borderRadius: 1,
-        minHeight: '80px'
+        minHeight: '80px',
       }}
     >
-      <Typography variant="subtitle2" gutterBottom sx={{ color: '#191919', fontWeight: 500, alignSelf: 'flex-start' }}>
+      <Typography
+        variant="subtitle2"
+        gutterBottom
+        sx={{ color: '#191919', fontWeight: 500, alignSelf: 'flex-start' }}
+      >
         Preview
       </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2, width: '100%' }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', p: 2, width: '100%' }}
+      >
         {children}
       </Box>
     </Paper>
@@ -136,18 +143,18 @@ export const ComponentPreview: React.FC<PreviewProps> = ({ children }) => {
  * Reusable editor tabs component
  */
 export const EditorTabs: React.FC<{
-  value: number;
-  onChange: (event: React.SyntheticEvent, newValue: number) => void;
-  tabs: { label: string; id: string; icon?: React.ReactNode }[];
+  value: number
+  onChange: (event: React.SyntheticEvent, newValue: number) => void
+  tabs: { label: string; id: string; icon?: React.ReactNode }[]
 }> = ({ value, onChange, tabs }) => {
   // Add useTheme and useMediaQuery for responsive design
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  
+
   return (
     <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-      <Tabs 
-        value={value} 
+      <Tabs
+        value={value}
         onChange={onChange}
         variant="scrollable"
         scrollButtons="auto"
@@ -159,8 +166,8 @@ export const EditorTabs: React.FC<{
             padding: isMobile ? '6px 12px' : undefined,
             '&.Mui-selected': {
               color: 'primary.main',
-            }
-          }
+            },
+          },
         }}
       >
         {tabs.map((tab, index) => (
@@ -185,18 +192,18 @@ export const TextStylingControls: React.FC<TextStyleProps> = ({
   isBold = false,
   isItalic = false,
   hasUnderline = false,
-  onChange
+  onChange,
 }) => {
   const toggleBold = () => {
     const newIsBold = !isBold
     const newWeight = newIsBold ? 700 : 400
     onChange('fontWeight', newWeight)
   }
-  
+
   const toggleItalic = () => {
     onChange('fontStyle', !isItalic ? 'italic' : 'normal')
   }
-  
+
   const toggleUnderline = () => {
     onChange('textDecoration', !hasUnderline ? 'underline' : 'none')
   }
@@ -208,44 +215,42 @@ export const TextStylingControls: React.FC<TextStyleProps> = ({
       </Typography>
       <Box sx={{ display: 'flex', gap: 1 }}>
         <Tooltip title="Bold">
-          <IconButton 
-            sx={{ 
+          <IconButton
+            sx={{
               bgcolor: isBold ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-              color: '#191919'
-            }} 
+              color: '#191919',
+            }}
             onClick={toggleBold}
           >
             <FormatBoldIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="Italic">
-          <IconButton 
-            sx={{ 
+          <IconButton
+            sx={{
               bgcolor: isItalic ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-              color: '#191919'
-            }} 
+              color: '#191919',
+            }}
             onClick={toggleItalic}
           >
             <FormatItalicIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="Underline">
-          <IconButton 
-            sx={{ 
+          <IconButton
+            sx={{
               bgcolor: hasUnderline ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-              color: '#191919'
-            }} 
+              color: '#191919',
+            }}
             onClick={toggleUnderline}
           >
             <FormatUnderlinedIcon />
           </IconButton>
         </Tooltip>
       </Box>
-      
+
       <Box sx={{ mt: 2 }}>
-        <Typography gutterBottom>
-          Font Weight: {fontWeight}
-        </Typography>
+        <Typography gutterBottom>Font Weight: {fontWeight}</Typography>
         <Slider
           value={fontWeight}
           min={100}
@@ -266,50 +271,52 @@ export const TextStylingControls: React.FC<TextStyleProps> = ({
  * Text alignment controls
  */
 export const TextAlignmentControls: React.FC<{
-  textAlign: string;
-  onChange: (align: string) => void;
+  textAlign: string
+  onChange: (align: string) => void
 }> = ({ textAlign, onChange }) => {
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography gutterBottom>
-        Text Alignment
-      </Typography>
+      <Typography gutterBottom>Text Alignment</Typography>
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <IconButton 
-          color={textAlign === 'left' ? 'primary' : 'default'} 
+        <IconButton
+          color={textAlign === 'left' ? 'primary' : 'default'}
           onClick={() => onChange('left')}
           sx={{
-            color: textAlign === 'left' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
+            color:
+              textAlign === 'left' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
           }}
         >
           <FormatAlignLeftIcon />
         </IconButton>
-        
-        <IconButton 
-          color={textAlign === 'center' ? 'primary' : 'default'} 
+
+        <IconButton
+          color={textAlign === 'center' ? 'primary' : 'default'}
           onClick={() => onChange('center')}
           sx={{
-            color: textAlign === 'center' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
+            color:
+              textAlign === 'center' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
           }}
         >
           <FormatAlignCenterIcon />
         </IconButton>
-        
-        <IconButton 
-          color={textAlign === 'right' ? 'primary' : 'default'} 
+
+        <IconButton
+          color={textAlign === 'right' ? 'primary' : 'default'}
           onClick={() => onChange('right')}
           sx={{
-            color: textAlign === 'right' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
+            color:
+              textAlign === 'right' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
           }}
         >
           <FormatAlignRightIcon />
         </IconButton>
-        
-        <IconButton 
-          color={textAlign === 'justify' ? 'primary' : 'default'} 
+
+        <IconButton
+          color={textAlign === 'justify' ? 'primary' : 'default'}
           onClick={() => onChange('justify')}
           sx={{
-            color: textAlign === 'justify' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
+            color:
+              textAlign === 'justify' ? 'primary.main' : 'rgba(0, 0, 0, 0.54)',
           }}
         >
           <FormatAlignJustifyIcon />
@@ -322,12 +329,12 @@ export const TextAlignmentControls: React.FC<{
 /**
  * Color picker modal component
  */
-export const ColorPickerModal: React.FC<ColorPickerProps> = ({ 
-  open, 
-  currentColor, 
-  onClose, 
+export const ColorPickerModal: React.FC<ColorPickerProps> = ({
+  open,
+  currentColor,
+  onClose,
   onSave,
-  title = "Choose Color"
+  title = 'Choose Color',
 }) => {
   const [selectedColor, setSelectedColor] = useState(currentColor)
 
@@ -350,29 +357,40 @@ export const ColorPickerModal: React.FC<ColorPickerProps> = ({
             type="color"
             value={selectedColor}
             onChange={(e) => setSelectedColor(e.target.value)}
-            style={{ 
-              width: '100px', 
-              height: '100px', 
-              padding: 0, 
+            style={{
+              width: '100px',
+              height: '100px',
+              padding: 0,
               border: 'none',
               borderRadius: '4px',
-              cursor: 'pointer'
+              cursor: 'pointer',
             }}
           />
         </Box>
-        
+
         {/* Predefined colors palette */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mt: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+            justifyContent: 'center',
+            mt: 2,
+          }}
+        >
           {DEFAULT_COLORS.map((color, index) => (
-            <Box 
+            <Box
               key={index}
-              sx={{ 
-                width: 30, 
-                height: 30, 
-                bgcolor: color, 
+              sx={{
+                width: 30,
+                height: 30,
+                bgcolor: color,
                 borderRadius: '4px',
                 cursor: 'pointer',
-                border: selectedColor === color ? '2px solid #000' : '1px solid rgba(0,0,0,0.2)',
+                border:
+                  selectedColor === color
+                    ? '2px solid #000'
+                    : '1px solid rgba(0,0,0,0.2)',
               }}
               onClick={() => setSelectedColor(color)}
             />
@@ -397,22 +415,22 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
   customColor,
   onColorChange,
   onToggleCustomColor,
-  label = "Use Custom Color"
+  label = 'Use Custom Color',
 }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
-  
+
   const handleCustomColorToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Force the checked value to be a boolean to ensure it's properly handled
     const isChecked = Boolean(e.target.checked)
     onToggleCustomColor(isChecked)
   }
-  
+
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onColorChange(e.target.value)
   }
-  
+
   const handleColorPickerSave = (color: string) => {
     onColorChange(color)
   }
@@ -424,7 +442,7 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
           <Switch
             checked={Boolean(useCustomColor)}
             onChange={handleCustomColorToggle}
-            size={isMobile ? "small" : "medium"}
+            size={isMobile ? 'small' : 'medium'}
           />
         }
         label={
@@ -434,14 +452,14 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
             </Typography>
           </Box>
         }
-        sx={{ 
+        sx={{
           m: 0,
           '& .MuiFormControlLabel-label': {
-            fontSize: isMobile ? '0.75rem' : undefined
-          }
+            fontSize: isMobile ? '0.75rem' : undefined,
+          },
         }}
       />
-      
+
       {/* Make it phone responsive */}
       {useCustomColor && (
         <Box sx={{ mt: 1 }}>
@@ -449,19 +467,19 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
             Text Color
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box 
-              sx={{ 
-                width: '36px', 
-                height: '36px', 
+            <Box
+              sx={{
+                width: '36px',
+                height: '36px',
                 bgcolor: customColor,
                 borderRadius: '4px',
                 border: '1px solid rgba(0,0,0,0.2)',
-                cursor: 'pointer' 
+                cursor: 'pointer',
               }}
               onClick={() => setColorPickerOpen(true)}
             />
-            <TextField 
-              size="small" 
+            <TextField
+              size="small"
               value={customColor}
               onChange={handleColorChange}
               placeholder="#000000"
@@ -469,11 +487,14 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setColorPickerOpen(true)}>
+                    <IconButton
+                      size="small"
+                      onClick={() => setColorPickerOpen(true)}
+                    >
                       <ColorLensIcon fontSize="small" />
                     </IconButton>
                   </InputAdornment>
-                )
+                ),
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {
@@ -498,7 +519,7 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
           </Box>
         </Box>
       )}
-      
+
       <ColorPickerModal
         open={colorPickerOpen}
         currentColor={customColor}
@@ -512,18 +533,18 @@ export const CustomColorControl: React.FC<CustomColorProps> = ({
 /**
  * Dual color picker for components that need two colors (like a button and its hover state)
  */
-export const DualColorPicker: React.FC<{  
-  useCustomColor: boolean;
-  primaryColor: string;
-  secondaryColor: string;
-  tertiaryColor?: string;
-  onToggleCustomColor: (useCustom: boolean) => void;
-  onPrimaryColorChange: (color: string) => void;
-  onSecondaryColorChange: (color: string) => void;
-  onTertiaryColorChange?: (color: string) => void;
-  primaryLabel?: string;
-  secondaryLabel?: string;
-  tertiaryLabel?: string;
+export const DualColorPicker: React.FC<{
+  useCustomColor: boolean
+  primaryColor: string
+  secondaryColor: string
+  tertiaryColor?: string
+  onToggleCustomColor: (useCustom: boolean) => void
+  onPrimaryColorChange: (color: string) => void
+  onSecondaryColorChange: (color: string) => void
+  onTertiaryColorChange?: (color: string) => void
+  primaryLabel?: string
+  secondaryLabel?: string
+  tertiaryLabel?: string
 }> = ({
   useCustomColor,
   primaryColor,
@@ -533,14 +554,15 @@ export const DualColorPicker: React.FC<{
   onPrimaryColorChange,
   onSecondaryColorChange,
   onTertiaryColorChange,
-  primaryLabel = "Button Color",
-  secondaryLabel = "Hover Color",
-  tertiaryLabel = "Text Color"
+  primaryLabel = 'Button Color',
+  secondaryLabel = 'Hover Color',
+  tertiaryLabel = 'Text Color',
 }) => {
   const [primaryColorPickerOpen, setPrimaryColorPickerOpen] = useState(false)
-  const [secondaryColorPickerOpen, setSecondaryColorPickerOpen] = useState(false)
+  const [secondaryColorPickerOpen, setSecondaryColorPickerOpen] =
+    useState(false)
   const [tertiaryColorPickerOpen, setTertiaryColorPickerOpen] = useState(false)
-  
+
   const handleCustomColorToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Force the checked value to be a boolean to ensure it's properly handled
     const isChecked = Boolean(e.target.checked)
@@ -558,7 +580,7 @@ export const DualColorPicker: React.FC<{
         }
         label="Use Custom Colors"
       />
-      
+
       {useCustomColor && (
         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* Primary Color */}
@@ -580,7 +602,7 @@ export const DualColorPicker: React.FC<{
                       bgcolor: primaryColor,
                       borderRadius: '2px',
                       border: '1px solid rgba(0,0,0,0.23)',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                     onClick={() => setPrimaryColorPickerOpen(true)}
                   />
@@ -588,11 +610,14 @@ export const DualColorPicker: React.FC<{
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setPrimaryColorPickerOpen(true)}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPrimaryColorPickerOpen(true)}
+                  >
                     <ColorLensIcon fontSize="small" />
                   </IconButton>
                 </InputAdornment>
-              )
+              ),
             }}
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -614,7 +639,7 @@ export const DualColorPicker: React.FC<{
               },
             }}
           />
-          
+
           {/* Secondary Color */}
           <TextField
             fullWidth
@@ -634,7 +659,7 @@ export const DualColorPicker: React.FC<{
                       bgcolor: secondaryColor,
                       borderRadius: '2px',
                       border: '1px solid rgba(0,0,0,0.23)',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                     onClick={() => setSecondaryColorPickerOpen(true)}
                   />
@@ -642,11 +667,14 @@ export const DualColorPicker: React.FC<{
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSecondaryColorPickerOpen(true)}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setSecondaryColorPickerOpen(true)}
+                  >
                     <ColorLensIcon fontSize="small" />
                   </IconButton>
                 </InputAdornment>
-              )
+              ),
             }}
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -668,7 +696,7 @@ export const DualColorPicker: React.FC<{
               },
             }}
           />
-          
+
           {/* Tertiary Color */}
           {onTertiaryColorChange && (
             <TextField
@@ -689,7 +717,7 @@ export const DualColorPicker: React.FC<{
                         bgcolor: tertiaryColor,
                         borderRadius: '2px',
                         border: '1px solid rgba(0,0,0,0.23)',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
                       }}
                       onClick={() => setTertiaryColorPickerOpen(true)}
                     />
@@ -697,11 +725,14 @@ export const DualColorPicker: React.FC<{
                 ),
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setTertiaryColorPickerOpen(true)}>
+                    <IconButton
+                      size="small"
+                      onClick={() => setTertiaryColorPickerOpen(true)}
+                    >
                       <ColorLensIcon fontSize="small" />
                     </IconButton>
                   </InputAdornment>
-                )
+                ),
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {
@@ -726,7 +757,7 @@ export const DualColorPicker: React.FC<{
           )}
         </Box>
       )}
-      
+
       {/* Color Picker Modals */}
       <ColorPickerModal
         open={primaryColorPickerOpen}
@@ -735,7 +766,7 @@ export const DualColorPicker: React.FC<{
         onSave={onPrimaryColorChange}
         title={`Choose ${primaryLabel}`}
       />
-      
+
       <ColorPickerModal
         open={secondaryColorPickerOpen}
         currentColor={secondaryColor}
@@ -743,7 +774,7 @@ export const DualColorPicker: React.FC<{
         onSave={onSecondaryColorChange}
         title={`Choose ${secondaryLabel}`}
       />
-      
+
       {onTertiaryColorChange && (
         <ColorPickerModal
           open={tertiaryColorPickerOpen}
@@ -755,4 +786,4 @@ export const DualColorPicker: React.FC<{
       )}
     </Box>
   )
-} 
+}

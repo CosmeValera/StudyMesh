@@ -1,8 +1,8 @@
-import React from 'react';
+import React from "react";
 
-import SubSysStat from '../components/subsysstat/SubSysStat';
-import Ops from '../components/ops/Ops';
-import MainConfiguration from '../components/main-configuration/MainConfiguration';
+import SubSysStat from "../components/subsysstat/SubSysStat";
+import Ops from "../components/ops/Ops";
+import MainConfiguration from "../components/main-configuration/MainConfiguration";
 
 const AquameshPage = () => {
   return (
@@ -12,6 +12,6 @@ const AquameshPage = () => {
       <Ops />
     </div>
   );
-}
+};
 
 export default AquameshPage;

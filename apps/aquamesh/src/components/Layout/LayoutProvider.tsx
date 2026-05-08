@@ -4,16 +4,18 @@ import { useContext } from 'react'
 import { Layout as FlexLayout } from 'flexlayout-react'
 
 interface LayoutProviderProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 interface LayoutContextType {
-  ref: React.RefObject<FlexLayout>;
-  addComponent: (item: any) => void;
-  dragComponent: (item: any, ev: React.DragEvent<HTMLLIElement>) => void;
+  ref: React.RefObject<FlexLayout>
+  addComponent: (item: any) => void
+  dragComponent: (item: any, ev: React.DragEvent<HTMLLIElement>) => void
 }
 
-const LayoutContext = React.createContext<LayoutContextType | undefined>(undefined)
+const LayoutContext = React.createContext<LayoutContextType | undefined>(
+  undefined,
+)
 
 const LayoutProvider: React.FC<LayoutProviderProps> = (props) => {
   const layoutRef = useRef<FlexLayout>(null)
@@ -27,18 +29,21 @@ const LayoutProvider: React.FC<LayoutProviderProps> = (props) => {
     })
   }, [])
 
-  const dragComponent = useCallback((item:any, ev: React.DragEvent<HTMLLIElement>) => {
-    const { name, component, customProps } = item
+  const dragComponent = useCallback(
+    (item: any, ev: React.DragEvent<HTMLLIElement>) => {
+      const { name, component, customProps } = item
 
-    // NOTE prevent default dragging behavior
-    ev.preventDefault()
+      // NOTE prevent default dragging behavior
+      ev.preventDefault()
 
-    layoutRef.current?.addTabWithDragAndDrop(name, {
-      component,
-      name,
-      config: customProps ? { customProps } : undefined,
-    })
-  }, [])
+      layoutRef.current?.addTabWithDragAndDrop(name, {
+        component,
+        name,
+        config: customProps ? { customProps } : undefined,
+      })
+    },
+    [],
+  )
 
   return (
     <LayoutContext.Provider
@@ -51,7 +56,7 @@ const LayoutProvider: React.FC<LayoutProviderProps> = (props) => {
 export const useLayout = () => {
   const context = useContext(LayoutContext)
   if (!context) {
-    throw new Error("useLayout must be used within a LayoutProvider")
+    throw new Error('useLayout must be used within a LayoutProvider')
   }
   return context
 }
