@@ -5,8 +5,10 @@ import {
   GeneratedStudyPack,
   StudyObject,
   StudyPack,
+  StudyPackDashboardLayoutOptions,
   StudyPackGeneratorOptions,
   StudyPackSaveWidgetInput,
+  StudyPackWidgetGroupInput,
 } from './types'
 
 const DEFAULT_CREATED_AT = '1970-01-01T00:00:00.000Z'
@@ -335,6 +337,7 @@ const createWidgetRecord = (
       | 'widgetIdPrefix'
     >
   >,
+  name?: string,
 ): CustomWidget => {
   const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-${widgetIndex + 1}`
   const bodyComponents = objects.flatMap((object) =>
@@ -352,7 +355,7 @@ const createWidgetRecord = (
 
   return {
     id: widgetId,
-    name: widgetIndex === 0 ? pack.title : `${pack.title} ${widgetIndex + 1}`,
+    name: name || (widgetIndex === 0 ? pack.title : `${pack.title} ${widgetIndex + 1}`),
     components,
     createdAt: options.createdAt,
     updatedAt: options.createdAt,
@@ -385,31 +388,129 @@ export const createStudyPackWidgets = (
   )
 }
 
-export const createStudyPackDashboardLayout = (
+export const createStudyPackWidgetsFromGroups = (
+  pack: StudyPack,
+  groups: StudyPackWidgetGroupInput[],
+  options: StudyPackGeneratorOptions = {},
+): CustomWidget[] => {
+  const normalizedOptions = {
+    author: options.author || STUDY_PACK_AUTHOR,
+    category: options.category || STUDY_PACK_CATEGORY,
+    createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
+    widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
+  }
+  const nonEmptyGroups = groups.filter((group) => group.objects.length > 0)
+  const effectiveGroups =
+    nonEmptyGroups.length > 0 ? nonEmptyGroups : [{ name: pack.title, objects: [] }]
+
+  return effectiveGroups.map((group, index) =>
+    createWidgetRecord(pack, group.objects, index, normalizedOptions, group.name),
+  )
+}
+
+const createWidgetTab = (widget: CustomWidget): DashboardLayout => ({
+  type: 'tab',
+  name: widget.name,
+  component: 'CustomWidget',
+  config: {
+    customProps: {
+      widgetId: widget.id,
+      components: widget.components,
+    },
+  },
+})
+
+const createTabset = (
+  widgets: CustomWidget[],
+  weight: number,
+  active = false,
+): DashboardLayout => ({
+  type: 'tabset',
+  weight,
+  active,
+  selected: 0,
+  children: widgets.map(createWidgetTab),
+})
+
+const splitWidgetsIntoPanes = (widgets: CustomWidget[]): CustomWidget[][] => {
+  const paneCount = Math.min(Math.max(widgets.length, 1), 4)
+  const panes = Array.from({ length: paneCount }, () => [] as CustomWidget[])
+
+  widgets.forEach((widget, index) => {
+    panes[index % paneCount].push(widget)
+  })
+
+  return panes
+}
+
+const createSmartDashboardLayout = (widgets: CustomWidget[]): DashboardLayout => {
+  const panes = splitWidgetsIntoPanes(widgets)
+
+  if (panes.length === 1) {
+    return {
+      type: 'row',
+      weight: 100,
+      children: [createTabset(panes[0], 100, true)],
+    }
+  }
+
+  if (panes.length === 2) {
+    return {
+      type: 'row',
+      weight: 100,
+      children: [createTabset(panes[0], 50, true), createTabset(panes[1], 50)],
+    }
+  }
+
+  if (panes.length === 3) {
+    return {
+      type: 'row',
+      weight: 100,
+      children: [
+        createTabset(panes[0], 50, true),
+        {
+          type: 'row',
+          weight: 50,
+          children: [createTabset(panes[1], 50), createTabset(panes[2], 50)],
+        },
+      ],
+    }
+  }
+
+  return {
+    type: 'row',
+    weight: 100,
+    children: [
+      {
+        type: 'row',
+        weight: 50,
+        children: [createTabset(panes[0], 50, true), createTabset(panes[1], 50)],
+      },
+      {
+        type: 'row',
+        weight: 50,
+        children: [createTabset(panes[2], 50), createTabset(panes[3], 50)],
+      },
+    ],
+  }
+}
+
+const createTabbedDashboardLayout = (
   widgets: CustomWidget[],
 ): DashboardLayout => ({
   type: 'row',
   weight: 100,
-  children: [
-    {
-      type: 'tabset',
-      weight: 100,
-      active: true,
-      selected: 0,
-      children: widgets.map((widget) => ({
-        type: 'tab',
-        name: widget.name,
-        component: 'CustomWidget',
-        config: {
-          customProps: {
-            widgetId: widget.id,
-            components: widget.components,
-          },
-        },
-      })),
-    },
-  ],
+  children: [createTabset(widgets, 100, true)],
 })
+
+export const createStudyPackDashboardLayout = (
+  widgets: CustomWidget[],
+  options: StudyPackDashboardLayoutOptions = {},
+): DashboardLayout =>
+  options.mode === 'tabs'
+    ? createTabbedDashboardLayout(widgets)
+    : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],

@@ -20,8 +20,10 @@ import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import {
+  createStudyPackWidgetsFromGroups,
   createStudyPackWidgets,
   parseStudyPack,
+  StudyPackDashboardLayoutMode,
   StudyObject,
   StudyObjectKind,
   StudyPackSourceFormat,
@@ -33,6 +35,7 @@ interface ReviewItem {
   object: StudyObject
   title: string
   type: ReviewType
+  widgetIndex: number
 }
 
 interface CreateStudyPackModalProps {
@@ -41,8 +44,11 @@ interface CreateStudyPackModalProps {
   onCreatePack: (payload: {
     name: string
     widgets: ReturnType<typeof createStudyPackWidgets>
+    layoutMode?: StudyPackDashboardLayoutMode
   }) => void
 }
+
+const DEFAULT_OBJECTS_PER_WIDGET = 6
 
 const sourceOptions: Array<{
   label: string
@@ -147,11 +153,23 @@ const getCounts = (items: ReviewItem[]) =>
   }, {})
 
 const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
-  objects.map((object) => ({
+  objects.map((object, index) => ({
     object,
     title: getObjectTitle(object),
     type: object.kind === 'qa' ? 'flashcard' : object.kind,
+    widgetIndex: Math.floor(index / DEFAULT_OBJECTS_PER_WIDGET),
   }))
+
+const createInitialWidgetGroups = (objects: StudyObject[], title: string): string[] => {
+  const groupCount = Math.max(
+    1,
+    Math.ceil(objects.length / DEFAULT_OBJECTS_PER_WIDGET),
+  )
+
+  return Array.from({ length: groupCount }, (_value, index) =>
+    index === 0 ? title : `${title} ${index + 1}`,
+  )
+}
 
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
@@ -293,6 +311,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<StudyPackSourceFormat>('paste')
   const [packTitle, setPackTitle] = useState('Study Pack')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
+  const [widgetGroups, setWidgetGroups] = useState<string[]>(['Study Pack'])
+  const [layoutMode, setLayoutMode] =
+    useState<StudyPackDashboardLayoutMode>('smart')
   const [error, setError] = useState('')
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
@@ -303,6 +324,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setSourceFormat('paste')
     setPackTitle('Study Pack')
     setReviewItems([])
+    setWidgetGroups(['Study Pack'])
+    setLayoutMode('smart')
     setError('')
   }
 
@@ -324,6 +347,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     })
     setPackTitle(parsed.title)
     setReviewItems(toReviewItems(parsed.objects))
+    setWidgetGroups(createInitialWidgetGroups(parsed.objects, parsed.title))
     setError(parsed.warnings[0] || '')
     setStep('review')
   }
@@ -379,6 +403,18 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     })
   }
 
+  const addWidgetGroup = () => {
+    setWidgetGroups((groups) => [...groups, `${packTitle} ${groups.length + 1}`])
+  }
+
+  const updateWidgetGroupName = (index: number, name: string) => {
+    setWidgetGroups((groups) =>
+      groups.map((groupName, groupIndex) =>
+        groupIndex === index ? name : groupName,
+      ),
+    )
+  }
+
   const createPack = () => {
     const objects = reviewItems
       .map(applyReviewItem)
@@ -389,17 +425,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    const widgets = createStudyPackWidgets({
+    const pack = {
       id: packTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       title: packTitle.trim() || 'Study Pack',
       sourceFormat,
       objects,
       warnings: [],
-    })
+    }
+    const groups = widgetGroups.map((name, widgetIndex) => ({
+      name: name.trim() || `${pack.title} ${widgetIndex + 1}`,
+      objects: reviewItems
+        .filter((item) => item.widgetIndex === widgetIndex)
+        .map(applyReviewItem)
+        .filter((object): object is StudyObject => Boolean(object)),
+    }))
+    const widgets = createStudyPackWidgetsFromGroups(pack, groups)
 
     onCreatePack({
       name: packTitle.trim() || 'Study Pack',
       widgets,
+      layoutMode,
     })
     handleClose()
   }
@@ -527,6 +572,41 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     <Chip key={kind} label={`${count} ${kind}`} />
                   ))}
                 </Stack>
+                <TextField
+                  select
+                  label="Dashboard layout"
+                  value={layoutMode}
+                  onChange={(event) =>
+                    setLayoutMode(
+                      event.target.value as StudyPackDashboardLayoutMode,
+                    )
+                  }
+                  fullWidth
+                  sx={{ mt: 2 }}
+                >
+                  <MenuItem value="smart">Smart split</MenuItem>
+                  <MenuItem value="tabs">Single tabset</MenuItem>
+                </TextField>
+                <Typography variant="subtitle2" sx={{ mt: 2 }} gutterBottom>
+                  Widgets
+                </Typography>
+                <Stack spacing={1}>
+                  {widgetGroups.map((groupName, groupIndex) => (
+                    <TextField
+                      key={`widget-group-${groupIndex}`}
+                      label={`Widget ${groupIndex + 1}`}
+                      value={groupName}
+                      onChange={(event) =>
+                        updateWidgetGroupName(groupIndex, event.target.value)
+                      }
+                      size="small"
+                      fullWidth
+                    />
+                  ))}
+                  <Button variant="outlined" onClick={addWidgetGroup}>
+                    Add widget
+                  </Button>
+                </Stack>
               </Paper>
               <Paper
                 elevation={0}
@@ -581,6 +661,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                             {reviewTypeOptions.map((option) => (
                               <MenuItem key={option.value} value={option.value}>
                                 {option.label}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            select
+                            label="Widget"
+                            value={item.widgetIndex}
+                            onChange={(event) =>
+                              updateReviewItem(index, {
+                                widgetIndex: Number(event.target.value),
+                              })
+                            }
+                            sx={{ minWidth: 170 }}
+                          >
+                            {widgetGroups.map((groupName, groupIndex) => (
+                              <MenuItem
+                                key={`item-widget-${groupIndex}`}
+                                value={groupIndex}
+                              >
+                                {groupName || `Widget ${groupIndex + 1}`}
                               </MenuItem>
                             ))}
                           </TextField>

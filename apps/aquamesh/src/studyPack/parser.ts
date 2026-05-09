@@ -81,6 +81,17 @@ const inferCodeLanguage = (value: string): string => {
   return 'text'
 }
 
+const trimBlankEdgeLines = (value: string): string => {
+  const lines = value.split('\n')
+  while (lines.length > 0 && !lines[0].trim()) {
+    lines.shift()
+  }
+  while (lines.length > 0 && !lines[lines.length - 1].trim()) {
+    lines.pop()
+  }
+  return lines.join('\n')
+}
+
 const splitPipeRow = (line: string): string[] =>
   line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cleanCell)
 
@@ -360,19 +371,22 @@ const flushParagraph = (
     .map((line) => line.text.trim())
     .join('\n')
     .trim()
+  const rawBody = trimBlankEdgeLines(
+    paragraphLines.map((line) => line.text).join('\n'),
+  )
   if (!body) {
     return
   }
 
-  if (looksLikeCodeBlock(body)) {
+  if (looksLikeCodeBlock(rawBody)) {
     objects.push({
       id: buildId(packId, 'code', objects.length),
       kind: 'code',
       title: title || 'Code note',
       sourceLine: paragraphLines[0]?.lineNumber || 1,
       tags: defaultTags,
-      code: body,
-      language: inferCodeLanguage(body),
+      code: rawBody,
+      language: inferCodeLanguage(rawBody),
       caption: title || '',
     })
     return

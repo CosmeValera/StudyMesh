@@ -131,4 +131,20 @@ review this because I always confuse diffusion and osmosis`,
       code: 'location / {\n  root /var/www/example.com;\n}',
     })
   })
+
+  it('preserves indentation for code-like config blocks without fences', () => {
+    const pack = parseStudyPack(`# Nginx
+
+location / {
+	root /var/www/example.com;
+	index index.html index.htm;
+}
+`)
+
+    expect(pack.objects).toHaveLength(1)
+    expect(pack.objects[0]).toMatchObject({
+      kind: 'code',
+      code: 'location / {\n\troot /var/www/example.com;\n\tindex index.html index.htm;\n}',
+    })
+  })
 })

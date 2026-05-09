@@ -11,7 +11,10 @@ import {
 } from '../components/WidgetEditor/constants/starterWidgetTemplates'
 import { DashboardLayout } from '../state/store'
 import { normalizeFolderColor } from '../components/Dasboard/folderColors'
-import { createStudyPackDashboardLayout } from '../studyPack'
+import {
+  createStudyPackDashboardLayout,
+  StudyPackDashboardLayoutMode,
+} from '../studyPack'
 import { ComponentData } from '../components/WidgetEditor/types/types'
 
 export const OPEN_WIDGET_EDITOR_EVENT = 'aquamesh-open-widget-editor'
@@ -569,6 +572,7 @@ export const useWorkspaceActions = () => {
     ({
       name,
       widgets,
+      layoutMode = 'smart',
     }: {
       name: string
       widgets: Array<{
@@ -580,6 +584,7 @@ export const useWorkspaceActions = () => {
         version?: string
         author?: string
       }>
+      layoutMode?: StudyPackDashboardLayoutMode
     }) => {
       const savedWidgets = widgets.map((widget) =>
         WidgetStorage.saveWidget({
@@ -592,7 +597,9 @@ export const useWorkspaceActions = () => {
           author: widget.author || 'AquaMesh',
         }),
       )
-      const layout = createStudyPackDashboardLayout(savedWidgets)
+      const layout = createStudyPackDashboardLayout(savedWidgets, {
+        mode: layoutMode,
+      })
       const dashboard = saveStudyPackDashboard(name, layout)
 
       addDashboard({

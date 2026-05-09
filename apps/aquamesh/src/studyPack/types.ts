@@ -150,6 +150,17 @@ export interface StudyPackGeneratorOptions {
   widgetIdPrefix?: string
 }
 
+export type StudyPackDashboardLayoutMode = 'smart' | 'tabs'
+
+export interface StudyPackDashboardLayoutOptions {
+  mode?: StudyPackDashboardLayoutMode
+}
+
+export interface StudyPackWidgetGroupInput {
+  name: string
+  objects: StudyObject[]
+}
+
 export type StudyPackWidgetRecord = CustomWidget
 
 export type StudyPackSaveWidgetInput = Omit<

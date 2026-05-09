@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createStudyPackDashboardLayout,
   createStudyPackWidgets,
+  createStudyPackWidgetsFromGroups,
   parseStudyPack,
 } from '../../../src/studyPack'
 
@@ -53,5 +54,23 @@ review this because it is probably important`,
         },
       },
     })
+  })
+
+  it('splits generated dashboards into smart panes and tabs overflow widgets after four panes', () => {
+    const pack = parseStudyPack('Alpha:: one\nBeta:: two\nGamma:: three\nDelta:: four\nEpsilon:: five')
+    const widgets = createStudyPackWidgetsFromGroups(pack, [
+      { name: 'Widget 1', objects: [pack.objects[0]] },
+      { name: 'Widget 2', objects: [pack.objects[1]] },
+      { name: 'Widget 3', objects: [pack.objects[2]] },
+      { name: 'Widget 4', objects: [pack.objects[3]] },
+      { name: 'Widget 5', objects: [pack.objects[4]] },
+    ])
+    const smartLayout = createStudyPackDashboardLayout(widgets)
+    const tabbedLayout = createStudyPackDashboardLayout(widgets, { mode: 'tabs' })
+
+    expect(smartLayout.children).toHaveLength(2)
+    expect(smartLayout.children?.[0].children?.[0].children).toHaveLength(2)
+    expect(smartLayout.children?.[1].children?.[0].children).toHaveLength(1)
+    expect(tabbedLayout.children?.[0].children).toHaveLength(5)
   })
 })

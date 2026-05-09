@@ -2,6 +2,7 @@ export {
   createStudyPackDashboardLayout,
   createStudyPackSaveWidgetInputs,
   createStudyPackWidgets,
+  createStudyPackWidgetsFromGroups,
   generateStudyPack,
 } from './generator'
 export { parseStudyPack } from './parser'
@@ -16,11 +17,14 @@ export type {
   StudyObjectKind,
   StudyPack,
   StudyPackComponent,
+  StudyPackDashboardLayoutMode,
+  StudyPackDashboardLayoutOptions,
   StudyPackGeneratedDashboard,
   StudyPackGeneratorOptions,
   StudyPackParseOptions,
   StudyPackSaveWidgetInput,
   StudyPackSourceFormat,
+  StudyPackWidgetGroupInput,
   StudyPackWidgetRecord,
   StudyQAObject,
   StudyQuizObject,
