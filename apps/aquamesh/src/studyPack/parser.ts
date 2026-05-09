@@ -48,7 +48,7 @@ const isSequenceTitle = (title?: string): boolean =>
   Boolean(title && /\b(steps?|order|sequence|timeline|process)\b/i.test(title))
 
 const isReviewPrompt = (text: string): boolean =>
-  /\b(review this|ask teacher|need(?:s)? memorize|probably important|always confuse|i always confuse)\b/i.test(
+  /\b(review this|review later|ask teacher|ask about|need(?:s)? memorize|need review|probably important|remember this|important:|always confuse|i always confuse|i always flip|keep spelling)\b/i.test(
     text,
   )
 
@@ -57,6 +57,12 @@ const isConciseTerm = (value: string): boolean =>
   value.length <= 60 &&
   !/[.!?]$/.test(value) &&
   value.split(/\s+/).length <= 8
+
+const isSectionLabel = (value: string): boolean =>
+  isConciseTerm(value) && !/^(https?|docker|kubectl|npm|yarn|pnpm)\b/i.test(value)
+
+const isDecorativeSeparator = (value: string): boolean =>
+  value.length >= 8 && /^[#.\-@$*_=\s]+$/.test(value)
 
 const looksLikeCodeBlock = (value: string): boolean => {
   const lines = value.split('\n').filter((line) => line.trim())
@@ -72,6 +78,11 @@ const looksLikeCodeBlock = (value: string): boolean => {
 
   return codeSignals.length >= Math.max(2, Math.ceil(lines.length / 2))
 }
+
+const looksLikeCommand = (value: string): boolean =>
+  /^(docker|kubectl|npm|yarn|pnpm|npx|git|curl|ssh|ansible|rundeck)\s+\S+/i.test(
+    value,
+  )
 
 const inferCodeLanguage = (value: string): string => {
   if (/\b(location|server|upstream|proxy_pass|root|index)\b/.test(value)) {
@@ -189,8 +200,96 @@ const inferTitle = (source: string, options: StudyPackParseOptions): string => {
     return heading.text.replace(/^#{1,6}\s+/, '').trim()
   }
 
+  const firstReadableLine = getLines(source)
+    .map((line) => line.text.trim())
+    .find((line) => line && !isDecorativeSeparator(line))
+  if (firstReadableLine && isConciseTerm(firstReadableLine.replace(/:$/, ''))) {
+    return firstReadableLine.replace(/:$/, '').trim()
+  }
+
   return DEFAULT_TITLE
 }
+
+const splitSentences = (value: string): string[] =>
+  value
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
+const extractInlineDefinitions = (
+  value: string,
+): Array<{ term: string; definition: string }> => {
+  const definitions: Array<{ term: string; definition: string }> = []
+  const segments = value
+    .split(/(?<=[.!?])\s+|;\s+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+
+  for (const segment of segments) {
+    const parts = segment.split(/\s+=\s+/)
+
+    for (let index = 1; index < parts.length; index += 1) {
+      const rawTerm = parts[index - 1]
+        .split(/[.,;!?]/)
+        .pop()
+        ?.replace(/^(and|but|so|while|remember|need memorize|important)\s+/i, '')
+        .trim()
+      const definition = parts[index]
+        .split(/[.;!?]/)[0]
+        .replace(/\s+\b(and|but|so|while|then)\s*$/i, '')
+        .trim()
+
+      if (rawTerm && isConciseTerm(rawTerm) && definition.split(/\s+/).length >= 2) {
+        definitions.push({ term: rawTerm, definition })
+      }
+    }
+  }
+
+  return definitions
+}
+
+const extractInlineSequence = (
+  value: string,
+): { title: string; steps: string[] } | undefined => {
+  const match = value.match(
+    /\b([\w\s/-]{2,50}?\b(?:order|sequence|steps?|process|timeline))\s*:\s*([^.!?\n]+)/i,
+  )
+  if (!match) {
+    return undefined
+  }
+
+  const steps = match[2]
+    .split(/,|->|→|;|\s+then\s+/i)
+    .map((step) => step.trim())
+    .filter((step) => step.length > 0 && step.length <= 80)
+
+  if (steps.length < 2) {
+    return undefined
+  }
+
+  return {
+    title: match[1].trim(),
+    steps,
+  }
+}
+
+const createReviewPromptFromText = (
+  packId: string,
+  index: number,
+  lineNumber: number,
+  title: string | undefined,
+  text: string,
+  tags: string[],
+): StudyObject => ({
+  id: buildId(packId, 'reviewPrompt', index),
+  kind: 'reviewPrompt',
+  title: 'Review later',
+  sourceLine: lineNumber,
+  tags,
+  prompt: title || text,
+  reason: text,
+  status: 'needsReview',
+})
 
 const createResource = (
   packId: string,
@@ -378,6 +477,10 @@ const flushParagraph = (
     return
   }
 
+  const paragraphItems = paragraphLines
+    .map((line) => line.text.trim())
+    .filter(Boolean)
+
   if (looksLikeCodeBlock(rawBody)) {
     objects.push({
       id: buildId(packId, 'code', objects.length),
@@ -390,6 +493,84 @@ const flushParagraph = (
       caption: title || '',
     })
     return
+  }
+
+  const pipeRows = paragraphItems
+    .filter((item) => item.includes('|'))
+    .map((item) => item.split('|').map(cleanCell))
+  if (pipeRows.length >= 2 && isComparisonTitle(title)) {
+    const titleColumns = (title || '')
+      .replace(/:$/, '')
+      .split(/\s+(?:vs\.?|versus|and)\s+/i)
+      .map((item) => item.trim())
+      .filter(Boolean)
+    objects.push({
+      id: buildId(packId, 'comparison', objects.length),
+      kind: 'comparison',
+      title: title || 'Comparison',
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      columns: titleColumns.length >= 2 ? titleColumns : ['Item A', 'Item B'],
+      rows: pipeRows,
+    } satisfies StudyComparisonObject)
+    return
+  }
+
+  if (
+    paragraphItems.length >= 2 &&
+    /\b(symbols?|review|memorize|remember|terms?|ideas?|topics?)\b/i.test(title || '') &&
+    paragraphItems.every((item) => item.length <= 100)
+  ) {
+    objects.push({
+      id: buildId(packId, 'list', objects.length),
+      kind: 'list',
+      title,
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      items: paragraphItems,
+      ordered: false,
+      checklist: false,
+    })
+    return
+  }
+
+  const sequence = extractInlineSequence(body)
+  if (sequence) {
+    objects.push({
+      id: buildId(packId, 'sequence', objects.length),
+      kind: 'sequence',
+      title: title || sequence.title,
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      steps: sequence.steps,
+      ordered: true,
+      interactiveChecklist: false,
+    })
+  }
+
+  for (const definition of extractInlineDefinitions(body)) {
+    objects.push({
+      id: buildId(packId, 'term', objects.length),
+      kind: 'term',
+      title,
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      term: definition.term,
+      definition: definition.definition,
+    })
+  }
+
+  for (const sentence of splitSentences(body).filter(isReviewPrompt)) {
+    objects.push(
+      createReviewPromptFromText(
+        packId,
+        objects.length,
+        paragraphLines[0]?.lineNumber || 1,
+        title,
+        sentence,
+        defaultTags,
+      ),
+    )
   }
 
   objects.push({
@@ -455,12 +636,14 @@ const parseTextLike = (
     const trimmed = line.text.trim()
     const codeFenceMatch = trimmed.match(/^```([\w-]*)\s*$/)
     const headingMatch = trimmed.match(/^#{1,6}\s+(.+)$/)
+    const hashCommentMatch = trimmed.match(/^#\s*(.+)$/)
+    const sectionLabelMatch = trimmed.match(/^(.+):$/)
     const quickSyntaxMatch = trimmed.match(
       /^(Flashcard|Quiz|Reveal|Sequence|Comparison|Checklist|Definition|Formula|Example)::\s*(.*)$/i,
     )
     const qaQuestionMatch = trimmed.match(/^(?:q|question):\s*(.+)$/i)
     const qaAnswerMatch = trimmed.match(/^(?:a|answer):\s*(.+)$/i)
-    const termMatch = trimmed.match(/^(.+?)\s*(?:::|=|:)\s*(.+)$/)
+    const termMatch = trimmed.match(/^(.+?)\s*(?:->|::|=|:)\s*(.+)$/)
     const unorderedMatch = trimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
     const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
     const markdownLinkMatch = trimmed.match(
@@ -504,6 +687,12 @@ const parseTextLike = (
       continue
     }
 
+    if (isDecorativeSeparator(trimmed)) {
+      flushText()
+      flushList()
+      continue
+    }
+
     if (tableLineNumbers.has(line.lineNumber)) {
       flushText()
       flushList()
@@ -514,6 +703,23 @@ const parseTextLike = (
       flushText()
       flushList()
       currentHeading = headingMatch[1].trim()
+      continue
+    }
+
+    if (hashCommentMatch && !headingMatch) {
+      flushText()
+      flushList()
+      const label = hashCommentMatch[1].trim().replace(/#+$/, '').trim()
+      if (label && !isDecorativeSeparator(label)) {
+        currentHeading = label
+      }
+      continue
+    }
+
+    if (sectionLabelMatch && isSectionLabel(sectionLabelMatch[1].trim())) {
+      flushText()
+      flushList()
+      currentHeading = sectionLabelMatch[1].trim()
       continue
     }
 
@@ -700,16 +906,16 @@ const parseTextLike = (
     if (isReviewPrompt(trimmed)) {
       flushText()
       flushList()
-      objects.push({
-        id: buildId(packId, 'reviewPrompt', objects.length),
-        kind: 'reviewPrompt',
-        title: 'Review later',
-        sourceLine: line.lineNumber,
-        tags: defaultTags,
-        prompt: currentHeading || trimmed,
-        reason: trimmed,
-        status: 'needsReview',
-      })
+      objects.push(
+        createReviewPromptFromText(
+          packId,
+          objects.length,
+          line.lineNumber,
+          currentHeading,
+          trimmed,
+          defaultTags,
+        ),
+      )
       continue
     }
 
@@ -721,6 +927,39 @@ const parseTextLike = (
       objects.push(
         createResource(packId, objects.length, line, label, url, defaultTags),
       )
+      continue
+    }
+
+    if (looksLikeCommand(trimmed)) {
+      flushText()
+      flushList()
+      objects.push({
+        id: buildId(packId, 'code', objects.length),
+        kind: 'code',
+        title: currentHeading || 'Command',
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        code: trimmed,
+        language: 'shell',
+        caption: currentHeading || '',
+      })
+      continue
+    }
+
+    const inlineSequence = extractInlineSequence(trimmed)
+    if (inlineSequence) {
+      flushText()
+      flushList()
+      objects.push({
+        id: buildId(packId, 'sequence', objects.length),
+        kind: 'sequence',
+        title: currentHeading || inlineSequence.title,
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        steps: inlineSequence.steps,
+        ordered: true,
+        interactiveChecklist: false,
+      })
       continue
     }
 

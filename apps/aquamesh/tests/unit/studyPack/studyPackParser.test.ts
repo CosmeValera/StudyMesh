@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { parseStudyPack } from '../../../src/studyPack'
 
 describe('parseStudyPack', () => {
@@ -146,5 +147,40 @@ location / {
       kind: 'code',
       code: 'location / {\n\troot /var/www/example.com;\n\tindex index.html index.htm;\n}',
     })
+  })
+
+  it('detects universal study patterns in messy note examples', () => {
+    const biology = parseStudyPack(
+      readFileSync('../../readme_docs/notes_examples/2-notes-biology.txt', 'utf8'),
+    )
+    const history = parseStudyPack(
+      readFileSync('../../readme_docs/notes_examples/3-notes-history.txt', 'utf8'),
+    )
+    const literature = parseStudyPack(
+      readFileSync('../../readme_docs/notes_examples/4-notes-literature.txt', 'utf8'),
+    )
+    const rundeck = parseStudyPack(
+      readFileSync('../../readme_docs/notes_examples/6-my-notes-rundeck.txt', 'utf8'),
+    )
+    const nginx = parseStudyPack(
+      readFileSync('../../readme_docs/notes_examples/5-my-notes-nginx.txt', 'utf8'),
+    )
+
+    expect(biology.title).toBe('bio — cell stuff')
+    expect(biology.objects.map((object) => object.kind)).toEqual(
+      expect.arrayContaining(['term', 'sequence', 'reviewPrompt', 'note']),
+    )
+    expect(history.objects.map((object) => object.kind)).toEqual(
+      expect.arrayContaining(['term', 'list', 'reviewPrompt', 'note']),
+    )
+    expect(literature.objects.map((object) => object.kind)).toEqual(
+      expect.arrayContaining(['term', 'list', 'reviewPrompt', 'note']),
+    )
+    expect(rundeck.objects.map((object) => object.kind)).toEqual(
+      expect.arrayContaining(['list', 'code', 'note']),
+    )
+    expect(nginx.objects.map((object) => object.kind)).toEqual(
+      expect.arrayContaining(['term', 'code', 'comparison', 'note']),
+    )
   })
 })

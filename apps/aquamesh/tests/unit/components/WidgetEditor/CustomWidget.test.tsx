@@ -149,4 +149,33 @@ describe('CustomWidget live storage refresh', () => {
     fireEvent.click(screen.getByText('reviewing'))
     expect(screen.getByText('mastered')).toBeInTheDocument()
   })
+
+  it('temporarily turns study notes into flashcards from suggestion chips', () => {
+    render(
+      <CustomWidget
+        components={[
+          {
+            id: 'note-1',
+            type: 'StudyNoteBlock',
+            props: {
+              __blockType: 'StudyNoteBlock',
+              title: 'Cell terms',
+              text: 'osmosis = water moving across membrane',
+              suggestedTypes: ['definition', 'flashcard', 'review'],
+            },
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('flashcard'))
+
+    expect(screen.getByText('temporary flashcard')).toBeInTheDocument()
+    expect(screen.getByText('osmosis')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('osmosis'))
+
+    expect(screen.getByText('water moving across membrane')).toBeInTheDocument()
+    expect(localStorage.setItem).toHaveBeenCalled()
+  })
 })

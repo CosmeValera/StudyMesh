@@ -29,6 +29,7 @@ const STUDY_BLOCK_TYPES = [
   'CodeBlock',
   'DefinitionBlock',
   'ComparisonBlock',
+  'ListBlock',
   'SequenceBlock',
   'ReviewPromptBlock',
 ]
@@ -37,6 +38,55 @@ export const isStudyBlockType = (type: string) =>
   STUDY_BLOCK_TYPES.includes(type)
 
 const normalizeAnswer = (value: string) => value.trim().toLowerCase()
+
+const hashValue = (value: string): string => {
+  let hash = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return hash.toString(36)
+}
+
+const readStoredMode = (key: string): string => {
+  try {
+    return window.localStorage.getItem(key) || ''
+  } catch {
+    return ''
+  }
+}
+
+const writeStoredMode = (key: string, value: string): void => {
+  try {
+    if (value) {
+      window.localStorage.setItem(key, value)
+    } else {
+      window.localStorage.removeItem(key)
+    }
+  } catch {
+    // Local storage is a convenience only. Ignore private-mode failures.
+  }
+}
+
+const createFlashcardParts = (
+  title: string,
+  text: string,
+): { front: string; back: string } => {
+  const definitionMatch = text.match(/^(.+?)\s*(?:=|:|\bis\b)\s*(.+)$/i)
+
+  if (definitionMatch) {
+    return {
+      front: definitionMatch[1].trim(),
+      back: definitionMatch[2].trim(),
+    }
+  }
+
+  return {
+    front: title,
+    back: text,
+  }
+}
 
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -67,6 +117,10 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
   const [definitionStudy, setDefinitionStudy] = useState(false)
   const [reviewStatus, setReviewStatus] = useState(String(props.status || 'needsReview'))
+  const noteStorageKey = `aquamesh-study-note-mode-${hashValue(
+    `${String(props.title || '')}:${String(props.text || '')}`,
+  )}`
+  const [noteMode, setNoteMode] = useState(() => readStoredMode(noteStorageKey))
   const options = useMemo(() => toStringArray(props.options), [props.options])
   const steps = useMemo(() => toStringArray(props.steps), [props.steps])
   const columns = useMemo(() => toStringArray(props.columns), [props.columns])
@@ -223,20 +277,110 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
 
   if (type === 'StudyNoteBlock') {
     const suggestions = toStringArray(props.suggestedTypes)
+    const title = String(props.title || 'Study note')
+    const text = String(props.text || '')
+    const setTemporaryMode = (mode: string) => {
+      setNoteMode(mode)
+      writeStoredMode(noteStorageKey, mode)
+    }
+
+    if (noteMode === 'flashcard') {
+      const { front, back } = createFlashcardParts(title, text)
+
+      return (
+        <Paper
+          variant="outlined"
+          sx={{ p: 2, mb: 2, cursor: 'pointer' }}
+          onClick={() => setFlipped((current) => !current)}
+        >
+          <Stack spacing={1.25}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Chip label="temporary flashcard" size="small" />
+              <Button
+                size="small"
+                variant="text"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setTemporaryMode('')
+                }}
+              >
+                Back to note
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              {flipped ? 'Answer' : 'Prompt'}
+            </Typography>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+              {flipped ? back : front}
+            </Typography>
+          </Stack>
+        </Paper>
+      )
+    }
+
+    if (noteMode === 'definition') {
+      const { front, back } = createFlashcardParts(title, text)
+
+      return (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={1.25}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Chip label="temporary definition" size="small" />
+              <Button size="small" variant="text" onClick={() => setTemporaryMode('')}>
+                Back to note
+              </Button>
+            </Stack>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {front}
+            </Typography>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {back}
+            </Typography>
+          </Stack>
+        </Paper>
+      )
+    }
+
+    if (noteMode === 'review') {
+      return (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Chip label="need review" size="small" color="warning" />
+              <Button size="small" variant="text" onClick={() => setTemporaryMode('')}>
+                Back to note
+              </Button>
+            </Stack>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {title}
+            </Typography>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {text}
+            </Typography>
+          </Stack>
+        </Paper>
+      )
+    }
 
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack spacing={1.25}>
           <Typography variant="subtitle1" fontWeight={700}>
-            {String(props.title || 'Study note')}
+            {title}
           </Typography>
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-            {String(props.text || '')}
+            {text}
           </Typography>
           {suggestions.length > 0 && (
             <Stack direction="row" gap={1} flexWrap="wrap">
               {suggestions.map((suggestion) => (
-                <Chip key={suggestion} label={suggestion} size="small" />
+                <Chip
+                  key={suggestion}
+                  label={suggestion}
+                  size="small"
+                  clickable
+                  onClick={() => setTemporaryMode(suggestion)}
+                />
               ))}
             </Stack>
           )}
@@ -360,7 +504,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     )
   }
 
-  if (type === 'SequenceBlock') {
+  if (type === 'SequenceBlock' || type === 'ListBlock') {
     const ordered = Boolean(props.ordered)
     const interactive = Boolean(props.interactiveChecklist)
 
@@ -436,7 +580,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
             {String(props.prompt || '')}
           </Typography>
-          {props.reason && (
+          {Boolean(props.reason) && (
             <Typography variant="body2" color="text.secondary">
               {String(props.reason)}
             </Typography>
