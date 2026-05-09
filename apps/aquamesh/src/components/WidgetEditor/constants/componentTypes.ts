@@ -144,7 +144,8 @@ export const COMPONENT_TYPES: ComponentType[] = [
     },
     category: 'Study Blocks',
     icon: QuizIcon,
-    tooltip: 'Adds a quiz question with selectable answers and instant feedback.',
+    tooltip:
+      'Adds a quiz question with selectable answers and instant feedback.',
   },
   {
     type: 'StudyNoteBlock',
@@ -157,7 +158,22 @@ export const COMPONENT_TYPES: ComponentType[] = [
     },
     category: 'Study Blocks',
     icon: AutoStoriesIcon,
-    tooltip: 'Adds a flexible study note with suggested ways to turn it into study material.',
+    tooltip:
+      'Adds a flexible study note with suggested ways to turn it into study material.',
+  },
+  {
+    type: 'MarkdownBlock',
+    label: 'Markdown',
+    defaultProps: {
+      __blockType: 'MarkdownBlock',
+      title: 'Markdown notes',
+      markdown:
+        '# Study notes\n\n## Topic\n\nWrite Markdown notes with lists, tables, links, and code blocks.',
+    },
+    category: 'Study Blocks',
+    icon: AutoStoriesIcon,
+    tooltip:
+      'Adds a rendered Markdown note block for imported .md files or pasted Markdown.',
   },
   {
     type: 'CodeBlock',
@@ -171,7 +187,8 @@ export const COMPONENT_TYPES: ComponentType[] = [
     },
     category: 'Study Blocks',
     icon: CodeIcon,
-    tooltip: 'Adds a formatted code or configuration snippet for technical notes.',
+    tooltip:
+      'Adds a formatted code or configuration snippet for technical notes.',
   },
   {
     type: 'DefinitionBlock',
@@ -185,7 +202,8 @@ export const COMPONENT_TYPES: ComponentType[] = [
     },
     category: 'Study Blocks',
     icon: MenuBookIcon,
-    tooltip: 'Adds a term and definition card that can also be studied like a flashcard.',
+    tooltip:
+      'Adds a term and definition card that can also be studied like a flashcard.',
   },
   {
     type: 'ComparisonBlock',
@@ -215,7 +233,8 @@ export const COMPONENT_TYPES: ComponentType[] = [
     },
     category: 'Study Blocks',
     icon: ReportProblemIcon,
-    tooltip: 'Marks something as important, confusing, or worth reviewing later.',
+    tooltip:
+      'Marks something as important, confusing, or worth reviewing later.',
   },
   {
     type: 'ListBlock',

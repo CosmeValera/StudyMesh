@@ -5,11 +5,12 @@ export {
   createStudyPackWidgetsFromGroups,
   generateStudyPack,
 } from './generator'
-export { parseStudyPack } from './parser'
+export { detectMarkdownSource, parseStudyPack } from './parser'
 export type {
   GeneratedStudyPack,
   StudyCodeObject,
   StudyComparisonObject,
+  StudyMarkdownObject,
   StudyListObject,
   StudyNoteObject,
   StudyObject,

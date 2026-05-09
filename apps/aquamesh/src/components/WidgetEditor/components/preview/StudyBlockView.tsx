@@ -4,6 +4,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  Link,
   Paper,
   Stack,
   Table,
@@ -32,6 +33,7 @@ const STUDY_BLOCK_TYPES = [
   'ListBlock',
   'SequenceBlock',
   'ReviewPromptBlock',
+  'MarkdownBlock',
 ]
 
 export const isStudyBlockType = (type: string) =>
@@ -108,6 +110,329 @@ const toRows = (value: unknown): string[][] =>
     ? value.map((row) => (Array.isArray(row) ? row.map(String) : [String(row)]))
     : []
 
+const isMarkdownTableDivider = (line: string): boolean =>
+  /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)
+
+const splitMarkdownTableRow = (line: string): string[] =>
+  line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim())
+
+const renderMarkdownInline = (value: string): React.ReactNode[] => {
+  const nodes: React.ReactNode[] = []
+  const tokenPattern =
+    /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)]+\)|\*[^*]+\*)/g
+  let cursor = 0
+  let match: RegExpExecArray | null
+
+  while ((match = tokenPattern.exec(value)) !== null) {
+    if (match.index > cursor) {
+      nodes.push(value.slice(cursor, match.index))
+    }
+
+    const token = match[0]
+    const key = `${token}-${match.index}`
+    const linkMatch = token.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/)
+
+    if (linkMatch) {
+      nodes.push(
+        <Link key={key} href={linkMatch[2]} target="_blank" rel="noreferrer">
+          {linkMatch[1]}
+        </Link>,
+      )
+    } else if (token.startsWith('**')) {
+      nodes.push(
+        <Box component="strong" key={key}>
+          {token.slice(2, -2)}
+        </Box>,
+      )
+    } else if (token.startsWith('`')) {
+      nodes.push(
+        <Box
+          component="code"
+          key={key}
+          sx={{
+            px: 0.5,
+            py: 0.1,
+            borderRadius: 0.75,
+            bgcolor: 'action.hover',
+            fontFamily: 'JetBrains Mono, Consolas, monospace',
+            fontSize: '0.9em',
+          }}
+        >
+          {token.slice(1, -1)}
+        </Box>,
+      )
+    } else {
+      nodes.push(
+        <Box component="em" key={key}>
+          {token.slice(1, -1)}
+        </Box>,
+      )
+    }
+
+    cursor = match.index + token.length
+  }
+
+  if (cursor < value.length) {
+    nodes.push(value.slice(cursor))
+  }
+
+  return nodes
+}
+
+const renderMarkdown = (markdown: string): React.ReactNode[] => {
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  const blocks: React.ReactNode[] = []
+  let index = 0
+
+  while (index < lines.length) {
+    const line = lines[index]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      index += 1
+      continue
+    }
+
+    const fenceMatch = trimmed.match(/^```([\w-]*)\s*$/)
+    if (fenceMatch) {
+      const codeLines: string[] = []
+      const language = fenceMatch[1]
+      index += 1
+
+      while (index < lines.length && !lines[index].trim().match(/^```\s*$/)) {
+        codeLines.push(lines[index])
+        index += 1
+      }
+
+      if (index < lines.length) {
+        index += 1
+      }
+
+      blocks.push(
+        <Paper
+          key={`code-${index}`}
+          variant="outlined"
+          sx={{ overflow: 'hidden', bgcolor: '#111827' }}
+        >
+          {language && (
+            <Box
+              sx={{ px: 2, py: 0.75, color: '#cbd5e1', fontSize: '0.75rem' }}
+            >
+              {language}
+            </Box>
+          )}
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 2,
+              overflowX: 'auto',
+              color: '#f9fafb',
+              fontFamily: 'JetBrains Mono, Consolas, monospace',
+              fontSize: '0.8125rem',
+              lineHeight: 1.6,
+              whiteSpace: 'pre',
+            }}
+          >
+            <Box component="code">{codeLines.join('\n')}</Box>
+          </Box>
+        </Paper>,
+      )
+      continue
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/)
+    if (headingMatch) {
+      const level = headingMatch[1].length
+      blocks.push(
+        <Typography
+          key={`heading-${index}`}
+          variant={level <= 1 ? 'h5' : level === 2 ? 'h6' : 'subtitle1'}
+          fontWeight={800}
+          sx={{ mt: blocks.length === 0 ? 0 : 1.5 }}
+        >
+          {renderMarkdownInline(headingMatch[2])}
+        </Typography>,
+      )
+      index += 1
+      continue
+    }
+
+    if (
+      line.includes('|') &&
+      lines[index + 1] &&
+      isMarkdownTableDivider(lines[index + 1])
+    ) {
+      const headers = splitMarkdownTableRow(line)
+      const rows: string[][] = []
+      index += 2
+
+      while (index < lines.length && lines[index].includes('|')) {
+        rows.push(splitMarkdownTableRow(lines[index]))
+        index += 1
+      }
+
+      blocks.push(
+        <TableContainer
+          key={`table-${index}`}
+          component={Paper}
+          variant="outlined"
+          sx={{ overflowX: 'auto' }}
+        >
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                {headers.map((header, headerIndex) => (
+                  <TableCell
+                    key={`${header}-${headerIndex}`}
+                    sx={{ fontWeight: 700 }}
+                  >
+                    {renderMarkdownInline(header)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row, rowIndex) => (
+                <TableRow key={`markdown-table-row-${rowIndex}`}>
+                  {headers.map((_header, cellIndex) => (
+                    <TableCell
+                      key={`markdown-table-cell-${rowIndex}-${cellIndex}`}
+                    >
+                      {renderMarkdownInline(row[cellIndex] || '')}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>,
+      )
+      continue
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
+    if (unorderedMatch || orderedMatch) {
+      const ordered = Boolean(orderedMatch)
+      const listItems: Array<{ text: string; checked?: boolean }> = []
+
+      while (index < lines.length) {
+        const itemTrimmed = lines[index].trim()
+        const unorderedItem = itemTrimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
+        const orderedItem = itemTrimmed.match(/^\d+[.)]\s+(.+)$/)
+
+        if ((ordered && !orderedItem) || (!ordered && !unorderedItem)) {
+          break
+        }
+
+        const checkbox = unorderedItem?.[1]
+        listItems.push({
+          text: (unorderedItem?.[2] || orderedItem?.[1] || '').trim(),
+          checked: checkbox ? /\[[xX]\]/.test(checkbox) : undefined,
+        })
+        index += 1
+      }
+
+      blocks.push(
+        <Box
+          key={`list-${index}`}
+          component={ordered ? 'ol' : 'ul'}
+          sx={{
+            pl: listItems.some((item) => item.checked !== undefined) ? 0 : 3,
+            my: 0,
+          }}
+        >
+          {listItems.map((item, itemIndex) => (
+            <Typography
+              component="li"
+              variant="body2"
+              key={`${item.text}-${itemIndex}`}
+              sx={{
+                mb: 0.5,
+                display: item.checked === undefined ? 'list-item' : 'flex',
+                alignItems: 'center',
+                listStyle: item.checked === undefined ? undefined : 'none',
+              }}
+            >
+              {item.checked !== undefined && (
+                <Checkbox
+                  size="small"
+                  checked={item.checked}
+                  readOnly
+                  sx={{ p: 0.25, mr: 0.5 }}
+                />
+              )}
+              {renderMarkdownInline(item.text)}
+            </Typography>
+          ))}
+        </Box>,
+      )
+      continue
+    }
+
+    if (trimmed.startsWith('>')) {
+      const quoteLines: string[] = []
+
+      while (index < lines.length && lines[index].trim().startsWith('>')) {
+        quoteLines.push(lines[index].trim().replace(/^>\s?/, ''))
+        index += 1
+      }
+
+      blocks.push(
+        <Box
+          key={`quote-${index}`}
+          sx={{
+            borderLeft: 3,
+            borderColor: 'divider',
+            pl: 2,
+            color: 'text.secondary',
+          }}
+        >
+          <Typography variant="body2">
+            {renderMarkdownInline(quoteLines.join(' '))}
+          </Typography>
+        </Box>,
+      )
+      continue
+    }
+
+    const paragraphLines = [trimmed]
+    index += 1
+
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !/^(#{1,6}\s+|```|[-*]\s+|\d+[.)]\s+|>)/.test(lines[index].trim()) &&
+      !(
+        lines[index].includes('|') &&
+        lines[index + 1] &&
+        isMarkdownTableDivider(lines[index + 1])
+      )
+    ) {
+      paragraphLines.push(lines[index].trim())
+      index += 1
+    }
+
+    blocks.push(
+      <Typography
+        key={`paragraph-${index}`}
+        variant="body2"
+        sx={{ lineHeight: 1.7 }}
+      >
+        {renderMarkdownInline(paragraphLines.join(' '))}
+      </Typography>,
+    )
+  }
+
+  return blocks
+}
+
 const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   const [flipped, setFlipped] = useState(false)
   const [selfGrade, setSelfGrade] = useState<'known' | 'missed' | ''>('')
@@ -116,13 +441,18 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   const [shortAnswer, setShortAnswer] = useState('')
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
   const [definitionStudy, setDefinitionStudy] = useState(false)
-  const [reviewStatus, setReviewStatus] = useState(String(props.status || 'needsReview'))
+  const [reviewStatus, setReviewStatus] = useState(
+    String(props.status || 'needsReview'),
+  )
   const noteStorageKey = `aquamesh-study-note-mode-${hashValue(
     `${String(props.title || '')}:${String(props.text || '')}`,
   )}`
   const [noteMode, setNoteMode] = useState(() => readStoredMode(noteStorageKey))
   const options = useMemo(() => toStringArray(props.options), [props.options])
-  const steps = useMemo(() => toStringArray(props.steps), [props.steps])
+  const steps = useMemo(
+    () => toStringArray(props.steps || props.items),
+    [props.steps, props.items],
+  )
   const columns = useMemo(() => toStringArray(props.columns), [props.columns])
   const rows = useMemo(() => toRows(props.rows), [props.rows])
 
@@ -139,7 +469,9 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
         onClick={() => setFlipped((current) => !current)}
       >
         <Stack spacing={1.25}>
-          {tag && <Chip label={tag} size="small" sx={{ alignSelf: 'flex-start' }} />}
+          {tag && (
+            <Chip label={tag} size="small" sx={{ alignSelf: 'flex-start' }} />
+          )}
           <Typography variant="caption" color="text.secondary">
             {flipped ? 'Answer' : 'Prompt'}
           </Typography>
@@ -152,7 +484,11 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
             </Typography>
           )}
           {flipped && Boolean(props.selfGrade) && (
-            <Stack direction="row" spacing={1} onClick={(event) => event.stopPropagation()}>
+            <Stack
+              direction="row"
+              spacing={1}
+              onClick={(event) => event.stopPropagation()}
+            >
               <Button
                 size="small"
                 variant={selfGrade === 'known' ? 'contained' : 'outlined'}
@@ -184,7 +520,8 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     const explanation = String(props.explanation || '')
     const submittedShortAnswer = Boolean(shortAnswer.trim())
     const shortAnswerCorrect =
-      submittedShortAnswer && normalizeAnswer(shortAnswer) === normalizeAnswer(answer)
+      submittedShortAnswer &&
+      normalizeAnswer(shortAnswer) === normalizeAnswer(answer)
 
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -219,10 +556,10 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                   selectedIndex === null
                     ? 'inherit'
                     : isCorrect
-                      ? 'success.main'
-                      : isSelected
-                        ? 'error.main'
-                        : 'inherit'
+                    ? 'success.main'
+                    : isSelected
+                    ? 'error.main'
+                    : 'inherit'
 
                 return (
                   <Button
@@ -232,8 +569,8 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                       selectedIndex !== null && isCorrect
                         ? 'success'
                         : selectedIndex !== null && isSelected
-                          ? 'error'
-                          : 'primary'
+                        ? 'error'
+                        : 'primary'
                     }
                     onClick={() => setSelectedIndex(index)}
                     sx={{ justifyContent: 'flex-start', color }}
@@ -294,7 +631,12 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           onClick={() => setFlipped((current) => !current)}
         >
           <Stack spacing={1.25}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
               <Chip label="temporary flashcard" size="small" />
               <Button
                 size="small"
@@ -324,9 +666,18 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
       return (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Stack spacing={1.25}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
               <Chip label="temporary definition" size="small" />
-              <Button size="small" variant="text" onClick={() => setTemporaryMode('')}>
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setTemporaryMode('')}
+              >
                 Back to note
               </Button>
             </Stack>
@@ -345,9 +696,18 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
       return (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Stack spacing={1}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
               <Chip label="need review" size="small" color="warning" />
-              <Button size="small" variant="text" onClick={() => setTemporaryMode('')}>
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setTemporaryMode('')}
+              >
                 Back to note
               </Button>
             </Stack>
@@ -389,6 +749,24 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     )
   }
 
+  if (type === 'MarkdownBlock') {
+    const title = String(props.title || 'Markdown notes')
+    const markdown = String(props.markdown || '')
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.5}>
+          {title && (
+            <Typography variant="subtitle1" fontWeight={700}>
+              {title}
+            </Typography>
+          )}
+          <Stack spacing={1.25}>{renderMarkdown(markdown)}</Stack>
+        </Stack>
+      </Paper>
+    )
+  }
+
   if (type === 'CodeBlock') {
     const title = String(props.title || 'Code note')
     const code = String(props.code || '')
@@ -398,8 +776,15 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     return (
       <Paper variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
         <Stack spacing={0}>
-          <Box sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Box
+            sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
               <Typography variant="subtitle1" fontWeight={700}>
                 {title}
               </Typography>
@@ -467,20 +852,31 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   }
 
   if (type === 'ComparisonBlock') {
-    const columnCount = Math.max(columns.length, ...rows.map((row) => row.length), 1)
+    const columnCount = Math.max(
+      columns.length,
+      ...rows.map((row) => row.length),
+      1,
+    )
 
     return (
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle1" fontWeight={700} gutterBottom>
           {String(props.title || 'Comparison')}
         </Typography>
-        <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ overflowX: 'auto' }}
+        >
           <Table size="small">
             {columns.length > 0 && (
               <TableHead>
                 <TableRow>
                   {columns.map((column, index) => (
-                    <TableCell key={`${column}-${index}`} sx={{ fontWeight: 700 }}>
+                    <TableCell
+                      key={`${column}-${index}`}
+                      sx={{ fontWeight: 700 }}
+                    >
                       {column}
                     </TableCell>
                   ))}
@@ -507,13 +903,17 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   if (type === 'SequenceBlock' || type === 'ListBlock') {
     const ordered = Boolean(props.ordered)
     const interactive = Boolean(props.interactiveChecklist)
+    const defaultTitle = type === 'ListBlock' ? 'Study list' : 'Sequence'
 
     return (
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-          {String(props.title || 'Sequence')}
+          {String(props.title || defaultTitle)}
         </Typography>
-        <Box component={ordered ? 'ol' : 'ul'} sx={{ pl: interactive ? 0 : 3, my: 0 }}>
+        <Box
+          component={ordered ? 'ol' : 'ul'}
+          sx={{ pl: interactive ? 0 : 3, my: 0 }}
+        >
           {steps.map((step, index) => (
             <Typography
               component="li"
@@ -565,7 +965,12 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+          >
             <Typography variant="subtitle1" fontWeight={700}>
               {String(props.title || 'Review this')}
             </Typography>
@@ -580,7 +985,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
             {String(props.prompt || '')}
           </Typography>
-          {Boolean(props.reason) && (
+          {Boolean(props.reason) && props.reason !== props.prompt && (
             <Typography variant="body2" color="text.secondary">
               {String(props.reason)}
             </Typography>

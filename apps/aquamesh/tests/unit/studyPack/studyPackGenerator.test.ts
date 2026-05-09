@@ -43,7 +43,9 @@ review this because it is probably important`,
     expect(JSON.stringify(widgets[0].components)).toContain('"DefinitionBlock"')
     expect(JSON.stringify(widgets[0].components)).toContain('"QuizBlock"')
     expect(JSON.stringify(widgets[0].components)).toContain('"CodeBlock"')
-    expect(JSON.stringify(widgets[0].components)).toContain('"ReviewPromptBlock"')
+    expect(JSON.stringify(widgets[0].components)).toContain(
+      '"ReviewPromptBlock"',
+    )
     expect(layout.children?.[0].children?.[0]).toMatchObject({
       type: 'tab',
       name: 'Derivatives',
@@ -56,8 +58,38 @@ review this because it is probably important`,
     })
   })
 
+  it('creates one markdown block when the study pack source is markdown', () => {
+    const pack = parseStudyPack(
+      `# Biology
+
+## Cell theory
+
+- Cells are the basic unit of life
+- Cells come from existing cells`,
+      { sourceFormat: 'markdown' },
+    )
+    const widgets = createStudyPackWidgets(pack)
+
+    expect(pack.objects).toHaveLength(1)
+    expect(widgets).toHaveLength(1)
+    expect(widgets[0].components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'MarkdownBlock',
+          props: expect.objectContaining({
+            __blockType: 'MarkdownBlock',
+            title: 'Biology',
+            markdown: expect.stringContaining('## Cell theory'),
+          }),
+        }),
+      ]),
+    )
+  })
+
   it('splits generated dashboards into smart panes and tabs overflow widgets after four panes', () => {
-    const pack = parseStudyPack('Alpha:: one\nBeta:: two\nGamma:: three\nDelta:: four\nEpsilon:: five')
+    const pack = parseStudyPack(
+      'Alpha:: one\nBeta:: two\nGamma:: three\nDelta:: four\nEpsilon:: five',
+    )
     const widgets = createStudyPackWidgetsFromGroups(pack, [
       { name: 'Widget 1', objects: [pack.objects[0]] },
       { name: 'Widget 2', objects: [pack.objects[1]] },
@@ -66,7 +98,9 @@ review this because it is probably important`,
       { name: 'Widget 5', objects: [pack.objects[4]] },
     ])
     const smartLayout = createStudyPackDashboardLayout(widgets)
-    const tabbedLayout = createStudyPackDashboardLayout(widgets, { mode: 'tabs' })
+    const tabbedLayout = createStudyPackDashboardLayout(widgets, {
+      mode: 'tabs',
+    })
 
     expect(smartLayout.children).toHaveLength(2)
     expect(smartLayout.children?.[0].children?.[0].children).toHaveLength(2)

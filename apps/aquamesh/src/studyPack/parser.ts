@@ -59,7 +59,8 @@ const isConciseTerm = (value: string): boolean =>
   value.split(/\s+/).length <= 8
 
 const isSectionLabel = (value: string): boolean =>
-  isConciseTerm(value) && !/^(https?|docker|kubectl|npm|yarn|pnpm)\b/i.test(value)
+  isConciseTerm(value) &&
+  !/^(https?|docker|kubectl|npm|yarn|pnpm)\b/i.test(value)
 
 const isDecorativeSeparator = (value: string): boolean =>
   value.length >= 8 && /^[#.\-@$*_=\s]+$/.test(value)
@@ -188,6 +189,65 @@ const detectFormat = (
   return requestedFormat || 'text'
 }
 
+export const detectMarkdownSource = (source: string): boolean => {
+  const lines = getLines(source)
+  const nonEmptyLines = lines.map((line) => line.text.trim()).filter(Boolean)
+
+  if (nonEmptyLines.length < 2) {
+    return false
+  }
+
+  let score = 0
+
+  if (nonEmptyLines.some((line) => /^#{1,6}\s+\S+/.test(line))) {
+    score += 2
+  }
+
+  if (nonEmptyLines.some((line) => /^```[\w-]*\s*$/.test(line))) {
+    score += 2
+  }
+
+  if (
+    lines.some((line, index) => {
+      const nextLine = lines[index + 1]
+      return (
+        line.text.includes('|') &&
+        Boolean(nextLine) &&
+        isMarkdownTableDivider(nextLine.text)
+      )
+    })
+  ) {
+    score += 2
+  }
+
+  if (
+    nonEmptyLines.some((line) => /\[[^\]]+\]\(https?:\/\/[^)]+\)/.test(line))
+  ) {
+    score += 1
+  }
+
+  if (
+    nonEmptyLines.filter((line) => /^[-*]\s+\[[ xX]\]\s+\S+/.test(line))
+      .length >= 1
+  ) {
+    score += 2
+  }
+
+  if (nonEmptyLines.filter((line) => /^[-*]\s+\S+/.test(line)).length >= 2) {
+    score += 1
+  }
+
+  if (nonEmptyLines.filter((line) => /^\d+[.)]\s+\S+/.test(line)).length >= 2) {
+    score += 1
+  }
+
+  if (nonEmptyLines.some((line) => /^>\s+\S+/.test(line))) {
+    score += 1
+  }
+
+  return score >= 2
+}
+
 const inferTitle = (source: string, options: StudyPackParseOptions): string => {
   if (options.title?.trim()) {
     return options.title.trim()
@@ -232,14 +292,21 @@ const extractInlineDefinitions = (
       const rawTerm = parts[index - 1]
         .split(/[.,;!?]/)
         .pop()
-        ?.replace(/^(and|but|so|while|remember|need memorize|important)\s+/i, '')
+        ?.replace(
+          /^(and|but|so|while|remember|need memorize|important)\s+/i,
+          '',
+        )
         .trim()
       const definition = parts[index]
         .split(/[.;!?]/)[0]
         .replace(/\s+\b(and|but|so|while|then)\s*$/i, '')
         .trim()
 
-      if (rawTerm && isConciseTerm(rawTerm) && definition.split(/\s+/).length >= 2) {
+      if (
+        rawTerm &&
+        isConciseTerm(rawTerm) &&
+        definition.split(/\s+/).length >= 2
+      ) {
         definitions.push({ term: rawTerm, definition })
       }
     }
@@ -277,7 +344,6 @@ const createReviewPromptFromText = (
   packId: string,
   index: number,
   lineNumber: number,
-  title: string | undefined,
   text: string,
   tags: string[],
 ): StudyObject => ({
@@ -286,8 +352,8 @@ const createReviewPromptFromText = (
   title: 'Review later',
   sourceLine: lineNumber,
   tags,
-  prompt: title || text,
-  reason: text,
+  prompt: text,
+  reason: '',
   status: 'needsReview',
 })
 
@@ -303,8 +369,8 @@ const createResource = (
   const resourceType = lowerUrl.endsWith('.pdf')
     ? 'pdf'
     : /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/.test(lowerUrl)
-      ? 'image'
-      : 'link'
+    ? 'image'
+    : 'link'
 
   return {
     id: buildId(packId, 'resource', index),
@@ -518,7 +584,9 @@ const flushParagraph = (
 
   if (
     paragraphItems.length >= 2 &&
-    /\b(symbols?|review|memorize|remember|terms?|ideas?|topics?)\b/i.test(title || '') &&
+    /\b(symbols?|review|memorize|remember|terms?|ideas?|topics?)\b/i.test(
+      title || '',
+    ) &&
     paragraphItems.every((item) => item.length <= 100)
   ) {
     objects.push({
@@ -566,7 +634,6 @@ const flushParagraph = (
         packId,
         objects.length,
         paragraphLines[0]?.lineNumber || 1,
-        title,
         sentence,
         defaultTags,
       ),
@@ -660,7 +727,8 @@ const parseTextLike = (
           sourceLine: codeFence.line.lineNumber,
           tags: defaultTags,
           code: codeFence.lines.join('\n').trimEnd(),
-          language: codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
+          language:
+            codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
           caption: currentHeading || '',
         })
         codeFence = undefined
@@ -903,7 +971,11 @@ const parseTextLike = (
       continue
     }
 
-    if (isReviewPrompt(trimmed)) {
+    const reviewSentences = splitSentences(trimmed).filter(isReviewPrompt)
+    if (
+      (reviewSentences.length === 1 && reviewSentences[0] === trimmed) ||
+      /^(need memorize|review this|review later|important:)/i.test(trimmed)
+    ) {
       flushText()
       flushList()
       objects.push(
@@ -911,7 +983,6 @@ const parseTextLike = (
           packId,
           objects.length,
           line.lineNumber,
-          currentHeading,
           trimmed,
           defaultTags,
         ),
@@ -963,7 +1034,11 @@ const parseTextLike = (
       continue
     }
 
-    if (termMatch && isConciseTerm(termMatch[1].trim())) {
+    if (
+      termMatch &&
+      isConciseTerm(termMatch[1].trim()) &&
+      !/[.!?]/.test(termMatch[1].trim())
+    ) {
       flushText()
       flushList()
       objects.push({
@@ -1024,7 +1099,8 @@ const parseTextLike = (
       sourceLine: codeFence.line.lineNumber,
       tags: defaultTags,
       code: codeFence.lines.join('\n').trimEnd(),
-      language: codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
+      language:
+        codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
       caption: currentHeading || '',
     })
   }
@@ -1035,6 +1111,360 @@ const parseTextLike = (
   return objects
 }
 
+const pushMarkdownNote = (
+  objects: StudyObject[],
+  packId: string,
+  lines: LineRecord[],
+  title: string | undefined,
+  defaultTags: string[],
+): void => {
+  const body = trimBlankEdgeLines(
+    lines
+      .map((line) => line.text)
+      .join('\n')
+      .replace(/^\s*>\s?/gm, ''),
+  )
+
+  if (!body.trim()) {
+    return
+  }
+
+  objects.push({
+    id: buildId(packId, 'note', objects.length),
+    kind: 'note',
+    title,
+    sourceLine: lines[0]?.lineNumber || 1,
+    tags: defaultTags,
+    body,
+  })
+}
+
+export const parseMarkdownSections = (
+  lines: LineRecord[],
+  packId: string,
+  defaultTags: string[],
+): StudyObject[] => {
+  const objects: StudyObject[] = []
+  const sectionLines: LineRecord[] = []
+  let currentHeading: string | undefined
+  let pendingQuestion: { question: string; line: LineRecord } | undefined
+  let listBuffer: StudyListObject | undefined
+  let codeFence:
+    | {
+        language: string
+        line: LineRecord
+        lines: string[]
+      }
+    | undefined
+
+  const flushSection = () => {
+    pushMarkdownNote(
+      objects,
+      packId,
+      sectionLines.splice(0),
+      currentHeading,
+      defaultTags,
+    )
+  }
+
+  const flushList = () => {
+    if (listBuffer && listBuffer.items.length > 0) {
+      if (isSequenceTitle(listBuffer.title)) {
+        objects.push({
+          id: buildId(packId, 'sequence', objects.length),
+          kind: 'sequence',
+          title: listBuffer.title || 'Sequence',
+          sourceLine: listBuffer.sourceLine,
+          tags: listBuffer.tags,
+          steps: listBuffer.items,
+          ordered: true,
+          interactiveChecklist: listBuffer.checklist,
+        })
+      } else {
+        objects.push(listBuffer)
+      }
+    }
+    listBuffer = undefined
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const trimmed = line.text.trim()
+    const nextLine = lines[index + 1]
+    const codeFenceMatch = trimmed.match(/^```([\w-]*)\s*$/)
+    const headingMatch = trimmed.match(/^#{1,6}\s+(.+)$/)
+    const qaQuestionMatch = trimmed.match(/^(?:q|question):\s*(.+)$/i)
+    const qaAnswerMatch = trimmed.match(/^(?:a|answer):\s*(.+)$/i)
+    const quickSyntaxMatch = trimmed.match(
+      /^(Flashcard|Quiz|Reveal|Sequence|Comparison|Checklist|Definition|Formula|Example)::\s*(.*)$/i,
+    )
+    const termMatch = trimmed.match(/^(.+?)\s*(?:->|::|=|:)\s*(.+)$/)
+    const unorderedMatch = trimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
+    const markdownLinkMatch = trimmed.match(
+      /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/,
+    )
+    const bareUrlMatch = trimmed.match(/(https?:\/\/\S+)/)
+
+    if (codeFence) {
+      if (codeFenceMatch) {
+        objects.push({
+          id: buildId(packId, 'code', objects.length),
+          kind: 'code',
+          title: currentHeading || 'Code note',
+          sourceLine: codeFence.line.lineNumber,
+          tags: defaultTags,
+          code: codeFence.lines.join('\n').trimEnd(),
+          language:
+            codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
+          caption: currentHeading || '',
+        })
+        codeFence = undefined
+      } else {
+        codeFence.lines.push(line.text)
+      }
+      continue
+    }
+
+    if (codeFenceMatch) {
+      flushSection()
+      flushList()
+      codeFence = {
+        language: codeFenceMatch[1] || '',
+        line,
+        lines: [],
+      }
+      continue
+    }
+
+    if (!trimmed) {
+      sectionLines.push(line)
+      continue
+    }
+
+    if (headingMatch) {
+      flushSection()
+      flushList()
+      currentHeading = headingMatch[1].trim()
+      pendingQuestion = undefined
+      continue
+    }
+
+    if (
+      line.text.includes('|') &&
+      nextLine &&
+      isMarkdownTableDivider(nextLine.text)
+    ) {
+      flushSection()
+      flushList()
+      const headers = splitPipeRow(line.text)
+      const rows: string[][] = []
+      let cursor = index + 2
+
+      while (cursor < lines.length && lines[cursor].text.includes('|')) {
+        rows.push(splitPipeRow(lines[cursor].text))
+        cursor += 1
+      }
+
+      if (isComparisonTitle(currentHeading)) {
+        objects.push({
+          id: buildId(packId, 'comparison', objects.length),
+          kind: 'comparison',
+          title: currentHeading || `Comparison ${objects.length + 1}`,
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          columns: headers,
+          rows,
+        } satisfies StudyComparisonObject)
+      } else {
+        objects.push({
+          id: buildId(packId, 'table', objects.length),
+          kind: 'table',
+          title: currentHeading || `Table ${objects.length + 1}`,
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          headers,
+          rows,
+        } satisfies StudyTableObject)
+      }
+
+      index = cursor - 1
+      continue
+    }
+
+    if (qaQuestionMatch) {
+      flushSection()
+      flushList()
+      pendingQuestion = { question: qaQuestionMatch[1].trim(), line }
+      continue
+    }
+
+    if (qaAnswerMatch && pendingQuestion) {
+      objects.push({
+        id: buildId(packId, 'qa', objects.length),
+        kind: 'qa',
+        title: currentHeading,
+        sourceLine: pendingQuestion.line.lineNumber,
+        tags: defaultTags,
+        question: pendingQuestion.question,
+        answer: qaAnswerMatch[1].trim(),
+      })
+      pendingQuestion = undefined
+      continue
+    }
+
+    if (quickSyntaxMatch) {
+      flushSection()
+      flushList()
+      const label = quickSyntaxMatch[1].toLowerCase()
+      const body = quickSyntaxMatch[2].trim()
+
+      if (label === 'definition' || label === 'formula') {
+        const definitionParts = body.split(/\s+-\s+|:\s+|=\s+/)
+        const term =
+          definitionParts.length > 1 ? definitionParts[0] : currentHeading
+        const definition =
+          definitionParts.length > 1
+            ? definitionParts.slice(1).join(': ')
+            : body
+
+        objects.push({
+          id: buildId(packId, 'term', objects.length),
+          kind: 'term',
+          title: currentHeading,
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          term: term || 'Definition',
+          definition,
+        })
+        continue
+      }
+
+      if (label === 'flashcard') {
+        const [question, answer] = body
+          .split(/\s+(?:\||->)\s+/)
+          .map((value) => value.trim())
+
+        if (question && answer) {
+          objects.push({
+            id: buildId(packId, 'qa', objects.length),
+            kind: 'qa',
+            title: currentHeading || 'Flashcard',
+            sourceLine: line.lineNumber,
+            tags: defaultTags,
+            question,
+            answer,
+          })
+        }
+        continue
+      }
+    }
+
+    if (markdownLinkMatch || bareUrlMatch) {
+      flushSection()
+      flushList()
+      const label = markdownLinkMatch?.[1] || currentHeading || 'Reference'
+      const url = markdownLinkMatch?.[2] || bareUrlMatch?.[1] || ''
+      objects.push(
+        createResource(packId, objects.length, line, label, url, defaultTags),
+      )
+      continue
+    }
+
+    if (
+      termMatch &&
+      isConciseTerm(termMatch[1].trim()) &&
+      !/[.!?]/.test(termMatch[1].trim())
+    ) {
+      flushSection()
+      flushList()
+      objects.push({
+        id: buildId(packId, 'term', objects.length),
+        kind: 'term',
+        title: currentHeading,
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        term: termMatch[1].trim(),
+        definition: termMatch[2].trim(),
+      })
+      continue
+    }
+
+    if (unorderedMatch || orderedMatch) {
+      flushSection()
+      const checklist = Boolean(unorderedMatch?.[1])
+      const ordered = Boolean(orderedMatch)
+      const item = (unorderedMatch?.[2] || orderedMatch?.[1] || '').trim()
+
+      if (
+        !listBuffer ||
+        listBuffer.ordered !== ordered ||
+        listBuffer.checklist !== checklist
+      ) {
+        flushList()
+        listBuffer = {
+          id: buildId(packId, 'list', objects.length),
+          kind: 'list',
+          title: currentHeading,
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          items: [],
+          ordered,
+          checklist,
+        }
+      }
+
+      listBuffer.items.push(item)
+      continue
+    }
+
+    flushList()
+    sectionLines.push(line)
+  }
+
+  if (pendingQuestion) {
+    sectionLines.push({
+      text: `Q: ${pendingQuestion.question}`,
+      lineNumber: pendingQuestion.line.lineNumber,
+    })
+  }
+
+  if (codeFence) {
+    objects.push({
+      id: buildId(packId, 'code', objects.length),
+      kind: 'code',
+      title: currentHeading || 'Code note',
+      sourceLine: codeFence.line.lineNumber,
+      tags: defaultTags,
+      code: codeFence.lines.join('\n').trimEnd(),
+      language:
+        codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
+      caption: currentHeading || '',
+    })
+  }
+
+  flushSection()
+  flushList()
+
+  return objects
+}
+
+const parseMarkdownBlock = (
+  source: string,
+  packId: string,
+  title: string,
+  defaultTags: string[],
+): StudyObject[] => [
+  {
+    id: buildId(packId, 'markdown', 0),
+    kind: 'markdown',
+    title,
+    sourceLine: 1,
+    tags: defaultTags,
+    markdown: normalizeNewlines(source).trim(),
+  },
+]
+
 export const parseStudyPack = (
   source: string,
   options: StudyPackParseOptions = {},
@@ -1044,10 +1474,15 @@ export const parseStudyPack = (
   const sourceFormat = detectFormat(source, options.sourceFormat)
   const lines = getLines(source)
   const defaultTags = options.defaultTags || []
-  const tableObjects = parseMarkdownTables(lines, packId, defaultTags)
+  const tableObjects =
+    sourceFormat === 'csv' || sourceFormat === 'markdown'
+      ? []
+      : parseMarkdownTables(lines, packId, defaultTags)
   const objects =
     sourceFormat === 'csv'
       ? parseCsv(lines, packId, defaultTags)
+      : sourceFormat === 'markdown'
+      ? parseMarkdownBlock(source, packId, title, defaultTags)
       : [...tableObjects, ...parseTextLike(lines, packId, defaultTags)]
   const warnings =
     objects.length === 0

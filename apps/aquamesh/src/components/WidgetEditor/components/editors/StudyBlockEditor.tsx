@@ -15,7 +15,9 @@ interface StudyBlockEditorProps extends ComponentEditorProps {
 }
 
 const toLines = (value: unknown): string =>
-  Array.isArray(value) ? value.map((item) => String(item)).join('\n') : String(value || '')
+  Array.isArray(value)
+    ? value.map((item) => String(item)).join('\n')
+    : String(value || '')
 
 const parseLines = (value: string): string[] =>
   value
@@ -26,7 +28,9 @@ const parseLines = (value: string): string[] =>
 const rowsToText = (value: unknown): string =>
   Array.isArray(value)
     ? value
-        .map((row) => (Array.isArray(row) ? row.map(String).join(' | ') : String(row)))
+        .map((row) =>
+          Array.isArray(row) ? row.map(String).join(' | ') : String(row),
+        )
         .join('\n')
     : ''
 
@@ -119,7 +123,9 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
         <TextField
           label="Options"
           value={toLines(props.options)}
-          onChange={(event) => update('options', parseLines(event.target.value))}
+          onChange={(event) =>
+            update('options', parseLines(event.target.value))
+          }
           fullWidth
           multiline
           minRows={4}
@@ -129,7 +135,9 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
           label="Correct option index"
           type="number"
           value={(props.correctIndex as number) || 0}
-          onChange={(event) => update('correctIndex', Number(event.target.value) || 0)}
+          onChange={(event) =>
+            update('correctIndex', Number(event.target.value) || 0)
+          }
         />
         <TextField
           label="Short answer / expected answer"
@@ -204,11 +212,43 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
         <TextField
           label="Suggested types"
           value={toLines(props.suggestedTypes)}
-          onChange={(event) => update('suggestedTypes', parseLines(event.target.value))}
+          onChange={(event) =>
+            update('suggestedTypes', parseLines(event.target.value))
+          }
           fullWidth
           multiline
           minRows={3}
           helperText="One suggestion per line."
+        />
+      </Stack>
+    )
+  }
+
+  if (blockType === 'MarkdownBlock') {
+    return (
+      <Stack spacing={2} sx={{ p: 3 }}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          Markdown
+        </Typography>
+        <TextField
+          label="Title"
+          value={(props.title as string) || ''}
+          onChange={(event) => update('title', event.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Markdown"
+          value={(props.markdown as string) || ''}
+          onChange={(event) => update('markdown', event.target.value)}
+          fullWidth
+          multiline
+          minRows={12}
+          InputProps={{
+            sx: {
+              fontFamily: 'JetBrains Mono, Consolas, monospace',
+              alignItems: 'flex-start',
+            },
+          }}
         />
       </Stack>
     )
@@ -289,7 +329,9 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
             control={
               <Switch
                 checked={Boolean(props.makeFlashcard)}
-                onChange={(event) => update('makeFlashcard', event.target.checked)}
+                onChange={(event) =>
+                  update('makeFlashcard', event.target.checked)
+                }
               />
             }
             label="Study definition as reveal card"
@@ -314,7 +356,9 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
         <TextField
           label="Columns"
           value={toLines(props.columns)}
-          onChange={(event) => update('columns', parseLines(event.target.value))}
+          onChange={(event) =>
+            update('columns', parseLines(event.target.value))
+          }
           fullWidth
           multiline
           minRows={2}
@@ -376,6 +420,55 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
               />
             }
             label="Make steps checkable"
+          />
+        </Box>
+      </Stack>
+    )
+  }
+
+  if (blockType === 'ListBlock') {
+    return (
+      <Stack spacing={2} sx={{ p: 3 }}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          List
+        </Typography>
+        <TextField
+          label="Title"
+          value={(props.title as string) || ''}
+          onChange={(event) => update('title', event.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Items"
+          value={toLines(props.items)}
+          onChange={(event) => update('items', event.target.value)}
+          fullWidth
+          multiline
+          minRows={6}
+          helperText="One item per line."
+        />
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(props.ordered)}
+                onChange={(event) => update('ordered', event.target.checked)}
+              />
+            }
+            label="Show as ordered list"
+          />
+        </Box>
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(props.interactiveChecklist)}
+                onChange={(event) =>
+                  update('interactiveChecklist', event.target.checked)
+                }
+              />
+            }
+            label="Make items checkable"
           />
         </Box>
       </Stack>

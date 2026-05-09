@@ -11,6 +11,7 @@ export type StudyPackSourceFormat =
   | 'quick-syntax'
 
 export type StudyObjectKind =
+  | 'markdown'
   | 'note'
   | 'term'
   | 'qa'
@@ -85,6 +86,11 @@ export interface StudyReviewPromptObject extends StudyObjectBase {
   status: 'needsReview' | 'reviewing' | 'mastered'
 }
 
+export interface StudyMarkdownObject extends StudyObjectBase {
+  kind: 'markdown'
+  markdown: string
+}
+
 export interface StudyCodeObject extends StudyObjectBase {
   kind: 'code'
   code: string
@@ -113,6 +119,7 @@ export interface StudyResourceObject extends StudyObjectBase {
 }
 
 export type StudyObject =
+  | StudyMarkdownObject
   | StudyNoteObject
   | StudyTermObject
   | StudyQAObject

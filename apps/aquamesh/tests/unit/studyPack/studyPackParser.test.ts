@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { parseStudyPack } from '../../../src/studyPack'
+import { detectMarkdownSource, parseStudyPack } from '../../../src/studyPack'
 
 describe('parseStudyPack', () => {
   it('extracts headings, quick syntax, Q/A pairs, checklists, and tables', () => {
@@ -71,6 +71,120 @@ A: d/dx x^n = nx^(n-1)
     expect(pack.objects[0]).toMatchObject({
       kind: 'note',
       body: 'random notes\nstill useful',
+    })
+  })
+
+  it('keeps plain bullet lists and review prompts from messy default notes', () => {
+    const pack = parseStudyPack(`history notes 10/?? industrial rev
+
+started in Britain first. reasons: coal + iron nearby, rivers/canals, colonies = raw materials and markets, banks/investment, agricultural changes pushed ppl to cities. enclosure movement = small farmers lose land? ask teacher if that’s too simple.
+
+factory system changed work:
+- time clocks / shifts
+- repetitive jobs
+- women + kids working
+- urbanization fast + gross housing
+- pollution everywhere
+
+textile machines: spinning jenny, water frame, power loom. steam engine improved by James Watt (not invented?? just made better). railroads big bc moving goods cheaper/faster.
+
+effects weren’t all bad: more goods, cheaper stuff, some middle class growth. but workers had terrible conditions. unions later tried to fix wages/hours.
+
+need memorize: laissez-faire = gov stays out of business mostly. Marx reaction to capitalism, class struggle, bourgeoisie vs proletariat. I keep spelling bourgeoisie wrong.`)
+
+    expect(pack.objects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'list',
+          title: 'factory system changed work',
+          items: [
+            'time clocks / shifts',
+            'repetitive jobs',
+            'women + kids working',
+            'urbanization fast + gross housing',
+            'pollution everywhere',
+          ],
+        }),
+        expect.objectContaining({
+          kind: 'reviewPrompt',
+          prompt: 'ask teacher if that’s too simple.',
+          reason: '',
+        }),
+        expect.objectContaining({
+          kind: 'reviewPrompt',
+          prompt:
+            'need memorize: laissez-faire = gov stays out of business mostly. Marx reaction to capitalism, class struggle, bourgeoisie vs proletariat. I keep spelling bourgeoisie wrong.',
+          reason: '',
+        }),
+      ]),
+    )
+  })
+
+  it('detects pasted markdown without flagging ordinary notes', () => {
+    expect(
+      detectMarkdownSource(`# Biology
+
+## Cell theory
+
+- Cells are the basic unit of life
+- Cells come from existing cells`),
+    ).toBe(true)
+
+    expect(detectMarkdownSource('random notes\nstill useful')).toBe(false)
+  })
+
+  it('keeps explicit markdown as one markdown object', () => {
+    const pack = parseStudyPack(
+      `# Biology
+
+## Cell theory
+
+Cells are the basic unit of life.
+
+All organisms are made of cells.
+
+- Cells carry DNA
+- Cells use energy
+
+## Diffusion
+
+Movement from high to low concentration.
+
+Q: What direction does diffusion move?
+A: High to low concentration`,
+      { sourceFormat: 'markdown' },
+    )
+
+    expect(pack.sourceFormat).toBe('markdown')
+    expect(pack.objects.map((object) => object.kind)).toEqual(['markdown'])
+    expect(pack.objects[0]).toMatchObject({
+      kind: 'markdown',
+      title: 'Biology',
+      markdown: expect.stringContaining('## Cell theory'),
+    })
+  })
+
+  it('preserves markdown tables and fenced code inside the markdown object', () => {
+    const pack = parseStudyPack(
+      `# Nginx
+
+| Directive | Meaning |
+|---|---|
+| root | Static path |
+
+\`\`\`nginx
+location / {
+  root /var/www/example.com;
+}
+\`\`\``,
+      { sourceFormat: 'markdown' },
+    )
+
+    expect(pack.objects.map((object) => object.kind)).toEqual(['markdown'])
+    expect(pack.objects[0]).toMatchObject({
+      kind: 'markdown',
+      title: 'Nginx',
+      markdown: expect.stringContaining('| Directive | Meaning |'),
     })
   })
 
@@ -151,19 +265,34 @@ location / {
 
   it('detects universal study patterns in messy note examples', () => {
     const biology = parseStudyPack(
-      readFileSync('../../readme_docs/notes_examples/2-notes-biology.txt', 'utf8'),
+      readFileSync(
+        '../../readme_docs/notes_examples/2-notes-biology.txt',
+        'utf8',
+      ),
     )
     const history = parseStudyPack(
-      readFileSync('../../readme_docs/notes_examples/3-notes-history.txt', 'utf8'),
+      readFileSync(
+        '../../readme_docs/notes_examples/3-notes-history.txt',
+        'utf8',
+      ),
     )
     const literature = parseStudyPack(
-      readFileSync('../../readme_docs/notes_examples/4-notes-literature.txt', 'utf8'),
+      readFileSync(
+        '../../readme_docs/notes_examples/4-notes-literature.txt',
+        'utf8',
+      ),
     )
     const rundeck = parseStudyPack(
-      readFileSync('../../readme_docs/notes_examples/6-my-notes-rundeck.txt', 'utf8'),
+      readFileSync(
+        '../../readme_docs/notes_examples/6-my-notes-rundeck.txt',
+        'utf8',
+      ),
     )
     const nginx = parseStudyPack(
-      readFileSync('../../readme_docs/notes_examples/5-my-notes-nginx.txt', 'utf8'),
+      readFileSync(
+        '../../readme_docs/notes_examples/5-my-notes-nginx.txt',
+        'utf8',
+      ),
     )
 
     expect(biology.title).toBe('bio — cell stuff')

@@ -22,6 +22,7 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import {
   createStudyPackWidgetsFromGroups,
   createStudyPackWidgets,
+  detectMarkdownSource,
   parseStudyPack,
   StudyPackDashboardLayoutMode,
   StudyObject,
@@ -65,6 +66,7 @@ const reviewTypeOptions: Array<{
   value: ReviewType
 }> = [
   { label: 'Flashcard', value: 'flashcard' },
+  { label: 'Markdown', value: 'markdown' },
   { label: 'Quiz', value: 'quiz' },
   { label: 'Reveal answer', value: 'reveal' },
   { label: 'Definition', value: 'term' },
@@ -85,6 +87,8 @@ const getObjectTitle = (object: StudyObject) => {
   }
 
   switch (object.kind) {
+    case 'markdown':
+      return object.title || 'Markdown notes'
     case 'term':
       return object.term
     case 'qa':
@@ -115,6 +119,8 @@ const getObjectTitle = (object: StudyObject) => {
 
 const getObjectPreview = (object: StudyObject) => {
   switch (object.kind) {
+    case 'markdown':
+      return object.markdown
     case 'term':
       return object.definition
     case 'qa':
@@ -160,7 +166,10 @@ const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
     widgetIndex: Math.floor(index / DEFAULT_OBJECTS_PER_WIDGET),
   }))
 
-const createInitialWidgetGroups = (objects: StudyObject[], title: string): string[] => {
+const createInitialWidgetGroups = (
+  objects: StudyObject[],
+  title: string,
+): string[] => {
   const groupCount = Math.max(
     1,
     Math.ceil(objects.length / DEFAULT_OBJECTS_PER_WIDGET),
@@ -315,6 +324,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('smart')
   const [error, setError] = useState('')
+  const [markdownPromptOpen, setMarkdownPromptOpen] = useState(false)
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
 
@@ -327,11 +337,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setWidgetGroups(['Study Pack'])
     setLayoutMode('smart')
     setError('')
+    setMarkdownPromptOpen(false)
   }
 
   const handleClose = () => {
     reset()
     onClose()
+  }
+
+  const parseSourceAs = (format: StudyPackSourceFormat) => {
+    const parsed = parseStudyPack(sourceText, {
+      title: packTitle,
+      sourceFormat: format,
+      defaultTags: ['study-pack'],
+    })
+    setPackTitle(parsed.title)
+    setSourceFormat(format)
+    setReviewItems(toReviewItems(parsed.objects))
+    setWidgetGroups(createInitialWidgetGroups(parsed.objects, parsed.title))
+    setError(parsed.warnings[0] || '')
+    setStep('review')
   }
 
   const parseCurrentSource = () => {
@@ -340,16 +365,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    const parsed = parseStudyPack(sourceText, {
-      title: packTitle,
-      sourceFormat,
-      defaultTags: ['study-pack'],
-    })
-    setPackTitle(parsed.title)
-    setReviewItems(toReviewItems(parsed.objects))
-    setWidgetGroups(createInitialWidgetGroups(parsed.objects, parsed.title))
-    setError(parsed.warnings[0] || '')
-    setStep('review')
+    if (
+      (sourceFormat === 'paste' || sourceFormat === 'text') &&
+      detectMarkdownSource(sourceText)
+    ) {
+      setError('')
+      setMarkdownPromptOpen(true)
+      return
+    }
+
+    parseSourceAs(sourceFormat)
+  }
+
+  const parseAsMarkdown = () => {
+    setMarkdownPromptOpen(false)
+    parseSourceAs('markdown')
+  }
+
+  const parseWithoutMarkdown = () => {
+    setMarkdownPromptOpen(false)
+    parseSourceAs(sourceFormat)
   }
 
   const handleFileUpload = async (
@@ -404,7 +439,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const addWidgetGroup = () => {
-    setWidgetGroups((groups) => [...groups, `${packTitle} ${groups.length + 1}`])
+    setWidgetGroups((groups) => [
+      ...groups,
+      `${packTitle} ${groups.length + 1}`,
+    ])
   }
 
   const updateWidgetGroupName = (index: number, name: string) => {
@@ -744,6 +782,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           </Button>
         )}
       </DialogActions>
+      <Dialog
+        open={markdownPromptOpen}
+        onClose={() => setMarkdownPromptOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Use Markdown format?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This looks like Markdown. Do you want AquaMesh to switch the source
+            type to Markdown and parse the structure?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={parseWithoutMarkdown}>Keep current format</Button>
+          <Button variant="contained" onClick={parseAsMarkdown}>
+            Use Markdown
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   )
 }

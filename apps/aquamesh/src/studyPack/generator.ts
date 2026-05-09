@@ -59,6 +59,18 @@ const objectToComponents = (
   widgetId: string,
 ): ComponentData[] => {
   switch (object.kind) {
+    case 'markdown':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'markdown'),
+          type: 'MarkdownBlock',
+          props: {
+            __blockType: 'MarkdownBlock',
+            title: object.title || 'Markdown notes',
+            markdown: object.markdown,
+          },
+        },
+      ]
     case 'note':
       return [
         {
@@ -339,7 +351,9 @@ const createWidgetRecord = (
   >,
   name?: string,
 ): CustomWidget => {
-  const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-${widgetIndex + 1}`
+  const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-${
+    widgetIndex + 1
+  }`
   const bodyComponents = objects.flatMap((object) =>
     objectToComponents(object, widgetId),
   )
@@ -355,7 +369,9 @@ const createWidgetRecord = (
 
   return {
     id: widgetId,
-    name: name || (widgetIndex === 0 ? pack.title : `${pack.title} ${widgetIndex + 1}`),
+    name:
+      name ||
+      (widgetIndex === 0 ? pack.title : `${pack.title} ${widgetIndex + 1}`),
     components,
     createdAt: options.createdAt,
     updatedAt: options.createdAt,
@@ -402,10 +418,18 @@ export const createStudyPackWidgetsFromGroups = (
   }
   const nonEmptyGroups = groups.filter((group) => group.objects.length > 0)
   const effectiveGroups =
-    nonEmptyGroups.length > 0 ? nonEmptyGroups : [{ name: pack.title, objects: [] }]
+    nonEmptyGroups.length > 0
+      ? nonEmptyGroups
+      : [{ name: pack.title, objects: [] }]
 
   return effectiveGroups.map((group, index) =>
-    createWidgetRecord(pack, group.objects, index, normalizedOptions, group.name),
+    createWidgetRecord(
+      pack,
+      group.objects,
+      index,
+      normalizedOptions,
+      group.name,
+    ),
   )
 }
 
@@ -444,7 +468,9 @@ const splitWidgetsIntoPanes = (widgets: CustomWidget[]): CustomWidget[][] => {
   return panes
 }
 
-const createSmartDashboardLayout = (widgets: CustomWidget[]): DashboardLayout => {
+const createSmartDashboardLayout = (
+  widgets: CustomWidget[],
+): DashboardLayout => {
   const panes = splitWidgetsIntoPanes(widgets)
 
   if (panes.length === 1) {
@@ -485,7 +511,10 @@ const createSmartDashboardLayout = (widgets: CustomWidget[]): DashboardLayout =>
       {
         type: 'row',
         weight: 50,
-        children: [createTabset(panes[0], 50, true), createTabset(panes[1], 50)],
+        children: [
+          createTabset(panes[0], 50, true),
+          createTabset(panes[1], 50),
+        ],
       },
       {
         type: 'row',
