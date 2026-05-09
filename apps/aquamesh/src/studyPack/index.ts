@@ -7,6 +7,7 @@ export {
 export { parseStudyPack } from './parser'
 export type {
   GeneratedStudyPack,
+  StudyComparisonObject,
   StudyListObject,
   StudyNoteObject,
   StudyObject,
@@ -21,7 +22,11 @@ export type {
   StudyPackSourceFormat,
   StudyPackWidgetRecord,
   StudyQAObject,
+  StudyQuizObject,
+  StudyRevealObject,
+  StudyReviewPromptObject,
   StudyResourceObject,
+  StudySequenceObject,
   StudyTableObject,
   StudyTermObject,
 } from './types'

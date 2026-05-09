@@ -43,6 +43,9 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ComponentPreview from './components/preview/ComponentPreview'
+import StudyBlockView, {
+  isStudyBlockType,
+} from './components/preview/StudyBlockView'
 
 interface ComponentData {
   id: string
@@ -331,6 +334,14 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 
   // Function to render any component type
   const renderComponent = (component: ComponentData) => {
+    if (isStudyBlockType(component.type)) {
+      return (
+        <Box key={component.id} sx={{ mb: 2 }}>
+          <StudyBlockView type={component.type} props={component.props} />
+        </Box>
+      )
+    }
+
     switch (component.type) {
       case 'SwitchEnable': {
         const labelValue = component.props.label as string

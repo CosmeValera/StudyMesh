@@ -1,4 +1,5 @@
 import {
+  StudyComparisonObject,
   StudyListObject,
   StudyObject,
   StudyPack,
@@ -39,6 +40,23 @@ const getLines = (source: string): LineRecord[] =>
 
 const isMarkdownTableDivider = (line: string): boolean =>
   /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)
+
+const isComparisonTitle = (title?: string): boolean =>
+  Boolean(title && /\b(vs\.?|versus|compare|comparison)\b/i.test(title))
+
+const isSequenceTitle = (title?: string): boolean =>
+  Boolean(title && /\b(steps?|order|sequence|timeline|process)\b/i.test(title))
+
+const isReviewPrompt = (text: string): boolean =>
+  /\b(review this|ask teacher|need(?:s)? memorize|probably important|always confuse|i always confuse)\b/i.test(
+    text,
+  )
+
+const isConciseTerm = (value: string): boolean =>
+  value.length > 0 &&
+  value.length <= 60 &&
+  !/[.!?]$/.test(value) &&
+  value.split(/\s+/).length <= 8
 
 const splitPipeRow = (line: string): string[] =>
   line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cleanCell)
@@ -170,12 +188,18 @@ const parseMarkdownTables = (
   lines: LineRecord[],
   packId: string,
   defaultTags: string[],
-): StudyTableObject[] => {
-  const tables: StudyTableObject[] = []
+): StudyObject[] => {
+  const tables: StudyObject[] = []
+  let currentHeading: string | undefined
 
   for (let index = 0; index < lines.length - 1; index += 1) {
     const line = lines[index]
     const divider = lines[index + 1]
+    const headingMatch = line.text.trim().match(/^#{1,6}\s+(.+)$/)
+
+    if (headingMatch) {
+      currentHeading = headingMatch[1].trim()
+    }
 
     if (!line.text.includes('|') || !isMarkdownTableDivider(divider.text)) {
       continue
@@ -190,15 +214,27 @@ const parseMarkdownTables = (
       cursor += 1
     }
 
-    tables.push({
-      id: buildId(packId, 'table', tables.length),
-      kind: 'table',
-      title: `Table ${tables.length + 1}`,
-      sourceLine: line.lineNumber,
-      tags: defaultTags,
-      headers,
-      rows,
-    })
+    if (isComparisonTitle(currentHeading)) {
+      tables.push({
+        id: buildId(packId, 'comparison', tables.length),
+        kind: 'comparison',
+        title: currentHeading || `Comparison ${tables.length + 1}`,
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        columns: headers,
+        rows,
+      } satisfies StudyComparisonObject)
+    } else {
+      tables.push({
+        id: buildId(packId, 'table', tables.length),
+        kind: 'table',
+        title: `Table ${tables.length + 1}`,
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        headers,
+        rows,
+      } satisfies StudyTableObject)
+    }
 
     index = cursor - 1
   }
@@ -329,7 +365,20 @@ const parseTextLike = (
 
   const flushList = () => {
     if (listBuffer && listBuffer.items.length > 0) {
-      objects.push(listBuffer)
+      if (isSequenceTitle(listBuffer.title)) {
+        objects.push({
+          id: buildId(packId, 'sequence', objects.length),
+          kind: 'sequence',
+          title: listBuffer.title || 'Sequence',
+          sourceLine: listBuffer.sourceLine,
+          tags: listBuffer.tags,
+          steps: listBuffer.items,
+          ordered: true,
+          interactiveChecklist: listBuffer.checklist,
+        })
+      } else {
+        objects.push(listBuffer)
+      }
     }
     listBuffer = undefined
   }
@@ -348,11 +397,11 @@ const parseTextLike = (
     const trimmed = line.text.trim()
     const headingMatch = trimmed.match(/^#{1,6}\s+(.+)$/)
     const quickSyntaxMatch = trimmed.match(
-      /^(Flashcard|Quiz|Checklist|Definition|Formula|Example)::\s*(.*)$/i,
+      /^(Flashcard|Quiz|Reveal|Sequence|Comparison|Checklist|Definition|Formula|Example)::\s*(.*)$/i,
     )
     const qaQuestionMatch = trimmed.match(/^(?:q|question):\s*(.+)$/i)
     const qaAnswerMatch = trimmed.match(/^(?:a|answer):\s*(.+)$/i)
-    const termMatch = trimmed.match(/^(.+?)\s*::\s*(.+)$/)
+    const termMatch = trimmed.match(/^(.+?)\s*(?:::|=|:)\s*(.+)$/)
     const unorderedMatch = trimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
     const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
     const markdownLinkMatch = trimmed.match(
@@ -390,7 +439,7 @@ const parseTextLike = (
         continue
       }
 
-      if (label === 'flashcard' || label === 'quiz') {
+      if (label === 'flashcard') {
         const [question, answer] = body
           .split(/\s+(?:\||->)\s+/)
           .map((value) => value.trim())
@@ -399,7 +448,7 @@ const parseTextLike = (
           objects.push({
             id: buildId(packId, 'qa', objects.length),
             kind: 'qa',
-            title: label === 'quiz' ? 'Quiz' : 'Flashcard',
+            title: 'Flashcard',
             sourceLine: line.lineNumber,
             tags: defaultTags,
             question,
@@ -408,6 +457,84 @@ const parseTextLike = (
         } else {
           pendingQuestion = { question: body, line }
         }
+        continue
+      }
+
+      if (label === 'quiz') {
+        const parts = body
+          .split(/\s+(?:\||->)\s+|\s*;\s*/)
+          .map((value) => value.trim())
+          .filter(Boolean)
+        const [question, answer, ...wrongOptions] = parts
+
+        if (question && answer && wrongOptions.length > 0) {
+          objects.push({
+            id: buildId(packId, 'quiz', objects.length),
+            kind: 'quiz',
+            title: 'Quiz',
+            sourceLine: line.lineNumber,
+            tags: defaultTags,
+            quizMode: 'multipleChoice',
+            question,
+            options: [answer, ...wrongOptions],
+            correctIndex: 0,
+            answer,
+            explanation: '',
+          })
+        } else if (question && answer) {
+          objects.push({
+            id: buildId(packId, 'quiz', objects.length),
+            kind: 'quiz',
+            title: 'Quiz',
+            sourceLine: line.lineNumber,
+            tags: defaultTags,
+            quizMode: 'shortAnswer',
+            question,
+            options: [],
+            correctIndex: 0,
+            answer,
+            explanation: '',
+          })
+        } else {
+          pendingQuestion = { question: body, line }
+        }
+        continue
+      }
+
+      if (label === 'reveal') {
+        const [prompt, hiddenText] = body
+          .split(/\s+(?:\||->)\s+/)
+          .map((value) => value.trim())
+
+        objects.push({
+          id: buildId(packId, 'reveal', objects.length),
+          kind: 'reveal',
+          title: currentHeading || 'Reveal answer',
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          prompt: prompt || currentHeading || 'Prompt',
+          hiddenText: hiddenText || body,
+        })
+        continue
+      }
+
+      if (label === 'sequence') {
+        const [title, rawSteps] = body.includes('|')
+          ? body.split(/\s+\|\s+/, 2).map((value) => value.trim())
+          : [currentHeading || 'Sequence', body]
+        objects.push({
+          id: buildId(packId, 'sequence', objects.length),
+          kind: 'sequence',
+          title: title || 'Sequence',
+          sourceLine: line.lineNumber,
+          tags: defaultTags,
+          steps: rawSteps
+            .split(/;|,|\n/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+          ordered: true,
+          interactiveChecklist: false,
+        })
         continue
       }
 
@@ -429,7 +556,7 @@ const parseTextLike = (
       }
 
       if (label === 'definition') {
-        const definitionParts = body.split(/\s+-\s+|:\s+/)
+        const definitionParts = body.split(/\s+-\s+|:\s+|=\s+/)
         const term =
           definitionParts.length > 1 ? definitionParts[0] : currentHeading
         const definition =
@@ -481,7 +608,34 @@ const parseTextLike = (
       continue
     }
 
-    if (termMatch) {
+    if (isReviewPrompt(trimmed)) {
+      flushText()
+      flushList()
+      objects.push({
+        id: buildId(packId, 'reviewPrompt', objects.length),
+        kind: 'reviewPrompt',
+        title: 'Review later',
+        sourceLine: line.lineNumber,
+        tags: defaultTags,
+        prompt: currentHeading || trimmed,
+        reason: trimmed,
+        status: 'needsReview',
+      })
+      continue
+    }
+
+    if (markdownLinkMatch || bareUrlMatch) {
+      flushText()
+      flushList()
+      const label = markdownLinkMatch?.[1] || currentHeading || 'Reference'
+      const url = markdownLinkMatch?.[2] || bareUrlMatch?.[1] || ''
+      objects.push(
+        createResource(packId, objects.length, line, label, url, defaultTags),
+      )
+      continue
+    }
+
+    if (termMatch && isConciseTerm(termMatch[1].trim())) {
       flushText()
       flushList()
       objects.push({
@@ -521,17 +675,6 @@ const parseTextLike = (
       }
 
       listBuffer.items.push(item)
-      continue
-    }
-
-    if (markdownLinkMatch || bareUrlMatch) {
-      flushText()
-      flushList()
-      const label = markdownLinkMatch?.[1] || currentHeading || 'Reference'
-      const url = markdownLinkMatch?.[2] || bareUrlMatch?.[1] || ''
-      objects.push(
-        createResource(packId, objects.length, line, label, url, defaultTags),
-      )
       continue
     }
 

@@ -20,6 +20,8 @@ import FlexBoxEditor from '../editors/FlexBoxEditor'
 import GridBoxEditor from '../editors/GridBoxEditor'
 import FieldSetEditor from '../editors/FieldSetEditor'
 import KnowledgeBlockEditor from '../editors/KnowledgeBlockEditor'
+import StudyBlockEditor from '../editors/StudyBlockEditor'
+import { isStudyBlockType } from '../preview/StudyBlockView'
 
 const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   open,
@@ -153,6 +155,16 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   }
 
   const renderPropsEdit = () => {
+    if (isStudyBlockType(component.type)) {
+      return (
+        <StudyBlockEditor
+          blockType={component.type}
+          props={editedProps}
+          onChange={handlePropsChange}
+        />
+      )
+    }
+
     switch (component.type) {
       case 'SwitchEnable':
         // Pass the new handler
@@ -246,6 +258,10 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
 
   // Get the title text for the dialog
   const getDialogTitle = () => {
+    if (isStudyBlockType(component.type)) {
+      return `Edit ${component.type.replace('Block', '')}`
+    }
+
     switch (component.type) {
       case 'SwitchEnable':
         return 'Edit Switch'

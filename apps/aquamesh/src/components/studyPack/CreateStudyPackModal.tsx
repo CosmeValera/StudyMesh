@@ -27,7 +27,7 @@ import {
   StudyPackSourceFormat,
 } from '../../studyPack'
 
-type ReviewType = StudyObjectKind | 'ignore'
+type ReviewType = StudyObjectKind | 'flashcard' | 'ignore'
 
 interface ReviewItem {
   object: StudyObject
@@ -58,12 +58,17 @@ const reviewTypeOptions: Array<{
   label: string
   value: ReviewType
 }> = [
+  { label: 'Flashcard', value: 'flashcard' },
+  { label: 'Quiz', value: 'quiz' },
+  { label: 'Reveal answer', value: 'reveal' },
   { label: 'Definition', value: 'term' },
-  { label: 'Flashcard / quiz', value: 'qa' },
+  { label: 'Study note', value: 'note' },
+  { label: 'Comparison', value: 'comparison' },
+  { label: 'Sequence', value: 'sequence' },
+  { label: 'Review prompt', value: 'reviewPrompt' },
   { label: 'Checklist / list', value: 'list' },
   { label: 'Table', value: 'table' },
   { label: 'Resource', value: 'resource' },
-  { label: 'Long text', value: 'note' },
   { label: 'Ignore', value: 'ignore' },
 ]
 
@@ -77,6 +82,16 @@ const getObjectTitle = (object: StudyObject) => {
       return object.term
     case 'qa':
       return object.question
+    case 'quiz':
+      return object.question
+    case 'reveal':
+      return object.prompt
+    case 'comparison':
+      return object.title || 'Comparison'
+    case 'sequence':
+      return object.title || 'Sequence'
+    case 'reviewPrompt':
+      return object.title || 'Review later'
     case 'list':
       return object.checklist ? 'Checklist' : 'Study list'
     case 'table':
@@ -95,6 +110,16 @@ const getObjectPreview = (object: StudyObject) => {
       return object.definition
     case 'qa':
       return object.answer
+    case 'quiz':
+      return object.explanation || object.answer || object.options.join(' / ')
+    case 'reveal':
+      return object.hiddenText
+    case 'comparison':
+      return `${object.columns.length} columns, ${object.rows.length} rows`
+    case 'sequence':
+      return object.steps.slice(0, 3).join(' / ')
+    case 'reviewPrompt':
+      return object.reason || object.prompt
     case 'list':
       return object.items.slice(0, 3).join(' / ')
     case 'table':
@@ -120,12 +145,16 @@ const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
   objects.map((object) => ({
     object,
     title: getObjectTitle(object),
-    type: object.kind,
+    type: object.kind === 'qa' ? 'flashcard' : object.kind,
   }))
 
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
     return null
+  }
+
+  if (item.type === 'flashcard' && item.object.kind === 'qa') {
+    return { ...item.object, title: item.title }
   }
 
   if (item.type === item.object.kind) {
@@ -147,6 +176,15 @@ const applyReviewItem = (item: ReviewItem): StudyObject | null => {
     }
   }
 
+  if (item.type === 'flashcard') {
+    return {
+      ...base,
+      kind: 'qa',
+      question: item.title,
+      answer: preview,
+    }
+  }
+
   if (item.type === 'list') {
     return {
       ...base,
@@ -157,6 +195,72 @@ const applyReviewItem = (item: ReviewItem): StudyObject | null => {
         .filter(Boolean),
       ordered: false,
       checklist: false,
+    }
+  }
+
+  if (item.type === 'term') {
+    return {
+      ...base,
+      kind: 'term',
+      term: item.title,
+      definition: preview,
+    }
+  }
+
+  if (item.type === 'quiz') {
+    return {
+      ...base,
+      kind: 'quiz',
+      quizMode: 'shortAnswer',
+      question: item.title,
+      options: [],
+      correctIndex: 0,
+      answer: preview,
+      explanation: '',
+    }
+  }
+
+  if (item.type === 'reveal') {
+    return {
+      ...base,
+      kind: 'reveal',
+      prompt: item.title,
+      hiddenText: preview,
+    }
+  }
+
+  if (item.type === 'sequence') {
+    return {
+      ...base,
+      kind: 'sequence',
+      steps: preview
+        .split(/\n|\/|,/)
+        .map((value) => value.trim())
+        .filter(Boolean),
+      ordered: true,
+      interactiveChecklist: false,
+    }
+  }
+
+  if (item.type === 'reviewPrompt') {
+    return {
+      ...base,
+      kind: 'reviewPrompt',
+      prompt: item.title,
+      reason: preview,
+      status: 'needsReview',
+    }
+  }
+
+  if (item.type === 'comparison') {
+    return {
+      ...base,
+      kind: 'comparison',
+      columns: ['Item A', 'Item B'],
+      rows: preview
+        .split('\n')
+        .map((value) => value.split('|').map((cell) => cell.trim()))
+        .filter((row) => row.some(Boolean)),
     }
   }
 

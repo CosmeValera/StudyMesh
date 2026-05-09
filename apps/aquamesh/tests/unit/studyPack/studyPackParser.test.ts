@@ -72,4 +72,51 @@ A: d/dx x^n = nx^(n-1)
       body: 'random notes\nstill useful',
     })
   })
+
+  it('extracts study-native blocks from quick syntax and natural note patterns', () => {
+    const pack = parseStudyPack(
+      `# Rundeck vs Ansible
+
+| Ansible | Rundeck |
+|---|---|
+| Config management | Ops automation |
+
+Flashcard:: What is toil? | Repetitive manual work
+Quiz:: Which is config management? | Ansible | Rundeck | Grafana
+Reveal:: Mitosis order | Prophase, metaphase, anaphase, telophase
+osmosis = water moving across a membrane
+
+# Process steps
+1. Collect notes
+2. Review weak areas
+
+review this because I always confuse diffusion and osmosis`,
+    )
+
+    expect(pack.objects.map((object) => object.kind)).toEqual([
+      'comparison',
+      'qa',
+      'quiz',
+      'reveal',
+      'term',
+      'sequence',
+      'reviewPrompt',
+    ])
+    expect(pack.objects[0]).toMatchObject({
+      kind: 'comparison',
+      title: 'Rundeck vs Ansible',
+      columns: ['Ansible', 'Rundeck'],
+    })
+    expect(pack.objects[2]).toMatchObject({
+      kind: 'quiz',
+      quizMode: 'multipleChoice',
+      question: 'Which is config management?',
+      options: ['Ansible', 'Rundeck', 'Grafana'],
+      correctIndex: 0,
+    })
+    expect(pack.objects[5]).toMatchObject({
+      kind: 'sequence',
+      steps: ['Collect notes', 'Review weak areas'],
+    })
+  })
 })

@@ -14,6 +14,11 @@ export type StudyObjectKind =
   | 'note'
   | 'term'
   | 'qa'
+  | 'quiz'
+  | 'reveal'
+  | 'comparison'
+  | 'sequence'
+  | 'reviewPrompt'
   | 'list'
   | 'table'
   | 'resource'
@@ -43,6 +48,42 @@ export interface StudyQAObject extends StudyObjectBase {
   answer: string
 }
 
+export interface StudyQuizObject extends StudyObjectBase {
+  kind: 'quiz'
+  quizMode: 'multipleChoice' | 'shortAnswer'
+  question: string
+  options: string[]
+  correctIndex: number
+  answer: string
+  explanation: string
+}
+
+export interface StudyRevealObject extends StudyObjectBase {
+  kind: 'reveal'
+  prompt: string
+  hiddenText: string
+}
+
+export interface StudyComparisonObject extends StudyObjectBase {
+  kind: 'comparison'
+  columns: string[]
+  rows: string[][]
+}
+
+export interface StudySequenceObject extends StudyObjectBase {
+  kind: 'sequence'
+  steps: string[]
+  ordered: boolean
+  interactiveChecklist: boolean
+}
+
+export interface StudyReviewPromptObject extends StudyObjectBase {
+  kind: 'reviewPrompt'
+  prompt: string
+  reason: string
+  status: 'needsReview' | 'reviewing' | 'mastered'
+}
+
 export interface StudyListObject extends StudyObjectBase {
   kind: 'list'
   items: string[]
@@ -67,6 +108,11 @@ export type StudyObject =
   | StudyNoteObject
   | StudyTermObject
   | StudyQAObject
+  | StudyQuizObject
+  | StudyRevealObject
+  | StudyComparisonObject
+  | StudySequenceObject
+  | StudyReviewPromptObject
   | StudyListObject
   | StudyTableObject
   | StudyResourceObject

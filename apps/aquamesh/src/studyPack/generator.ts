@@ -61,12 +61,12 @@ const objectToComponents = (
       return [
         {
           id: createComponentId(widgetId, object, 'note'),
-          type: 'LongText',
+          type: 'StudyNoteBlock',
           props: {
-            __blockType: 'LongText',
+            __blockType: 'StudyNoteBlock',
             title: object.title || 'Study note',
             text: object.body,
-            callout: true,
+            suggestedTypes: ['definition', 'flashcard', 'review'],
           },
         },
       ]
@@ -74,46 +74,100 @@ const objectToComponents = (
       return [
         {
           id: createComponentId(widgetId, object, 'term'),
-          type: 'FieldSet',
+          type: 'DefinitionBlock',
           props: {
-            legend: object.term,
-            collapsed: false,
+            __blockType: 'DefinitionBlock',
+            term: object.term,
+            definition: object.definition,
+            example: '',
+            makeFlashcard: true,
           },
-          children: [
-            {
-              id: createComponentId(widgetId, object, 'definition'),
-              type: 'LongText',
-              props: {
-                __blockType: 'LongText',
-                title: 'Definition',
-                text: object.definition,
-                callout: false,
-              },
-            },
-          ],
         },
       ]
     case 'qa':
       return [
         {
           id: createComponentId(widgetId, object, 'qa'),
-          type: 'FieldSet',
+          type: 'FlashcardBlock',
           props: {
-            legend: object.question,
-            collapsed: true,
+            __blockType: 'FlashcardBlock',
+            front: object.question,
+            back: object.answer,
+            hint: '',
+            tag: object.title || '',
+            selfGrade: true,
           },
-          children: [
-            {
-              id: createComponentId(widgetId, object, 'answer'),
-              type: 'LongText',
-              props: {
-                __blockType: 'LongText',
-                title: 'Answer',
-                text: object.answer,
-                callout: false,
-              },
-            },
-          ],
+        },
+      ]
+    case 'quiz':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'quiz'),
+          type: 'QuizBlock',
+          props: {
+            __blockType: 'QuizBlock',
+            quizMode: object.quizMode,
+            question: object.question,
+            options: object.options,
+            correctIndex: object.correctIndex,
+            answer: object.answer,
+            explanation: object.explanation,
+            shuffleOptions: false,
+          },
+        },
+      ]
+    case 'reveal':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'reveal'),
+          type: 'RevealBlock',
+          props: {
+            __blockType: 'RevealBlock',
+            prompt: object.prompt,
+            hiddenText: object.hiddenText,
+            revealLabel: 'Show answer',
+          },
+        },
+      ]
+    case 'comparison':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'comparison'),
+          type: 'ComparisonBlock',
+          props: {
+            __blockType: 'ComparisonBlock',
+            title: object.title || 'Comparison',
+            columns: object.columns,
+            rows: object.rows,
+          },
+        },
+      ]
+    case 'sequence':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'sequence'),
+          type: 'SequenceBlock',
+          props: {
+            __blockType: 'SequenceBlock',
+            title: object.title || 'Sequence',
+            steps: object.steps,
+            ordered: object.ordered,
+            interactiveChecklist: object.interactiveChecklist,
+          },
+        },
+      ]
+    case 'reviewPrompt':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'review'),
+          type: 'ReviewPromptBlock',
+          props: {
+            __blockType: 'ReviewPromptBlock',
+            title: object.title || 'Review this',
+            prompt: object.prompt,
+            reason: object.reason,
+            status: object.status,
+          },
         },
       ]
     case 'list':

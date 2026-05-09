@@ -11,6 +11,14 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'
 import SubjectIcon from '@mui/icons-material/Subject'
 import TableChartIcon from '@mui/icons-material/TableChart'
+import StyleIcon from '@mui/icons-material/Style'
+import QuizIcon from '@mui/icons-material/Quiz'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered'
+import ReportProblemIcon from '@mui/icons-material/ReportProblem'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import { ComponentType } from '../types/types'
 
 // Building blocks that can be added to a widget.
@@ -105,6 +113,123 @@ export const COMPONENT_TYPES: ComponentType[] = [
     icon: SubjectIcon,
     tooltip:
       'Adds a larger note block for explanations, study summaries, or wiki-style writing.',
+  },
+  {
+    type: 'FlashcardBlock',
+    label: 'Flashcard',
+    defaultProps: {
+      __blockType: 'FlashcardBlock',
+      front: 'Question or term',
+      back: 'Answer or explanation',
+      hint: '',
+      tag: '',
+      selfGrade: true,
+    },
+    category: 'Study Blocks',
+    icon: StyleIcon,
+    tooltip:
+      'Adds a flip card for active recall, with a question on the front and answer on the back.',
+  },
+  {
+    type: 'QuizBlock',
+    label: 'Quiz',
+    defaultProps: {
+      __blockType: 'QuizBlock',
+      quizMode: 'multipleChoice',
+      question: 'Question',
+      options: ['Option A', 'Option B', 'Option C', 'Option D'],
+      correctIndex: 0,
+      answer: 'Option A',
+      explanation: 'Explain why the answer is correct.',
+      shuffleOptions: false,
+    },
+    category: 'Study Blocks',
+    icon: QuizIcon,
+    tooltip: 'Adds a quiz question with selectable answers and instant feedback.',
+  },
+  {
+    type: 'RevealBlock',
+    label: 'Reveal Answer',
+    defaultProps: {
+      __blockType: 'RevealBlock',
+      prompt: 'Prompt',
+      hiddenText: 'Hidden answer',
+      revealLabel: 'Show answer',
+    },
+    category: 'Study Blocks',
+    icon: VisibilityIcon,
+    tooltip: 'Hides an answer until the student clicks to reveal it.',
+  },
+  {
+    type: 'StudyNoteBlock',
+    label: 'Study Note',
+    defaultProps: {
+      __blockType: 'StudyNoteBlock',
+      title: 'Study note',
+      text: 'Raw study note text',
+      suggestedTypes: ['definition', 'flashcard', 'review'],
+    },
+    category: 'Study Blocks',
+    icon: AutoStoriesIcon,
+    tooltip: 'Adds a flexible study note with suggested ways to turn it into study material.',
+  },
+  {
+    type: 'DefinitionBlock',
+    label: 'Definition',
+    defaultProps: {
+      __blockType: 'DefinitionBlock',
+      term: 'Term',
+      definition: 'Definition',
+      example: '',
+      makeFlashcard: true,
+    },
+    category: 'Study Blocks',
+    icon: MenuBookIcon,
+    tooltip: 'Adds a term and definition card that can also be studied like a flashcard.',
+  },
+  {
+    type: 'ComparisonBlock',
+    label: 'Comparison',
+    defaultProps: {
+      __blockType: 'ComparisonBlock',
+      title: 'Comparison',
+      columns: ['Item A', 'Item B'],
+      rows: [
+        ['Point about A', 'Point about B'],
+        ['Another point about A', 'Another point about B'],
+      ],
+    },
+    category: 'Study Blocks',
+    icon: CompareArrowsIcon,
+    tooltip: 'Compares concepts, tools, people, events, or ideas.',
+  },
+  {
+    type: 'SequenceBlock',
+    label: 'Sequence',
+    defaultProps: {
+      __blockType: 'SequenceBlock',
+      title: 'Steps or order',
+      steps: ['Step 1', 'Step 2', 'Step 3'],
+      ordered: true,
+      interactiveChecklist: false,
+    },
+    category: 'Study Blocks',
+    icon: FormatListNumberedIcon,
+    tooltip: 'Shows a process, timeline, order, or set of steps.',
+  },
+  {
+    type: 'ReviewPromptBlock',
+    label: 'Review Prompt',
+    defaultProps: {
+      __blockType: 'ReviewPromptBlock',
+      title: 'Review this',
+      prompt: 'Topic to review',
+      reason: '',
+      status: 'needsReview',
+    },
+    category: 'Study Blocks',
+    icon: ReportProblemIcon,
+    tooltip: 'Marks something as important, confusing, or worth reviewing later.',
   },
   {
     type: 'ListBlock',

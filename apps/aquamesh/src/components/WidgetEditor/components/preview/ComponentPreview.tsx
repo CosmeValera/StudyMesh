@@ -30,6 +30,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import { ComponentPreviewProps } from '../../types/types'
 import { getComponentIcon } from '../../constants/componentTypes'
 import ChartPreview from './ChartPreview'
+import StudyBlockView, { isStudyBlockType } from './StudyBlockView'
 import AddIcon from '@mui/icons-material/Add'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import CodeIcon from '@mui/icons-material/Code'
@@ -86,6 +87,10 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
 
   // Render a preview of the component based on its type
   const renderComponent = () => {
+    if (isStudyBlockType(component.type)) {
+      return <StudyBlockView type={component.type} props={component.props} />
+    }
+
     switch (component.type) {
       case 'SwitchEnable': {
         const labelValue = component.props.label as string
