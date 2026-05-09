@@ -379,6 +379,7 @@ const getTarget = (targetId?: string, state?: WorkspaceOnboardingState) => {
 
 const WorkspaceOnboarding = () => {
   const [state, setState] = React.useState(readStoredState)
+  const [showSettingsHint, setShowSettingsHint] = React.useState(false)
 
   React.useEffect(() => {
     try {
@@ -522,8 +523,52 @@ const WorkspaceOnboarding = () => {
     }
   }, [])
 
-  if (!userIsBuilder || state.status === 'dismissed') {
+  if (!userIsBuilder) {
     return null
+  }
+
+  if (state.status === 'dismissed' && !showSettingsHint) {
+    return null
+  }
+
+  if (showSettingsHint) {
+    return (
+      <Paper
+        elevation={8}
+        aria-live="polite"
+        sx={{
+          position: 'fixed',
+          top: { xs: 'auto', sm: 88 },
+          bottom: { xs: 12, sm: 'auto' },
+          right: { xs: 12, sm: 16 },
+          left: { xs: 12, sm: 'auto' },
+          width: { xs: 'auto', sm: 360 },
+          zIndex: 1500,
+          p: 1.5,
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: 'primary.light',
+          bgcolor: 'background.paper',
+          color: 'text.primary',
+        }}
+      >
+        <Stack spacing={1}>
+          <Typography variant="body2">
+            You can replay the tutorial in settings whenever you want.
+          </Typography>
+
+          <Stack direction="row" justifyContent="flex-end">
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setShowSettingsHint(false)}
+            >
+              Got it
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+    )
   }
 
   if (state.status === 'done' && !state.showDone) {
@@ -539,6 +584,7 @@ const WorkspaceOnboarding = () => {
 
   const handleSkip = () => {
     setState({ ...state, status: 'dismissed' })
+    setShowSettingsHint(true)
   }
 
   return (
