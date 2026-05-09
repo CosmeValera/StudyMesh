@@ -63,6 +63,7 @@ const reviewTypeOptions: Array<{
   { label: 'Reveal answer', value: 'reveal' },
   { label: 'Definition', value: 'term' },
   { label: 'Study note', value: 'note' },
+  { label: 'Code note', value: 'code' },
   { label: 'Comparison', value: 'comparison' },
   { label: 'Sequence', value: 'sequence' },
   { label: 'Review prompt', value: 'reviewPrompt' },
@@ -92,6 +93,8 @@ const getObjectTitle = (object: StudyObject) => {
       return object.title || 'Sequence'
     case 'reviewPrompt':
       return object.title || 'Review later'
+    case 'code':
+      return object.title || 'Code note'
     case 'list':
       return object.checklist ? 'Checklist' : 'Study list'
     case 'table':
@@ -120,6 +123,8 @@ const getObjectPreview = (object: StudyObject) => {
       return object.steps.slice(0, 3).join(' / ')
     case 'reviewPrompt':
       return object.reason || object.prompt
+    case 'code':
+      return object.code
     case 'list':
       return object.items.slice(0, 3).join(' / ')
     case 'table':
@@ -249,6 +254,16 @@ const applyReviewItem = (item: ReviewItem): StudyObject | null => {
       prompt: item.title,
       reason: preview,
       status: 'needsReview',
+    }
+  }
+
+  if (item.type === 'code') {
+    return {
+      ...base,
+      kind: 'code',
+      code: preview,
+      language: 'text',
+      caption: item.title,
     }
   }
 

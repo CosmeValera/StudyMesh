@@ -7,6 +7,7 @@ export {
 export { parseStudyPack } from './parser'
 export type {
   GeneratedStudyPack,
+  StudyCodeObject,
   StudyComparisonObject,
   StudyListObject,
   StudyNoteObject,

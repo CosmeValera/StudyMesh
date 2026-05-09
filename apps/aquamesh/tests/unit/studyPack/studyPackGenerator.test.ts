@@ -20,9 +20,14 @@ A: Rate of change
 Definition:: Power rule: d/dx x^n = nx^(n-1)
 Reveal:: Mitosis order | Prophase, metaphase, anaphase
 Quiz:: Which rule handles x^n? | Power rule | Chain rule | Product rule
+\`\`\`nginx
+location / {
+  root /var/www/example.com;
+}
+\`\`\`
 review this because it is probably important`,
     )
-    const widgets = createStudyPackWidgets(pack)
+    const widgets = createStudyPackWidgets(pack, { maxObjectsPerWidget: 12 })
     const layout = createStudyPackDashboardLayout(widgets)
 
     expect(widgets).toHaveLength(1)
@@ -35,8 +40,8 @@ review this because it is probably important`,
     expect(JSON.stringify(widgets[0].components)).toContain('"TableBlock"')
     expect(JSON.stringify(widgets[0].components)).toContain('"FlashcardBlock"')
     expect(JSON.stringify(widgets[0].components)).toContain('"DefinitionBlock"')
-    expect(JSON.stringify(widgets[0].components)).toContain('"RevealBlock"')
     expect(JSON.stringify(widgets[0].components)).toContain('"QuizBlock"')
+    expect(JSON.stringify(widgets[0].components)).toContain('"CodeBlock"')
     expect(JSON.stringify(widgets[0].components)).toContain('"ReviewPromptBlock"')
     expect(layout.children?.[0].children?.[0]).toMatchObject({
       type: 'tab',

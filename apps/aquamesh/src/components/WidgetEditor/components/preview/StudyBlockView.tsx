@@ -26,6 +26,7 @@ const STUDY_BLOCK_TYPES = [
   'QuizBlock',
   'RevealBlock',
   'StudyNoteBlock',
+  'CodeBlock',
   'DefinitionBlock',
   'ComparisonBlock',
   'SequenceBlock',
@@ -65,6 +66,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   const [shortAnswer, setShortAnswer] = useState('')
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
   const [definitionStudy, setDefinitionStudy] = useState(false)
+  const [reviewStatus, setReviewStatus] = useState(String(props.status || 'needsReview'))
   const options = useMemo(() => toStringArray(props.options), [props.options])
   const steps = useMemo(() => toStringArray(props.steps), [props.steps])
   const columns = useMemo(() => toStringArray(props.columns), [props.columns])
@@ -243,6 +245,50 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     )
   }
 
+  if (type === 'CodeBlock') {
+    const title = String(props.title || 'Code note')
+    const code = String(props.code || '')
+    const language = String(props.language || '')
+    const caption = String(props.caption || '')
+
+    return (
+      <Paper variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
+        <Stack spacing={0}>
+          <Box sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="subtitle1" fontWeight={700}>
+                {title}
+              </Typography>
+              {language && <Chip label={language} size="small" />}
+            </Stack>
+            {caption && (
+              <Typography variant="caption" color="text.secondary">
+                {caption}
+              </Typography>
+            )}
+          </Box>
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 2,
+              overflowX: 'auto',
+              bgcolor: '#111827',
+              color: '#f9fafb',
+              fontFamily: 'JetBrains Mono, Consolas, monospace',
+              fontSize: '0.8125rem',
+              lineHeight: 1.6,
+              whiteSpace: 'pre',
+              tabSize: 2,
+            }}
+          >
+            <Box component="code">{code}</Box>
+          </Box>
+        </Stack>
+      </Paper>
+    )
+  }
+
   if (type === 'DefinitionBlock') {
     const term = String(props.term || 'Term')
     const definition = String(props.definition || 'Definition')
@@ -360,7 +406,17 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   }
 
   if (type === 'ReviewPromptBlock') {
-    const status = String(props.status || 'needsReview')
+    const statusLabels: Record<string, string> = {
+      needsReview: 'need review',
+      reviewing: 'reviewing',
+      mastered: 'mastered',
+    }
+    const nextStatus = {
+      needsReview: 'reviewing',
+      reviewing: 'mastered',
+      mastered: 'needsReview',
+    }[reviewStatus]
+    const statusColor = reviewStatus === 'mastered' ? 'success' : 'warning'
 
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -369,7 +425,13 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
             <Typography variant="subtitle1" fontWeight={700}>
               {String(props.title || 'Review this')}
             </Typography>
-            <Chip label={status} size="small" color="warning" />
+            <Chip
+              label={statusLabels[reviewStatus] || reviewStatus}
+              size="small"
+              color={statusColor}
+              onClick={() => setReviewStatus(nextStatus || 'needsReview')}
+              sx={{ cursor: 'pointer' }}
+            />
           </Stack>
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
             {String(props.prompt || '')}

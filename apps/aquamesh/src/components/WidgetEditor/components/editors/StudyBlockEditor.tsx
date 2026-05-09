@@ -214,6 +214,48 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
     )
   }
 
+  if (blockType === 'CodeBlock') {
+    return (
+      <Stack spacing={2} sx={{ p: 3 }}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          Code note
+        </Typography>
+        <TextField
+          label="Title"
+          value={(props.title as string) || ''}
+          onChange={(event) => update('title', event.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Language"
+          value={(props.language as string) || ''}
+          onChange={(event) => update('language', event.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Code"
+          value={(props.code as string) || ''}
+          onChange={(event) => update('code', event.target.value)}
+          fullWidth
+          multiline
+          minRows={10}
+          InputProps={{
+            sx: {
+              fontFamily: 'JetBrains Mono, Consolas, monospace',
+              alignItems: 'flex-start',
+            },
+          }}
+        />
+        <TextField
+          label="Caption"
+          value={(props.caption as string) || ''}
+          onChange={(event) => update('caption', event.target.value)}
+          fullWidth
+        />
+      </Stack>
+    )
+  }
+
   if (blockType === 'DefinitionBlock') {
     return (
       <Stack spacing={2} sx={{ p: 3 }}>

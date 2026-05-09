@@ -90,6 +90,12 @@ osmosis = water moving across a membrane
 1. Collect notes
 2. Review weak areas
 
+\`\`\`nginx
+location / {
+  root /var/www/example.com;
+}
+\`\`\`
+
 review this because I always confuse diffusion and osmosis`,
     )
 
@@ -100,6 +106,7 @@ review this because I always confuse diffusion and osmosis`,
       'reveal',
       'term',
       'sequence',
+      'code',
       'reviewPrompt',
     ])
     expect(pack.objects[0]).toMatchObject({
@@ -117,6 +124,11 @@ review this because I always confuse diffusion and osmosis`,
     expect(pack.objects[5]).toMatchObject({
       kind: 'sequence',
       steps: ['Collect notes', 'Review weak areas'],
+    })
+    expect(pack.objects[6]).toMatchObject({
+      kind: 'code',
+      language: 'nginx',
+      code: 'location / {\n  root /var/www/example.com;\n}',
     })
   })
 })

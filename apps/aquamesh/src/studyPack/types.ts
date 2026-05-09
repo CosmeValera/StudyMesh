@@ -19,6 +19,7 @@ export type StudyObjectKind =
   | 'comparison'
   | 'sequence'
   | 'reviewPrompt'
+  | 'code'
   | 'list'
   | 'table'
   | 'resource'
@@ -84,6 +85,13 @@ export interface StudyReviewPromptObject extends StudyObjectBase {
   status: 'needsReview' | 'reviewing' | 'mastered'
 }
 
+export interface StudyCodeObject extends StudyObjectBase {
+  kind: 'code'
+  code: string
+  language: string
+  caption: string
+}
+
 export interface StudyListObject extends StudyObjectBase {
   kind: 'list'
   items: string[]
@@ -113,6 +121,7 @@ export type StudyObject =
   | StudyComparisonObject
   | StudySequenceObject
   | StudyReviewPromptObject
+  | StudyCodeObject
   | StudyListObject
   | StudyTableObject
   | StudyResourceObject

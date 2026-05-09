@@ -58,6 +58,29 @@ const isConciseTerm = (value: string): boolean =>
   !/[.!?]$/.test(value) &&
   value.split(/\s+/).length <= 8
 
+const looksLikeCodeBlock = (value: string): boolean => {
+  const lines = value.split('\n').filter((line) => line.trim())
+  if (lines.length < 2) {
+    return false
+  }
+
+  const codeSignals = lines.filter((line) =>
+    /[{};]|^\s*(location|server|http|events|upstream)\b|^\s*[A-Za-z_-]+\s+[^:]+;$/.test(
+      line,
+    ),
+  )
+
+  return codeSignals.length >= Math.max(2, Math.ceil(lines.length / 2))
+}
+
+const inferCodeLanguage = (value: string): string => {
+  if (/\b(location|server|upstream|proxy_pass|root|index)\b/.test(value)) {
+    return 'nginx'
+  }
+
+  return 'text'
+}
+
 const splitPipeRow = (line: string): string[] =>
   line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cleanCell)
 
@@ -341,6 +364,20 @@ const flushParagraph = (
     return
   }
 
+  if (looksLikeCodeBlock(body)) {
+    objects.push({
+      id: buildId(packId, 'code', objects.length),
+      kind: 'code',
+      title: title || 'Code note',
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      code: body,
+      language: inferCodeLanguage(body),
+      caption: title || '',
+    })
+    return
+  }
+
   objects.push({
     id: buildId(packId, 'note', objects.length),
     kind: 'note',
@@ -362,6 +399,13 @@ const parseTextLike = (
   let currentHeading: string | undefined
   let pendingQuestion: { question: string; line: LineRecord } | undefined
   let listBuffer: StudyListObject | undefined
+  let codeFence:
+    | {
+        language: string
+        line: LineRecord
+        lines: string[]
+      }
+    | undefined
 
   const flushList = () => {
     if (listBuffer && listBuffer.items.length > 0) {
@@ -395,6 +439,7 @@ const parseTextLike = (
 
   for (const line of lines) {
     const trimmed = line.text.trim()
+    const codeFenceMatch = trimmed.match(/^```([\w-]*)\s*$/)
     const headingMatch = trimmed.match(/^#{1,6}\s+(.+)$/)
     const quickSyntaxMatch = trimmed.match(
       /^(Flashcard|Quiz|Reveal|Sequence|Comparison|Checklist|Definition|Formula|Example)::\s*(.*)$/i,
@@ -408,6 +453,36 @@ const parseTextLike = (
       /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/,
     )
     const bareUrlMatch = trimmed.match(/(https?:\/\/\S+)/)
+
+    if (codeFence) {
+      if (codeFenceMatch) {
+        objects.push({
+          id: buildId(packId, 'code', objects.length),
+          kind: 'code',
+          title: currentHeading || 'Code note',
+          sourceLine: codeFence.line.lineNumber,
+          tags: defaultTags,
+          code: codeFence.lines.join('\n').trimEnd(),
+          language: codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
+          caption: currentHeading || '',
+        })
+        codeFence = undefined
+      } else {
+        codeFence.lines.push(line.text)
+      }
+      continue
+    }
+
+    if (codeFenceMatch) {
+      flushText()
+      flushList()
+      codeFence = {
+        language: codeFenceMatch[1] || '',
+        line,
+        lines: [],
+      }
+      continue
+    }
 
     if (!trimmed) {
       flushText()
@@ -685,6 +760,19 @@ const parseTextLike = (
     paragraphLines.push({
       text: `Q: ${pendingQuestion.question}`,
       lineNumber: pendingQuestion.line.lineNumber,
+    })
+  }
+
+  if (codeFence) {
+    objects.push({
+      id: buildId(packId, 'code', objects.length),
+      kind: 'code',
+      title: currentHeading || 'Code note',
+      sourceLine: codeFence.line.lineNumber,
+      tags: defaultTags,
+      code: codeFence.lines.join('\n').trimEnd(),
+      language: codeFence.language || inferCodeLanguage(codeFence.lines.join('\n')),
+      caption: currentHeading || '',
     })
   }
 

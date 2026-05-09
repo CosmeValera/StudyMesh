@@ -13,12 +13,11 @@ import SubjectIcon from '@mui/icons-material/Subject'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import StyleIcon from '@mui/icons-material/Style'
 import QuizIcon from '@mui/icons-material/Quiz'
-import VisibilityIcon from '@mui/icons-material/Visibility'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
-import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered'
 import ReportProblemIcon from '@mui/icons-material/ReportProblem'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import CodeIcon from '@mui/icons-material/Code'
 import { ComponentType } from '../types/types'
 
 // Building blocks that can be added to a widget.
@@ -148,19 +147,6 @@ export const COMPONENT_TYPES: ComponentType[] = [
     tooltip: 'Adds a quiz question with selectable answers and instant feedback.',
   },
   {
-    type: 'RevealBlock',
-    label: 'Reveal Answer',
-    defaultProps: {
-      __blockType: 'RevealBlock',
-      prompt: 'Prompt',
-      hiddenText: 'Hidden answer',
-      revealLabel: 'Show answer',
-    },
-    category: 'Study Blocks',
-    icon: VisibilityIcon,
-    tooltip: 'Hides an answer until the student clicks to reveal it.',
-  },
-  {
     type: 'StudyNoteBlock',
     label: 'Study Note',
     defaultProps: {
@@ -172,6 +158,20 @@ export const COMPONENT_TYPES: ComponentType[] = [
     category: 'Study Blocks',
     icon: AutoStoriesIcon,
     tooltip: 'Adds a flexible study note with suggested ways to turn it into study material.',
+  },
+  {
+    type: 'CodeBlock',
+    label: 'Code Note',
+    defaultProps: {
+      __blockType: 'CodeBlock',
+      title: 'Code note',
+      code: 'location / {\n  root /var/www/example.com;\n  index index.html index.htm;\n}',
+      language: 'text',
+      caption: '',
+    },
+    category: 'Study Blocks',
+    icon: CodeIcon,
+    tooltip: 'Adds a formatted code or configuration snippet for technical notes.',
   },
   {
     type: 'DefinitionBlock',
@@ -202,20 +202,6 @@ export const COMPONENT_TYPES: ComponentType[] = [
     category: 'Study Blocks',
     icon: CompareArrowsIcon,
     tooltip: 'Compares concepts, tools, people, events, or ideas.',
-  },
-  {
-    type: 'SequenceBlock',
-    label: 'Sequence',
-    defaultProps: {
-      __blockType: 'SequenceBlock',
-      title: 'Steps or order',
-      steps: ['Step 1', 'Step 2', 'Step 3'],
-      ordered: true,
-      interactiveChecklist: false,
-    },
-    category: 'Study Blocks',
-    icon: FormatListNumberedIcon,
-    tooltip: 'Shows a process, timeline, order, or set of steps.',
   },
   {
     type: 'ReviewPromptBlock',

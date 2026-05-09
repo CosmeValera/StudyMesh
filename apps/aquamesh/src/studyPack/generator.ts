@@ -120,12 +120,14 @@ const objectToComponents = (
       return [
         {
           id: createComponentId(widgetId, object, 'reveal'),
-          type: 'RevealBlock',
+          type: 'FlashcardBlock',
           props: {
-            __blockType: 'RevealBlock',
-            prompt: object.prompt,
-            hiddenText: object.hiddenText,
-            revealLabel: 'Show answer',
+            __blockType: 'FlashcardBlock',
+            front: object.prompt,
+            back: object.hiddenText,
+            hint: '',
+            tag: object.title || 'Reveal answer',
+            selfGrade: false,
           },
         },
       ]
@@ -146,13 +148,27 @@ const objectToComponents = (
       return [
         {
           id: createComponentId(widgetId, object, 'sequence'),
-          type: 'SequenceBlock',
+          type: 'ListBlock',
           props: {
-            __blockType: 'SequenceBlock',
+            __blockType: 'ListBlock',
             title: object.title || 'Sequence',
-            steps: object.steps,
+            items: object.steps.join('\n'),
             ordered: object.ordered,
             interactiveChecklist: object.interactiveChecklist,
+          },
+        },
+      ]
+    case 'code':
+      return [
+        {
+          id: createComponentId(widgetId, object, 'code'),
+          type: 'CodeBlock',
+          props: {
+            __blockType: 'CodeBlock',
+            title: object.title || 'Code note',
+            code: object.code,
+            language: object.language,
+            caption: object.caption,
           },
         },
       ]
