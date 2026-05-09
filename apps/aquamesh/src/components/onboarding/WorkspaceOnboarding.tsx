@@ -197,7 +197,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'done',
     progress: 'Complete',
     instruction: () =>
-      'Dashboard opened in the workspace. You have completed the onboarding! 🥳 Feel free to explore and build more dashboards and widgets. You can reactivate the tutorial in settings whenever you want.',
+      'Dashboard opened in the workspace. You have completed the onboarding! 🥳',
   },
 }
 
@@ -379,6 +379,8 @@ const getTarget = (targetId?: string, state?: WorkspaceOnboardingState) => {
 
 const WorkspaceOnboarding = () => {
   const [state, setState] = React.useState(readStoredState)
+  const [showSettingsHint, setShowSettingsHint] = React.useState(false)
+  const [doneStep, setDoneStep] = React.useState<1 | 2>(1)
 
   React.useEffect(() => {
     try {
@@ -399,6 +401,8 @@ const WorkspaceOnboarding = () => {
       )
     }
     const handleReset = () => {
+      setDoneStep(1)
+      setShowSettingsHint(false)
       setState(createInitialWorkspaceOnboardingState())
     }
     const handleWidgetStorageEvent = (event: Event) => {
@@ -464,6 +468,10 @@ const WorkspaceOnboarding = () => {
       const step = stepDefinitions[state.stepId]
       const target = getTarget(step.targetId, state)
 
+      if (!step.targetId) {
+        return
+      }
+
       if (!target) {
         timeout = window.setTimeout(applyHighlight, 100)
         return
@@ -497,17 +505,6 @@ const WorkspaceOnboarding = () => {
     state.createdWidgetId,
     state.savedDashboardId,
   ])
-  React.useEffect(() => {
-    if (!state.showDone) {
-      return
-    }
-
-    const timeout = window.setTimeout(() => {
-      setState((current) => ({ ...current, showDone: false }))
-    }, 10000)
-
-    return () => window.clearTimeout(timeout)
-  }, [state.showDone])
 
   const userIsBuilder = React.useMemo(() => {
     try {
@@ -522,8 +519,52 @@ const WorkspaceOnboarding = () => {
     }
   }, [])
 
-  if (!userIsBuilder || state.status === 'dismissed') {
+  if (!userIsBuilder) {
     return null
+  }
+
+  if (state.status === 'dismissed' && !showSettingsHint) {
+    return null
+  }
+
+  if (showSettingsHint) {
+    return (
+      <Paper
+        elevation={8}
+        aria-live="polite"
+        sx={{
+          position: 'fixed',
+          top: { xs: 'auto', sm: 88 },
+          bottom: { xs: 12, sm: 'auto' },
+          right: { xs: 12, sm: 16 },
+          left: { xs: 12, sm: 'auto' },
+          width: { xs: 'auto', sm: 360 },
+          zIndex: 1500,
+          p: 1.5,
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: 'primary.light',
+          bgcolor: 'background.paper',
+          color: 'text.primary',
+        }}
+      >
+        <Stack spacing={1}>
+          <Typography variant="body2">
+            You can replay the tutorial in settings whenever you want.
+          </Typography>
+
+          <Stack direction="row" justifyContent="flex-end">
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setShowSettingsHint(false)}
+            >
+              Got it
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+    )
   }
 
   if (state.status === 'done' && !state.showDone) {
@@ -533,12 +574,27 @@ const WorkspaceOnboarding = () => {
   const step = stepDefinitions[state.stepId]
   const target = getTarget(step.targetId, state)
 
+  const isDoneStep = state.stepId === 'done'
+
+  const doneInstruction =
+    doneStep === 1
+      ? step.instruction(state)
+      : 'Feel free to explore and build more dashboards and widgets. You can replay the tutorial in settings whenever you want.'
+
   const handleAction = () => {
     target?.click()
   }
 
   const handleSkip = () => {
     setState({ ...state, status: 'dismissed' })
+    setShowSettingsHint(true)
+  }
+  const handleDoneNext = () => {
+    setDoneStep(2)
+  }
+
+  const handleDoneGotIt = () => {
+    setState((current) => ({ ...current, showDone: false }))
   }
 
   return (
@@ -571,11 +627,21 @@ const WorkspaceOnboarding = () => {
             {step.progress}
           </Typography>
           <Typography variant="body2" sx={{ mt: 0.25 }}>
-            {step.instruction(state)}
+            {isDoneStep ? doneInstruction : step.instruction(state)}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} justifyContent="flex-end">
-          {state.stepId !== 'done' && (
+          {isDoneStep ? (
+            doneStep === 1 ? (
+              <Button size="small" variant="contained" onClick={handleDoneNext}>
+                Next
+              </Button>
+            ) : (
+              <Button size="small" variant="contained" onClick={handleDoneGotIt}>
+                Got it
+              </Button>
+            )
+          ) : (
             <Button size="small" variant="text" onClick={handleSkip}>
               Skip
             </Button>
