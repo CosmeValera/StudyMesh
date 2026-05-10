@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Box,
@@ -11,6 +11,7 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
+  LinearProgress,
   MenuItem,
   Paper,
   Stack,
@@ -21,6 +22,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import ImageIcon from '@mui/icons-material/Image'
 import {
   createStudyPackOrchestratorWidgets,
   createStudyPackSmartWidgetGroups,
@@ -31,8 +33,10 @@ import {
   StudyPackSourceFormat,
   StudyPackDashboardLayoutMode,
 } from '../../studyPack'
+import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 
 type ReviewType = StudyObjectKind | 'flashcard' | 'ignore'
+type SourceInputType = 'text' | 'image'
 
 interface ReviewItem {
   object: StudyObject
@@ -58,8 +62,40 @@ interface CreateStudyPackModalProps {
 
 const sourceOptions: Array<{
   label: string
-  value: StudyPackSourceFormat
-}> = [{ label: 'Plain text', value: 'text' }]
+  value: SourceInputType
+}> = [
+  { label: 'Text', value: 'text' },
+  { label: 'Image', value: 'image' },
+]
+
+const supportedImageExtensions = [
+  'bmp',
+  'jpg',
+  'jpeg',
+  'png',
+  'pbm',
+  'webp',
+  'gif',
+]
+const supportedImageMimeTypes = [
+  'image/bmp',
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/x-ms-bmp',
+  'image/x-portable-bitmap',
+]
+const imageAcceptValue = [
+  '.bmp',
+  '.gif',
+  '.jpg',
+  '.jpeg',
+  '.pbm',
+  '.png',
+  '.webp',
+  ...supportedImageMimeTypes,
+].join(',')
 
 const reviewTypeOptions: Array<{
   label: string
@@ -155,6 +191,18 @@ const getCounts = (items: ReviewItem[]) =>
 
     return counts
   }, {})
+
+const getFileTitle = (file: File) =>
+  file.name.replace(/\.[^.]+$/, '') || 'Study Pack'
+
+const isSupportedImageFile = (file: File) => {
+  const extension = file.name.split('.').pop()?.toLowerCase()
+
+  return (
+    supportedImageExtensions.includes(extension || '') ||
+    supportedImageMimeTypes.includes(file.type)
+  )
+}
 
 const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
   objects
@@ -319,9 +367,17 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCreatePack,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
+  const [sourceInputType, setSourceInputType] =
+    useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
   const [sourceFormat, setSourceFormat] =
     useState<StudyPackSourceFormat>('text')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [imageTextExtracted, setImageTextExtracted] = useState(false)
+  const [isExtractingImage, setIsExtractingImage] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState(0)
+  const [ocrStatus, setOcrStatus] = useState('')
   const [packTitle, setPackTitle] = useState('Study Pack')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
@@ -333,10 +389,29 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
 
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl('')
+      return undefined
+    }
+
+    const previewUrl = URL.createObjectURL(imageFile)
+    setImagePreviewUrl(previewUrl)
+
+    return () => URL.revokeObjectURL(previewUrl)
+  }, [imageFile])
+
   const reset = () => {
     setStep('source')
+    setSourceInputType('text')
     setSourceText('')
     setSourceFormat('text')
+    setImageFile(null)
+    setImagePreviewUrl('')
+    setImageTextExtracted(false)
+    setIsExtractingImage(false)
+    setOcrProgress(0)
+    setOcrStatus('')
     setPackTitle('Study Pack')
     setReviewItems([])
     setWidgetGroups([])
@@ -349,6 +424,34 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const handleClose = () => {
     reset()
     onClose()
+  }
+
+  const handleSourceInputTypeChange = (value: SourceInputType) => {
+    setSourceInputType(value)
+    setSourceText('')
+    setSourceFormat('text')
+    setImageFile(null)
+    setImageTextExtracted(false)
+    setOcrProgress(0)
+    setOcrStatus('')
+    setError('')
+  }
+
+  const selectImageFile = (file: File) => {
+    if (!isSupportedImageFile(file)) {
+      setError('Use a PNG, JPG, WebP, GIF, BMP, or PBM image.')
+      setImageFile(null)
+      setImageTextExtracted(false)
+      return
+    }
+
+    setImageFile(file)
+    setPackTitle(getFileTitle(file))
+    setSourceText('')
+    setImageTextExtracted(false)
+    setOcrProgress(0)
+    setOcrStatus('')
+    setError('')
   }
 
   const parseSource = () => {
@@ -370,7 +473,48 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setStep('review')
   }
 
-  const parseCurrentSource = () => {
+  const extractImageNotes = async () => {
+    if (!imageFile) {
+      setError('Add an image before extracting notes.')
+      return
+    }
+
+    setIsExtractingImage(true)
+    setOcrProgress(0)
+    setOcrStatus('Preparing OCR')
+    setError('')
+
+    try {
+      const text = await extractRawNotesFromImage(imageFile, (progress) => {
+        setOcrProgress(Math.round(progress.progress * 100))
+        setOcrStatus(progress.status)
+      })
+
+      if (!text.trim()) {
+        setSourceText('')
+        setImageTextExtracted(false)
+        setError('No text was detected in this image.')
+        return
+      }
+
+      setSourceText(text)
+      setImageTextExtracted(true)
+      setOcrProgress(100)
+      setOcrStatus('OCR complete')
+    } catch {
+      setError('Could not extract notes from this image.')
+      setImageTextExtracted(false)
+    } finally {
+      setIsExtractingImage(false)
+    }
+  }
+
+  const parseCurrentSource = async () => {
+    if (sourceInputType === 'image' && !imageTextExtracted) {
+      await extractImageNotes()
+      return
+    }
+
     if (!sourceText.trim()) {
       setError('Add notes before continuing.')
       return
@@ -398,6 +542,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setPackTitle(file.name.replace(/\.[^.]+$/, '') || 'Study Pack')
     setSourceFormat('text')
     setError('')
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    selectImageFile(file)
+    event.target.value = ''
+  }
+
+  const handleImageDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const file = event.dataTransfer.files?.[0]
+    if (!file) {
+      return
+    }
+
+    selectImageFile(file)
   }
 
   const updateReviewItem = (index: number, updates: Partial<ReviewItem>) => {
@@ -578,35 +742,148 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 fullWidth
               />
               <TextField
+                select
                 label="Source type"
-                value={sourceOptions[0].label}
-                InputProps={{ readOnly: true }}
+                value={sourceInputType}
+                onChange={(event) =>
+                  handleSourceInputTypeChange(
+                    event.target.value as SourceInputType,
+                  )
+                }
                 sx={{ minWidth: { md: 220 } }}
-              />
+              >
+                {sourceOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Stack>
-            <TextField
-              label="Paste notes"
-              value={sourceText}
-              onChange={(event) => setSourceText(event.target.value)}
-              fullWidth
-              multiline
-              minRows={16}
-              placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)\n\n- [ ] I can explain what a derivative means`}
-            />
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={<UploadFileIcon />}
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Upload .md, .txt, or .csv
-              <input
-                hidden
-                type="file"
-                accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
-                onChange={handleFileUpload}
-              />
-            </Button>
+            {sourceInputType === 'text' ? (
+              <>
+                <TextField
+                  label="Paste notes"
+                  value={sourceText}
+                  onChange={(event) => setSourceText(event.target.value)}
+                  fullWidth
+                  multiline
+                  minRows={16}
+                  placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)\n\n- [ ] I can explain what a derivative means`}
+                />
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Upload .md, .txt, or .csv
+                  <input
+                    hidden
+                    type="file"
+                    accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
+                    onChange={handleFileUpload}
+                  />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Paper
+                  elevation={0}
+                  onDrop={handleImageDrop}
+                  onDragOver={(event) => event.preventDefault()}
+                  sx={{
+                    p: 3,
+                    border: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                    minHeight: 220,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Stack spacing={1.5} alignItems="center" textAlign="center">
+                    {imagePreviewUrl ? (
+                      <Box
+                        component="img"
+                        src={imagePreviewUrl}
+                        alt={imageFile?.name || 'Selected study notes image'}
+                        sx={{
+                          maxWidth: '100%',
+                          maxHeight: 180,
+                          borderRadius: 1,
+                          objectFit: 'contain',
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon color="primary" sx={{ fontSize: 44 }} />
+                    )}
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={800}>
+                        {imageFile?.name || 'Drop an image of your notes'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        PNG, JPG, WebP, non-animated GIF, BMP, or PBM. Printed
+                        text and screenshots work best.
+                      </Typography>
+                    </Box>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                    >
+                      Select image
+                      <input
+                        hidden
+                        type="file"
+                        accept={imageAcceptValue}
+                        onChange={handleImageUpload}
+                      />
+                    </Button>
+                  </Stack>
+                </Paper>
+                {isExtractingImage && (
+                  <Box>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      sx={{ mb: 0.75 }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        {ocrStatus || 'Extracting notes'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {ocrProgress}%
+                      </Typography>
+                    </Stack>
+                    <LinearProgress
+                      variant={
+                        ocrProgress > 0 ? 'determinate' : 'indeterminate'
+                      }
+                      value={ocrProgress}
+                    />
+                  </Box>
+                )}
+                <TextField
+                  label="Extracted notes"
+                  value={sourceText}
+                  onChange={(event) => {
+                    setSourceText(event.target.value)
+                    setImageTextExtracted(Boolean(event.target.value.trim()))
+                  }}
+                  fullWidth
+                  multiline
+                  minRows={10}
+                  disabled={isExtractingImage}
+                  placeholder="Extracted notes will appear here for review before AquaMesh creates widgets."
+                  helperText={
+                    imageTextExtracted
+                      ? 'Review and edit the extracted notes before continuing.'
+                      : 'Select an image, then extract notes.'
+                  }
+                />
+              </>
+            )}
           </Stack>
         ) : (
           <Stack spacing={2}>
@@ -900,8 +1177,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         )}
         <Button onClick={handleClose}>Cancel</Button>
         {step === 'source' ? (
-          <Button variant="contained" onClick={parseCurrentSource}>
-            Continue
+          <Button
+            variant="contained"
+            onClick={parseCurrentSource}
+            disabled={isExtractingImage}
+          >
+            {sourceInputType === 'image' && !imageTextExtracted
+              ? 'Extract notes'
+              : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>
