@@ -182,6 +182,28 @@ A: Back
     expect(JSON.stringify(widgets)).not.toContain('StudyNoteBlock')
   })
 
+  it('creates right-side generated widgets from prose definitions and facts', () => {
+    const source =
+      'Photosynthesis is a biological process used by plants, algae, and some bacteria to convert light energy into chemical energy. It usually takes place in chloroplasts that contain chlorophyll. The process produces oxygen as a byproduct and stores energy in sugars. Photosynthesis supports most food chains because organisms depend on plant biomass.'
+    const pack = parseStudyPack(source, { sourceFormat: 'text' })
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      rawSource: source,
+    })
+
+    expect(pack.objects.map((object) => object.kind)).toEqual([
+      'term',
+      'list',
+      'note',
+    ])
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      `${pack.title} Source`,
+      `${pack.title} Misc`,
+    ])
+    expect(JSON.stringify(widgets.slice(1))).toContain('DefinitionBlock')
+    expect(JSON.stringify(widgets.slice(1))).toContain('ListBlock')
+    expect(JSON.stringify(widgets.slice(1))).not.toContain('StudyNoteBlock')
+  })
+
   it('can create a CSV source widget as a table without the source chart', () => {
     const pack = parseStudyPack('Rule,Formula\nPower,nx^(n-1)', {
       title: 'Rules',

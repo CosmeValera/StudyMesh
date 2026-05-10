@@ -276,6 +276,102 @@ const splitSentences = (value: string): string[] =>
     .map((sentence) => sentence.trim())
     .filter(Boolean)
 
+const stripCitations = (value: string): string =>
+  value.replace(/\s*\[\d+(?:[-,\s]\d+)*\]/g, '').replace(/\s{2,}/g, ' ').trim()
+
+const cleanDefinitionTerm = (value: string): string =>
+  stripCitations(value)
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/^[\s"'“”‘’]+|[\s"'“”‘’.,:;]+$/g, '')
+    .replace(/^(?:la|el|las|los|un|una|unos|unas|the|a|an)\s+/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+const normalizeFactKey = (value: string): string =>
+  stripCitations(value)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const isInformativeFactSentence = (value: string): boolean => {
+  const sentence = stripCitations(value)
+  if (!sentence || /^\[\d+\]$/.test(sentence)) {
+    return false
+  }
+
+  return sentence.split(/\s+/).length >= 5
+}
+
+const looksLikeInformativeProse = (sentences: string[]): boolean => {
+  const wordCount = sentences.join(' ').split(/\s+/).filter(Boolean).length
+
+  return sentences.length >= 2 || wordCount >= 18
+}
+
+const extractDefinitionOpening = (
+  sentence: string,
+): { term: string; definition: string } | undefined => {
+  const cleanedSentence = stripCitations(sentence)
+  const match = cleanedSentence.match(
+    /^(.+?)\s+(se define como|is defined as|consiste en|refers to|es|son|is|are)\s+(.+)$/iu,
+  )
+  if (!match) {
+    return undefined
+  }
+
+  const term = cleanDefinitionTerm(match[1])
+  const definition = stripCitations(match[3]).replace(/\s+$/g, '').trim()
+  if (
+    !isConciseTerm(term) ||
+    definition.split(/\s+/).length < 4 ||
+    /^(?:this|that|it|esto|eso)$/i.test(term)
+  ) {
+    return undefined
+  }
+
+  return { term, definition }
+}
+
+const extractProseKnowledge = (
+  value: string,
+): { definition?: { term: string; definition: string }; facts: string[] } => {
+  const sentences = splitSentences(stripCitations(value))
+  const firstSentence = sentences[0] || ''
+  const hasDefinitionCue =
+    /\b(se define como|is defined as|consiste en|refers to|es|son|is|are)\b/iu.test(
+      firstSentence,
+    )
+  const looksEncyclopedic =
+    looksLikeInformativeProse(sentences) &&
+    (hasDefinitionCue || sentences.some(isInformativeFactSentence))
+
+  if (!looksEncyclopedic) {
+    return { facts: [] }
+  }
+
+  const definition = hasDefinitionCue
+    ? extractDefinitionOpening(firstSentence)
+    : undefined
+  const seenFacts = new Set<string>()
+  const facts = sentences
+    .slice(definition ? 1 : 0)
+    .map(stripCitations)
+    .filter(isInformativeFactSentence)
+    .filter((sentence) => {
+      const key = normalizeFactKey(sentence)
+      if (!key || seenFacts.has(key)) {
+        return false
+      }
+
+      seenFacts.add(key)
+      return true
+    })
+    .slice(0, 6)
+
+  return { definition, facts }
+}
+
 const extractInlineDefinitions = (
   value: string,
 ): Array<{ term: string; definition: string }> => {
@@ -638,6 +734,34 @@ const flushParagraph = (
         defaultTags,
       ),
     )
+  }
+
+  const proseKnowledge = extractProseKnowledge(body)
+  if (proseKnowledge.definition) {
+    objects.push({
+      id: buildId(packId, 'term', objects.length),
+      kind: 'term',
+      title,
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      term: proseKnowledge.definition.term,
+      definition: proseKnowledge.definition.definition,
+    })
+  }
+
+  if (proseKnowledge.facts.length >= 1) {
+    objects.push({
+      id: buildId(packId, 'list', objects.length),
+      kind: 'list',
+      title: proseKnowledge.definition
+        ? `${proseKnowledge.definition.term} Key facts`
+        : 'Key facts',
+      sourceLine: paragraphLines[0]?.lineNumber || 1,
+      tags: defaultTags,
+      items: proseKnowledge.facts,
+      ordered: false,
+      checklist: false,
+    })
   }
 
   objects.push({

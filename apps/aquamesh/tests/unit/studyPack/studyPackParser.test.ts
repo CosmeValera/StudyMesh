@@ -74,6 +74,96 @@ A: d/dx x^n = nx^(n-1)
     })
   })
 
+  it('extracts deterministic definitions and facts from Spanish encyclopedic prose', () => {
+    const pack = parseStudyPack(
+      `La oftalmología (del griego oftalmos, ojo, y logos, estudio) es la especialidad médica que estudia las enfermedades de los ojos y su tratamiento, incluyendo el globo ocular, su musculatura, el sistema lagrimal y los párpados. Como disciplina, también se aplica en animales, ya que las diferencias entre la práctica veterinaria y la medicina humana son pequeñas y están relacionadas principalmente con variaciones anatómicas. La cirugía refractiva y la cirugía de cataratas son algunas de las operaciones más frecuentes dentro de esta especialidad. [1]`,
+      { sourceFormat: 'text' },
+    )
+
+    expect(pack.objects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'term',
+          term: 'oftalmología',
+          definition: expect.stringContaining('especialidad médica'),
+        }),
+        expect.objectContaining({
+          kind: 'list',
+          title: 'oftalmología Key facts',
+          items: [
+            expect.stringContaining('también se aplica en animales'),
+            expect.stringContaining('cirugía de cataratas'),
+          ],
+        }),
+        expect.objectContaining({
+          kind: 'note',
+          body: expect.stringContaining('La oftalmología'),
+        }),
+      ]),
+    )
+  })
+
+  it('extracts deterministic definitions and facts from English encyclopedic prose', () => {
+    const pack = parseStudyPack(
+      `Photosynthesis is a biological process used by plants, algae, and some bacteria to convert light energy into chemical energy. It usually takes place in chloroplasts that contain the pigment chlorophyll. The process produces oxygen as a byproduct and stores energy in sugars. Photosynthesis supports most food chains because organisms depend directly or indirectly on plant biomass.`,
+      { sourceFormat: 'text' },
+    )
+
+    expect(pack.objects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'term',
+          term: 'Photosynthesis',
+          definition: expect.stringContaining('biological process'),
+        }),
+        expect.objectContaining({
+          kind: 'list',
+          title: 'Photosynthesis Key facts',
+          items: [
+            expect.stringContaining('chloroplasts'),
+            expect.stringContaining('oxygen'),
+            expect.stringContaining('food chains'),
+          ],
+        }),
+        expect.objectContaining({
+          kind: 'note',
+        }),
+      ]),
+    )
+  })
+
+  it('extracts key facts from multi-paragraph historical prose without definition cues', () => {
+    const pack = parseStudyPack(
+      `Historia Antigua India El cirujano indio Sushruta escribió Súsruta-samjita entre el siglo III y el siglo IV d. C.[3] Entre otros conocimientos médicos y quirúrgicos describió 77 enfermedades oculares (51 de ellas quirúrgicas), así como varios instrumentos quirúrgicos y técnicas oftalmológicas,[4] entre ellas, la que es considerada como la primera descripción de operación de cataratas y que era compatible con el método de acostado.[5]
+
+Prehipocráticos En el Papiro de Ebers del antiguo Egipto que data de 1550 a. C., se dedica una sección a las enfermedades oculares.[8]
+
+Los prehipocráticos basaron gran parte de sus conceptos anatómicos en la especulación más que en el empirismo.[8] Reconocieron la esclerótica y la córnea como las capas más externas del ojo, también describieron la pupila y un líquido en el centro del globo ocular.`,
+      { sourceFormat: 'text' },
+    )
+    const lists = pack.objects.filter((object) => object.kind === 'list')
+
+    expect(lists.length).toBeGreaterThanOrEqual(2)
+    expect(lists).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'list',
+          title: 'Key facts',
+          items: expect.arrayContaining([
+            expect.stringContaining('Sushruta escribió'),
+          ]),
+        }),
+        expect.objectContaining({
+          kind: 'list',
+          title: 'Key facts',
+          items: expect.arrayContaining([
+            expect.stringContaining('Papiro de Ebers'),
+          ]),
+        }),
+      ]),
+    )
+  })
+
   it('keeps plain bullet lists and review prompts from messy default notes', () => {
     const pack = parseStudyPack(`history notes 10/?? industrial rev
 
