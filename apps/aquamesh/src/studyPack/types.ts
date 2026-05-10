@@ -153,11 +153,16 @@ export interface StudyPackGeneratorOptions {
   category?: string
   createdAt?: string
   dashboardName?: string
+  groupingThreshold?: number
+  includeSourceWidget?: boolean
+  includeSummaryChart?: boolean
+  rawSource?: string
   maxObjectsPerWidget?: number
   widgetIdPrefix?: string
+  widgetGroups?: StudyPackWidgetGroupInput[]
 }
 
-export type StudyPackDashboardLayoutMode = 'smart' | 'tabs'
+export type StudyPackDashboardLayoutMode = 'smart' | 'tabs' | 'orchestrator'
 
 export interface StudyPackDashboardLayoutOptions {
   mode?: StudyPackDashboardLayoutMode

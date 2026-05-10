@@ -9,10 +9,12 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -20,14 +22,14 @@ import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import {
-  createStudyPackWidgetsFromGroups,
+  createStudyPackOrchestratorWidgets,
+  createStudyPackSmartWidgetGroups,
   createStudyPackWidgets,
-  detectMarkdownSource,
   parseStudyPack,
-  StudyPackDashboardLayoutMode,
   StudyObject,
   StudyObjectKind,
   StudyPackSourceFormat,
+  StudyPackDashboardLayoutMode,
 } from '../../studyPack'
 
 type ReviewType = StudyObjectKind | 'flashcard' | 'ignore'
@@ -36,7 +38,12 @@ interface ReviewItem {
   object: StudyObject
   title: string
   type: ReviewType
-  widgetIndex: number
+}
+
+interface PreviewWidgetGroup {
+  id: string
+  name: string
+  objectIds: string[]
 }
 
 interface CreateStudyPackModalProps {
@@ -49,28 +56,19 @@ interface CreateStudyPackModalProps {
   }) => void
 }
 
-const DEFAULT_OBJECTS_PER_WIDGET = 6
-
 const sourceOptions: Array<{
   label: string
   value: StudyPackSourceFormat
-}> = [
-  { label: 'Pasted notes', value: 'paste' },
-  { label: 'Markdown', value: 'markdown' },
-  { label: 'Plain text', value: 'text' },
-  { label: 'CSV', value: 'csv' },
-]
+}> = [{ label: 'Plain text', value: 'text' }]
 
 const reviewTypeOptions: Array<{
   label: string
   value: ReviewType
 }> = [
   { label: 'Flashcard', value: 'flashcard' },
-  { label: 'Markdown', value: 'markdown' },
   { label: 'Quiz', value: 'quiz' },
   { label: 'Reveal answer', value: 'reveal' },
   { label: 'Definition', value: 'term' },
-  { label: 'Study note', value: 'note' },
   { label: 'Code note', value: 'code' },
   { label: 'Comparison', value: 'comparison' },
   { label: 'Sequence', value: 'sequence' },
@@ -159,26 +157,32 @@ const getCounts = (items: ReviewItem[]) =>
   }, {})
 
 const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
-  objects.map((object, index) => ({
-    object,
-    title: getObjectTitle(object),
-    type: object.kind === 'qa' ? 'flashcard' : object.kind,
-    widgetIndex: Math.floor(index / DEFAULT_OBJECTS_PER_WIDGET),
-  }))
+  objects
+    .filter((object) => object.kind !== 'note' && object.kind !== 'markdown')
+    .map((object) => ({
+      object,
+      title: getObjectTitle(object),
+      type: object.kind === 'qa' ? 'flashcard' : object.kind,
+    }))
 
-const createInitialWidgetGroups = (
+const createPreviewWidgetGroups = (
   objects: StudyObject[],
   title: string,
-): string[] => {
-  const groupCount = Math.max(
-    1,
-    Math.ceil(objects.length / DEFAULT_OBJECTS_PER_WIDGET),
-  )
-
-  return Array.from({ length: groupCount }, (_value, index) =>
-    index === 0 ? title : `${title} ${index + 1}`,
-  )
-}
+): PreviewWidgetGroup[] =>
+  createStudyPackSmartWidgetGroups(
+    {
+      id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-pack',
+      title,
+      sourceFormat: 'text',
+      objects,
+      warnings: [],
+    },
+    3,
+  ).map((group, index) => ({
+    id: `preview-widget-${index + 1}`,
+    name: group.name,
+    objectIds: group.objects.map((object) => object.id),
+  }))
 
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
@@ -317,27 +321,29 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [sourceText, setSourceText] = useState('')
   const [sourceFormat, setSourceFormat] =
-    useState<StudyPackSourceFormat>('paste')
+    useState<StudyPackSourceFormat>('text')
   const [packTitle, setPackTitle] = useState('Study Pack')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
-  const [widgetGroups, setWidgetGroups] = useState<string[]>(['Study Pack'])
+  const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
+  const [includeSourceWidget, setIncludeSourceWidget] = useState(true)
+  const [includeSourceChart, setIncludeSourceChart] = useState(true)
   const [layoutMode, setLayoutMode] =
-    useState<StudyPackDashboardLayoutMode>('smart')
+    useState<StudyPackDashboardLayoutMode>('orchestrator')
   const [error, setError] = useState('')
-  const [markdownPromptOpen, setMarkdownPromptOpen] = useState(false)
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
 
   const reset = () => {
     setStep('source')
     setSourceText('')
-    setSourceFormat('paste')
+    setSourceFormat('text')
     setPackTitle('Study Pack')
     setReviewItems([])
-    setWidgetGroups(['Study Pack'])
-    setLayoutMode('smart')
+    setWidgetGroups([])
+    setIncludeSourceWidget(true)
+    setIncludeSourceChart(true)
+    setLayoutMode('orchestrator')
     setError('')
-    setMarkdownPromptOpen(false)
   }
 
   const handleClose = () => {
@@ -345,16 +351,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     onClose()
   }
 
-  const parseSourceAs = (format: StudyPackSourceFormat) => {
+  const parseSource = () => {
     const parsed = parseStudyPack(sourceText, {
       title: packTitle,
-      sourceFormat: format,
       defaultTags: ['study-pack'],
     })
+    const reviewableItems = toReviewItems(parsed.objects)
     setPackTitle(parsed.title)
-    setSourceFormat(format)
-    setReviewItems(toReviewItems(parsed.objects))
-    setWidgetGroups(createInitialWidgetGroups(parsed.objects, parsed.title))
+    setSourceFormat(parsed.sourceFormat)
+    setReviewItems(reviewableItems)
+    setWidgetGroups(
+      createPreviewWidgetGroups(
+        reviewableItems.map((item) => item.object),
+        parsed.title,
+      ),
+    )
     setError(parsed.warnings[0] || '')
     setStep('review')
   }
@@ -365,26 +376,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    if (
-      (sourceFormat === 'paste' || sourceFormat === 'text') &&
-      detectMarkdownSource(sourceText)
-    ) {
-      setError('')
-      setMarkdownPromptOpen(true)
-      return
-    }
-
-    parseSourceAs(sourceFormat)
-  }
-
-  const parseAsMarkdown = () => {
-    setMarkdownPromptOpen(false)
-    parseSourceAs('markdown')
-  }
-
-  const parseWithoutMarkdown = () => {
-    setMarkdownPromptOpen(false)
-    parseSourceAs(sourceFormat)
+    parseSource()
   }
 
   const handleFileUpload = async (
@@ -404,9 +396,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const text = await file.text()
     setSourceText(text)
     setPackTitle(file.name.replace(/\.[^.]+$/, '') || 'Study Pack')
-    setSourceFormat(
-      extension === 'csv' ? 'csv' : extension === 'md' ? 'markdown' : 'text',
-    )
+    setSourceFormat('text')
     setError('')
   }
 
@@ -419,9 +409,20 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const removeReviewItem = (index: number) => {
+    const objectId = reviewItems[index]?.object.id
     setReviewItems((items) =>
       items.filter((_, itemIndex) => itemIndex !== index),
     )
+    if (objectId) {
+      setWidgetGroups((groups) =>
+        groups.map((group) => ({
+          ...group,
+          objectIds: group.objectIds.filter(
+            (currentId) => currentId !== objectId,
+          ),
+        })),
+      )
+    }
   }
 
   const moveReviewItem = (index: number, direction: -1 | 1) => {
@@ -441,25 +442,57 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const addWidgetGroup = () => {
     setWidgetGroups((groups) => [
       ...groups,
-      `${packTitle} ${groups.length + 1}`,
+      {
+        id: `preview-widget-${Date.now()}-${groups.length + 1}`,
+        name: `${packTitle} ${groups.length + 1}`,
+        objectIds: [],
+      },
     ])
   }
 
-  const updateWidgetGroupName = (index: number, name: string) => {
+  const updateWidgetGroupName = (groupId: string, name: string) => {
     setWidgetGroups((groups) =>
-      groups.map((groupName, groupIndex) =>
-        groupIndex === index ? name : groupName,
+      groups.map((group) =>
+        group.id === groupId ? { ...group, name } : group,
       ),
     )
   }
+
+  const moveItemToWidgetGroup = (objectId: string, groupId: string) => {
+    setWidgetGroups((groups) =>
+      groups.map((group) => ({
+        ...group,
+        objectIds:
+          group.id === groupId
+            ? Array.from(new Set([...group.objectIds, objectId]))
+            : group.objectIds.filter((currentId) => currentId !== objectId),
+      })),
+    )
+  }
+
+  const getItemWidgetGroupId = (objectId: string): string =>
+    widgetGroups.find((group) => group.objectIds.includes(objectId))?.id ||
+    widgetGroups[0]?.id ||
+    ''
 
   const createPack = () => {
     const objects = reviewItems
       .map(applyReviewItem)
       .filter((object): object is StudyObject => Boolean(object))
+    const objectsById = new Map(objects.map((object) => [object.id, object]))
+    const groups = widgetGroups
+      .map((group, index) => ({
+        name: group.name.trim() || `${packTitle} ${index + 1}`,
+        objects: group.objectIds
+          .map((objectId) => objectsById.get(objectId))
+          .filter((object): object is StudyObject => Boolean(object)),
+      }))
+      .filter((group) => group.objects.length > 0)
 
-    if (objects.length === 0) {
-      setError('Keep at least one study item.')
+    if (!includeSourceWidget && groups.length === 0) {
+      setError(
+        'Keep the source widget or add at least one generated knowledge widget.',
+      )
       return
     }
 
@@ -470,19 +503,20 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       objects,
       warnings: [],
     }
-    const groups = widgetGroups.map((name, widgetIndex) => ({
-      name: name.trim() || `${pack.title} ${widgetIndex + 1}`,
-      objects: reviewItems
-        .filter((item) => item.widgetIndex === widgetIndex)
-        .map(applyReviewItem)
-        .filter((object): object is StudyObject => Boolean(object)),
-    }))
-    const widgets = createStudyPackWidgetsFromGroups(pack, groups)
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      includeSourceWidget,
+      includeSummaryChart: includeSourceChart,
+      rawSource: sourceText,
+      widgetGroups: groups,
+    })
 
     onCreatePack({
       name: packTitle.trim() || 'Study Pack',
       widgets,
-      layoutMode,
+      layoutMode:
+        includeSourceWidget || layoutMode !== 'orchestrator'
+          ? layoutMode
+          : 'tabs',
     })
     handleClose()
   }
@@ -544,20 +578,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 fullWidth
               />
               <TextField
-                select
                 label="Source type"
-                value={sourceFormat}
-                onChange={(event) =>
-                  setSourceFormat(event.target.value as StudyPackSourceFormat)
-                }
+                value={sourceOptions[0].label}
+                InputProps={{ readOnly: true }}
                 sx={{ minWidth: { md: 220 } }}
-              >
-                {sourceOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             </Stack>
             <TextField
               label="Paste notes"
@@ -602,49 +627,151 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   fullWidth
                   sx={{ mb: 2 }}
                 />
-                <Typography variant="subtitle2" gutterBottom>
-                  AquaMesh found
-                </Typography>
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                  {Object.entries(counts).map(([kind, count]) => (
-                    <Chip key={kind} label={`${count} ${kind}`} />
-                  ))}
-                </Stack>
-                <TextField
-                  select
-                  label="Dashboard layout"
-                  value={layoutMode}
-                  onChange={(event) =>
-                    setLayoutMode(
-                      event.target.value as StudyPackDashboardLayoutMode,
-                    )
-                  }
-                  fullWidth
-                  sx={{ mt: 2 }}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    mb: 2,
+                    border: 1,
+                    borderColor: 'primary.main',
+                    bgcolor: 'background.paper',
+                  }}
                 >
-                  <MenuItem value="smart">Smart split</MenuItem>
-                  <MenuItem value="tabs">Single tabset</MenuItem>
-                </TextField>
-                <Typography variant="subtitle2" sx={{ mt: 2 }} gutterBottom>
-                  Widgets
-                </Typography>
-                <Stack spacing={1}>
-                  {widgetGroups.map((groupName, groupIndex) => (
-                    <TextField
-                      key={`widget-group-${groupIndex}`}
-                      label={`Widget ${groupIndex + 1}`}
-                      value={groupName}
-                      onChange={(event) =>
-                        updateWidgetGroupName(groupIndex, event.target.value)
-                      }
-                      size="small"
-                      fullWidth
-                    />
-                  ))}
-                  <Button variant="outlined" onClick={addWidgetGroup}>
-                    Add widget
-                  </Button>
-                </Stack>
+                  <Stack spacing={1}>
+                    <Stack
+                      direction="row"
+                      gap={1}
+                      alignItems="center"
+                      flexWrap="wrap"
+                    >
+                      <Typography variant="subtitle2" fontWeight={800}>
+                        Source notes widget
+                      </Typography>
+                      <Chip label="Special" color="primary" size="small" />
+                      <Chip label="Locked" size="small" />
+                    </Stack>
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      <Chip
+                        label={
+                          sourceFormat === 'csv'
+                            ? '1 TableBlock'
+                            : '1 MarkdownBlock'
+                        }
+                        size="small"
+                      />
+                      {includeSourceChart && (
+                        <Chip label={`${packTitle} Mix chart`} size="small" />
+                      )}
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      First widget stays pinned to the left when source split
+                      layout is selected.
+                    </Typography>
+                    <Stack spacing={0.5}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={includeSourceWidget}
+                            onChange={(event) => {
+                              setIncludeSourceWidget(event.target.checked)
+                              if (
+                                !event.target.checked &&
+                                layoutMode === 'orchestrator'
+                              ) {
+                                setLayoutMode('tabs')
+                              }
+                            }}
+                          />
+                        }
+                        label={
+                          sourceFormat === 'csv'
+                            ? 'Create source table widget'
+                            : 'Create source Markdown widget'
+                        }
+                      />
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={includeSourceChart}
+                            disabled={!includeSourceWidget}
+                            onChange={(event) =>
+                              setIncludeSourceChart(event.target.checked)
+                            }
+                          />
+                        }
+                        label={`Include ${packTitle || 'Study Pack'} Mix chart`}
+                      />
+                    </Stack>
+                  </Stack>
+                </Paper>
+                {widgetGroups.length > 0 && (
+                  <TextField
+                    select
+                    label="Dashboard layout"
+                    value={layoutMode}
+                    onChange={(event) =>
+                      setLayoutMode(
+                        event.target.value as StudyPackDashboardLayoutMode,
+                      )
+                    }
+                    fullWidth
+                    sx={{ mb: 2 }}
+                  >
+                    <MenuItem
+                      value="orchestrator"
+                      disabled={!includeSourceWidget}
+                    >
+                      Source left, widgets right
+                    </MenuItem>
+                    <MenuItem value="tabs">Single tabset</MenuItem>
+                  </TextField>
+                )}
+                {Object.keys(counts).length > 0 ? (
+                  <>
+                    <Typography variant="subtitle2" gutterBottom>
+                      AquaMesh found
+                    </Typography>
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      {Object.entries(counts).map(([kind, count]) => (
+                        <Chip key={kind} label={`${count} ${kind}`} />
+                      ))}
+                    </Stack>
+                  </>
+                ) : (
+                  <Typography variant="subtitle2" color="text.secondary">
+                    AquaMesh was not able to extract any knowledge widgets from
+                    these notes.
+                  </Typography>
+                )}
+                {widgetGroups.length > 0 && (
+                  <Stack spacing={1.25} sx={{ mt: 2 }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      gap={1}
+                    >
+                      <Typography variant="subtitle2">
+                        Generated widgets
+                      </Typography>
+                      <Button size="small" onClick={addWidgetGroup}>
+                        Add widget
+                      </Button>
+                    </Stack>
+                    {widgetGroups.map((group) => (
+                      <TextField
+                        key={group.id}
+                        label={`${group.objectIds.length} blocks`}
+                        value={group.name}
+                        onChange={(event) =>
+                          updateWidgetGroupName(group.id, event.target.value)
+                        }
+                        size="small"
+                        fullWidth
+                      />
+                    ))}
+                  </Stack>
+                )}
               </Paper>
               <Paper
                 elevation={0}
@@ -702,26 +829,26 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                               </MenuItem>
                             ))}
                           </TextField>
-                          <TextField
-                            select
-                            label="Widget"
-                            value={item.widgetIndex}
-                            onChange={(event) =>
-                              updateReviewItem(index, {
-                                widgetIndex: Number(event.target.value),
-                              })
-                            }
-                            sx={{ minWidth: 170 }}
-                          >
-                            {widgetGroups.map((groupName, groupIndex) => (
-                              <MenuItem
-                                key={`item-widget-${groupIndex}`}
-                                value={groupIndex}
-                              >
-                                {groupName || `Widget ${groupIndex + 1}`}
-                              </MenuItem>
-                            ))}
-                          </TextField>
+                          {widgetGroups.length > 0 && (
+                            <TextField
+                              select
+                              label="Widget"
+                              value={getItemWidgetGroupId(item.object.id)}
+                              onChange={(event) =>
+                                moveItemToWidgetGroup(
+                                  item.object.id,
+                                  event.target.value,
+                                )
+                              }
+                              sx={{ minWidth: 210 }}
+                            >
+                              {widgetGroups.map((group) => (
+                                <MenuItem key={group.id} value={group.id}>
+                                  {group.name}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
                         </Stack>
                         <Typography
                           variant="body2"
@@ -782,26 +909,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           </Button>
         )}
       </DialogActions>
-      <Dialog
-        open={markdownPromptOpen}
-        onClose={() => setMarkdownPromptOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Use Markdown format?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            This looks like Markdown. Do you want AquaMesh to switch the source
-            type to Markdown and parse the structure?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={parseWithoutMarkdown}>Keep current format</Button>
-          <Button variant="contained" onClick={parseAsMarkdown}>
-            Use Markdown
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Dialog>
   )
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createStudyPackDashboardLayout,
+  createStudyPackOrchestratorWidgets,
   createStudyPackWidgets,
   createStudyPackWidgetsFromGroups,
   parseStudyPack,
@@ -106,5 +107,128 @@ review this because it is probably important`,
     expect(smartLayout.children?.[0].children?.[0].children).toHaveLength(2)
     expect(smartLayout.children?.[1].children?.[0].children).toHaveLength(1)
     expect(tabbedLayout.children?.[0].children).toHaveLength(5)
+  })
+
+  it('creates orchestrator widgets with source notes on the left and useful generated widgets on the right', () => {
+    const pack = parseStudyPack(
+      `Loose sentence that should stay out of generated widgets.
+
+Quiz:: One? | A | B | C
+Quiz:: Two? | A | B | C
+Quiz:: Three? | A | B | C
+Q: Front
+A: Back
+- first list item
+- second list item`,
+      { sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      rawSource: 'Raw **source** notes',
+    })
+    const layout = createStudyPackDashboardLayout(widgets, {
+      mode: 'orchestrator',
+    })
+
+    expect(widgets[0]).toMatchObject({
+      name: `${pack.title} Source`,
+      tags: ['study-pack', 'source', 'text'],
+    })
+    expect(widgets[0].components.map((component) => component.type)).toEqual([
+      'Label',
+      'Chart',
+      'MarkdownBlock',
+    ])
+    expect(widgets[0].components[1]).toMatchObject({
+      type: 'Chart',
+      props: expect.objectContaining({
+        title: `${pack.title} Mix`,
+        chartType: 'pie',
+        data: expect.stringContaining('"source"'),
+      }),
+    })
+    expect(widgets[0].components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'MarkdownBlock',
+          props: expect.objectContaining({
+            markdown: 'Raw **source** notes',
+          }),
+        }),
+      ]),
+    )
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      `${pack.title} Source`,
+      `${pack.title} Quizzes`,
+      `${pack.title} Misc`,
+    ])
+    expect(JSON.stringify(widgets.slice(1))).not.toContain('"Chart"')
+    expect(JSON.stringify(widgets.slice(1))).not.toContain('StudyNoteBlock')
+    expect(layout.children?.[0].children?.[0]).toMatchObject({
+      type: 'tab',
+      name: `${pack.title} Source`,
+    })
+    expect(layout.children?.[0].weight).toBe(50)
+    expect(layout.children?.[1].weight).toBe(50)
+    expect(layout.children?.[1].children).toHaveLength(2)
+  })
+
+  it('does not create generated widgets when only study notes are detected', () => {
+    const pack = parseStudyPack('Loose sentence only', { sourceFormat: 'text' })
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      rawSource: 'Loose sentence only',
+    })
+
+    expect(widgets).toHaveLength(1)
+    expect(JSON.stringify(widgets)).not.toContain('StudyNoteBlock')
+  })
+
+  it('can create a CSV source widget as a table without the source chart', () => {
+    const pack = parseStudyPack('Rule,Formula\nPower,nx^(n-1)', {
+      title: 'Rules',
+    })
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      includeSummaryChart: false,
+      rawSource: 'Rule,Formula\nPower,nx^(n-1)',
+    })
+
+    expect(widgets[0]).toMatchObject({
+      name: 'Rules Source',
+      tags: ['study-pack', 'source', 'csv'],
+    })
+    expect(widgets[0].components.map((component) => component.type)).toEqual([
+      'Label',
+      'TableBlock',
+    ])
+    expect(widgets[0].components[1]).toMatchObject({
+      type: 'TableBlock',
+      props: expect.objectContaining({
+        headers: ['Rule', 'Formula'],
+        rows: [['Power', 'nx^(n-1)']],
+      }),
+    })
+    expect(JSON.stringify(widgets)).not.toContain('"Chart"')
+  })
+
+  it('can skip the source widget and use caller-provided widget groups', () => {
+    const pack = parseStudyPack(
+      `Quiz:: One? | A | B | C
+Q: Front
+A: Back`,
+      { sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      includeSourceWidget: false,
+      widgetGroups: [
+        {
+          name: 'Practice',
+          objects: pack.objects.filter((object) => object.kind === 'quiz'),
+        },
+      ],
+    })
+
+    expect(widgets).toHaveLength(1)
+    expect(widgets[0].name).toBe('Practice')
+    expect(JSON.stringify(widgets)).not.toContain('Source notes')
+    expect(JSON.stringify(widgets)).not.toContain('"Chart"')
   })
 })

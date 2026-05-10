@@ -284,24 +284,26 @@ const objectToComponents = (
 const createSummaryChart = (
   pack: StudyPack,
   widgetId: string,
+  extraCounts: Record<string, number> = {},
 ): ComponentData => {
   const counts = pack.objects.reduce<Record<string, number>>(
     (currentCounts, object) => {
       currentCounts[object.kind] = (currentCounts[object.kind] || 0) + 1
       return currentCounts
     },
-    {},
+    { ...extraCounts },
   )
   const labels = Object.keys(counts)
+  const totalObjects = labels.reduce((total, label) => total + counts[label], 0)
 
   return {
     id: `${widgetId}-summary-chart`,
     type: 'Chart',
     props: {
-      title: 'Study Pack Mix',
+      title: `${pack.title} Mix`,
       chartType: 'pie',
       height: 400,
-      description: `${pack.objects.length} parsed study objects`,
+      description: `${totalObjects} study objects`,
       data: JSON.stringify(
         {
           labels,
@@ -319,6 +321,47 @@ const createSummaryChart = (
         2,
       ),
     },
+  }
+}
+
+const parseCsvSourceRow = (line: string): string[] => {
+  const cells: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    const nextCharacter = line[index + 1]
+
+    if (character === '"' && nextCharacter === '"') {
+      current += '"'
+      index += 1
+    } else if (character === '"') {
+      inQuotes = !inQuotes
+    } else if (character === ',' && !inQuotes) {
+      cells.push(current.trim())
+      current = ''
+    } else {
+      current += character
+    }
+  }
+
+  cells.push(current.trim())
+  return cells
+}
+
+const sourceTextToCsvTable = (
+  sourceText: string,
+): { headers: string[]; rows: string[][] } => {
+  const parsedRows = sourceText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map(parseCsvSourceRow)
+
+  return {
+    headers: parsedRows[0] || [],
+    rows: parsedRows.slice(1),
   }
 }
 
@@ -350,6 +393,7 @@ const createWidgetRecord = (
     >
   >,
   name?: string,
+  includeSummaryChart = true,
 ): CustomWidget => {
   const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-${
     widgetIndex + 1
@@ -363,7 +407,9 @@ const createWidgetRecord = (
       pack.title,
       widgetIndex === 0 ? 'h6' : 'subtitle1',
     ),
-    ...(widgetIndex === 0 ? [createSummaryChart(pack, widgetId)] : []),
+    ...(includeSummaryChart && widgetIndex === 0
+      ? [createSummaryChart(pack, widgetId)]
+      : []),
     ...bodyComponents,
   ]
 
@@ -381,6 +427,180 @@ const createWidgetRecord = (
     version: '1.0',
     author: options.author,
   }
+}
+
+const createRawSourceWidget = (
+  pack: StudyPack,
+  sourceText: string,
+  options: Required<
+    Pick<
+      StudyPackGeneratorOptions,
+      | 'author'
+      | 'category'
+      | 'createdAt'
+      | 'includeSummaryChart'
+      | 'widgetIdPrefix'
+    >
+  >,
+): CustomWidget => {
+  const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-source`
+  const csvTable =
+    pack.sourceFormat === 'csv' ? sourceTextToCsvTable(sourceText) : null
+  const sourceComponent: ComponentData = csvTable
+    ? {
+        id: `${widgetId}-table`,
+        type: 'TableBlock',
+        props: {
+          __blockType: 'TableBlock',
+          title: 'Source table',
+          headers: csvTable.headers,
+          rows: csvTable.rows,
+        },
+      }
+    : {
+        id: `${widgetId}-markdown`,
+        type: 'MarkdownBlock',
+        props: {
+          __blockType: 'MarkdownBlock',
+          title: 'Source notes',
+          markdown: sourceText,
+        },
+      }
+
+  return {
+    id: widgetId,
+    name: `${pack.title} Source`,
+    components: [
+      createLabel(`${widgetId}-title`, pack.title, 'h6'),
+      ...(options.includeSummaryChart
+        ? [createSummaryChart(pack, widgetId, { source: 1 })]
+        : []),
+      sourceComponent,
+    ],
+    createdAt: options.createdAt,
+    updatedAt: options.createdAt,
+    category: options.category,
+    tags: ['study-pack', 'source', pack.sourceFormat],
+    description: csvTable
+      ? 'Original CSV source rendered as a table.'
+      : 'Original study notes rendered as Markdown.',
+    version: '1.0',
+    author: options.author,
+  }
+}
+
+const getGeneratedObjectBucket = (object: StudyObject): string => {
+  if (object.kind === 'qa' || object.kind === 'reveal') {
+    return 'flashcards'
+  }
+
+  if (object.kind === 'reviewPrompt') {
+    return 'review'
+  }
+
+  return object.kind
+}
+
+const formatBucketName = (bucket: string): string => {
+  const names: Record<string, string> = {
+    code: 'Code',
+    comparison: 'Comparisons',
+    flashcards: 'Flashcards',
+    list: 'Lists',
+    quiz: 'Quizzes',
+    resource: 'Resources',
+    review: 'Review',
+    sequence: 'Sequences',
+    table: 'Tables',
+    term: 'Definitions',
+  }
+
+  return names[bucket] || bucket
+}
+
+export const createStudyPackSmartWidgetGroups = (
+  pack: StudyPack,
+  groupingThreshold: number,
+): StudyPackWidgetGroupInput[] => {
+  const interestingObjects = pack.objects.filter(
+    (object) => object.kind !== 'note' && object.kind !== 'markdown',
+  )
+  const buckets = interestingObjects.reduce<Record<string, StudyObject[]>>(
+    (groups, object) => {
+      const bucket = getGeneratedObjectBucket(object)
+      groups[bucket] = [...(groups[bucket] || []), object]
+      return groups
+    },
+    {},
+  )
+  const groups: StudyPackWidgetGroupInput[] = []
+  const miscObjects: StudyObject[] = []
+
+  Object.entries(buckets).forEach(([bucket, objects]) => {
+    if (objects.length >= groupingThreshold) {
+      groups.push({
+        name: `${pack.title} ${formatBucketName(bucket)}`,
+        objects,
+      })
+      return
+    }
+
+    miscObjects.push(...objects)
+  })
+
+  if (miscObjects.length > 0) {
+    groups.push({
+      name: `${pack.title} Misc`,
+      objects: miscObjects,
+    })
+  }
+
+  return groups
+}
+
+export const createStudyPackOrchestratorWidgets = (
+  pack: StudyPack,
+  options: StudyPackGeneratorOptions = {},
+): CustomWidget[] => {
+  const normalizedOptions = {
+    author: options.author || STUDY_PACK_AUTHOR,
+    category: options.category || STUDY_PACK_CATEGORY,
+    createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    groupingThreshold: Math.max(2, options.groupingThreshold || 3),
+    includeSourceWidget: options.includeSourceWidget ?? true,
+    maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
+    widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
+    includeSummaryChart: options.includeSummaryChart ?? true,
+  }
+  const sourceWidgets = normalizedOptions.includeSourceWidget
+    ? [
+        createRawSourceWidget(pack, options.rawSource || '', {
+          author: normalizedOptions.author,
+          category: normalizedOptions.category,
+          createdAt: normalizedOptions.createdAt,
+          includeSummaryChart: normalizedOptions.includeSummaryChart,
+          widgetIdPrefix: normalizedOptions.widgetIdPrefix,
+        }),
+      ]
+    : []
+  const generatedGroups =
+    options.widgetGroups ||
+    createStudyPackSmartWidgetGroups(pack, normalizedOptions.groupingThreshold)
+
+  if (generatedGroups.length === 0) {
+    return sourceWidgets
+  }
+
+  const generatedWidgets = createStudyPackWidgetsFromGroups(
+    pack,
+    generatedGroups,
+    {
+      ...normalizedOptions,
+      includeSummaryChart: false,
+    },
+  )
+
+  return [...sourceWidgets, ...generatedWidgets]
 }
 
 export const createStudyPackWidgets = (
@@ -413,6 +633,7 @@ export const createStudyPackWidgetsFromGroups = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    includeSummaryChart: options.includeSummaryChart ?? true,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
   }
@@ -429,6 +650,7 @@ export const createStudyPackWidgetsFromGroups = (
       index,
       normalizedOptions,
       group.name,
+      normalizedOptions.includeSummaryChart,
     ),
   )
 }
@@ -533,11 +755,44 @@ const createTabbedDashboardLayout = (
   children: [createTabset(widgets, 100, true)],
 })
 
+const createOrchestratorDashboardLayout = (
+  widgets: CustomWidget[],
+): DashboardLayout => {
+  const [sourceWidget, ...generatedWidgets] = widgets
+
+  if (!sourceWidget || generatedWidgets.length === 0) {
+    return createTabbedDashboardLayout(widgets)
+  }
+
+  const panes = [[], []] as [CustomWidget[], CustomWidget[]]
+  generatedWidgets.forEach((widget, index) => {
+    panes[index % panes.length].push(widget)
+  })
+  const rightChildren = panes
+    .filter((pane) => pane.length > 0)
+    .map((pane, index) => createTabset(pane, 50, index === 0))
+
+  return {
+    type: 'row',
+    weight: 100,
+    children: [
+      createTabset([sourceWidget], 50, true),
+      {
+        type: 'row',
+        weight: 50,
+        children: rightChildren,
+      },
+    ],
+  }
+}
+
 export const createStudyPackDashboardLayout = (
   widgets: CustomWidget[],
   options: StudyPackDashboardLayoutOptions = {},
 ): DashboardLayout =>
-  options.mode === 'tabs'
+  options.mode === 'orchestrator'
+    ? createOrchestratorDashboardLayout(widgets)
+    : options.mode === 'tabs'
     ? createTabbedDashboardLayout(widgets)
     : createSmartDashboardLayout(widgets)
 

@@ -1,6 +1,8 @@
 export {
   createStudyPackDashboardLayout,
+  createStudyPackOrchestratorWidgets,
   createStudyPackSaveWidgetInputs,
+  createStudyPackSmartWidgetGroups,
   createStudyPackWidgets,
   createStudyPackWidgetsFromGroups,
   generateStudyPack,
