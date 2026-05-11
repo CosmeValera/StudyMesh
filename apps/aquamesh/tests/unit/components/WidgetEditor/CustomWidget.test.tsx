@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom" />
 import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CustomWidget from '../../../../src/components/WidgetEditor/CustomWidget'
 import {
   WIDGET_STORAGE_UPDATED,
@@ -110,5 +110,72 @@ describe('CustomWidget live storage refresh', () => {
     await waitFor(() => {
       expect(screen.getByText('This widget has no blocks')).toBeInTheDocument()
     })
+  })
+
+  it('renders code notes and cycles review prompt status in session', () => {
+    render(
+      <CustomWidget
+        components={[
+          {
+            id: 'code-1',
+            type: 'CodeBlock',
+            props: {
+              __blockType: 'CodeBlock',
+              title: 'Nginx location',
+              code: 'location / {\n  root /var/www/example.com;\n}',
+              language: 'nginx',
+            },
+          },
+          {
+            id: 'review-1',
+            type: 'ReviewPromptBlock',
+            props: {
+              __blockType: 'ReviewPromptBlock',
+              title: 'Review this',
+              prompt: 'Diffusion vs osmosis',
+              status: 'needsReview',
+            },
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Nginx location')).toBeInTheDocument()
+    expect(screen.getByText(/root \/var\/www\/example\.com/)).toBeInTheDocument()
+
+    const status = screen.getByText('need review')
+    fireEvent.click(status)
+    expect(screen.getByText('reviewing')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('reviewing'))
+    expect(screen.getByText('mastered')).toBeInTheDocument()
+  })
+
+  it('temporarily turns study notes into flashcards from suggestion chips', () => {
+    render(
+      <CustomWidget
+        components={[
+          {
+            id: 'note-1',
+            type: 'StudyNoteBlock',
+            props: {
+              __blockType: 'StudyNoteBlock',
+              title: 'Cell terms',
+              text: 'osmosis = water moving across membrane',
+              suggestedTypes: ['definition', 'flashcard', 'review'],
+            },
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('flashcard'))
+
+    expect(screen.getByText('temporary flashcard')).toBeInTheDocument()
+    expect(screen.getByText('osmosis')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('osmosis'))
+
+    expect(screen.getByText('water moving across membrane')).toBeInTheDocument()
+    expect(localStorage.setItem).toHaveBeenCalled()
   })
 })

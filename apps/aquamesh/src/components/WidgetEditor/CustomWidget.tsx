@@ -15,6 +15,12 @@ import {
   Collapse,
   InputAdornment,
   Checkbox,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
@@ -37,6 +43,9 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ComponentPreview from './components/preview/ComponentPreview'
+import StudyBlockView, {
+  isStudyBlockType,
+} from './components/preview/StudyBlockView'
 
 interface ComponentData {
   id: string
@@ -325,6 +334,14 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 
   // Function to render any component type
   const renderComponent = (component: ComponentData) => {
+    if (isStudyBlockType(component.type)) {
+      return (
+        <Box key={component.id} sx={{ mb: 2 }}>
+          <StudyBlockView type={component.type} props={component.props} />
+        </Box>
+      )
+    }
+
     switch (component.type) {
       case 'SwitchEnable': {
         const labelValue = component.props.label as string
@@ -783,6 +800,78 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
                 </Typography>
               ))}
             </Box>
+          </Box>
+        )
+      }
+      case 'TableBlock': {
+        const title = (component.props.title as string) || ''
+        const headers = Array.isArray(component.props.headers)
+          ? (component.props.headers as string[])
+          : []
+        const rows = Array.isArray(component.props.rows)
+          ? (component.props.rows as string[][])
+          : []
+        const columnCount = Math.max(
+          headers.length,
+          ...rows.map((row) => row.length),
+          1,
+        )
+
+        return (
+          <Box key={component.id} sx={{ mb: 2 }}>
+            {title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {title}
+              </Typography>
+            )}
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ overflowX: 'auto' }}
+            >
+              <Table size="small">
+                {headers.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header, index) => (
+                        <TableCell
+                          key={`${header}-${index}`}
+                          sx={{ fontWeight: 700 }}
+                        >
+                          {header}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                )}
+                <TableBody>
+                  {rows.length > 0 ? (
+                    rows.map((row, rowIndex) => (
+                      <TableRow key={`table-row-${rowIndex}`}>
+                        {Array.from({ length: columnCount }, (_, cellIndex) => (
+                          <TableCell
+                            key={`table-cell-${rowIndex}-${cellIndex}`}
+                          >
+                            {row[cellIndex] || ''}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={Math.max(headers.length, 1)}
+                        align="center"
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Add rows to this table.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )
       }

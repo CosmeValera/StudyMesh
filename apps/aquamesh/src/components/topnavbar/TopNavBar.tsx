@@ -21,6 +21,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
 import ConstructionIcon from '@mui/icons-material/Construction'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
@@ -32,6 +33,7 @@ import AccentColorPicker from '../../theme/AccentColorPicker'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
 import {
+  OPEN_STUDY_PACK_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
@@ -41,6 +43,7 @@ import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
+import CreateStudyPackModal from '../studyPack/CreateStudyPackModal'
 
 // Define user data type
 interface UserData {
@@ -143,6 +146,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [studyPackOpen, setStudyPackOpen] = useState(false)
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
   const [widgetEditorPayload, setWidgetEditorPayload] = useState<{
     loadWidget?: CustomWidget
@@ -172,7 +176,12 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const isAdmin = userData.id === 'admin' && userData.role === 'ADMIN_ROLE'
   const userModeLabel = isAdmin ? 'Builder mode' : 'Viewer mode'
 
-  const { openCreateWidget, openCreateDashboard } = useWorkspaceActions()
+  const {
+    openCreateWidget,
+    openCreateDashboard,
+    openCreateStudyPack,
+    createStudyPackDashboard,
+  } = useWorkspaceActions()
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -230,6 +239,36 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         OPEN_WIDGET_EDITOR_EVENT,
         handleOpenWidgetEditor,
       )
+    }
+  }, [userData])
+
+  useEffect(() => {
+    const handleOpenStudyPack = () => {
+      let parsedUserData = userData
+
+      try {
+        const storedUserData = localStorage.getItem('userData')
+        parsedUserData = storedUserData
+          ? (JSON.parse(storedUserData) as UserData)
+          : userData
+      } catch (error) {
+        console.error('Failed to parse user data from localStorage', error)
+      }
+
+      if (
+        parsedUserData.id !== 'admin' ||
+        parsedUserData.role !== 'ADMIN_ROLE'
+      ) {
+        return
+      }
+
+      setStudyPackOpen(true)
+    }
+
+    window.addEventListener(OPEN_STUDY_PACK_EVENT, handleOpenStudyPack)
+
+    return () => {
+      window.removeEventListener(OPEN_STUDY_PACK_EVENT, handleOpenStudyPack)
     }
   }, [userData])
 
@@ -302,6 +341,41 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <DashboardOptionsMenu />
             ) : (
               <DashboardOptionsMenu />
+            )}
+
+            {/* Create Dashboard */}
+            {isPhone || isTablet ? (
+              <ButtonWithLabel
+                icon={<AutoStoriesIcon />}
+                label="Study Pack"
+                onClick={() => openCreateStudyPack()}
+                data-tutorial-id="create-study-pack-button"
+                disabled={!isAdmin}
+                title={
+                  isAdmin
+                    ? 'Create study pack'
+                    : 'Viewer mode cannot create study packs'
+                }
+                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
+              />
+            ) : (
+              <Button
+                onClick={() => openCreateStudyPack()}
+                disabled={!isAdmin}
+                sx={{
+                  color: 'foreground.contrastPrimary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: 'auto',
+                  mx: 1,
+                  px: 2,
+                  opacity: isAdmin ? 1 : 0.45,
+                }}
+                startIcon={<AutoStoriesIcon />}
+                data-tutorial-id="create-study-pack-button"
+              >
+                Create study pack
+              </Button>
             )}
 
             {/* Create Dashboard */}
@@ -586,6 +660,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         onShowDeleteTemplateConfirmationChange={
           setShowDeleteTemplateConfirmation
         }
+      />
+      <CreateStudyPackModal
+        open={studyPackOpen}
+        onClose={() => setStudyPackOpen(false)}
+        onCreatePack={createStudyPackDashboard}
       />
       <Dialog
         fullScreen

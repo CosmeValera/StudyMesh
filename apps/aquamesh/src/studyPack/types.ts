@@ -1,0 +1,194 @@
+import { CustomWidget } from '../components/WidgetEditor/WidgetStorage'
+import { ComponentData } from '../components/WidgetEditor/types/types'
+import { DashboardLayout } from '../state/store'
+
+export type StudyPackSourceFormat =
+  | 'paste'
+  | 'markdown'
+  | 'text'
+  | 'csv'
+  | 'markdown-table'
+  | 'quick-syntax'
+
+export type StudyObjectKind =
+  | 'markdown'
+  | 'note'
+  | 'term'
+  | 'qa'
+  | 'quiz'
+  | 'reveal'
+  | 'comparison'
+  | 'sequence'
+  | 'reviewPrompt'
+  | 'code'
+  | 'list'
+  | 'table'
+  | 'resource'
+
+export interface StudyObjectBase {
+  id: string
+  kind: StudyObjectKind
+  title?: string
+  sourceLine: number
+  tags: string[]
+}
+
+export interface StudyNoteObject extends StudyObjectBase {
+  kind: 'note'
+  body: string
+}
+
+export interface StudyTermObject extends StudyObjectBase {
+  kind: 'term'
+  term: string
+  definition: string
+}
+
+export interface StudyQAObject extends StudyObjectBase {
+  kind: 'qa'
+  question: string
+  answer: string
+}
+
+export interface StudyQuizObject extends StudyObjectBase {
+  kind: 'quiz'
+  quizMode: 'multipleChoice' | 'shortAnswer'
+  question: string
+  options: string[]
+  correctIndex: number
+  answer: string
+  explanation: string
+}
+
+export interface StudyRevealObject extends StudyObjectBase {
+  kind: 'reveal'
+  prompt: string
+  hiddenText: string
+}
+
+export interface StudyComparisonObject extends StudyObjectBase {
+  kind: 'comparison'
+  columns: string[]
+  rows: string[][]
+}
+
+export interface StudySequenceObject extends StudyObjectBase {
+  kind: 'sequence'
+  steps: string[]
+  ordered: boolean
+  interactiveChecklist: boolean
+}
+
+export interface StudyReviewPromptObject extends StudyObjectBase {
+  kind: 'reviewPrompt'
+  prompt: string
+  reason: string
+  status: 'needsReview' | 'reviewing' | 'mastered'
+}
+
+export interface StudyMarkdownObject extends StudyObjectBase {
+  kind: 'markdown'
+  markdown: string
+}
+
+export interface StudyCodeObject extends StudyObjectBase {
+  kind: 'code'
+  code: string
+  language: string
+  caption: string
+}
+
+export interface StudyListObject extends StudyObjectBase {
+  kind: 'list'
+  items: string[]
+  ordered: boolean
+  checklist: boolean
+}
+
+export interface StudyTableObject extends StudyObjectBase {
+  kind: 'table'
+  headers: string[]
+  rows: string[][]
+}
+
+export interface StudyResourceObject extends StudyObjectBase {
+  kind: 'resource'
+  url: string
+  label: string
+  resourceType: 'image' | 'pdf' | 'link'
+}
+
+export type StudyObject =
+  | StudyMarkdownObject
+  | StudyNoteObject
+  | StudyTermObject
+  | StudyQAObject
+  | StudyQuizObject
+  | StudyRevealObject
+  | StudyComparisonObject
+  | StudySequenceObject
+  | StudyReviewPromptObject
+  | StudyCodeObject
+  | StudyListObject
+  | StudyTableObject
+  | StudyResourceObject
+
+export interface StudyPack {
+  id: string
+  title: string
+  sourceFormat: StudyPackSourceFormat
+  objects: StudyObject[]
+  warnings: string[]
+}
+
+export interface StudyPackParseOptions {
+  title?: string
+  sourceFormat?: StudyPackSourceFormat
+  packId?: string
+  defaultTags?: string[]
+}
+
+export interface StudyPackGeneratorOptions {
+  author?: string
+  category?: string
+  createdAt?: string
+  dashboardName?: string
+  groupingThreshold?: number
+  includeSourceWidget?: boolean
+  includeSummaryChart?: boolean
+  rawSource?: string
+  maxObjectsPerWidget?: number
+  widgetIdPrefix?: string
+  widgetGroups?: StudyPackWidgetGroupInput[]
+}
+
+export type StudyPackDashboardLayoutMode = 'smart' | 'tabs' | 'orchestrator'
+
+export interface StudyPackDashboardLayoutOptions {
+  mode?: StudyPackDashboardLayoutMode
+}
+
+export interface StudyPackWidgetGroupInput {
+  name: string
+  objects: StudyObject[]
+}
+
+export type StudyPackWidgetRecord = CustomWidget
+
+export type StudyPackSaveWidgetInput = Omit<
+  CustomWidget,
+  'id' | 'createdAt' | 'updatedAt'
+>
+
+export interface StudyPackGeneratedDashboard {
+  name: string
+  layout: DashboardLayout
+}
+
+export interface GeneratedStudyPack {
+  pack: StudyPack
+  widgets: StudyPackWidgetRecord[]
+  dashboard: StudyPackGeneratedDashboard
+}
+
+export type StudyPackComponent = ComponentData
