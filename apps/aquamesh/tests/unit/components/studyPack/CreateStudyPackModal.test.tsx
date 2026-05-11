@@ -258,6 +258,12 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     selectImageSource()
 
     expect(screen.getByText(/drop an image of your notes/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/works best with screenshots, slides/i),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/may fail or return inaccurate text for handwritten/i),
+    ).toBeInTheDocument()
 
     const input = getImageFileInput()
     const image = new File(['image-bytes'], 'lecture.png', {

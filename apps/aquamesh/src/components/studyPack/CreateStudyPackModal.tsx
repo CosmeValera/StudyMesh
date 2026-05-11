@@ -787,6 +787,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </>
             ) : (
               <>
+                <Alert severity="info">
+                  <b>Text extraction works best with clear typed text like screenshots, slides, or exported PDFs. Handwritten or messy images may not be read accurately.</b>
+                  <br /><br />
+                  Better image reading with your own AI API key is planned for a future settings option.
+                </Alert>
                 <Paper
                   elevation={0}
                   onDrop={handleImageDrop}
@@ -823,8 +828,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                         {imageFile?.name || 'Drop an image of your notes'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        PNG, JPG, WebP, non-animated GIF, BMP, or PBM. Printed
-                        text and screenshots work best.
+                        PNG, JPG, WebP, non-animated GIF, BMP, or PBM.
                       </Typography>
                     </Box>
                     <Button
