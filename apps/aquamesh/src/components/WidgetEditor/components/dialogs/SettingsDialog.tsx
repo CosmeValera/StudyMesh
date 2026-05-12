@@ -12,6 +12,7 @@ import {
   Paper,
   Grid,
   Chip,
+  TextField,
 } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -28,9 +29,16 @@ import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ReplayIcon from '@mui/icons-material/Replay'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 
 import AccentColorPicker from '../../../../theme/AccentColorPicker'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
+import {
+  DEFAULT_STUDY_PACK_AI_MODEL,
+  getEnvGeminiApiKey,
+  readStudyPackAiSettings,
+  saveStudyPackAiSettings,
+} from '../../../../studyPack/ai'
 
 const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
 
@@ -144,6 +152,19 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 }) => {
   const showEditorSettings = scope === 'editor'
   const showGlobalSettings = scope === 'global'
+  const [aiApiToken, setAiApiToken] = React.useState('')
+  const [aiModel, setAiModel] = React.useState(DEFAULT_STUDY_PACK_AI_MODEL)
+  const hasEnvToken = Boolean(getEnvGeminiApiKey())
+
+  React.useEffect(() => {
+    if (!open || !showGlobalSettings) {
+      return
+    }
+
+    const settings = readStudyPackAiSettings()
+    setAiApiToken(settings.apiToken)
+    setAiModel(settings.model)
+  }, [open, showGlobalSettings])
 
   // Create safe handlers for all possibly undefined callbacks
   const handleTooltipsChange = (checked: boolean) => {
@@ -186,6 +207,21 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     )
     window.dispatchEvent(new CustomEvent(AQUAMESH_ONBOARDING_RESET_EVENT))
     onClose()
+  }
+
+  const handleSaveAiSettings = () => {
+    saveStudyPackAiSettings({
+      apiToken: aiApiToken,
+      model: aiModel,
+    })
+  }
+
+  const handleClearAiToken = () => {
+    setAiApiToken('')
+    saveStudyPackAiSettings({
+      apiToken: '',
+      model: aiModel,
+    })
   }
 
   return (
@@ -308,6 +344,95 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 >
                   Replay
                 </Button>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                <AutoAwesomeIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Study Pack AI
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
+                    Add a Gemini API key to enable AI mode in Create study pack.
+                    The key is stored locally in this browser and sent directly
+                    to Google from AquaMesh.
+                  </Typography>
+                  <TextField
+                    label="Gemini API key"
+                    type="password"
+                    value={aiApiToken}
+                    onChange={(event) => setAiApiToken(event.target.value)}
+                    fullWidth
+                    size="small"
+                    placeholder={
+                      hasEnvToken
+                        ? 'Using .env key unless you enter one here'
+                        : 'Paste your Gemini API key'
+                    }
+                    sx={{ mb: 1.5 }}
+                  />
+                  <TextField
+                    label="Model"
+                    value={aiModel}
+                    onChange={(event) => setAiModel(event.target.value)}
+                    fullWidth
+                    size="small"
+                    sx={{ mb: 1.5 }}
+                  />
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Chip
+                      size="small"
+                      label={
+                        aiApiToken.trim()
+                          ? 'Settings key active'
+                          : hasEnvToken
+                            ? '.env key available'
+                            : 'No key configured'
+                      }
+                      color={
+                        aiApiToken.trim() || hasEnvToken ? 'primary' : 'default'
+                      }
+                    />
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleClearAiToken}
+                    >
+                      Clear key
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleSaveAiSettings}
+                    >
+                      Save AI settings
+                    </Button>
+                  </Box>
+                </Box>
               </Box>
             </Paper>
           )}

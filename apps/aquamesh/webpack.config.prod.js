@@ -9,6 +9,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const Dotenv = require('dotenv-webpack')
 const deps = require('./package.json').dependencies
 const path = require('path')
+const fs = require('fs')
 
 module.exports = (_, argv) => ({
   // mode: 'production',
@@ -135,7 +136,11 @@ module.exports = (_, argv) => ({
     }),
     new CleanWebpackPlugin(),
     new Dotenv({
-      path: `./.env.${argv.mode || 'production'}`,
+      path: fs.existsSync(
+        path.resolve(__dirname, `.env.${argv.mode || 'production'}`),
+      )
+        ? `./.env.${argv.mode || 'production'}`
+        : './.env',
       systemvars: true, // Load all system variables as well (useful for CI/CD)
     }),
   ],

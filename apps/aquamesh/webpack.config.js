@@ -8,6 +8,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
 const Dotenv = require('dotenv-webpack')
 const path = require('path')
+const fs = require('fs')
 const deps = require('./package.json').dependencies
 
 const printCompilationMessage = require('./compilation.config.js')
@@ -128,7 +129,9 @@ module.exports = (_, argv) => ({
     }),
     new CleanWebpackPlugin(),
     new Dotenv({
-      path: `./.env.${argv.mode}`,
+      path: fs.existsSync(path.resolve(__dirname, `.env.${argv.mode}`))
+        ? `./.env.${argv.mode}`
+        : './.env',
     }),
   ],
 })

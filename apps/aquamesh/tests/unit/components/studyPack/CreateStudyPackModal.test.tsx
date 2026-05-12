@@ -9,9 +9,24 @@ import {
   parseStudyPack,
 } from '../../../../src/studyPack'
 import { extractRawNotesFromImage } from '../../../../src/studyPack/imageOcr'
+import {
+  extractRawNotesWithAi,
+  generateStudyPackWithAi,
+  resolveStudyPackAiCredentials,
+} from '../../../../src/studyPack/ai'
 
 vi.mock('../../../../src/studyPack/imageOcr', () => ({
   extractRawNotesFromImage: vi.fn(),
+}))
+
+vi.mock('../../../../src/studyPack/ai', () => ({
+  extractRawNotesWithAi: vi.fn(),
+  generateStudyPackWithAi: vi.fn(),
+  resolveStudyPackAiCredentials: vi.fn(() => ({
+    apiToken: '',
+    model: 'gemini-test',
+    tokenSource: 'none',
+  })),
 }))
 
 vi.mock('../../../../src/studyPack', () => ({
@@ -113,6 +128,33 @@ vi.mock('../../../../src/studyPack', () => ({
 describe('CreateStudyPackModal orchestrator pipeline', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      apiToken: '',
+      model: 'gemini-test',
+      tokenSource: 'none',
+    })
+    vi.mocked(generateStudyPackWithAi).mockResolvedValue({
+      title: 'AI Study Pack',
+      sourceFormat: 'text',
+      objects: [
+        {
+          id: 'ai-quiz-1',
+          kind: 'quiz',
+          quizMode: 'shortAnswer',
+          sourceLine: 1,
+          tags: [],
+          question: 'What did AI find?',
+          options: [],
+          correctIndex: 0,
+          answer: 'A grounded answer',
+          explanation: '',
+        },
+      ],
+      warnings: [],
+    })
+    vi.mocked(extractRawNotesWithAi).mockResolvedValue(
+      'AI extracted handwritten notes',
+    )
     vi.mocked(extractRawNotesFromImage).mockResolvedValue(
       'Quiz:: What is OCR? | Image text extraction',
     )
@@ -129,6 +171,11 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
   const selectImageSource = () => {
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /source type/i }))
     fireEvent.click(screen.getByRole('option', { name: /^image$/i }))
+  }
+
+  const selectAiMode = () => {
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /mode/i }))
+    fireEvent.click(screen.getByRole('option', { name: /^ai$/i }))
   }
 
   const getImageFileInput = () =>
@@ -250,6 +297,49 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     expect(createStudyPackSmartWidgetGroups).toHaveBeenCalled()
   })
 
+  it('requires an API key before AI mode generates widgets', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    selectAiMode()
+    pasteNotes('Photosynthesis happens in chloroplasts.')
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
+    expect(await screen.findByText(/add a gemini api key/i)).toBeInTheDocument()
+    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
+    expect(parseStudyPack).not.toHaveBeenCalled()
+  })
+
+  it('uses AI mode to generate reviewable widgets from raw text notes', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      apiToken: 'settings-token',
+      model: 'gemini-test',
+      tokenSource: 'settings',
+    })
+
+    selectAiMode()
+    pasteNotes('Photosynthesis happens in chloroplasts.')
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiToken: 'settings-token',
+          model: 'gemini-test',
+          rawNotes: 'Photosynthesis happens in chloroplasts.',
+        }),
+      )
+    })
+    expect(
+      await screen.findByDisplayValue('What did AI find?'),
+    ).toBeInTheDocument()
+    expect(parseStudyPack).not.toHaveBeenCalled()
+  })
+
   it('extracts image notes before parsing the study pack', async () => {
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
@@ -284,6 +374,41 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       await screen.findByDisplayValue(
         'Quiz:: What is OCR? | Image text extraction',
       ),
+    ).toBeInTheDocument()
+  })
+
+  it('uses Gemini image extraction in AI mode instead of local OCR', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      apiToken: 'settings-token',
+      model: 'gemini-test',
+      tokenSource: 'settings',
+    })
+
+    selectAiMode()
+    selectImageSource()
+    const input = getImageFileInput()
+    const image = new File(['image-bytes'], 'handwritten.png', {
+      type: 'image/png',
+    })
+
+    fireEvent.change(input, { target: { files: [image] } })
+    fireEvent.click(screen.getByRole('button', { name: /extract notes/i }))
+
+    await waitFor(() => {
+      expect(extractRawNotesWithAi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiToken: 'settings-token',
+          model: 'gemini-test',
+          image,
+        }),
+      )
+    })
+    expect(extractRawNotesFromImage).not.toHaveBeenCalled()
+    expect(
+      await screen.findByDisplayValue('AI extracted handwritten notes'),
     ).toBeInTheDocument()
   })
 
