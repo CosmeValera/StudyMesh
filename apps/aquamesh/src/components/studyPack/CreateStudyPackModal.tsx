@@ -23,6 +23,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ImageIcon from '@mui/icons-material/Image'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import {
   createStudyPackOrchestratorWidgets,
   createStudyPackSmartWidgetGroups,
@@ -34,9 +35,15 @@ import {
   StudyPackDashboardLayoutMode,
 } from '../../studyPack'
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
+import {
+  extractRawNotesWithAi,
+  generateStudyPackWithAi,
+  resolveStudyPackAiCredentials,
+} from '../../studyPack/ai'
 
 type ReviewType = StudyObjectKind | 'flashcard' | 'ignore'
 type SourceInputType = 'text' | 'image'
+type StudyPackCreationMode = 'basic' | 'ai'
 
 interface ReviewItem {
   object: StudyObject
@@ -66,6 +73,14 @@ const sourceOptions: Array<{
 }> = [
   { label: 'Text', value: 'text' },
   { label: 'Image', value: 'image' },
+]
+
+const creationModeOptions: Array<{
+  label: string
+  value: StudyPackCreationMode
+}> = [
+  { label: 'Basic', value: 'basic' },
+  { label: 'AI', value: 'ai' },
 ]
 
 const supportedImageExtensions = [
@@ -194,6 +209,9 @@ const getCounts = (items: ReviewItem[]) =>
 
 const getFileTitle = (file: File) =>
   file.name.replace(/\.[^.]+$/, '') || 'Study Pack'
+
+const getPackId = (title: string) =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-pack'
 
 const isSupportedImageFile = (file: File) => {
   const extension = file.name.split('.').pop()?.toLowerCase()
@@ -367,6 +385,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCreatePack,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
+  const [creationMode, setCreationMode] =
+    useState<StudyPackCreationMode>('basic')
   const [sourceInputType, setSourceInputType] =
     useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
@@ -376,6 +396,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [imageTextExtracted, setImageTextExtracted] = useState(false)
   const [isExtractingImage, setIsExtractingImage] = useState(false)
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [aiProgressLabel, setAiProgressLabel] = useState('')
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrStatus, setOcrStatus] = useState('')
   const [packTitle, setPackTitle] = useState('Study Pack')
@@ -403,6 +425,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
   const reset = () => {
     setStep('source')
+    setCreationMode('basic')
     setSourceInputType('text')
     setSourceText('')
     setSourceFormat('text')
@@ -410,6 +433,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setImagePreviewUrl('')
     setImageTextExtracted(false)
     setIsExtractingImage(false)
+    setIsGeneratingAi(false)
+    setAiProgressLabel('')
     setOcrProgress(0)
     setOcrStatus('')
     setPackTitle('Study Pack')
@@ -473,22 +498,113 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setStep('review')
   }
 
+  const parseSourceWithAi = async () => {
+    const credentials = resolveStudyPackAiCredentials()
+    if (!credentials.apiToken) {
+      setError(
+        'Add a Gemini API key in Application Settings before using AI mode.',
+      )
+      return
+    }
+
+    setIsGeneratingAi(true)
+    setOcrStatus('Generating study widgets with AI')
+    setAiProgressLabel('Connecting to Gemini')
+    setError('')
+
+    try {
+      window.setTimeout(() => {
+        setAiProgressLabel((current) =>
+          current ? 'Reading notes and planning widgets' : current,
+        )
+      }, 700)
+      window.setTimeout(() => {
+        setAiProgressLabel((current) =>
+          current ? 'Creating quizzes, flashcards, and study blocks' : current,
+        )
+      }, 1800)
+      const draft = await generateStudyPackWithAi({
+        apiToken: credentials.apiToken,
+        model: credentials.model,
+        title: packTitle.trim() || 'Study Pack',
+        rawNotes: sourceText,
+        packId: getPackId(packTitle),
+      })
+      const nextTitle = draft.title || packTitle
+      setAiProgressLabel('Preparing review screen')
+      const reviewableItems = toReviewItems(draft.objects)
+      setPackTitle(nextTitle)
+      setSourceFormat(draft.sourceFormat || 'text')
+      setReviewItems(reviewableItems)
+      setWidgetGroups(
+        createPreviewWidgetGroups(
+          reviewableItems.map((item) => item.object),
+          nextTitle,
+        ),
+      )
+      setError(
+        draft.warnings[0] ||
+          (reviewableItems.length === 0
+            ? 'AI did not create any reviewable knowledge widgets from these notes.'
+            : ''),
+      )
+      setStep('review')
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Could not generate study widgets with AI.',
+      )
+    } finally {
+      setIsGeneratingAi(false)
+      setAiProgressLabel('')
+      setOcrStatus('')
+    }
+  }
+
   const extractImageNotes = async () => {
     if (!imageFile) {
       setError('Add an image before extracting notes.')
       return
     }
 
+    const credentials = resolveStudyPackAiCredentials()
+    if (creationMode === 'ai' && !credentials.apiToken) {
+      setError(
+        'Add a Gemini API key in Application Settings before using AI mode.',
+      )
+      return
+    }
+
     setIsExtractingImage(true)
     setOcrProgress(0)
-    setOcrStatus('Preparing OCR')
+    setOcrStatus(
+      creationMode === 'ai' ? 'Preparing AI extraction' : 'Preparing OCR',
+    )
+    setAiProgressLabel(
+      creationMode === 'ai' ? 'Connecting to Gemini vision' : '',
+    )
     setError('')
 
     try {
-      const text = await extractRawNotesFromImage(imageFile, (progress) => {
-        setOcrProgress(Math.round(progress.progress * 100))
-        setOcrStatus(progress.status)
-      })
+      if (creationMode === 'ai') {
+        window.setTimeout(() => {
+          setAiProgressLabel((current) =>
+            current ? 'Reading image and correcting text' : current,
+          )
+        }, 700)
+      }
+      const text =
+        creationMode === 'ai'
+          ? await extractRawNotesWithAi({
+              apiToken: credentials.apiToken,
+              model: credentials.model,
+              image: imageFile,
+            })
+          : await extractRawNotesFromImage(imageFile, (progress) => {
+              setOcrProgress(Math.round(progress.progress * 100))
+              setOcrStatus(progress.status)
+            })
 
       if (!text.trim()) {
         setSourceText('')
@@ -500,12 +616,19 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setSourceText(text)
       setImageTextExtracted(true)
       setOcrProgress(100)
-      setOcrStatus('OCR complete')
+      setOcrStatus(
+        creationMode === 'ai' ? 'AI extraction complete' : 'OCR complete',
+      )
     } catch {
-      setError('Could not extract notes from this image.')
+      setError(
+        creationMode === 'ai'
+          ? 'Could not extract notes with AI. Check your Gemini API key or use Basic mode.'
+          : 'Could not extract notes from this image.',
+      )
       setImageTextExtracted(false)
     } finally {
       setIsExtractingImage(false)
+      setAiProgressLabel('')
     }
   }
 
@@ -517,6 +640,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
     if (!sourceText.trim()) {
       setError('Add notes before continuing.')
+      return
+    }
+
+    if (creationMode === 'ai') {
+      await parseSourceWithAi()
       return
     }
 
@@ -743,6 +871,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               />
               <TextField
                 select
+                label="Mode"
+                value={creationMode}
+                onChange={(event) =>
+                  setCreationMode(event.target.value as StudyPackCreationMode)
+                }
+                sx={{ minWidth: { md: 170 } }}
+              >
+                {creationModeOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
                 label="Source type"
                 value={sourceInputType}
                 onChange={(event) =>
@@ -759,6 +902,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 ))}
               </TextField>
             </Stack>
+            {creationMode === 'ai' && (
+              <Alert severity="info" icon={<AutoAwesomeIcon />}>
+                AI mode uses your Gemini API key to read difficult images and
+                create grounded flashcards, quizzes, definitions, and other
+                widgets from the notes.
+              </Alert>
+            )}
             {sourceInputType === 'text' ? (
               <>
                 <TextField
@@ -788,9 +938,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ) : (
               <>
                 <Alert severity="info">
-                  <b>Text extraction works best with clear typed text like screenshots, slides, or exported PDFs. Handwritten or messy images may not be read accurately.</b>
-                  <br /><br />
-                  Better image reading with your own AI API key is planned for a future settings option.
+                  <b>
+                    {creationMode === 'ai'
+                      ? 'AI image reading can handle harder text, handwriting, and messy photos better than Basic OCR, but extracted notes still need review.'
+                      : 'Text extraction works best with screenshots, slides, or exported PDFs. OCR may fail or return inaccurate text for handwritten or messy images.'}
+                  </b>
                 </Alert>
                 <Paper
                   elevation={0}
@@ -854,15 +1006,19 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       sx={{ mb: 0.75 }}
                     >
                       <Typography variant="body2" color="text.secondary">
-                        {ocrStatus || 'Extracting notes'}
+                        {aiProgressLabel || ocrStatus || 'Extracting notes'}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {ocrProgress}%
-                      </Typography>
+                      {creationMode !== 'ai' && (
+                        <Typography variant="body2" color="text.secondary">
+                          {ocrProgress}%
+                        </Typography>
+                      )}
                     </Stack>
                     <LinearProgress
                       variant={
-                        ocrProgress > 0 ? 'determinate' : 'indeterminate'
+                        creationMode !== 'ai' && ocrProgress > 0
+                          ? 'determinate'
+                          : 'indeterminate'
                       }
                       value={ocrProgress}
                     />
@@ -887,6 +1043,32 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   }
                 />
               </>
+            )}
+            {isGeneratingAi && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'primary.main',
+                  bgcolor: 'background.paper',
+                }}
+              >
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <AutoAwesomeIcon color="primary" fontSize="small" />
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      {aiProgressLabel || ocrStatus || 'Working with AI'}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    AquaMesh is sending your notes to Gemini, waiting for a
+                    structured response, then converting it into editable study
+                    widgets.
+                  </Typography>
+                  <LinearProgress />
+                </Stack>
+              </Paper>
             )}
           </Stack>
         ) : (
@@ -1184,11 +1366,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           <Button
             variant="contained"
             onClick={parseCurrentSource}
-            disabled={isExtractingImage}
+            disabled={isExtractingImage || isGeneratingAi}
           >
-            {sourceInputType === 'image' && !imageTextExtracted
-              ? 'Extract notes'
-              : 'Continue'}
+            {isGeneratingAi
+              ? 'Generating...'
+              : sourceInputType === 'image' && !imageTextExtracted
+                ? 'Extract notes'
+                : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>

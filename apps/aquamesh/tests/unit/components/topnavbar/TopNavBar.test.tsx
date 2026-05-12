@@ -32,7 +32,7 @@ vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
 vi.mock('../../../../src/components/Dasboard/DashboardOptionsMenu', () => ({
   __esModule: true,
   default: () => (
-    <div data-testid="dashboard-options-menu">Dashboard Options Menu</div>
+    <div data-testid="dashboard-options-menu">Study Packs</div>
   ),
 }))
 
@@ -189,14 +189,17 @@ describe('TopNavBar Component', () => {
     expect(screen.getByTestId('logo')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-options-menu')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create widget/i }),
-    ).toBeInTheDocument()
-    expect(
       screen.getByRole('button', { name: /create study pack/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create dashboard/i }),
+      screen.getByRole('button', { name: /advanced/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /create widget/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /create dashboard/i }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByTitle('Open tutorial')).not.toBeInTheDocument()
     expect(
       screen.queryByTitle('Frequently Asked Questions'),
@@ -220,7 +223,8 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /create widget/i }))
+    fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+    fireEvent.click(await screen.findByText('Create Widget'))
 
     expect(await screen.findByTestId('widget-editor')).toBeInTheDocument()
   })
@@ -238,13 +242,33 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /create dashboard/i }))
+    fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+    fireEvent.click(screen.getByText('Create Dashboard'))
 
     expect(dashboardEditorListener).toHaveBeenCalledTimes(1)
     window.removeEventListener(
       OPEN_DASHBOARD_EDITOR_EVENT,
       dashboardEditorListener,
     )
+  })
+
+  it('disables Advanced for viewers without opening its menu', () => {
+    localStorage.getItem.mockReturnValue(
+      JSON.stringify({ id: 'viewer', name: 'Viewer User', role: 'VIEWER_ROLE' }),
+    )
+
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    const advancedButton = screen.getByRole('button', { name: /advanced/i })
+
+    expect(advancedButton).toBeDisabled()
+    fireEvent.click(advancedButton)
+    expect(screen.queryByText('Create Dashboard')).not.toBeInTheDocument()
+    expect(screen.queryByText('Create Widget')).not.toBeInTheDocument()
   })
 
   it('opens Create Study Pack without opening Widget or Dashboard', async () => {
