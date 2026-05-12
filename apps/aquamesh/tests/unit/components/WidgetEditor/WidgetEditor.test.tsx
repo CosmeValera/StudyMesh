@@ -8,9 +8,12 @@ const hookStateRef = vi.hoisted(() => ({
   current: {} as Record<string, unknown>,
 }))
 
-vi.mock('../../../../src/components/WidgetEditor/hooks/useWidgetEditor', () => ({
-  useWidgetEditor: () => hookStateRef.current,
-}))
+vi.mock(
+  '../../../../src/components/WidgetEditor/hooks/useWidgetEditor',
+  () => ({
+    useWidgetEditor: () => hookStateRef.current,
+  }),
+)
 
 vi.mock(
   '../../../../src/components/WidgetEditor/components/core/EditorToolbar',
@@ -19,15 +22,28 @@ vi.mock(
     default: ({
       editMode,
       viewMode,
+      isUpdating,
+      setShowSettingsModal,
     }: {
       editMode: boolean
       viewMode: string
+      isUpdating: boolean
+      setShowSettingsModal: (show: boolean) => void
     }) => (
       <div
         data-testid="editor-toolbar"
         data-edit-mode={editMode ? 'true' : 'false'}
         data-view-mode={viewMode}
-      />
+        data-is-updating={isUpdating ? 'true' : 'false'}
+      >
+        <button
+          type="button"
+          data-testid="mock-editor-settings"
+          onClick={() => setShowSettingsModal(true)}
+        >
+          Settings
+        </button>
+      </div>
     ),
   }),
 )
@@ -38,15 +54,13 @@ vi.mock(
     __esModule: true,
     default: ({
       handleDragStart,
-      onboardingStep,
     }: {
       handleDragStart: (
         event: React.DragEvent<HTMLDivElement>,
         type: string,
       ) => void
-      onboardingStep: string | null
     }) => (
-      <div data-testid="component-palette" data-onboarding-step={onboardingStep}>
+      <div data-testid="component-palette">
         <div
           data-testid="palette-drag-source"
           draggable
@@ -110,11 +124,6 @@ vi.mock(
   '../../../../src/components/WidgetEditor/components/dialogs/SaveWidgetDialog',
   () => ({ __esModule: true, default: () => null }),
 )
-vi.mock(
-  '../../../../src/components/WidgetEditor/components/ui/NotificationSystem',
-  () => ({ __esModule: true, default: () => null }),
-)
-
 const createHookState = (viewMode: 'both' | 'edit' | 'preview' = 'both') => ({
   widgetData: {
     name: 'Operations',
@@ -124,7 +133,6 @@ const createHookState = (viewMode: 'both' | 'edit' | 'preview' = 'both') => ({
   editMode: viewMode !== 'preview',
   viewMode,
   setViewMode: vi.fn(),
-  notification: { open: false, message: '', severity: 'success' },
   savedWidgets: [],
   showWidgetList: false,
   setShowWidgetList: vi.fn(),
@@ -168,7 +176,6 @@ const createHookState = (viewMode: 'both' | 'edit' | 'preview' = 'both') => ({
   handleSaveWidget: vi.fn(),
   handleLoadWidget: vi.fn(),
   handleDeleteSavedWidget: vi.fn(),
-  handleCloseNotification: vi.fn(),
   handleToggleVisibility: vi.fn(),
   handleToggleFieldsetCollapse: vi.fn(),
   confirmDeleteComponent: vi.fn(),
@@ -223,7 +230,7 @@ describe('WidgetEditor view modes', () => {
     expect(screen.getByTestId('custom-widget-preview')).toBeInTheDocument()
   })
 
-  it('keeps step 1 mounted when starting a guided drag', () => {
+  it('dispatches palette drag without mounting the old inline coach state', () => {
     hookStateRef.current = {
       ...createHookState(),
       widgetData: {
@@ -240,9 +247,51 @@ describe('WidgetEditor view modes', () => {
       expect.anything(),
       'Label',
     )
-    expect(screen.getByTestId('component-palette')).toHaveAttribute(
+    expect(screen.getByTestId('component-palette')).not.toHaveAttribute(
       'data-onboarding-step',
-      'choose',
     )
+  })
+
+  it('treats a new default-name widget as a save even when New Widget already exists', () => {
+    hookStateRef.current = {
+      ...createHookState(),
+      widgetData: {
+        name: 'New Widget',
+        components: [
+          { id: 'label-1', type: 'Label', props: { text: 'Status' } },
+        ],
+      },
+      savedWidgets: [
+        {
+          id: 'saved-widget-1',
+          name: 'New Widget',
+          components: [
+            { id: 'label-2', type: 'Label', props: { text: 'Saved' } },
+          ],
+          createdAt: '2026-05-06T00:00:00.000Z',
+          updatedAt: '2026-05-06T00:00:00.000Z',
+          category: 'Other',
+          tags: [],
+          description: '',
+          version: '1.0',
+          author: '',
+        },
+      ],
+    }
+
+    render(<WidgetEditor />)
+
+    expect(screen.getByTestId('editor-toolbar')).toHaveAttribute(
+      'data-is-updating',
+      'false',
+    )
+  })
+
+  it('wires the toolbar settings action to the editor settings state', () => {
+    render(<WidgetEditor />)
+
+    fireEvent.click(screen.getByTestId('mock-editor-settings'))
+
+    expect(hookStateRef.current.setShowSettingsModal).toHaveBeenCalledWith(true)
   })
 })

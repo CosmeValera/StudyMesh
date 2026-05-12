@@ -14,6 +14,12 @@ import {
   InputAdornment,
   Badge,
   useMediaQuery,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
@@ -24,6 +30,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import { ComponentPreviewProps } from '../../types/types'
 import { getComponentIcon } from '../../constants/componentTypes'
 import ChartPreview from './ChartPreview'
+import StudyBlockView, { isStudyBlockType } from './StudyBlockView'
 import AddIcon from '@mui/icons-material/Add'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import CodeIcon from '@mui/icons-material/Code'
@@ -80,6 +87,10 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
 
   // Render a preview of the component based on its type
   const renderComponent = () => {
+    if (isStudyBlockType(component.type)) {
+      return <StudyBlockView type={component.type} props={component.props} />
+    }
+
     switch (component.type) {
       case 'SwitchEnable': {
         const labelValue = component.props.label as string
@@ -110,23 +121,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                       }
                     : undefined
                 }
-                onChange={(e) => {
-                  if (component.props.showToast) {
-                    const isChecked = (e.target as HTMLInputElement).checked
-                    const message = isChecked
-                      ? (component.props.onMessage as string) ||
-                        'Switch turned ON'
-                      : (component.props.offMessage as string) ||
-                        'Switch turned OFF'
-                    const severity =
-                      (component.props.toastSeverity as string) || 'info'
-                    const customEvent = new CustomEvent('showWidgetToast', {
-                      detail: { message, severity },
-                      bubbles: true,
-                    })
-                    document.dispatchEvent(customEvent)
-                  }
-                }}
               />
             }
             label={labelNode}
@@ -283,6 +277,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
+                    activeContainerId={activeContainerId}
+                    onSelectContainer={onSelectContainer}
                   />
                 ))
               ) : (
@@ -357,10 +353,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
           | string
           | undefined // eslint-disable-line indent
         const clickAction = component.props.clickAction as string | undefined
-        const toastMessage =
-          (component.props.toastMessage as string) || 'Button clicked!'
-        const toastSeverity =
-          (component.props.toastSeverity as string) || 'info'
         const urlProp = component.props.url as string
         // Determine alignment based on props.alignment
         const alignment = component.props.alignment as
@@ -399,16 +391,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
               fullWidth={Boolean(component.props.fullWidth)}
               disabled={Boolean(component.props.disabled)}
               onClick={() => {
-                if (clickAction === 'toast') {
-                  const customEvent = new CustomEvent('showWidgetToast', {
-                    detail: {
-                      message: toastMessage,
-                      severity: toastSeverity,
-                    },
-                    bubbles: true,
-                  })
-                  document.dispatchEvent(customEvent)
-                } else if (clickAction === 'openUrl' && urlProp) {
+                if (clickAction === 'openUrl' && urlProp) {
                   let url = urlProp
                   if (url && !url.match(/^https?:\/\//)) {
                     url = `https://${url}`
@@ -536,14 +519,6 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             </Button>
             {editMode && clickAction && (
               <>
-                {clickAction === 'toast' && (
-                  <Typography
-                    variant="caption"
-                    sx={{ mt: 1, display: 'block', color: 'text.secondary' }}
-                  >
-                    Click Action: Show toast "{toastMessage}" ({toastSeverity})
-                  </Typography>
-                )}
                 {clickAction === 'openUrl' && urlProp && (
                   <Typography
                     variant="caption"
@@ -648,6 +623,78 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 </Typography>
               ))}
             </Box>
+          </Box>
+        )
+      }
+      case 'TableBlock': {
+        const title = (component.props.title as string) || ''
+        const headers = Array.isArray(component.props.headers)
+          ? (component.props.headers as string[])
+          : []
+        const rows = Array.isArray(component.props.rows)
+          ? (component.props.rows as string[][])
+          : []
+        const columnCount = Math.max(
+          headers.length,
+          ...rows.map((row) => row.length),
+          1,
+        )
+
+        return (
+          <Box>
+            {title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {title}
+              </Typography>
+            )}
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ overflowX: 'auto' }}
+            >
+              <Table size="small">
+                {headers.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header, index) => (
+                        <TableCell
+                          key={`${header}-${index}`}
+                          sx={{ fontWeight: 700 }}
+                        >
+                          {header}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                )}
+                <TableBody>
+                  {rows.length > 0 ? (
+                    rows.map((row, rowIndex) => (
+                      <TableRow key={`table-row-${rowIndex}`}>
+                        {Array.from({ length: columnCount }, (_, cellIndex) => (
+                          <TableCell
+                            key={`table-cell-${rowIndex}-${cellIndex}`}
+                          >
+                            {row[cellIndex] || ''}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={Math.max(headers.length, 1)}
+                        align="center"
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Add rows to this table.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )
       }
@@ -816,6 +863,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                   handleContainerDrop={handleContainerDrop}
                   onToggleVisibility={onToggleVisibility}
                   showWidgetName={showWidgetName}
+                  activeContainerId={activeContainerId}
+                  onSelectContainer={onSelectContainer}
                 />
               ))
             ) : (
@@ -904,6 +953,8 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                     handleContainerDrop={handleContainerDrop}
                     onToggleVisibility={onToggleVisibility}
                     showWidgetName={showWidgetName}
+                    activeContainerId={activeContainerId}
+                    onSelectContainer={onSelectContainer}
                   />
                 </Box>
               ))
@@ -1145,6 +1196,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
             >
               <IconButton
                 size="small"
+                data-onboarding-id="component-target-control"
                 onClick={() => {
                   if (activeContainerId && activeContainerId === component.id) {
                     onSelectContainer('')
@@ -1169,6 +1221,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
 
           <IconButton
             size="small"
+            data-onboarding-id="component-edit-control"
             onClick={() => onEdit(component.id)}
             sx={{ color: 'info.light' }}
           >

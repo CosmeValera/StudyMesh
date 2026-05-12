@@ -97,4 +97,57 @@ test.describe('Dashboards', () => {
     const screenshot = await page.screenshot()
     await expect(screenshot).toMatchSnapshot('operations-dashboard-example.png')
   })
+
+  test('shows mathematics starter FlexLayout tab content', async ({ page }) => {
+    await dismissActiveDialog(page)
+
+    await navigateToDashboards(page)
+    await page.waitForSelector('[role="menu"]', { timeout: 5000 })
+    await page
+      .getByRole('menuitem', { name: 'Mathematics 1 - Derivatives' })
+      .click()
+
+    await expect(page.getByText('This is a chart block')).toBeVisible({
+      timeout: 5000,
+    })
+    await expect(page.getByText('Worked example')).toBeVisible()
+    await expect(page.getByText('Derivative = rate of change')).toBeVisible()
+
+    const visibleTabs = page.locator('.flexlayout__tab:visible')
+    await expect(visibleTabs).toHaveCount(3)
+
+    const tabHitTestResults = await visibleTabs.evaluateAll((tabs) =>
+      tabs.map((tab) => {
+        const rect = tab.getBoundingClientRect()
+        const target = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        )
+
+        return {
+          width: rect.width,
+          height: rect.height,
+          hitTab: Boolean(target?.closest('.flexlayout__tab')),
+          hitEmptyTabsetContent: Boolean(
+            target?.closest('.flexlayout__tabset_content:empty'),
+          ),
+        }
+      }),
+    )
+
+    expect(tabHitTestResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hitTab: true,
+          hitEmptyTabsetContent: false,
+        }),
+      ]),
+    )
+    expect(
+      tabHitTestResults.every(
+        ({ width, height, hitTab, hitEmptyTabsetContent }) =>
+          width > 0 && height > 0 && hitTab && !hitEmptyTabsetContent,
+      ),
+    ).toBe(true)
+  })
 })

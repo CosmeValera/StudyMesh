@@ -15,7 +15,7 @@ import {
   Button as MuiButton,
   Tooltip,
   useMediaQuery,
-  useTheme
+  useTheme,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -37,7 +37,7 @@ import {
   ComponentPreview,
   EditorTabs,
   TextStylingControls,
-  DualColorPicker
+  DualColorPicker,
 } from '../shared/SharedEditorComponents'
 
 // Icon mapping for selection
@@ -53,50 +53,67 @@ const AVAILABLE_ICONS = {
   send: SendIcon,
   save: SaveIcon,
   upload: CloudUploadIcon,
-  check: CheckCircleIcon
+  check: CheckCircleIcon,
 }
 
-const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onChange }) => {
+const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({
+  props,
+  onChange,
+}) => {
   // Theme and responsive design
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  
+
   // Tab state
   const [tabValue, setTabValue] = useState(0)
-  
+
   // State for custom color picker
-  const [useCustomColor, setUseCustomColor] = useState(Boolean(props.customColor))
+  const [useCustomColor, setUseCustomColor] = useState(
+    Boolean(props.customColor),
+  )
   const [customColor, setCustomColor] = useState(props.customColor || '#1976d2')
-  const [customHoverColor, setCustomHoverColor] = useState(props.customHoverColor || '#1565c0')
+  const [customHoverColor, setCustomHoverColor] = useState(
+    props.customHoverColor || '#1565c0',
+  )
   // State for custom text color picker
-  const [customTextColor, setCustomTextColor] = useState(props.customTextColor || '#000000')
-  
+  const [customTextColor, setCustomTextColor] = useState(
+    props.customTextColor || '#000000',
+  )
+
   // Typography states
   const [fontWeight, setFontWeight] = useState<number>(
-    typeof props.fontWeight === 'number' ? props.fontWeight : 400
+    typeof props.fontWeight === 'number' ? props.fontWeight : 400,
   )
   const [isBold, setIsBold] = useState(fontWeight >= 600)
-  const [isItalic, setIsItalic] = useState(Boolean(props.fontStyle === 'italic'))
-  const [hasUnderline, setHasUnderline] = useState(Boolean(props.textDecoration === 'underline'))
-  
+  const [isItalic, setIsItalic] = useState(
+    Boolean(props.fontStyle === 'italic'),
+  )
+  const [hasUnderline, setHasUnderline] = useState(
+    Boolean(props.textDecoration === 'underline'),
+  )
+
   // Initialize selected icon
   const [selectedIcon, setSelectedIcon] = useState<string>(
-    typeof props.iconName === 'string' ? props.iconName : 'add'
+    typeof props.iconName === 'string' ? props.iconName : 'add',
   )
-  
+
   // Alignment state for preview
   const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>(
-    typeof props.alignment === 'string' && ['left','center','right'].includes(props.alignment as string)
+    typeof props.alignment === 'string' &&
+      ['left', 'center', 'right'].includes(props.alignment as string)
       ? (props.alignment as 'left' | 'center' | 'right')
-      : 'left'
+      : 'left',
   )
-  
+
   // Initialize custom colors if they exist in props
   useEffect(() => {
     // Reset custom color toggle on prop change
     setUseCustomColor(Boolean(props.customColor))
     // Sync alignment from props
-    if (typeof props.alignment === 'string' && ['left','center','right'].includes(props.alignment as string)) {
+    if (
+      typeof props.alignment === 'string' &&
+      ['left', 'center', 'right'].includes(props.alignment as string)
+    ) {
       setAlignment(props.alignment as 'left' | 'center' | 'right')
     } else {
       setAlignment('left')
@@ -112,7 +129,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
       setCustomHoverColor('#1565c0')
       setCustomTextColor('#000000')
     }
-    
+
     // Set typography states based on props
     if (props.fontWeight) {
       const weight = Number(props.fontWeight)
@@ -122,10 +139,10 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
       setFontWeight(400) // Default if not provided
       setIsBold(false)
     }
-    
+
     setIsItalic(Boolean(props.fontStyle === 'italic'))
     setHasUnderline(Boolean(props.textDecoration === 'underline'))
-    
+
     // Set icon if it exists
     if (props.iconName && typeof props.iconName === 'string') {
       setSelectedIcon(props.iconName)
@@ -133,16 +150,16 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
       setSelectedIcon('add') // Default if not provided
     }
   }, [props]) // Rerun when any prop changes
-  
+
   // Handle tab change
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
   }
-  
+
   // Handle text style changes
   const handleTextStyleChange = (prop: string, value: unknown) => {
     handleChange(prop, value)
-    
+
     // Update local state based on the changed property
     if (prop === 'fontWeight') {
       const weightValue = value as number
@@ -154,24 +171,24 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
       setHasUnderline(value === 'underline')
     }
   }
-  
+
   // Update custom colors
   const handlePrimaryColorChange = (color: string) => {
     setCustomColor(color)
     handleChange('customColor', color)
   }
-  
+
   const handleHoverColorChange = (color: string) => {
     setCustomHoverColor(color)
     handleChange('customHoverColor', color)
   }
-  
+
   // Update custom text color
   const handleTextColorChange = (color: string) => {
     setCustomTextColor(color)
     handleChange('customTextColor', color)
   }
-  
+
   const handleCustomColorToggle = (useCustom: boolean) => {
     setUseCustomColor(useCustom)
     // Update all custom color properties in one onChange call
@@ -182,15 +199,15 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
       customTextColor: useCustom ? customTextColor : undefined,
     })
   }
-  
+
   // Update props on change
   const handleChange = (name: keyof ButtonProps, value: unknown) => {
     onChange({
       ...props,
-      [name]: value
+      [name]: value,
     })
   }
-  
+
   // Generate preview styles
   const getPreviewStyles = () => {
     return {
@@ -201,72 +218,107 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
       color: useCustomColor ? customTextColor : undefined,
       '&:hover': {
         backgroundColor: useCustomColor ? customHoverColor : undefined,
-      }
+      },
     }
   }
-  
+
   // Get icon component for preview
   const getIconComponent = (iconName: string) => {
-    const IconComponent = AVAILABLE_ICONS[iconName as keyof typeof AVAILABLE_ICONS] || AddIcon
+    const IconComponent =
+      AVAILABLE_ICONS[iconName as keyof typeof AVAILABLE_ICONS] || AddIcon
     return <IconComponent fontSize="small" />
   }
-  
+
   // Mock button click for preview
   const handlePreviewClick = () => {
-    if (props.clickAction === 'toast') {
-      const message = props.toastMessage || 'Button clicked'
-      const severity = props.toastSeverity || 'info'
-      document.dispatchEvent(new CustomEvent('showWidgetToast', {
-        detail: { message, severity },
-        bubbles: true,
-      }))
-    } else if (props.clickAction === 'openUrl' && props.url) {
-      const url = props.url.match(/^https?:\/\//) ? props.url : `https://${props.url}`
+    if (props.clickAction === 'openUrl' && props.url) {
+      const url = props.url.match(/^https?:\/\//)
+        ? props.url
+        : `https://${props.url}`
       window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
-  
+
   // Define tabs with icons
   const editorTabs = [
-    { label: 'Basic Settings', id: 'button-basic', icon: <SettingsIcon fontSize={isMobile ? "small" : "medium"} /> },
-    { label: 'Styling', id: 'button-styling', icon: <FormatColorTextIcon fontSize={isMobile ? "small" : "medium"} /> },
-    { label: 'Behaviour', id: 'button-behaviour', icon: <NotificationsIcon fontSize={isMobile ? "small" : "medium"} /> }
+    {
+      label: 'Basic Settings',
+      id: 'button-basic',
+      icon: <SettingsIcon fontSize={isMobile ? 'small' : 'medium'} />,
+    },
+    {
+      label: 'Styling',
+      id: 'button-styling',
+      icon: <FormatColorTextIcon fontSize={isMobile ? 'small' : 'medium'} />,
+    },
+    {
+      label: 'Behaviour',
+      id: 'button-behaviour',
+      icon: <NotificationsIcon fontSize={isMobile ? 'small' : 'medium'} />,
+    },
   ]
-  
+
   return (
     <Box sx={{ width: '100%' }}>
       {/* Preview section */}
       <ComponentPreview>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          width: '100%', 
-          p: isMobile ? 1 : 2,
-          alignItems: (alignment === 'left' ? 'flex-start' : (alignment === 'right' ? 'flex-end' : 'center')) 
-        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            p: isMobile ? 1 : 2,
+            alignItems:
+              alignment === 'left'
+                ? 'flex-start'
+                : alignment === 'right'
+                  ? 'flex-end'
+                  : 'center',
+          }}
+        >
           <MuiButton
-            variant={props.variant as 'contained' | 'outlined' | 'text' || 'contained'}
-            color={useCustomColor ? undefined : (props.color as 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info' || 'primary')}
-            size={props.size as 'small' | 'medium' | 'large' || 'medium'}
+            variant={
+              (props.variant as 'contained' | 'outlined' | 'text') ||
+              'contained'
+            }
+            color={
+              useCustomColor
+                ? undefined
+                : (props.color as
+                    | 'primary'
+                    | 'secondary'
+                    | 'success'
+                    | 'error'
+                    | 'warning'
+                    | 'info') || 'primary'
+            }
+            size={(props.size as 'small' | 'medium' | 'large') || 'medium'}
             fullWidth={Boolean(props.fullWidth)}
             disabled={Boolean(props.disabled)}
             onClick={handlePreviewClick}
-            startIcon={props.showStartIcon ? getIconComponent(selectedIcon) : undefined}
-            endIcon={props.showEndIcon ? getIconComponent(selectedIcon) : undefined}
+            startIcon={
+              props.showStartIcon ? getIconComponent(selectedIcon) : undefined
+            }
+            endIcon={
+              props.showEndIcon ? getIconComponent(selectedIcon) : undefined
+            }
             sx={{
               ...getPreviewStyles(),
-              ...(props.clickAction === 'openUrl' ? { 
-                '&::after': { 
-                  content: '""',
-                  display: 'inline-block',
-                  width: '1em',
-                  height: '1em',
-                  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\'%3E%3C/path%3E%3Cpolyline points=\'15 3 21 3 21 9\'%3E%3C/polyline%3E%3Cline x1=\'10\' y1=\'14\' x2=\'21\' y2=\'3\'%3E%3C/line%3E%3C/svg%3E")',
-                  backgroundSize: 'contain',
-                  marginLeft: '5px',
-                  opacity: 0.6
-                }
-              } : {})
+              ...(props.clickAction === 'openUrl'
+                ? {
+                    '&::after': {
+                      content: '""',
+                      display: 'inline-block',
+                      width: '1em',
+                      height: '1em',
+                      backgroundImage:
+                        "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'%3E%3C/path%3E%3Cpolyline points='15 3 21 3 21 9'%3E%3C/polyline%3E%3Cline x1='10' y1='14' x2='21' y2='3'%3E%3C/line%3E%3C/svg%3E\")",
+                      backgroundSize: 'contain',
+                      marginLeft: '5px',
+                      opacity: 0.6,
+                    },
+                  }
+                : {}),
             }}
           >
             {props.text || 'Button Text'}
@@ -274,118 +326,196 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
 
           {/* Action preview information */}
           {props.clickAction && (
-            <Box sx={{ 
-              mt: isMobile ? 1 : 2, 
-              p: isMobile ? 1 : 1.5, 
-              width: '100%', 
-              bgcolor: 'background.paper', 
-              borderRadius: 1, 
-              border: '1px dashed rgba(0,0,0,0.1)' 
-            }}>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  fontWeight: 'medium', 
-                  display: 'block', 
+            <Box
+              sx={{
+                mt: isMobile ? 1 : 2,
+                p: isMobile ? 1 : 1.5,
+                width: '100%',
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                border: '1px dashed rgba(0,0,0,0.1)',
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 'medium',
+                  display: 'block',
                   mb: 0.5,
-                  fontSize: isMobile ? '0.65rem' : undefined
+                  fontSize: isMobile ? '0.65rem' : undefined,
                 }}
               >
                 What Happens When Clicked:
               </Typography>
-              {props.clickAction === 'toast' && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: isMobile ? '0.65rem' : undefined }}>
-                    Show toast: "{props.toastMessage || 'Button clicked'}"
-                  </Typography>
-                  <Typography variant="caption" sx={{ 
-                    color: 'text.secondary',
-                    fontSize: isMobile ? '0.65rem' : undefined
-                  }}>
-                    Type: {props.toastSeverity || 'info'}
-                  </Typography>
-                </Box>
-              )}
               {props.clickAction === 'openUrl' && props.url && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: isMobile ? '0.65rem' : undefined }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontSize: isMobile ? '0.65rem' : undefined }}
+                  >
                     Open Link: {props.url}
                   </Typography>
-                  <OpenInNewIcon sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem', color: 'text.secondary' }} />
+                  <OpenInNewIcon
+                    sx={{
+                      fontSize: isMobile ? '0.65rem' : '0.75rem',
+                      color: 'text.secondary',
+                    }}
+                  />
                 </Box>
               )}
             </Box>
           )}
 
           {/* Properties summary */}
-          <Box sx={{ 
-            mt: isMobile ? 1 : 2, 
-            pt: isMobile ? 1 : 2, 
-            borderTop: '1px dashed rgba(0,0,0,0.1)', 
-            width: '100%', 
-            display: 'flex', 
-            justifyContent: 'center', 
-            flexWrap: 'wrap', 
-            gap: isMobile ? 0.5 : 1 
-          }}>
-            <Typography variant="caption" sx={{ 
-              color: 'text.secondary',
-              fontSize: isMobile ? '0.65rem' : undefined
-            }}>
-              <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
+          <Box
+            sx={{
+              mt: isMobile ? 1 : 2,
+              pt: isMobile ? 1 : 2,
+              borderTop: '1px dashed rgba(0,0,0,0.1)',
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: isMobile ? 0.5 : 1,
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontSize: isMobile ? '0.65rem' : undefined,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  px: 0.5,
+                  py: 0.2,
+                  bgcolor: 'rgba(25, 118, 210, 0.1)',
+                  borderRadius: 0.5,
+                }}
+              >
                 {alignment}
               </Box>
             </Typography>
-            <Typography variant="caption" sx={{ 
-              color: 'text.secondary',
-              fontSize: isMobile ? '0.65rem' : undefined
-            }}>
-              <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontSize: isMobile ? '0.65rem' : undefined,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  px: 0.5,
+                  py: 0.2,
+                  bgcolor: 'rgba(25, 118, 210, 0.1)',
+                  borderRadius: 0.5,
+                }}
+              >
                 {(props.variant as string) || 'contained'}
               </Box>
             </Typography>
-            <Typography variant="caption" sx={{ 
-              color: 'text.secondary',
-              fontSize: isMobile ? '0.65rem' : undefined
-            }}>
-              <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontSize: isMobile ? '0.65rem' : undefined,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  px: 0.5,
+                  py: 0.2,
+                  bgcolor: 'rgba(25, 118, 210, 0.1)',
+                  borderRadius: 0.5,
+                }}
+              >
                 {(props.size as string) || 'medium'}
               </Box>
             </Typography>
-            <Typography variant="caption" sx={{ 
-              color: 'text.secondary',
-              fontSize: isMobile ? '0.65rem' : undefined
-            }}>
-              <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
-                {useCustomColor ? 'custom color' : ((props.color as string) || 'primary')}
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontSize: isMobile ? '0.65rem' : undefined,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  px: 0.5,
+                  py: 0.2,
+                  bgcolor: 'rgba(25, 118, 210, 0.1)',
+                  borderRadius: 0.5,
+                }}
+              >
+                {useCustomColor
+                  ? 'custom color'
+                  : (props.color as string) || 'primary'}
               </Box>
             </Typography>
             {Boolean(props.showStartIcon || props.showEndIcon) && (
-              <Typography variant="caption" sx={{ 
-                color: 'text.secondary',
-                fontSize: isMobile ? '0.65rem' : undefined
-              }}>
-                <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: isMobile ? '0.65rem' : undefined,
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.5,
+                    py: 0.2,
+                    bgcolor: 'rgba(25, 118, 210, 0.1)',
+                    borderRadius: 0.5,
+                  }}
+                >
                   icon: {selectedIcon}
                 </Box>
               </Typography>
             )}
             {Boolean(props.fullWidth) && (
-              <Typography variant="caption" sx={{ 
-                color: 'text.secondary',
-                fontSize: isMobile ? '0.65rem' : undefined
-              }}>
-                <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: isMobile ? '0.65rem' : undefined,
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.5,
+                    py: 0.2,
+                    bgcolor: 'rgba(25, 118, 210, 0.1)',
+                    borderRadius: 0.5,
+                  }}
+                >
                   full width
                 </Box>
               </Typography>
             )}
             {Boolean(props.disabled) && (
-              <Typography variant="caption" sx={{ 
-                color: 'text.secondary',
-                fontSize: isMobile ? '0.65rem' : undefined
-              }}>
-                <Box component="span" sx={{ px: 0.5, py: 0.2, bgcolor: 'rgba(25, 118, 210, 0.1)', borderRadius: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: isMobile ? '0.65rem' : undefined,
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.5,
+                    py: 0.2,
+                    bgcolor: 'rgba(25, 118, 210, 0.1)',
+                    borderRadius: 0.5,
+                  }}
+                >
                   disabled
                 </Box>
               </Typography>
@@ -393,14 +523,14 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
           </Box>
         </Box>
       </ComponentPreview>
-      
+
       {/* Tabs */}
-      <EditorTabs 
-        value={tabValue} 
+      <EditorTabs
+        value={tabValue}
         onChange={handleTabChange}
         tabs={editorTabs}
       />
-      
+
       {/* Basic Settings Tab */}
       <TabPanelShared value={tabValue} index={0} id="button">
         <Grid container spacing={isMobile ? 1 : 2}>
@@ -408,12 +538,14 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
             <TextField
               fullWidth
               label="Button Label"
-              onFocus={(e) => { e.target.select() }}
+              onFocus={(e) => {
+                e.target.select()
+              }}
               value={props.text || ''}
               onChange={(e) => handleChange('text', e.target.value)}
               variant="outlined"
               margin="dense"
-              size={isMobile ? "small" : "medium"}
+              size={isMobile ? 'small' : 'medium'}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': {
@@ -428,19 +560,29 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                 },
                 '& .MuiInputLabel-root': {
                   color: '#191919',
-                  fontSize: isMobile ? '0.875rem' : undefined
+                  fontSize: isMobile ? '0.875rem' : undefined,
                 },
                 '& .MuiOutlinedInput-input': {
                   color: '#000000',
-                  fontSize: isMobile ? '0.875rem' : undefined
+                  fontSize: isMobile ? '0.875rem' : undefined,
                 },
               }}
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
-            <FormControl fullWidth margin="dense" size={isMobile ? "small" : "medium"} variant="outlined">
-              <InputLabel id="button-variant-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Button Style</InputLabel>
+            <FormControl
+              fullWidth
+              margin="dense"
+              size={isMobile ? 'small' : 'medium'}
+              variant="outlined"
+            >
+              <InputLabel
+                id="button-variant-label"
+                sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+              >
+                Button Style
+              </InputLabel>
               <Select
                 labelId="button-variant-label"
                 value={props.variant || 'contained'}
@@ -458,24 +600,49 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                   },
                   '& .MuiSelect-select': {
                     color: '#000000',
-                    fontSize: isMobile ? '0.875rem' : undefined
+                    fontSize: isMobile ? '0.875rem' : undefined,
                   },
                   '& .MuiInputLabel-root': {
                     color: '#191919',
-                    fontSize: isMobile ? '0.875rem' : undefined
+                    fontSize: isMobile ? '0.875rem' : undefined,
                   },
                 }}
               >
-                <MenuItem value="contained" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Filled</MenuItem>
-                <MenuItem value="outlined" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Outline</MenuItem>
-                <MenuItem value="text" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Text</MenuItem>
+                <MenuItem
+                  value="contained"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Filled
+                </MenuItem>
+                <MenuItem
+                  value="outlined"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Outline
+                </MenuItem>
+                <MenuItem
+                  value="text"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Text
+                </MenuItem>
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
-            <FormControl fullWidth margin="dense" size={isMobile ? "small" : "medium"} variant="outlined">
-              <InputLabel id="button-size-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Size</InputLabel>
+            <FormControl
+              fullWidth
+              margin="dense"
+              size={isMobile ? 'small' : 'medium'}
+              variant="outlined"
+            >
+              <InputLabel
+                id="button-size-label"
+                sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+              >
+                Size
+              </InputLabel>
               <Select
                 labelId="button-size-label"
                 value={props.size || 'medium'}
@@ -493,98 +660,150 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                   },
                   '& .MuiSelect-select': {
                     color: '#000000',
-                    fontSize: isMobile ? '0.875rem' : undefined
+                    fontSize: isMobile ? '0.875rem' : undefined,
                   },
                   '& .MuiInputLabel-root': {
                     color: '#191919',
-                    fontSize: isMobile ? '0.875rem' : undefined
+                    fontSize: isMobile ? '0.875rem' : undefined,
                   },
                 }}
               >
-                <MenuItem value="small" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Small</MenuItem>
-                <MenuItem value="medium" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Medium</MenuItem>
-                <MenuItem value="large" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Large</MenuItem>
+                <MenuItem
+                  value="small"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Small
+                </MenuItem>
+                <MenuItem
+                  value="medium"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Medium
+                </MenuItem>
+                <MenuItem
+                  value="large"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Large
+                </MenuItem>
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
             <FormControlLabel
               control={
                 <Switch
                   checked={Boolean(props.fullWidth)}
                   onChange={(e) => handleChange('fullWidth', e.target.checked)}
-                  size={isMobile ? "small" : "medium"}
+                  size={isMobile ? 'small' : 'medium'}
                 />
               }
               label={
-                <Typography sx={{ fontSize: isMobile ? '0.875rem' : undefined, color: '#191919' }}>
+                <Typography
+                  sx={{
+                    fontSize: isMobile ? '0.875rem' : undefined,
+                    color: '#191919',
+                  }}
+                >
                   Full Width
                 </Typography>
               }
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
             <FormControlLabel
               control={
                 <Switch
                   checked={Boolean(props.disabled)}
                   onChange={(e) => handleChange('disabled', e.target.checked)}
-                  size={isMobile ? "small" : "medium"}
+                  size={isMobile ? 'small' : 'medium'}
                 />
               }
               label={
-                <Typography sx={{ fontSize: isMobile ? '0.875rem' : undefined, color: '#191919' }}>
+                <Typography
+                  sx={{
+                    fontSize: isMobile ? '0.875rem' : undefined,
+                    color: '#191919',
+                  }}
+                >
                   Disabled
                 </Typography>
               }
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={isMobile ? 12 : 6}>
-            <FormControl fullWidth margin="dense" size={isMobile ? "small" : "medium"} variant="outlined">
-              <InputLabel id="button-alignment-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Alignment</InputLabel>
+            <FormControl
+              fullWidth
+              margin="dense"
+              size={isMobile ? 'small' : 'medium'}
+              variant="outlined"
+            >
+              <InputLabel
+                id="button-alignment-label"
+                sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+              >
+                Alignment
+              </InputLabel>
               <Select
                 labelId="button-alignment-label"
                 value={alignment}
                 onChange={(e) => {
-                  const value = e.target.value as 'left' | 'center' | 'right';
-                  setAlignment(value);
-                  handleChange('alignment', value);
+                  const value = e.target.value as 'left' | 'center' | 'right'
+                  setAlignment(value)
+                  handleChange('alignment', value)
                 }}
                 label="Alignment"
                 sx={{
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(0, 0, 0, 0.23)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.light' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-                  '& .MuiSelect-select': { 
-                    color: '#000000',
-                    fontSize: isMobile ? '0.875rem' : undefined
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
                   },
-                  '& .MuiInputLabel-root': { 
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.light',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.main',
+                  },
+                  '& .MuiSelect-select': {
+                    color: '#000000',
+                    fontSize: isMobile ? '0.875rem' : undefined,
+                  },
+                  '& .MuiInputLabel-root': {
                     color: '#191919',
-                    fontSize: isMobile ? '0.875rem' : undefined
-                  }
+                    fontSize: isMobile ? '0.875rem' : undefined,
+                  },
                 }}
               >
-                <MenuItem value="left" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Left</MenuItem>
-                <MenuItem value="center" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Center</MenuItem>
-                <MenuItem value="right" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Right</MenuItem>
+                <MenuItem
+                  value="left"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Left
+                </MenuItem>
+                <MenuItem
+                  value="center"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Center
+                </MenuItem>
+                <MenuItem
+                  value="right"
+                  sx={{ fontSize: isMobile ? '0.875rem' : undefined }}
+                >
+                  Right
+                </MenuItem>
               </Select>
             </FormControl>
           </Grid>
         </Grid>
-        
       </TabPanelShared>
 
-      
       {/* Styling Tab */}
       <TabPanelShared value={tabValue} index={1} id="button">
-
-      <Grid container spacing={2}>
-        
-      <Grid item xs={12} sm={6}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
             {/* Color Controls */}
             <DualColorPicker
               useCustomColor={useCustomColor}
@@ -600,9 +819,14 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               tertiaryLabel="Text Color"
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth margin="dense" size="small" variant="outlined">
+            <FormControl
+              fullWidth
+              margin="dense"
+              size="small"
+              variant="outlined"
+            >
               <InputLabel id="button-color-label">Color</InputLabel>
               <Select
                 labelId="button-color-label"
@@ -637,7 +861,7 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12}>
             {/* Text Styling Controls */}
             <TextStylingControls
@@ -648,8 +872,6 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               onChange={handleTextStyleChange}
             />
           </Grid>
-          
-          
         </Grid>
 
         <Grid container spacing={2}>
@@ -659,22 +881,26 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                 control={
                   <Switch
                     checked={Boolean(props.showStartIcon)}
-                    onChange={(e) => handleChange('showStartIcon', e.target.checked)}
+                    onChange={(e) =>
+                      handleChange('showStartIcon', e.target.checked)
+                    }
                   />
                 }
                 label="Show Icon Before Text"
                 sx={{ color: '#191919' }}
               />
-              </Box>
-            </Grid>
-              
+            </Box>
+          </Grid>
+
           <Grid item xs={12} sm={6}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={Boolean(props.showEndIcon)}
-                    onChange={(e) => handleChange('showEndIcon', e.target.checked)}
+                    onChange={(e) =>
+                      handleChange('showEndIcon', e.target.checked)
+                    }
                   />
                 }
                 label="Show Icon After Text"
@@ -682,10 +908,14 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
               />
             </Box>
           </Grid>
-          
+
           {(props.showStartIcon || props.showEndIcon) && (
             <Grid item xs={12}>
-              <Typography variant="subtitle2" gutterBottom sx={{ color: '#191919', mt: 2 }}>
+              <Typography
+                variant="subtitle2"
+                gutterBottom
+                sx={{ color: '#191919', mt: 2 }}
+              >
                 Select Icon:
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
@@ -697,9 +927,15 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                         handleChange('iconName', key)
                       }}
                       sx={{
-                        bgcolor: selectedIcon === key ? 'rgba(0, 0, 0, 0.08)' : 'transparent',
+                        bgcolor:
+                          selectedIcon === key
+                            ? 'rgba(0, 0, 0, 0.08)'
+                            : 'transparent',
                         color: '#191919',
-                        border: selectedIcon === key ? '1px solid #757575' : '1px solid transparent',
+                        border:
+                          selectedIcon === key
+                            ? '1px solid #757575'
+                            : '1px solid transparent',
                       }}
                     >
                       <Icon fontSize="small" />
@@ -711,14 +947,20 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
           )}
         </Grid>
       </TabPanelShared>
-      
-      
+
       {/* Behaviour Tab */}
       <TabPanelShared value={tabValue} index={2} id="button">
         <Grid container spacing={2}>
           <Grid item xs={12}>
-            <FormControl fullWidth margin="dense" size="small" variant="outlined">
-              <InputLabel id="click-action-label">What Happens When Clicked</InputLabel>
+            <FormControl
+              fullWidth
+              margin="dense"
+              size="small"
+              variant="outlined"
+            >
+              <InputLabel id="click-action-label">
+                What Happens When Clicked
+              </InputLabel>
               <Select
                 labelId="click-action-label"
                 value={props.clickAction || 'none'}
@@ -742,187 +984,12 @@ const ButtonEditor: React.FC<ComponentEditorProps<ButtonProps>> = ({ props, onCh
                   },
                 }}
               >
-                <MenuItem value="toast">Show Message</MenuItem>
                 <MenuItem value="openUrl">Open Link</MenuItem>
                 <MenuItem value="addChartValue">Add Value to Chart</MenuItem>
                 <MenuItem value="none">None</MenuItem>
               </Select>
             </FormControl>
           </Grid>
-          
-          {props.clickAction === 'toast' && (
-            <>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Message to Show"
-                  value={props.toastMessage || ''}
-                  onChange={(e) => handleChange('toastMessage', e.target.value)}
-                  variant="outlined"
-                  margin="dense"
-                  size={isMobile ? "small" : "medium"}
-                  placeholder="Action completed successfully!"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '& fieldset': {
-                        borderColor: 'rgba(0, 0, 0, 0.23)',
-                      },
-                      '&:hover fieldset': {
-                        borderColor: 'primary.light',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: 'primary.main',
-                      },
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: '#191919',
-                      fontSize: isMobile ? '0.875rem' : undefined
-                    },
-                    '& .MuiOutlinedInput-input': {
-                      color: '#000000',
-                      fontSize: isMobile ? '0.875rem' : undefined
-                    },
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth margin="dense" size={isMobile ? "small" : "medium"} variant="outlined">
-                  <InputLabel id="toast-severity-label" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Message Type</InputLabel>
-                  <Select
-                    labelId="toast-severity-label"
-                    value={props.toastSeverity || 'info'}
-                    onChange={(e) => handleChange('toastSeverity', e.target.value)}
-                    label="Message Type"
-                    sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(0, 0, 0, 0.23)',
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'primary.light',
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'primary.main',
-                      },
-                      '& .MuiSelect-select': {
-                        color: '#000000',
-                        fontSize: isMobile ? '0.875rem' : undefined
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: '#191919',
-                        fontSize: isMobile ? '0.875rem' : undefined
-                      },
-                    }}
-                  >
-                    <MenuItem value="info" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Info</MenuItem>
-                    <MenuItem value="success" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Success</MenuItem>
-                    <MenuItem value="warning" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Warning</MenuItem>
-                    <MenuItem value="error" sx={{ fontSize: isMobile ? '0.875rem' : undefined }}>Error</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </>
-          )}
-          
-          {props.clickAction === 'openUrl' && (
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Link to Open"
-                value={props.url || ''}
-                onChange={(e) => handleChange('url', e.target.value)}
-                variant="outlined"
-                margin="dense"
-                size={isMobile ? "small" : "medium"}
-                placeholder="https://example.com"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: 'rgba(0, 0, 0, 0.23)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'primary.light',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'primary.main',
-                    },
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: '#191919',
-                    fontSize: isMobile ? '0.875rem' : undefined
-                  },
-                  '& .MuiOutlinedInput-input': {
-                    color: '#000000',
-                    fontSize: isMobile ? '0.875rem' : undefined
-                  },
-                }}
-              />
-            </Grid>
-          )}
-
-          {props.clickAction === 'addChartValue' && (
-            <>
-              <Grid item xs={12}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Adds a new label/value pair to the first chart in this widget. Use an Answer Box when you want the user to type the label or value.
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="dense" size="small">
-                  <InputLabel id="chart-label-source-label">Label Source</InputLabel>
-                  <Select
-                    labelId="chart-label-source-label"
-                    value={props.chartLabelSource || 'static'}
-                    onChange={(e) => handleChange('chartLabelSource', e.target.value)}
-                    label="Label Source"
-                  >
-                    <MenuItem value="static">Static label</MenuItem>
-                    <MenuItem value="firstInput">First Answer Box</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="dense" size="small">
-                  <InputLabel id="chart-value-source-label">Value Source</InputLabel>
-                  <Select
-                    labelId="chart-value-source-label"
-                    value={props.chartValueSource || 'static'}
-                    onChange={(e) => handleChange('chartValueSource', e.target.value)}
-                    label="Value Source"
-                  >
-                    <MenuItem value="static">Static number</MenuItem>
-                    <MenuItem value="firstInput">First Answer Box</MenuItem>
-                    <MenuItem value="checkedListCount">Number of checked list items</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              {props.chartLabelSource !== 'firstInput' && (
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Chart Label"
-                    value={props.chartLabel || ''}
-                    onChange={(e) => handleChange('chartLabel', e.target.value)}
-                    margin="dense"
-                    size="small"
-                    placeholder="Task completed"
-                  />
-                </Grid>
-              )}
-              {props.chartValueSource === 'static' && (
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="Chart Value"
-                    value={props.chartValue || 1}
-                    onChange={(e) => handleChange('chartValue', Number(e.target.value))}
-                    margin="dense"
-                    size="small"
-                  />
-                </Grid>
-              )}
-            </>
-          )}
         </Grid>
       </TabPanelShared>
     </Box>

@@ -12,10 +12,15 @@ import {
   FormControlLabel,
   TextField,
   Button,
-  Alert,
   Collapse,
   InputAdornment,
   Checkbox,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
@@ -38,6 +43,9 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ComponentPreview from './components/preview/ComponentPreview'
+import StudyBlockView, {
+  isStudyBlockType,
+} from './components/preview/StudyBlockView'
 
 interface ComponentData {
   id: string
@@ -85,15 +93,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 }) => {
   const [widgetComponents, setWidgetComponents] = useState<ComponentData[]>([])
   const [widgetName, setWidgetName] = useState<string>('')
-  const [toastState, setToastState] = useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info' | 'warning'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
   // Track collapsed state for fieldsets
   const [collapsedFieldsets, setCollapsedFieldsets] = useState<
     Record<string, boolean>
@@ -198,30 +197,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     }
   }, [widgetId, customProps, name, widgetName, propComponents])
 
-  // Show toast message
-  const showToast = (
-    message: string,
-    severity: 'success' | 'error' | 'info' | 'warning' = 'info',
-  ) => {
-    setToastState({
-      open: true,
-      message,
-      severity,
-    })
-    // Dispatch global toast event for editor previews
-    document.dispatchEvent(
-      new CustomEvent('showWidgetToast', {
-        detail: { message, severity },
-        bubbles: true,
-      }),
-    )
-
-    // Auto hide after 3 seconds
-    setTimeout(() => {
-      setToastState((prev) => ({ ...prev, open: false }))
-    }, 3000)
-  }
-
   // Toggle fieldset collapsed state
   const toggleFieldsetCollapse = (componentId: string) => {
     setCollapsedFieldsets((prev) => ({
@@ -262,10 +237,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     const value = Number(rawValue)
 
     if (!Number.isFinite(value)) {
-      showToast(
-        'Enter a numeric value before adding it to the chart',
-        'warning',
-      )
       return
     }
 
@@ -347,10 +318,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
     setWidgetComponents((currentComponents) =>
       currentComponents.map(updateComponent),
     )
-    showToast(
-      updated ? `Added ${label}: ${value} to the chart` : 'No chart found',
-      updated ? 'success' : 'warning',
-    )
   }
 
   // Recursively apply collapsed state to all FieldSet components
@@ -367,6 +334,14 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 
   // Function to render any component type
   const renderComponent = (component: ComponentData) => {
+    if (isStudyBlockType(component.type)) {
+      return (
+        <Box key={component.id} sx={{ mb: 2 }}>
+          <StudyBlockView type={component.type} props={component.props} />
+        </Box>
+      )
+    }
+
     switch (component.type) {
       case 'SwitchEnable': {
         const labelValue = component.props.label as string
@@ -410,23 +385,6 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
                   | 'top'
                   | 'bottom') || 'end'
               }
-              onChange={(e) => {
-                if (component.props.showToast) {
-                  const isChecked = (e.target as HTMLInputElement).checked
-                  const message = isChecked
-                    ? (component.props.onMessage as string) ||
-                      'Switch turned ON'
-                    : (component.props.offMessage as string) ||
-                      'Switch turned OFF'
-                  const severity =
-                    (component.props.toastSeverity as
-                      | 'success'
-                      | 'error'
-                      | 'info'
-                      | 'warning') || 'info'
-                  showToast(message, severity)
-                }
-              }}
             />
           </Box>
         )
@@ -662,20 +620,8 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
               }
               onClick={() => {
                 const clickAction =
-                  (component.props.clickAction as string) || 'toast'
-                // Always show toast for 'toast' action
-                if (clickAction === 'toast') {
-                  const message =
-                    (component.props.toastMessage as string) ||
-                    'Button clicked!'
-                  const severity =
-                    (component.props.toastSeverity as
-                      | 'success'
-                      | 'error'
-                      | 'info'
-                      | 'warning') || 'info'
-                  showToast(message, severity)
-                } else if (clickAction === 'openUrl') {
+                  (component.props.clickAction as string) || 'none'
+                if (clickAction === 'openUrl') {
                   // Get URL prop and handle it safely
                   try {
                     // Try to get the URL - handle various potential types
@@ -695,12 +641,9 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
 
                     if (url) {
                       window.open(url, '_blank', 'noopener,noreferrer')
-                    } else {
-                      showToast('No URL configured for this button', 'warning')
                     }
                   } catch (err) {
                     console.error('Error opening URL:', err)
-                    showToast('Error opening URL', 'error')
                   }
                 } else if (clickAction === 'addChartValue') {
                   addValueToFirstChart(component.props)
@@ -857,6 +800,78 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
                 </Typography>
               ))}
             </Box>
+          </Box>
+        )
+      }
+      case 'TableBlock': {
+        const title = (component.props.title as string) || ''
+        const headers = Array.isArray(component.props.headers)
+          ? (component.props.headers as string[])
+          : []
+        const rows = Array.isArray(component.props.rows)
+          ? (component.props.rows as string[][])
+          : []
+        const columnCount = Math.max(
+          headers.length,
+          ...rows.map((row) => row.length),
+          1,
+        )
+
+        return (
+          <Box key={component.id} sx={{ mb: 2 }}>
+            {title && (
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                {title}
+              </Typography>
+            )}
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ overflowX: 'auto' }}
+            >
+              <Table size="small">
+                {headers.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header, index) => (
+                        <TableCell
+                          key={`${header}-${index}`}
+                          sx={{ fontWeight: 700 }}
+                        >
+                          {header}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                )}
+                <TableBody>
+                  {rows.length > 0 ? (
+                    rows.map((row, rowIndex) => (
+                      <TableRow key={`table-row-${rowIndex}`}>
+                        {Array.from({ length: columnCount }, (_, cellIndex) => (
+                          <TableCell
+                            key={`table-cell-${rowIndex}-${cellIndex}`}
+                          >
+                            {row[cellIndex] || ''}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={Math.max(headers.length, 1)}
+                        align="center"
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Add rows to this table.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )
       }
@@ -1319,26 +1334,7 @@ const CustomWidget: React.FC<CustomWidgetProps> = ({
           Widget Name: {widgetName}
         </Typography>
       )}
-      {/* Render components directly to support inline toasts */}
       {renderComponents()}
-
-      {/* Toast notification */}
-      {toastState.open && (
-        <Alert
-          severity={toastState.severity}
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            left: 16,
-            zIndex: 9999,
-            boxShadow: 3,
-            maxWidth: 400,
-          }}
-          onClose={() => setToastState((prev) => ({ ...prev, open: false }))}
-        >
-          {toastState.message}
-        </Alert>
-      )}
     </Paper>
   )
 }

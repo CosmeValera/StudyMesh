@@ -1,34 +1,40 @@
-import React from 'react';
-import { Box, CircularProgress, Typography, Fade, useTheme } from '@mui/material';
-import Logo from '../../assets/Logo';
+import React from 'react'
+import {
+  Box,
+  CircularProgress,
+  Typography,
+  Fade,
+  useTheme,
+} from '@mui/material'
+import Logo from '../../assets/Logo'
 
-export type LoadingVariant = 'overlay' | 'inline' | 'fullscreen' | 'component';
+export type LoadingVariant = 'overlay' | 'inline' | 'fullscreen' | 'component'
 
 interface LoadingIndicatorProps {
   /**
    * Message to display below the loading indicator
    */
-  message?: string;
-  
+  message?: string
+
   /**
    * The type of loading indicator to display
    */
-  variant?: LoadingVariant;
-  
+  variant?: LoadingVariant
+
   /**
    * Whether the loading indicator is visible
    */
-  loading?: boolean;
-  
+  loading?: boolean
+
   /**
    * Component to display as the loading icon (defaults to CircularProgress)
    */
-  icon?: React.ReactNode;
-  
+  icon?: React.ReactNode
+
   /**
    * Additional CSS classes
    */
-  className?: string;
+  className?: string
 }
 
 /**
@@ -39,12 +45,12 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   variant = 'inline',
   loading = true,
   icon,
-  className
+  className,
 }) => {
-  const theme = useTheme();
-  
-  if (!loading) return null;
-  
+  const theme = useTheme()
+
+  if (!loading) return null
+
   // Styling based on variant
   const getContainerStyles = () => {
     switch (variant) {
@@ -62,7 +68,7 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           backgroundColor: 'rgba(0, 107, 88, 0.7)',
           zIndex: 1000,
           backdropFilter: 'blur(2px)',
-        };
+        }
       case 'fullscreen':
         return {
           position: 'fixed',
@@ -76,7 +82,7 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           flexDirection: 'column',
           backgroundColor: theme.palette.background.default,
           zIndex: 9999,
-        };
+        }
       case 'component':
         return {
           display: 'flex',
@@ -86,7 +92,7 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           width: '100%',
           height: '100%',
           minHeight: 200,
-        };
+        }
       case 'inline':
       default:
         return {
@@ -95,13 +101,13 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           justifyContent: 'center',
           gap: 2,
           flexDirection: 'row',
-        };
+        }
     }
-  };
-  
+  }
+
   const renderLoadingIcon = () => {
-    if (icon) return icon;
-    
+    if (icon) return icon
+
     // Use AquaMesh logo for fullscreen and component variants
     if (variant === 'fullscreen' || variant === 'component') {
       return (
@@ -118,33 +124,35 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
               justifyContent: 'center',
             }}
           >
-            <CircularProgress 
+            <CircularProgress
               size={variant === 'fullscreen' ? 100 : 60}
               thickness={2}
-              sx={{ 
+              sx={{
                 color: theme.palette.primary.main,
                 opacity: 0.8,
-              }} 
+              }}
             />
           </Box>
-          <Logo 
-            height={variant === 'fullscreen' ? '80px' : '50px'} 
-            width={variant === 'fullscreen' ? '80px' : '50px'} 
+          <Logo
+            height={variant === 'fullscreen' ? '80px' : '50px'}
+            width={variant === 'fullscreen' ? '80px' : '50px'}
             className="pulse-animation"
           />
         </Box>
-      );
+      )
     }
-    
+
     return (
-      <CircularProgress 
+      <CircularProgress
         size={variant === 'overlay' ? 40 : 24}
         thickness={4}
-        sx={{ color: variant === 'inline' ? theme.palette.primary.main : '#fff' }} 
+        sx={{
+          color: variant === 'inline' ? theme.palette.primary.main : '#fff',
+        }}
       />
-    );
-  };
-  
+    )
+  }
+
   return (
     <Fade in={loading} timeout={300}>
       <Box
@@ -154,16 +162,16 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
         className={className}
       >
         {renderLoadingIcon()}
-        
+
         {message && (
           <Typography
             variant={variant === 'inline' ? 'body2' : 'body1'}
             color={variant === 'inline' ? 'textPrimary' : 'white'}
-            sx={{ 
+            sx={{
               mt: variant === 'inline' ? 0 : 2,
               fontWeight: variant === 'fullscreen' ? 'medium' : 'normal',
               opacity: 0.9,
-              textAlign: 'center'
+              textAlign: 'center',
             }}
           >
             {message}
@@ -171,13 +179,13 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
         )}
       </Box>
     </Fade>
-  );
-};
+  )
+}
 
-export default LoadingIndicator;
+export default LoadingIndicator
 
 // CSS Animation for the pulsing logo
-const style = document.createElement('style');
+const style = document.createElement('style')
 style.textContent = `
   @keyframes pulse {
     0% {
@@ -197,5 +205,5 @@ style.textContent = `
   .pulse-animation {
     animation: pulse 1.5s infinite ease-in-out;
   }
-`;
-document.head.appendChild(style); 
+`
+document.head.appendChild(style)

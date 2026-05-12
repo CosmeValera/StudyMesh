@@ -7,9 +7,8 @@ import {
   Button,
   TextField,
   Typography,
-  Alert,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
 } from '@mui/material'
 import SaveIcon from '@mui/icons-material/Save'
 import { CustomWidget } from '../../WidgetStorage'
@@ -34,10 +33,38 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const getUniqueWidgetName = (requestedName: string) => {
+    const baseName = requestedName.trim() || 'New Widget'
+    const usedNames = new Set(existingWidgets.map((widget) => widget.name))
+
+    if (!usedNames.has(baseName)) {
+      return baseName
+    }
+
+    const escapedName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const suffixPattern = new RegExp(`^${escapedName} \\((\\d+)\\)$`)
+    let nextSuffix = 2
+
+    usedNames.forEach((widgetName) => {
+      const match = widgetName.match(suffixPattern)
+      if (match) {
+        nextSuffix = Math.max(nextSuffix, Number(match[1]) + 1)
+      }
+    })
+
+    let candidate = `${baseName} (${nextSuffix})`
+    while (usedNames.has(candidate)) {
+      nextSuffix += 1
+      candidate = `${baseName} (${nextSuffix})`
+    }
+
+    return candidate
+  }
+
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
-      setName(defaultName === 'New Widget' ? '' : defaultName)
+      setName(defaultName || 'New Widget')
       setError(null)
     }
   }, [open, defaultName])
@@ -52,7 +79,7 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
   }
 
   const handleSave = () => {
-    const trimmedName = name.trim()
+    const trimmedName = name.trim() || 'New Widget'
 
     // Validate name
     if (!trimmedName) {
@@ -60,19 +87,7 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
       return
     }
 
-    if (trimmedName === 'New Widget') {
-      setError('Please provide a more descriptive name')
-      return
-    }
-
-    // Check if name already exists
-    if (existingWidgets.some((w) => w.name === trimmedName)) {
-      setError('A widget with this name already exists')
-      return
-    }
-
-    // Save if valid
-    onSave(trimmedName)
+    onSave(getUniqueWidgetName(trimmedName))
     onClose()
   }
 
@@ -99,8 +114,10 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
           alignItems: 'center',
         }}
       >
-        <SaveIcon sx={{ mr: isMobile ? 1 : 1.5, fontSize: isMobile ? 20 : 24 }} />
-        <Typography variant={isMobile ? "h6" : "h5"} fontWeight="bold">
+        <SaveIcon
+          sx={{ mr: isMobile ? 1 : 1.5, fontSize: isMobile ? 20 : 24 }}
+        />
+        <Typography variant={isMobile ? 'h6' : 'h5'} fontWeight="bold">
           Save Widget
         </Typography>
       </DialogTitle>
@@ -110,12 +127,13 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
           variant="body1"
           color="text.secondary"
           gutterBottom
-          sx={{ 
+          sx={{
             mb: isMobile ? 1.5 : 2,
-            fontSize: isMobile ? '0.875rem' : undefined
+            fontSize: isMobile ? '0.875rem' : undefined,
           }}
         >
-          Please provide a unique name for your widget
+          Name your widget. If that name already exists, AquaMesh will add a
+          number automatically.
         </Typography>
 
         <TextField
@@ -132,15 +150,15 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
               handleSave()
             }
           }}
-          size={isMobile ? "small" : "medium"}
+          size={isMobile ? 'small' : 'medium'}
           InputLabelProps={{
-            style: { fontSize: isMobile ? '0.875rem' : undefined }
+            style: { fontSize: isMobile ? '0.875rem' : undefined },
           }}
           InputProps={{
-            style: { fontSize: isMobile ? '0.875rem' : undefined }
+            style: { fontSize: isMobile ? '0.875rem' : undefined },
           }}
           FormHelperTextProps={{
-            style: { fontSize: isMobile ? '0.75rem' : undefined }
+            style: { fontSize: isMobile ? '0.75rem' : undefined },
           }}
           sx={{
             mb: isMobile ? 1.5 : 2,
@@ -149,29 +167,6 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
             },
           }}
         />
-
-        {defaultName === 'New Widget' && (
-          <Alert
-            severity="info"
-            sx={{
-              borderRadius: isMobile ? 1 : 1.5,
-              bgcolor: 'rgba(0, 166, 126, 0.08)', // Light green background
-              color: 'rgba(0, 66, 50, 0.9)', // Darker green text
-              border: '1px solid rgba(0, 166, 126, 0.2)',
-              '& .MuiAlert-icon': {
-                color: 'rgba(0, 166, 126, 0.9)', // Green icon
-                fontSize: isMobile ? '1rem' : undefined
-              },
-              '& .MuiAlert-message': {
-                fontSize: isMobile ? '0.75rem' : undefined
-              },
-              py: isMobile ? 0.5 : 1
-            }}
-          >
-            Using the default name &quot;New Widget&quot; is not recommended. Please
-            provide a descriptive name.
-          </Alert>
-        )}
       </DialogContent>
 
       <DialogActions
@@ -186,13 +181,13 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
           borderColor: 'divider',
         }}
       >
-        <Button 
-          onClick={onClose} 
-          variant="outlined" 
-          size={isMobile ? "small" : "medium"}
-          sx={{ 
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          size={isMobile ? 'small' : 'medium'}
+          sx={{
             borderRadius: isMobile ? 1 : 1.5,
-            fontSize: isMobile ? '0.75rem' : undefined
+            fontSize: isMobile ? '0.75rem' : undefined,
           }}
         >
           Cancel
@@ -200,14 +195,14 @@ const SaveWidgetDialog: React.FC<SaveWidgetDialogProps> = ({
         <Button
           onClick={handleSave}
           variant="contained"
-          startIcon={<SaveIcon fontSize={isMobile ? "small" : "medium"} />}
-          size={isMobile ? "small" : "medium"}
+          startIcon={<SaveIcon fontSize={isMobile ? 'small' : 'medium'} />}
+          size={isMobile ? 'small' : 'medium'}
           sx={{
             ml: 1,
             px: isMobile ? 2 : 3,
             borderRadius: isMobile ? 1 : 1.5,
             boxShadow: 2,
-            fontSize: isMobile ? '0.75rem' : undefined
+            fontSize: isMobile ? '0.75rem' : undefined,
           }}
         >
           Save Widget

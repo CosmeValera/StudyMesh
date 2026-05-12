@@ -5,5 +5,5 @@ export {
   useContainerQueries,
   useContainerBreakpoints,
   withContainerQueries,
-  CQ
-} from './ContainerQueries'; 
+  CQ,
+} from "./ContainerQueries";

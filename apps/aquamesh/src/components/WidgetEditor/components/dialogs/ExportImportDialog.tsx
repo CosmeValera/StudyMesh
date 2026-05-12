@@ -19,7 +19,6 @@ import {
   IconButton,
   Divider,
   Paper,
-  Snackbar,
   useTheme,
 } from '@mui/material'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -82,8 +81,6 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
     success: boolean
     message: string
   } | null>(null)
-  const [toastOpen, setToastOpen] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Select all widgets for export
@@ -138,13 +135,6 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
   // Copy export data to clipboard
   const copyExportToClipboard = () => {
     navigator.clipboard.writeText(exportData)
-
-    setToastMessage('Export data copied to clipboard')
-    setToastOpen(true)
-
-    setTimeout(() => {
-      setToastOpen(false)
-    }, 3000)
   }
 
   // Trigger file input click
@@ -742,24 +732,6 @@ const ExportImportDialog: React.FC<ExportImportDialogProps> = ({
           Close
         </Button>
       </DialogActions>
-
-      {/* Toast notification */}
-      <Snackbar
-        open={toastOpen}
-        autoHideDuration={3000}
-        onClose={() => setToastOpen(false)}
-        message={toastMessage}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{
-          '& .MuiSnackbarContent-root': {
-            bgcolor: 'primary.main',
-            color: 'black',
-            fontWeight: 'medium',
-            borderRadius: 2,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          },
-        }}
-      />
     </Dialog>
   )
 }

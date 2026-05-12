@@ -74,4 +74,3 @@ Red flags:
 - For reviews, list findings first, ordered by severity, with file and line references.
 - For test plans, list the smallest useful test set.
 - For implementation work, report the exact test files changed and commands run.
-

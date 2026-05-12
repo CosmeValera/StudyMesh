@@ -12,6 +12,8 @@ import DynamicMicrofrontend from '../../moduleFederation/DynamicMicrofrontend'
 
 import { useLayout } from './LayoutProvider'
 import { DashboardLayout } from '../../state/store'
+import { countDashboardNodes } from '../onboarding/WorkspaceOnboarding'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 import 'flexlayout-react/style/light.css'
 import './layout.scss'
@@ -96,64 +98,71 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
   }, [layout, readOnly])
 
   return (
-    <Layout
-      ref={ref}
-      model={model}
-      factory={factory}
-      icons={{
-        close: (
-          <CloseIcon
-            width={16}
-            height={16}
-            color="var(--foreground-primary, #001026DE)"
-          />
-        ),
-        closeTabset: (
-          <CloseIcon
-            width={16}
-            height={16}
-            color="var(--foreground-primary, #001026DE)"
-          />
-        ),
-        maximize: (
-          <MaximizeIcon
-            width={16}
-            height={16}
-            color="var(--foreground-primary, #001026DE)"
-          />
-        ),
-        restore: (
-          <MinimizeIcon
-            width={16}
-            height={16}
-            color="var(--foreground-primary, #001026DE)"
-          />
-        ),
-        popout: (
-          <OpenInNewIcon
-            width={16}
-            height={16}
-            color="var(--foreground-primary, #001026DE)"
-          />
-        ),
-        // NOTE displayed when some tabs are hidden
-        // more: (
-        //   <MoreIcon
-        //     width={16}
-        //     height={16}
-        //     color="var(--foreground-primary, #001026DE)"
-        //   />
-        // ),
-      }}
-      onTabSetPlaceHolder={() => (
-        <EmptyWidgetIcon width={60} height={60} opacity={0.16} />
-      )}
-      onModelChange={(nextModel) => {
-        if (!readOnly) {
-          updateLayout(nextModel)
-        }
-      }}
-    />
+    <div style={{ height: '100%' }}>
+      <Layout
+        ref={ref}
+        model={model}
+        factory={factory}
+        icons={{
+          close: (
+            <CloseIcon
+              width={16}
+              height={16}
+              color="var(--foreground-primary, #001026DE)"
+            />
+          ),
+          closeTabset: (
+            <CloseIcon
+              width={16}
+              height={16}
+              color="var(--foreground-primary, #001026DE)"
+            />
+          ),
+          maximize: (
+            <MaximizeIcon
+              width={16}
+              height={16}
+              color="var(--foreground-primary, #001026DE)"
+            />
+          ),
+          restore: (
+            <MinimizeIcon
+              width={16}
+              height={16}
+              color="var(--foreground-primary, #001026DE)"
+            />
+          ),
+          popout: (
+            <OpenInNewIcon
+              width={16}
+              height={16}
+              color="var(--foreground-primary, #001026DE)"
+            />
+          ),
+          // NOTE displayed when some tabs are hidden
+          // more: (
+          //   <MoreIcon
+          //     width={16}
+          //     height={16}
+          //     color="var(--foreground-primary, #001026DE)"
+          //   />
+          // ),
+        }}
+        onTabSetPlaceHolder={() => (
+          <EmptyWidgetIcon width={60} height={60} opacity={0.16} />
+        )}
+        onModelChange={(nextModel) => {
+          if (!readOnly) {
+            const nextLayout = nextModel.toJson().layout as DashboardLayout
+            updateLayout(nextModel)
+            dispatchWorkspaceOnboardingEvent({
+              type: 'dashboard-layout-changed',
+              ...countDashboardNodes(nextLayout),
+            })
+          }
+        }}
+      />
+    </div>
   )
 }
 

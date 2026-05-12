@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   AppBar,
   Toolbar,
@@ -16,6 +16,7 @@ import {
   Divider,
   ToggleButton,
   ToggleButtonGroup,
+  TextField,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import EditIcon from '@mui/icons-material/Edit'
@@ -61,6 +62,8 @@ interface EditorToolbarProps {
   isLatestVersion?: boolean
   currentWidgetVersion?: string
   showAdvancedInToolbar?: boolean
+  widgetName: string
+  handleWidgetNameChange?: (name: string) => void
 }
 
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -87,6 +90,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   isLatestVersion = true,
   currentWidgetVersion = '1.0',
   showAdvancedInToolbar = false,
+  widgetName,
+  handleWidgetNameChange,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -94,6 +99,15 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [advancedMenuAnchor, setAdvancedMenuAnchor] =
     useState<null | HTMLElement>(null)
   const [showVersionWarning, setShowVersionWarning] = useState(false)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isEditingName) {
+      nameInputRef.current?.focus()
+      nameInputRef.current?.select()
+    }
+  }, [isEditingName])
 
   const handleAdvancedMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAdvancedMenuAnchor(event.currentTarget)
@@ -127,6 +141,16 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
     }
   }
 
+  const handleNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      setIsEditingName(false)
+    }
+
+    if (event.key === 'Escape') {
+      setIsEditingName(false)
+    }
+  }
+
   return (
     <>
       <AppBar
@@ -151,6 +175,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             padding: isPhone ? '0px 2px' : '0px 16px',
             gap: isPhone ? 0.25 : 0,
             overflow: 'hidden',
+            flexWrap: 'nowrap',
+            alignContent: 'center',
           }}
         >
           {editMode && (
@@ -187,18 +213,72 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             ></Box>
           )}
           {isDesktop && (
-            <Typography
-              variant="h6"
+            <Box
               sx={{
                 flexGrow: 1,
-                color: 'foreground.contrastPrimary',
+                minWidth: 180,
+                maxWidth: 420,
+                mr: 2,
               }}
             >
-              Create Widget
-            </Typography>
+              {isEditingName && editMode ? (
+                <TextField
+                  inputRef={nameInputRef}
+                  aria-label="Widget name"
+                  value={widgetName}
+                  onChange={(event) =>
+                    handleWidgetNameChange?.(event.target.value)
+                  }
+                  onBlur={() => setIsEditingName(false)}
+                  onKeyDown={handleNameKeyDown}
+                  variant="standard"
+                  size="small"
+                  fullWidth
+                  inputProps={{ 'data-testid': 'toolbar-widget-name-input' }}
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      color: 'foreground.contrastPrimary',
+                      fontWeight: 700,
+                      fontSize: '1.25rem',
+                      lineHeight: 1.2,
+                      py: 0.25,
+                    },
+                  }}
+                />
+              ) : (
+                <TooltipStyled title="Double-click to rename widget">
+                  <Typography
+                    variant="h6"
+                    onDoubleClick={() => {
+                      if (editMode) {
+                        setIsEditingName(true)
+                      }
+                    }}
+                    sx={{
+                      color: 'foreground.contrastPrimary',
+                      cursor: editMode ? 'text' : 'default',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {widgetName.trim() || 'New Widget'}
+                  </Typography>
+                </TooltipStyled>
+              )}
+            </Box>
           )}
 
-          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              minWidth: 0,
+              ml: 'auto',
+              flexShrink: 0,
+            }}
+          >
             {/* Undo/Redo buttons */}
             {!!handleUndo && !!handleRedo && (
               <>
@@ -338,6 +418,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
             <TooltipStyled title="Open Saved Widgets">
               <IconButton
+                aria-label="Open Saved Widgets"
                 color="inherit"
                 onClick={() => setShowWidgetList(true)}
                 sx={{
@@ -354,6 +435,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
             <TooltipStyled title="Editor settings">
               <IconButton
+                aria-label="Editor settings"
                 color="inherit"
                 onClick={() => setShowSettingsModal(true)}
                 sx={{
@@ -421,6 +503,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             {(!isDesktop || !showAdvancedInToolbar) && (
               <TooltipStyled title="More widget tools">
                 <IconButton
+                  aria-label="More widget tools"
                   color="inherit"
                   onClick={handleAdvancedMenuOpen}
                   sx={{
@@ -636,7 +719,17 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
               >
                 <span>
                   <IconButton
+                    aria-label={
+                      isEmpty
+                        ? 'Empty Widget'
+                        : isUpdating && !hasChanges
+                          ? 'No changes'
+                          : isUpdating
+                            ? 'Update Widget'
+                            : 'Save Widget'
+                    }
                     color="inherit"
+                    data-onboarding-id="widget-editor-save"
                     onClick={handleSaveButtonClick}
                     disabled={
                       !editMode || (!hasChanges && isUpdating) || isEmpty
@@ -677,6 +770,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 variant="contained"
                 color="primary"
                 onClick={handleSaveButtonClick}
+                data-onboarding-id="widget-editor-save"
                 size="small"
                 disabled={!editMode || (!hasChanges && isUpdating) || isEmpty}
                 startIcon={<SaveIcon />}

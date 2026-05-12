@@ -12,6 +12,7 @@ import {
   Paper,
   Grid,
   Chip,
+  TextField,
 } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -27,30 +28,39 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
+import ReplayIcon from '@mui/icons-material/Replay'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
-import KeyIcon from '@mui/icons-material/Key'
 
 import AccentColorPicker from '../../../../theme/AccentColorPicker'
+import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
+import {
+  DEFAULT_STUDY_PACK_AI_MODEL,
+  getEnvGeminiApiKey,
+  readStudyPackAiSettings,
+  saveStudyPackAiSettings,
+} from '../../../../studyPack/ai'
+
+const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
 
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
-  showTooltips: boolean
-  onShowTooltipsChange: (value: boolean) => void
-  showDeleteConfirmation: boolean
-  onShowDeleteConfirmationChange: (value: boolean) => void
-  showComponentPaletteHelp: boolean
-  onShowComponentPaletteHelpChange: (value: boolean) => void
-  showDeleteWidgetConfirmation: boolean
-  onShowDeleteWidgetConfirmationChange: (value: boolean) => void
+  title?: string
+  scope?: 'editor' | 'global'
+  showTooltips?: boolean
+  onShowTooltipsChange?: (value: boolean) => void
+  showDeleteConfirmation?: boolean
+  onShowDeleteConfirmationChange?: (value: boolean) => void
+  showComponentPaletteHelp?: boolean
+  onShowComponentPaletteHelpChange?: (value: boolean) => void
+  showDeleteWidgetConfirmation?: boolean
+  onShowDeleteWidgetConfirmationChange?: (value: boolean) => void
   showDeleteDashboardConfirmation?: boolean
   onShowDeleteDashboardConfirmationChange?: (value: boolean) => void
   showAdvancedInToolbar?: boolean
   onShowAdvancedInToolbarChange?: (value: boolean) => void
-  showDeleteTemplateConfirmation: boolean
-  onShowDeleteTemplateConfirmationChange: (value: boolean) => void
-  showRequireNameEntryOnSave: boolean
-  onShowRequireNameEntryOnSaveChange: (value: boolean) => void
+  showDeleteTemplateConfirmation?: boolean
+  onShowDeleteTemplateConfirmationChange?: (value: boolean) => void
 }
 
 // Keyboard shortcut card component
@@ -137,9 +147,25 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   onShowAdvancedInToolbarChange,
   showDeleteTemplateConfirmation,
   onShowDeleteTemplateConfirmationChange,
-  showRequireNameEntryOnSave,
-  onShowRequireNameEntryOnSaveChange,
+  title = 'Widget Editor Settings',
+  scope = 'editor',
 }) => {
+  const showEditorSettings = scope === 'editor'
+  const showGlobalSettings = scope === 'global'
+  const [aiApiToken, setAiApiToken] = React.useState('')
+  const [aiModel, setAiModel] = React.useState(DEFAULT_STUDY_PACK_AI_MODEL)
+  const hasEnvToken = Boolean(getEnvGeminiApiKey())
+
+  React.useEffect(() => {
+    if (!open || !showGlobalSettings) {
+      return
+    }
+
+    const settings = readStudyPackAiSettings()
+    setAiApiToken(settings.apiToken)
+    setAiModel(settings.model)
+  }, [open, showGlobalSettings])
+
   // Create safe handlers for all possibly undefined callbacks
   const handleTooltipsChange = (checked: boolean) => {
     if (onShowTooltipsChange) {
@@ -165,14 +191,37 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
   }
 
-  const handleRequireNameEntryChange = (checked: boolean) => {
-    onShowRequireNameEntryOnSaveChange(checked)
-  }
-
   const handleDeleteTemplateConfirmationChange = (checked: boolean) => {
     if (onShowDeleteTemplateConfirmationChange) {
       onShowDeleteTemplateConfirmationChange(checked)
     }
+  }
+
+  const handleReplayTutorial = () => {
+    window.localStorage.setItem(
+      WORKSPACE_ONBOARDING_KEY,
+      JSON.stringify({
+        status: 'active',
+        stepId: 'create-dashboard',
+      }),
+    )
+    window.dispatchEvent(new CustomEvent(AQUAMESH_ONBOARDING_RESET_EVENT))
+    onClose()
+  }
+
+  const handleSaveAiSettings = () => {
+    saveStudyPackAiSettings({
+      apiToken: aiApiToken,
+      model: aiModel,
+    })
+  }
+
+  const handleClearAiToken = () => {
+    setAiApiToken('')
+    saveStudyPackAiSettings({
+      apiToken: '',
+      model: aiModel,
+    })
   }
 
   return (
@@ -211,440 +260,593 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             fontWeight="bold"
             color="text.primary"
           >
-            Workspace Settings
+            {title}
           </Typography>
         </Box>
       </DialogTitle>
       <DialogContent>
         <Box sx={{ py: 2 }}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              mb: 2,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'background.default',
-            }}
+          <Typography
+            variant="h6"
+            gutterBottom
+            fontWeight="medium"
+            color="text.primary"
           >
-            <Box display="flex" alignItems="center" gap={1} mb={1}>
-              <AutoAwesomeIcon color="primary" />
-              <Typography variant="subtitle1" fontWeight={800}>
-                AI Study Pack generation
+            {showGlobalSettings ? 'Application Options' : 'Editor Options'}
+          </Typography>
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <ColorLensIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Accent Color
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 2 }}
+                  >
+                    Pick the highlight color used by navigation, dialogs,
+                    onboarding, and editor controls.
+                  </Typography>
+                  <Box sx={{ ml: 5 }}>
+                    <AccentColorPicker />
+                  </Box>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ReplayIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Replay Workspace Tutorial
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Restart the guided dashboard and widget tutorial from the
+                    first step.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleReplayTutorial}
+                  sx={{ ml: 2, whiteSpace: 'nowrap' }}
+                >
+                  Replay
+                </Button>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                <AutoAwesomeIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Study Pack AI
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
+                    Gemini is the default provider for AI Study Pack generation. OpenAI, Anthropic, and DeepSeek can fit here later. API keys are advanced settings; the normal flow should feel like uploading notes, not configuring infrastructure.
+                  </Typography>
+                  <TextField
+                    label="Gemini API key"
+                    type="password"
+                    value={aiApiToken}
+                    onChange={(event) => setAiApiToken(event.target.value)}
+                    fullWidth
+                    size="small"
+                    placeholder={
+                      hasEnvToken
+                        ? 'Using .env key unless you enter one here'
+                        : 'Paste your Gemini API key'
+                    }
+                    sx={{ mb: 1.5 }}
+                  />
+                  <TextField
+                    label="Model"
+                    value={aiModel}
+                    onChange={(event) => setAiModel(event.target.value)}
+                    fullWidth
+                    size="small"
+                    sx={{ mb: 1.5 }}
+                  />
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Chip
+                      size="small"
+                      label={
+                        aiApiToken.trim()
+                          ? 'Settings key active'
+                          : hasEnvToken
+                            ? '.env key available'
+                            : 'No key configured'
+                      }
+                      color={
+                        aiApiToken.trim() || hasEnvToken ? 'primary' : 'default'
+                      }
+                    />
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleClearAiToken}
+                    >
+                      Clear key
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleSaveAiSettings}
+                    >
+                      Save AI settings
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <InfoOutlinedIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Show Helpful Tips
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showTooltips)}
+                      onChange={(e) => handleTooltipsChange(e.target.checked)}
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show short explanations when hovering over building blocks
+                    in the palette.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <HelpOutlineIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Show Building Blocks Help
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showComponentPaletteHelp)}
+                      onChange={(e) =>
+                        handleComponentPaletteHelpChange(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show the help text at the bottom of the Building Blocks
+                    panel.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+                display: { xs: 'none', lg: 'block' },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <SearchIcon
+                      fontSize="small"
+                      sx={{ mr: 1.5, color: 'primary.main' }}
+                    />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Show Advanced Features in Toolbar
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showAdvancedInToolbar)}
+                      onChange={(e) =>
+                        handleAdvancedInToolbarChange(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Display Templates, Export/Import, and Version History
+                    buttons directly in the toolbar for easy access.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && <Divider sx={{ my: 3 }} />}
+
+          {showGlobalSettings && (
+            <Typography
+              variant="h6"
+              gutterBottom
+              fontWeight="medium"
+              color="text.primary"
+            >
+              Confirmation Options
+            </Typography>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DashboardIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Dashboard Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteDashboardConfirmation)}
+                      onChange={(e) =>
+                        handleDeleteDashboardConfirmationChange(
+                          e.target.checked,
+                        )
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting dashboards.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Template Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteTemplateConfirmation)}
+                      onChange={(e) =>
+                        handleDeleteTemplateConfirmationChange(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting templates.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <WidgetsIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Widget Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteWidgetConfirmation)}
+                      onChange={(e) =>
+                        onShowDeleteWidgetConfirmationChange?.(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting widgets from the
+                    library.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
+                    <Typography fontWeight="medium" color="text.primary">
+                      Confirm Block Deletion
+                    </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Switch
+                      checked={Boolean(showDeleteConfirmation)}
+                      onChange={(e) =>
+                        onShowDeleteConfirmationChange?.(e.target.checked)
+                      }
+                      color="primary"
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 5, mb: 1 }}
+                  >
+                    Show a confirmation dialog when deleting blocks.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showEditorSettings && (
+            <Divider sx={{ my: 3, display: { xs: 'none', sm: 'flex' } }} />
+          )}
+
+          {showEditorSettings && (
+            <Box
+              sx={{
+                display: { xs: 'none', sm: 'flex' },
+                alignItems: 'center',
+                mb: 2.5,
+              }}
+            >
+              <KeyboardIcon
+                sx={{ mr: 1.5, color: 'primary.main', fontSize: 28 }}
+              />
+              <Typography variant="h6" fontWeight="medium" color="text.primary">
+                Keyboard Shortcuts
               </Typography>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              Gemini is the default provider for turning notes into summaries, flashcards, quizzes, and exercises. OpenAI, Anthropic, and DeepSeek are planned provider options.
-            </Typography>
-            <Chip
-              icon={<KeyIcon />}
-              label="API keys are advanced settings"
-              size="small"
-              variant="outlined"
-            />
-          </Paper>
-          <Typography
-            variant="h6"
-            gutterBottom
-            fontWeight="medium"
-            color="text.primary"
-          >
-            Interface Options
-          </Typography>
+          )}
 
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <ColorLensIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Accent Color
-                  </Typography>
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 2 }}
-                >
-                  Pick the highlight color used by navigation, dialogs,
-                  onboarding, and editor controls.
-                </Typography>
-                <Box sx={{ ml: 5 }}>
-                  <AccentColorPicker />
-                </Box>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <InfoOutlinedIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Show Helpful Tips
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showTooltips}
-                    onChange={(e) => handleTooltipsChange(e.target.checked)}
-                    color="primary"
+          {showEditorSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                display: { xs: 'none', sm: 'block' },
+              }}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <ShortcutCard
+                    icon={<UndoIcon />}
+                    title="Undo"
+                    shortcut="Ctrl + Z"
+                    color="#3f51b5"
                   />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Show short explanations when hovering over building blocks in
-                  the palette.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
 
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <HelpOutlineIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Show Building Blocks Help
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showComponentPaletteHelp}
-                    onChange={(e) =>
-                      handleComponentPaletteHelpChange(e.target.checked)
-                    }
-                    color="primary"
+                  <ShortcutCard
+                    icon={<RedoIcon />}
+                    title="Redo"
+                    shortcut="Ctrl + Y"
+                    color="#3f51b5"
                   />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Show the help text at the bottom of the Building Blocks panel.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              mb: 2,
-              bgcolor: 'background.default',
-              borderRadius: 2,
-              display: { xs: 'none', lg: 'block' },
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SearchIcon
-                    fontSize="small"
-                    sx={{ mr: 1.5, color: 'primary.main' }}
+                  <ShortcutCard
+                    icon={<SaveIcon />}
+                    title="Save Widget"
+                    shortcut="Ctrl + S"
+                    color="#4caf50"
                   />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Show Advanced Features in Toolbar
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showAdvancedInToolbar}
-                    onChange={(e) =>
-                      handleAdvancedInToolbarChange(e.target.checked)
-                    }
-                    color="primary"
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <ShortcutCard
+                    icon={<EditIcon />}
+                    title="Cycle through both, edit, and preview views"
+                    shortcut="Ctrl + E"
+                    color="#ff9800"
                   />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Display Templates, Export/Import, and Version History buttons
-                  directly in the toolbar for easy access.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
 
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SaveIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Require name entry on save
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showRequireNameEntryOnSave}
-                    onChange={(e) =>
-                      handleRequireNameEntryChange(e.target.checked)
-                    }
-                    color="primary"
+                  <ShortcutCard
+                    icon={<FolderOpenIcon />}
+                    title="Open or close saved widgets"
+                    shortcut="Ctrl + O"
+                    color="#9c27b0"
                   />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Prompt for a unique widget name when saving a new widget.
-                  Disable to auto-generate a name.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
 
-          <Divider sx={{ my: 3 }} />
-
-          <Typography
-            variant="h6"
-            gutterBottom
-            fontWeight="medium"
-            color="text.primary"
-          >
-            Confirmation Options
-          </Typography>
-
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DashboardIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Dashboard Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showDeleteDashboardConfirmation}
-                    onChange={(e) =>
-                      handleDeleteDashboardConfirmationChange(e.target.checked)
-                    }
-                    color="primary"
+                  <ShortcutCard
+                    icon={<SettingsIcon />}
+                    title="Open or close settings"
+                    shortcut="Ctrl + ,"
+                    color="#2196f3"
                   />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Show a confirmation dialog when deleting dashboards.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Template Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showDeleteTemplateConfirmation}
-                    onChange={(e) =>
-                      handleDeleteTemplateConfirmationChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Show a confirmation dialog when deleting templates.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <WidgetsIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Widget Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showDeleteWidgetConfirmation}
-                    onChange={(e) =>
-                      onShowDeleteWidgetConfirmationChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Show a confirmation dialog when deleting widgets from the
-                  library.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{ p: 2, mb: 2, bgcolor: 'background.default', borderRadius: 2 }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box
-                sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <DeleteOutlineIcon sx={{ mr: 1.5, color: 'error.main' }} />
-                  <Typography fontWeight="medium" color="text.primary">
-                    Confirm Block Deletion
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Switch
-                    checked={showDeleteConfirmation}
-                    onChange={(e) =>
-                      onShowDeleteConfirmationChange(e.target.checked)
-                    }
-                    color="primary"
-                  />
-                </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 5, mb: 1 }}
-                >
-                  Show a confirmation dialog when deleting blocks.
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Divider sx={{ my: 3, display: { xs: 'none', sm: 'flex' } }} />
-
-          <Box
-            sx={{
-              display: { xs: 'none', sm: 'flex' },
-              alignItems: 'center',
-              mb: 2.5,
-            }}
-          >
-            <KeyboardIcon
-              sx={{ mr: 1.5, color: 'primary.main', fontSize: 28 }}
-            />
-            <Typography variant="h6" fontWeight="medium" color="text.primary">
-              Keyboard Shortcuts
-            </Typography>
-          </Box>
-
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              mb: 2,
-              bgcolor: 'background.default',
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              display: { xs: 'none', sm: 'block' },
-            }}
-          >
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <ShortcutCard
-                  icon={<UndoIcon />}
-                  title="Undo"
-                  shortcut="Ctrl + Z"
-                  color="#3f51b5"
-                />
-
-                <ShortcutCard
-                  icon={<RedoIcon />}
-                  title="Redo"
-                  shortcut="Ctrl + Y"
-                  color="#3f51b5"
-                />
-
-                <ShortcutCard
-                  icon={<SaveIcon />}
-                  title="Save Widget"
-                  shortcut="Ctrl + S"
-                  color="#4caf50"
-                />
+                </Grid>
               </Grid>
-
-              <Grid item xs={12} md={6}>
-                <ShortcutCard
-                  icon={<EditIcon />}
-                  title="Switch between edit and preview views"
-                  shortcut="Ctrl + E"
-                  color="#ff9800"
-                />
-
-                <ShortcutCard
-                  icon={<FolderOpenIcon />}
-                  title="Open or close saved widgets"
-                  shortcut="Ctrl + O"
-                  color="#9c27b0"
-                />
-
-                <ShortcutCard
-                  icon={<SettingsIcon />}
-                  title="Open or close settings"
-                  shortcut="Ctrl + ,"
-                  color="#2196f3"
-                />
-              </Grid>
-            </Grid>
-          </Paper>
+            </Paper>
+          )}
         </Box>
       </DialogContent>
 

@@ -3,31 +3,32 @@ import { Tooltip, TooltipProps, useMediaQuery, useTheme } from '@mui/material'
 import { merge } from 'lodash'
 import theme from '../theme'
 
-interface TooltipStyledProps extends Omit<TooltipProps, 'componentsProps' | 'slotProps'> {
+interface TooltipStyledProps
+  extends Omit<TooltipProps, 'componentsProps' | 'slotProps'> {
   componentsProps?: {
-    tooltip?: Record<string, unknown>;
-    arrow?: Record<string, unknown>;
-  };
+    tooltip?: Record<string, unknown>
+    arrow?: Record<string, unknown>
+  }
   slotProps?: {
-    popper?: Record<string, unknown>;
-  };
-  placement?: 'bottom' | 'right' | 'left' | 'top';
+    popper?: Record<string, unknown>
+  }
+  placement?: 'bottom' | 'right' | 'left' | 'top'
 }
 
 // TODO: This belongs in style...
 const styledComponentsProps = (props: TooltipStyledProps) => {
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  
+
   const tooltip: Record<string, unknown> = {}
   const arrow: Record<string, unknown> = {}
 
   switch (props.placement) {
-  case 'right':
-    arrow.transform = 'translate3d(1px, 6px, 0) !important'
-    tooltip.marginLeft = '100px'
-    break
-  default:
-    arrow.transform = 'none'
+    case 'right':
+      arrow.transform = 'translate3d(1px, 6px, 0) !important'
+      tooltip.marginLeft = '100px'
+      break
+    default:
+      arrow.transform = 'none'
   }
 
   return {
@@ -62,14 +63,14 @@ const styledSlotProps = (props: TooltipStyledProps) => {
   const offsetOptions: Record<string, unknown> = {}
 
   switch (props.placement) {
-  case 'bottom':
-    offsetOptions.offset = [0, -4]
-    break
-  case 'right':
-    offsetOptions.offset = isPhone ? [0, 0] : [0, 2]
-    break
-  default:
-    offsetOptions.offset = [0, 0]
+    case 'bottom':
+      offsetOptions.offset = [0, -4]
+      break
+    case 'right':
+      offsetOptions.offset = isPhone ? [0, 0] : [0, 2]
+      break
+    default:
+      offsetOptions.offset = [0, 0]
   }
 
   return {

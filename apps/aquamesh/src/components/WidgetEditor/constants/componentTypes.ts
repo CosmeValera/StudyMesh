@@ -10,6 +10,14 @@ import ImageIcon from '@mui/icons-material/Image'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'
 import SubjectIcon from '@mui/icons-material/Subject'
+import TableChartIcon from '@mui/icons-material/TableChart'
+import StyleIcon from '@mui/icons-material/Style'
+import QuizIcon from '@mui/icons-material/Quiz'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
+import ReportProblemIcon from '@mui/icons-material/ReportProblem'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import CodeIcon from '@mui/icons-material/Code'
 import { ComponentType } from '../types/types'
 
 // Building blocks that can be added to a widget.
@@ -41,10 +49,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
     defaultProps: {
       text: 'Button',
       variant: 'contained',
-      showToast: true,
-      toastMessage: 'Action completed!',
-      toastSeverity: 'info',
-      clickAction: 'toast',
+      clickAction: 'none',
       chartLabelSource: 'static',
       chartValueSource: 'static',
       chartLabel: 'New value',
@@ -109,6 +114,129 @@ export const COMPONENT_TYPES: ComponentType[] = [
       'Adds a larger note block for explanations, study summaries, or wiki-style writing.',
   },
   {
+    type: 'FlashcardBlock',
+    label: 'Flashcard',
+    defaultProps: {
+      __blockType: 'FlashcardBlock',
+      front: 'Question or term',
+      back: 'Answer or explanation',
+      hint: '',
+      tag: '',
+      selfGrade: true,
+    },
+    category: 'Study Blocks',
+    icon: StyleIcon,
+    tooltip:
+      'Adds a flip card for active recall, with a question on the front and answer on the back.',
+  },
+  {
+    type: 'QuizBlock',
+    label: 'Quiz',
+    defaultProps: {
+      __blockType: 'QuizBlock',
+      quizMode: 'multipleChoice',
+      question: 'Question',
+      options: ['Option A', 'Option B', 'Option C', 'Option D'],
+      correctIndex: 0,
+      answer: 'Option A',
+      explanation: 'Explain why the answer is correct.',
+      shuffleOptions: false,
+    },
+    category: 'Study Blocks',
+    icon: QuizIcon,
+    tooltip:
+      'Adds a quiz question with selectable answers and instant feedback.',
+  },
+  {
+    type: 'StudyNoteBlock',
+    label: 'Study Note',
+    defaultProps: {
+      __blockType: 'StudyNoteBlock',
+      title: 'Study note',
+      text: 'Raw study note text',
+      suggestedTypes: ['definition', 'flashcard', 'review'],
+    },
+    category: 'Study Blocks',
+    icon: AutoStoriesIcon,
+    tooltip:
+      'Adds a flexible study note with suggested ways to turn it into study material.',
+  },
+  {
+    type: 'MarkdownBlock',
+    label: 'Markdown',
+    defaultProps: {
+      __blockType: 'MarkdownBlock',
+      title: 'Markdown notes',
+      markdown:
+        '# Study notes\n\n## Topic\n\nWrite Markdown notes with lists, tables, links, and code blocks.',
+    },
+    category: 'Study Blocks',
+    icon: AutoStoriesIcon,
+    tooltip:
+      'Adds a rendered Markdown note block for imported .md files or pasted Markdown.',
+  },
+  {
+    type: 'CodeBlock',
+    label: 'Code Note',
+    defaultProps: {
+      __blockType: 'CodeBlock',
+      title: 'Code note',
+      code: 'location / {\n  root /var/www/example.com;\n  index index.html index.htm;\n}',
+      language: 'text',
+      caption: '',
+    },
+    category: 'Study Blocks',
+    icon: CodeIcon,
+    tooltip:
+      'Adds a formatted code or configuration snippet for technical notes.',
+  },
+  {
+    type: 'DefinitionBlock',
+    label: 'Definition',
+    defaultProps: {
+      __blockType: 'DefinitionBlock',
+      term: 'Term',
+      definition: 'Definition',
+      example: '',
+      makeFlashcard: true,
+    },
+    category: 'Study Blocks',
+    icon: MenuBookIcon,
+    tooltip:
+      'Adds a term and definition card that can also be studied like a flashcard.',
+  },
+  {
+    type: 'ComparisonBlock',
+    label: 'Comparison',
+    defaultProps: {
+      __blockType: 'ComparisonBlock',
+      title: 'Comparison',
+      columns: ['Item A', 'Item B'],
+      rows: [
+        ['Point about A', 'Point about B'],
+        ['Another point about A', 'Another point about B'],
+      ],
+    },
+    category: 'Study Blocks',
+    icon: CompareArrowsIcon,
+    tooltip: 'Compares concepts, tools, people, events, or ideas.',
+  },
+  {
+    type: 'ReviewPromptBlock',
+    label: 'Review Prompt',
+    defaultProps: {
+      __blockType: 'ReviewPromptBlock',
+      title: 'Review this',
+      prompt: 'Topic to review',
+      reason: '',
+      status: 'needsReview',
+    },
+    category: 'Study Blocks',
+    icon: ReportProblemIcon,
+    tooltip:
+      'Marks something as important, confusing, or worth reviewing later.',
+  },
+  {
     type: 'ListBlock',
     label: 'List',
     defaultProps: {
@@ -122,6 +250,23 @@ export const COMPONENT_TYPES: ComponentType[] = [
     icon: FormatListBulletedIcon,
     tooltip:
       'Adds a clean list for concepts, steps, references, or quick study bullets.',
+  },
+  {
+    type: 'TableBlock',
+    label: 'Table',
+    defaultProps: {
+      __blockType: 'TableBlock',
+      title: 'Reference table',
+      headers: ['Concept', 'Definition', 'Example'],
+      rows: [
+        ['Term', 'Short explanation', 'Use case'],
+        ['Related idea', 'How it connects', 'Practice note'],
+      ],
+    },
+    category: 'Knowledge Blocks',
+    icon: TableChartIcon,
+    tooltip:
+      'Adds a structured table for comparisons, definitions, references, or study data.',
   },
   {
     type: 'ImageBlock',

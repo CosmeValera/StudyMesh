@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Box,
   Typography,
@@ -18,6 +18,7 @@ import {
   Chip,
   Paper,
   Stack,
+  Autocomplete,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -28,16 +29,21 @@ import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
+import ConstructionIcon from '@mui/icons-material/Construction'
 import EditIcon from '@mui/icons-material/Edit'
 import ExtensionIcon from '@mui/icons-material/Extension'
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
+import SavedDashboardsDialog from './DashboardLibrary'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
   OPEN_DASHBOARD_EDITOR_EVENT,
+  OPEN_WIDGET_EDITOR_EVENT,
 } from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
@@ -45,6 +51,7 @@ import {
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import './tabs.scss'
 
 interface DashboardEditorWidgetConfig {
@@ -91,21 +98,46 @@ interface SavedDashboard {
   updatedAt: string
 }
 
-type DashboardOnboardingStep = 'layout' | 'save' | 'complete' | 'done'
+const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
+const OPEN_SAVED_DASHBOARDS_EVENT = 'aquamesh-open-saved-dashboards'
 
-const DASHBOARD_ONBOARDING_KEY = 'aquamesh-dashboard-onboarding-step-v2'
-const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-const hasPlacedSavedWidget = (layout?: DashboardLayout): boolean => {
-  if (!layout) {
-    return false
+const getUniqueDashboardName = (
+  requestedName: string,
+  dashboards: SavedDashboard[],
+  ignoreDashboardId?: string,
+) => {
+  const baseName = requestedName.trim() || DEFAULT_DASHBOARD_NAME
+  const usedNames = new Set(
+    dashboards
+      .filter((dashboard) => dashboard.id !== ignoreDashboardId)
+      .map((dashboard) => dashboard.name),
+  )
+
+  if (!usedNames.has(baseName)) {
+    return baseName
   }
 
-  if (layout.component === 'CustomWidget') {
-    return true
+  const suffixPattern = new RegExp(`^${escapeRegExp(baseName)} \\((\\d+)\\)$`)
+  let nextSuffix = 2
+
+  usedNames.forEach((name) => {
+    const match = name.match(suffixPattern)
+    if (match) {
+      nextSuffix = Math.max(nextSuffix, Number(match[1]) + 1)
+    }
+  })
+
+  let candidate = `${baseName} (${nextSuffix})`
+  while (usedNames.has(candidate)) {
+    nextSuffix += 1
+    candidate = `${baseName} (${nextSuffix})`
   }
 
-  return Boolean(layout.children?.some((child) => hasPlacedSavedWidget(child)))
+  return candidate
 }
 
 const hasDashboardContent = (layout?: DashboardLayout): boolean => {
@@ -118,6 +150,30 @@ const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   }
 
   return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
+}
+
+const countDashboardNodes = (
+  layout?: DashboardLayout,
+): { tabCount: number; tabsetCount: number } => {
+  if (!layout) {
+    return { tabCount: 0, tabsetCount: 0 }
+  }
+
+  const childCounts = (layout.children || []).reduce(
+    (counts, child) => {
+      const next = countDashboardNodes(child)
+      return {
+        tabCount: counts.tabCount + next.tabCount,
+        tabsetCount: counts.tabsetCount + next.tabsetCount,
+      }
+    },
+    { tabCount: 0, tabsetCount: 0 },
+  )
+
+  return {
+    tabCount: childCounts.tabCount + (layout.type === 'tab' ? 1 : 0),
+    tabsetCount: childCounts.tabsetCount + (layout.type === 'tabset' ? 1 : 0),
+  }
 }
 
 // Dashboard Storage utilities
@@ -257,15 +313,15 @@ const DashboardEmptyState = ({
           sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
         />
         <Typography variant="h5" fontWeight="bold" gutterBottom>
-          {hasDashboard ? 'Empty Study Pack' : 'Open a Study Pack'}
+          {hasDashboard ? 'Empty dashboard' : 'Open a dashboard'}
         </Typography>
         <Typography
           variant="body1"
           sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
         >
           {hasDashboard
-            ? 'Create an AI-generated Study Pack from notes, or open an existing Study Pack from a subject below.'
-            : 'Create an AI-generated Study Pack from notes, or open an existing Study Pack from a subject below.'}
+            ? 'Create a new dashboard from this empty space, or open an existing dashboard from a folder below.'
+            : 'Create a new dashboard, or open an existing dashboard from a folder below.'}
         </Typography>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -283,7 +339,7 @@ const DashboardEmptyState = ({
                 '&:hover': { bgcolor: 'primary.main' },
               }}
             >
-              Create Study Pack
+              Create Dashboard
             </Button>
           )}
         </Stack>
@@ -293,7 +349,7 @@ const DashboardEmptyState = ({
               variant="subtitle2"
               sx={{ color: 'foreground.contrastSecondary', mb: 1.5 }}
             >
-              Open existing Study Pack
+              Open existing dashboard
             </Typography>
             <Box
               sx={{
@@ -307,77 +363,85 @@ const DashboardEmptyState = ({
             >
               {Object.entries(dashboardsByFolder)
                 .slice(0, 3)
-                .map(([folderName, dashboards]) => (
-                  <Box
-                    key={folderName}
-                    sx={{
-                      minWidth: 0,
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
+                .map(([folderName, dashboards]) => {
+                  const folderColor = normalizeFolderColor(
+                    dashboards.find((dashboard) => dashboard.folderColor)
+                      ?.folderColor ||
+                      DashboardStorage.getFolderColor(folderName),
+                  )
+
+                  return (
+                    <Box
+                      key={folderName}
                       sx={{
-                        color: 'foreground.contrastSecondary',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        display: 'block',
-                        mb: 0.75,
+                        minWidth: 0,
                       }}
                     >
-                      {folderName}
-                    </Typography>
-                    <Stack spacing={0.75}>
-                      {dashboards.slice(0, 2).map((dashboard) => (
-                        <Button
-                          key={dashboard.id}
-                          variant="outlined"
-                          onClick={() => onOpenDashboard(dashboard)}
-                          sx={{
-                            minHeight: 52,
-                            justifyContent: 'flex-start',
-                            alignItems: 'center',
-                            textTransform: 'none',
-                            bgcolor: 'background.default',
-                            color: 'text.primary',
-                            borderColor: 'divider',
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              bgcolor: 'action.hover',
-                            },
-                          }}
-                        >
-                          <Box sx={{ minWidth: 0, textAlign: 'left' }}>
-                            <Typography
-                              variant="body2"
-                              fontWeight={700}
-                              sx={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {dashboard.name}
-                            </Typography>
-                            {dashboard.description && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: folderColor,
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          display: 'block',
+                          mb: 0.75,
+                        }}
+                      >
+                        {folderName}
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {dashboards.slice(0, 2).map((dashboard) => (
+                          <Button
+                            key={dashboard.id}
+                            variant="outlined"
+                            onClick={() => onOpenDashboard(dashboard)}
+                            sx={{
+                              minHeight: 52,
+                              justifyContent: 'flex-start',
+                              alignItems: 'center',
+                              textTransform: 'none',
+                              bgcolor: 'background.default',
+                              color: 'text.primary',
+                              borderColor: 'divider',
+                              '&:hover': {
+                                borderColor: 'primary.main',
+                                bgcolor: 'action.hover',
+                              },
+                            }}
+                          >
+                            <Box sx={{ minWidth: 0, textAlign: 'left' }}>
                               <Typography
-                                variant="caption"
+                                variant="body2"
+                                fontWeight={700}
                                 sx={{
-                                  color: 'text.secondary',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
-                                  display: 'block',
                                 }}
                               >
-                                {dashboard.description}
+                                {dashboard.name}
                               </Typography>
-                            )}
-                          </Box>
-                        </Button>
-                      ))}
-                    </Stack>
-                  </Box>
-                ))}
+                              {dashboard.description && (
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: 'text.secondary',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    display: 'block',
+                                  }}
+                                >
+                                  {dashboard.description}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Button>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )
+                })}
             </Box>
           </Box>
         )}
@@ -386,88 +450,9 @@ const DashboardEmptyState = ({
   )
 }
 
-interface DashboardOnboardingCoachProps {
-  step: Exclude<DashboardOnboardingStep, 'done'>
-  hasUnsavedChanges: boolean
-  dashboardName: string
-  onGotIt: () => void
-}
-
-const DashboardOnboardingCoach = ({
-  step,
-  hasUnsavedChanges,
-  dashboardName,
-  onGotIt,
-}: DashboardOnboardingCoachProps) => {
+const Dashboards = () => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  const isLayoutStep = step === 'layout'
-  const isCompleteStep = step === 'complete'
-  const dashboardMenuName = isPhone ? 'Dash' : 'Dashboards'
-
-  return (
-    <Paper
-      data-testid={`dashboard-onboarding-coach-${step}`}
-      elevation={6}
-      sx={{
-        position: 'absolute',
-        top: { xs: 'auto', sm: 12 },
-        bottom: { xs: 8, sm: 'auto' },
-        right: { xs: 8, sm: 12 },
-        left: { xs: 8, sm: 'auto' },
-        zIndex: 1300,
-        width: { xs: 'auto', sm: 420 },
-        p: { xs: 1.25, sm: 1.5 },
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'primary.light',
-        bgcolor: 'background.accentSoft',
-        color: 'text.primary',
-      }}
-    >
-      <Stack spacing={1}>
-        {!isCompleteStep && (
-          <Typography variant="caption" sx={{ fontWeight: 800, opacity: 0.8 }}>
-            Step {isLayoutStep ? '4' : '5'}
-          </Typography>
-        )}
-        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-          {isLayoutStep
-            ? 'Shape your Study Pack'
-            : isCompleteStep
-              ? 'Congratulations 🎉'
-              : 'Save this Study Pack'}
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{ color: 'text.secondary', lineHeight: 1.45 }}
-        >
-          {isCompleteStep
-            ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own study cards and Study Packs. You’ll be able to find your saved Study Pack “${dashboardName}” inside the ${dashboardMenuName} menu.`
-            : isLayoutStep
-              ? 'Drag a study item to a new spot in the Study Pack.'
-              : hasUnsavedChanges
-                ? 'Save the Study Pack using the disk icon on the tab.'
-                : 'Nice — this Study Pack is saved. You can reopen it later from your Library.'}
-        </Typography>
-        {isCompleteStep && (
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button
-              size="small"
-              variant="contained"
-              onClick={onGotIt}
-              sx={{ textTransform: 'none' }}
-            >
-              Got it
-            </Button>
-          </Stack>
-        )}
-      </Stack>
-    </Paper>
-  )
-}
-
-const Dashboards = () => {
   const {
     openDashboards,
     selectedDashboard,
@@ -501,22 +486,23 @@ const Dashboards = () => {
     id: string
     name: string
     layout: DashboardLayout
+    savedDashboardId?: string
   } | null>(null)
+  const [isEditingDashboardEditorTitle, setIsEditingDashboardEditorTitle] =
+    useState(false)
+  const [dashboardEditorTitleInput, setDashboardEditorTitleInput] = useState('')
   const [dashboardWidgetsAnchorEl, setDashboardWidgetsAnchorEl] =
     useState<null | HTMLElement>(null)
-  const dashboardOnboardingLayoutBaseline = useRef<{
-    dashboardId: string
-    layoutJson: string
-  } | null>(null)
-  const [dashboardOnboardingStep, setDashboardOnboardingStep] =
-    useState<DashboardOnboardingStep>(() => {
-      if (typeof window === 'undefined') {
-        return 'layout'
-      }
-
-      const savedStep = window.localStorage.getItem(DASHBOARD_ONBOARDING_KEY)
-      return savedStep === 'save' || savedStep === 'done' ? savedStep : 'layout'
-    })
+  const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
+  const [dashboardLibraryInitialSearch, setDashboardLibraryInitialSearch] =
+    useState('')
+  const [dashboardLibraryInitialFolder, setDashboardLibraryInitialFolder] =
+    useState('')
+  const [
+    dashboardLibraryInitialSearchKey,
+    setDashboardLibraryInitialSearchKey,
+  ] = useState(0)
+  const dashboardEditorTitleCancelRef = useRef(false)
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const selectedDashboardIsEmpty = !hasDashboardContent(
@@ -537,31 +523,32 @@ const Dashboards = () => {
   const customWidgetPanels = topNavBarWidgets.filter((widget) =>
     widget.name.includes('Custom'),
   )
+  const savedDashboardsLabel = isPhone ? 'Saved' : 'Saved Dashboards'
+  const visibleDashboardOptions = isAdmin
+    ? dashboardOptions
+    : dashboardOptions.filter((dashboard) => dashboard.isPublic)
+  const dashboardFolderOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          dashboardOptions.map((dashboard) =>
+            normalizeFolderName(dashboard.folder),
+          ),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [dashboardOptions],
+  )
 
   const loadDashboardOptions = () => {
     ensureStarterDashboards()
     setDashboardOptions([...DashboardStorage.getAll()].reverse())
   }
 
-  const completeDashboardOnboarding = () => {
-    setDashboardOnboardingStep('done')
-  }
-
-  const persistDashboardOnboardingDone = () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'done')
-      window.localStorage.setItem(WIDGET_EDITOR_ONBOARDING_KEY, 'true')
-    }
-  }
-
-  const advanceDashboardOnboarding = () => {
-    setDashboardOnboardingStep('save')
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DASHBOARD_ONBOARDING_KEY, 'save')
-    }
-  }
-
   const openDashboardEditor = (dashboardId: string) => {
+    if (!isAdmin) {
+      return
+    }
+
     setDraftDashboard(null)
     const dashboardIndex = openDashboards.findIndex(
       (dashboard) => dashboard.id === dashboardId,
@@ -573,19 +560,36 @@ const Dashboards = () => {
 
     setDashboardEditing(dashboardId, true)
     setDashboardEditorId(dashboardId)
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
   }
 
   const createDashboardInEditor = () => {
+    if (!isAdmin) {
+      return
+    }
+
     setDashboardEditorId(null)
     setDraftDashboard({
       id: `draft-dashboard-${Date.now()}`,
-      name: 'Create Study Pack',
+      name: DEFAULT_DASHBOARD_NAME,
       layout: {
         type: 'row',
         weight: 100,
         children: [],
       },
     })
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
+  }
+
+  const loadSavedDashboardInBuilder = (dashboard: SavedDashboard) => {
+    setDashboardEditorId(null)
+    setDraftDashboard({
+      id: `draft-dashboard-${Date.now()}`,
+      name: dashboard.name,
+      layout: dashboard.layout,
+      savedDashboardId: dashboard.id,
+    })
+    loadDashboardOptions()
   }
 
   const createEmptyDashboardTab = () => {
@@ -598,12 +602,22 @@ const Dashboards = () => {
         name: dashboard.name,
         layout: dashboard.layout,
       })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-dashboard-opened',
+        dashboardId: dashboard.id,
+        dashboardName: dashboard.name,
+      })
       return
     }
 
     addDashboard({
       name: dashboard.name,
       layout: dashboard.layout,
+    })
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboard.id,
+      dashboardName: dashboard.name,
     })
   }
 
@@ -615,18 +629,77 @@ const Dashboards = () => {
     }
 
     setDashboardWidgetsAnchorEl(null)
+    setIsEditingDashboardEditorTitle(false)
     setDashboardEditorId(null)
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-closed' })
+  }
+
+  const updateDashboardEditorTitle = (nextName: string) => {
+    const trimmedName = nextName.trim()
+
+    if (!trimmedName || !dashboardEditorDashboard) {
+      setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
+      setIsEditingDashboardEditorTitle(false)
+      return
+    }
+
+    if (dashboardEditorIsDraft) {
+      setDraftDashboard((currentDraft) =>
+        currentDraft ? { ...currentDraft, name: trimmedName } : currentDraft,
+      )
+    } else if (dashboardEditorDashboard.id) {
+      renameDashboard(dashboardEditorDashboard.id, trimmedName)
+      if (dashboardEditorIndex >= 0) {
+        setHasChanges((prev) => ({
+          ...prev,
+          [dashboardEditorIndex]: true,
+        }))
+      }
+    }
+
+    setDashboardName((currentName) =>
+      currentName === dashboardEditorDashboard.name ? trimmedName : currentName,
+    )
+    setDashboardEditorTitleInput(trimmedName)
+    setIsEditingDashboardEditorTitle(false)
+  }
+
+  const handleDashboardEditorTitleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      updateDashboardEditorTitle(dashboardEditorTitleInput)
+    }
+
+    if (event.key === 'Escape') {
+      dashboardEditorTitleCancelRef.current = true
+      setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
+      setIsEditingDashboardEditorTitle(false)
+    }
+  }
+
+  const handleDashboardEditorTitleBlur = () => {
+    if (dashboardEditorTitleCancelRef.current) {
+      dashboardEditorTitleCancelRef.current = false
+      return
+    }
+
+    updateDashboardEditorTitle(dashboardEditorTitleInput)
   }
 
   const addWidgetToDashboardEditor = (
     item: DashboardEditorWidgetConfig & { id?: string },
   ) => {
+    if (!isAdmin) {
+      return
+    }
+
     if (!dashboardEditorDashboard) {
       return
     }
 
     if (dashboardEditorIsEmpty) {
       const nextLayout = createLayoutWithComponent(item)
+      const counts = countDashboardNodes(nextLayout)
 
       if (dashboardEditorIsDraft) {
         setDraftDashboard((currentDraft) =>
@@ -636,44 +709,117 @@ const Dashboards = () => {
         updateDashboardLayout(dashboardEditorIndex, nextLayout)
       }
 
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-widget-added',
+        widgetId:
+          typeof item.customProps?.widgetId === 'string'
+            ? item.customProps.widgetId
+            : item.id,
+        widgetName: item.name,
+        ...counts,
+      })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-layout-changed',
+        ...counts,
+      })
+
       return
     }
 
     addComponent(item)
+    setTimeout(() => {
+      const counts = countDashboardNodes(dashboardEditorDashboard.layout)
+      const nextCounts = {
+        tabCount: Math.max(2, counts.tabCount + 1),
+        tabsetCount: Math.max(1, counts.tabsetCount),
+      }
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-widget-added',
+        widgetId:
+          typeof item.customProps?.widgetId === 'string'
+            ? item.customProps.widgetId
+            : item.id,
+        widgetName: item.name,
+        ...nextCounts,
+      })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-layout-changed',
+        ...nextCounts,
+      })
+    }, 0)
   }
 
   const handleDashboardWidgetsMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>,
   ) => {
+    if (!isAdmin) {
+      return
+    }
+
     setDashboardWidgetsAnchorEl(event.currentTarget)
+    dispatchWorkspaceOnboardingEvent({ type: 'widgets-menu-opened' })
   }
 
   const handleDashboardWidgetsMenuClose = () => {
     setDashboardWidgetsAnchorEl(null)
   }
 
+  const handleCreateWidgetFromDashboardEditor = () => {
+    if (!isAdmin) {
+      return
+    }
+
+    handleDashboardWidgetsMenuClose()
+    window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
+  }
+
   // Check if user is admin on component mount
   useEffect(() => {
-    try {
-      const userData = localStorage.getItem('userData')
-      if (userData) {
-        const parsedData = JSON.parse(userData)
-        setIsAdmin(
-          parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
-        )
+    const readUserRole = () => {
+      try {
+        const userData = localStorage.getItem('userData')
+        if (userData) {
+          const parsedData = JSON.parse(userData)
+          setIsAdmin(
+            parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
+          )
+          if (parsedData.id !== 'admin' || parsedData.role !== 'ADMIN_ROLE') {
+            closeDashboardEditor()
+          }
+          return
+        }
+        setIsAdmin(false)
+        closeDashboardEditor()
+      } catch (error) {
+        console.error('Failed to parse user data', error)
+        setIsAdmin(false)
       }
-    } catch (error) {
-      console.error('Failed to parse user data', error)
-      setIsAdmin(false)
     }
-  }, [])
+
+    readUserRole()
+    window.addEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+
+    return () => {
+      window.removeEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+    }
+  }, [dashboardEditorId, dashboardEditorIsDraft])
 
   useEffect(() => {
     loadDashboardOptions()
   }, [])
 
   useEffect(() => {
+    if (!isEditingDashboardEditorTitle) {
+      setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
+    }
+  }, [dashboardEditorDashboard?.name, isEditingDashboardEditorTitle])
+
+  useEffect(() => {
     const handleOpenDashboardEditor = () => {
+      if (!isAdmin) {
+        return
+      }
+
       createDashboardInEditor()
     }
 
@@ -688,7 +834,33 @@ const Dashboards = () => {
         handleOpenDashboardEditor,
       )
     }
-  })
+  }, [isAdmin])
+
+  useEffect(() => {
+    const handleOpenSavedDashboards = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        folderFilter?: string
+        searchTerm?: string
+      }>
+
+      setDashboardLibraryInitialSearch(customEvent.detail?.searchTerm || '')
+      setDashboardLibraryInitialFolder(customEvent.detail?.folderFilter || '')
+      setDashboardLibraryInitialSearchKey((currentKey) => currentKey + 1)
+      setDashboardLibraryOpen(true)
+    }
+
+    window.addEventListener(
+      OPEN_SAVED_DASHBOARDS_EVENT,
+      handleOpenSavedDashboards,
+    )
+
+    return () => {
+      window.removeEventListener(
+        OPEN_SAVED_DASHBOARDS_EVENT,
+        handleOpenSavedDashboards,
+      )
+    }
+  }, [])
 
   // Check if current dashboards have changes compared to saved dashboards
   useEffect(() => {
@@ -704,61 +876,65 @@ const Dashboards = () => {
     setHasChanges(changes)
   }, [openDashboards])
 
-  useEffect(() => {
-    const currentDashboard = openDashboards[selectedDashboard]
-    const currentLayout = currentDashboard?.layout
-    const hasWidget = hasPlacedSavedWidget(currentLayout)
+  const getSavedDashboardForEditor = () => {
+    if (!dashboardEditorDashboard) {
+      return null
+    }
 
-    const currentChangeStateKnown = Object.prototype.hasOwnProperty.call(
-      hasChanges,
-      selectedDashboard,
+    if (dashboardEditorIsDraft) {
+      if (!draftDashboard?.savedDashboardId) {
+        return null
+      }
+
+      return (
+        DashboardStorage.getAll().find(
+          (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
+        ) || null
+      )
+    }
+
+    return DashboardStorage.getByName(dashboardEditorDashboard.name)
+  }
+
+  const dashboardEditorSavedDashboard = getSavedDashboardForEditor()
+  const dashboardEditorIsUpdating = Boolean(dashboardEditorSavedDashboard)
+  const dashboardEditorHasUnsavedChanges = dashboardEditorSavedDashboard
+    ? dashboardEditorDashboard?.name !== dashboardEditorSavedDashboard.name ||
+      JSON.stringify(dashboardEditorDashboard?.layout) !==
+        JSON.stringify(dashboardEditorSavedDashboard.layout)
+    : true
+
+  const populateDashboardDetailsForm = (
+    dashboardNameValue: string,
+    savedDashboard?: SavedDashboard | null,
+  ) => {
+    const nextFolder = savedDashboard?.folder || 'Default'
+
+    setDashboardName(dashboardNameValue)
+    setDashboardFolder(nextFolder)
+    setDashboardFolderColor(
+      normalizeFolderColor(
+        savedDashboard?.folderColor ||
+          DashboardStorage.getFolderColor(nextFolder),
+      ),
     )
+    setDashboardDescription(savedDashboard?.description || '')
+    setDashboardTags(savedDashboard?.tags || ['dashboard'])
+    setIsPublic(isAdmin ? Boolean(savedDashboard?.isPublic) : false)
+    setTagInput('')
+  }
 
-    if (
-      dashboardOnboardingStep === 'save' &&
-      hasWidget &&
-      currentChangeStateKnown &&
-      !hasChanges[selectedDashboard]
-    ) {
-      setDashboardOnboardingStep('complete')
-      persistDashboardOnboardingDone()
-      return
-    }
-
-    if (dashboardOnboardingStep !== 'layout' || !hasWidget) {
-      dashboardOnboardingLayoutBaseline.current = null
-      return
-    }
-
-    const dashboardId = currentDashboard?.id || String(selectedDashboard)
-    const layoutJson = JSON.stringify(currentLayout || {})
-    const baseline = dashboardOnboardingLayoutBaseline.current
-
-    if (!baseline || baseline.dashboardId !== dashboardId) {
-      dashboardOnboardingLayoutBaseline.current = { dashboardId, layoutJson }
-      return
-    }
-
-    if (baseline.layoutJson !== layoutJson) {
-      dashboardOnboardingLayoutBaseline.current = null
-      advanceDashboardOnboarding()
-    }
-  }, [dashboardOnboardingStep, hasChanges, openDashboards, selectedDashboard])
-
-  const handleSaveDialogOpen = (index: number) => {
+  const handleDashboardDetailsOpen = (index: number) => {
     if (dashboardEditorIsDraft && draftDashboard) {
       if (!hasDashboardContent(draftDashboard.layout)) {
         return
       }
 
       setCurrentTabIndex(null)
-      setDashboardName('')
-      setDashboardFolder('Default')
-      setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
-      setDashboardDescription('')
-      setDashboardTags(['study pack'])
-      setIsPublic(false)
-      setTagInput('')
+      populateDashboardDetailsForm(
+        draftDashboard.name || DEFAULT_DASHBOARD_NAME,
+        dashboardEditorSavedDashboard,
+      )
       setSaveDialogOpen(true)
       return
     }
@@ -769,46 +945,140 @@ const Dashboards = () => {
       return
     }
 
-    // Check if it's an update of an existing dashboard
     const existingDashboard = DashboardStorage.getByName(currentDashboard.name)
 
     if (existingDashboard) {
-      // Direct update without showing the dialog for existing dashboards
-      try {
-        if (hasDashboardContent(currentDashboard.layout)) {
-          const updatedDashboard: SavedDashboard = {
-            ...existingDashboard,
-            layout: currentDashboard.layout,
-            updatedAt: new Date().toISOString(),
-          }
-
-          DashboardStorage.save(updatedDashboard)
-          loadDashboardOptions()
-
-          // Mark this dashboard as no longer having changes
-          setHasChanges((prev) => ({
-            ...prev,
-            [index]: false,
-          }))
-          setDashboardEditing(currentDashboard.id, false)
-          if (dashboardEditorId === currentDashboard.id) {
-            setDashboardEditorId(null)
-          }
-        }
-      } catch (error) {
-        console.error('Error updating dashboard:', error)
-      }
-    } else {
-      // Show enhanced save dialog for new dashboards
       setCurrentTabIndex(index)
-      setDashboardName(currentDashboard.name || '')
-      setDashboardFolder('Default')
-      setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
-      setDashboardDescription('')
-      setDashboardTags(['study pack'])
-      setIsPublic(false)
-      setTagInput('')
+      populateDashboardDetailsForm(currentDashboard.name, existingDashboard)
       setSaveDialogOpen(true)
+      return
+    }
+
+    setCurrentTabIndex(index)
+    populateDashboardDetailsForm(
+      currentDashboard.name || DEFAULT_DASHBOARD_NAME,
+      null,
+    )
+    setSaveDialogOpen(true)
+  }
+
+  const saveDashboardDirectly = (index: number) => {
+    const currentDashboard = openDashboards[index]
+
+    if (!currentDashboard || !hasDashboardContent(currentDashboard.layout)) {
+      return
+    }
+
+    try {
+      const existingDashboard = DashboardStorage.getByName(
+        currentDashboard.name,
+      )
+      const dashboards = DashboardStorage.getAll()
+      const now = new Date().toISOString()
+      const nameToSave = existingDashboard
+        ? currentDashboard.name
+        : getUniqueDashboardName(
+            currentDashboard.name === 'Dashboard'
+              ? DEFAULT_DASHBOARD_NAME
+              : currentDashboard.name,
+            dashboards,
+          )
+
+      const dashboardToSave: SavedDashboard = existingDashboard
+        ? {
+            ...existingDashboard,
+            name: nameToSave,
+            layout: currentDashboard.layout as DashboardLayout,
+            updatedAt: now,
+          }
+        : {
+            id: `dashboard-${Date.now()}`,
+            name: nameToSave,
+            folder: 'Default',
+            folderColor: DashboardStorage.getFolderColor('Default'),
+            layout: currentDashboard.layout as DashboardLayout,
+            tags: ['dashboard'],
+            isPublic: isAdmin ? false : true,
+            createdAt: now,
+            updatedAt: now,
+          }
+
+      DashboardStorage.save(dashboardToSave)
+      loadDashboardOptions()
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-saved',
+        dashboardId: dashboardToSave.id,
+        dashboardName: dashboardToSave.name,
+      })
+
+      if (currentDashboard.name !== nameToSave) {
+        renameDashboard(currentDashboard.id, nameToSave)
+      }
+
+      setHasChanges((prev) => ({
+        ...prev,
+        [index]: false,
+      }))
+    } catch (error) {
+      console.error('Error saving dashboard:', error)
+    }
+  }
+
+  const saveDraftDashboardDirectly = () => {
+    if (!draftDashboard || !hasDashboardContent(draftDashboard.layout)) {
+      return
+    }
+
+    try {
+      const dashboards = DashboardStorage.getAll()
+      const existingDashboard = draftDashboard.savedDashboardId
+        ? dashboards.find(
+            (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
+          )
+        : undefined
+      const now = new Date().toISOString()
+      const nameToSave = existingDashboard
+        ? draftDashboard.name.trim() || existingDashboard.name
+        : getUniqueDashboardName(draftDashboard.name, dashboards)
+
+      const dashboardToSave: SavedDashboard = existingDashboard
+        ? {
+            ...existingDashboard,
+            name: nameToSave,
+            layout: draftDashboard.layout,
+            updatedAt: now,
+          }
+        : {
+            id: `dashboard-${Date.now()}`,
+            name: nameToSave,
+            folder: 'Default',
+            folderColor: DashboardStorage.getFolderColor('Default'),
+            layout: draftDashboard.layout,
+            tags: ['dashboard'],
+            isPublic: isAdmin ? false : true,
+            createdAt: now,
+            updatedAt: now,
+          }
+
+      DashboardStorage.save(dashboardToSave)
+      loadDashboardOptions()
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-saved',
+        dashboardId: dashboardToSave.id,
+        dashboardName: dashboardToSave.name,
+      })
+      setDraftDashboard((currentDraft) =>
+        currentDraft
+          ? {
+              ...currentDraft,
+              name: dashboardToSave.name,
+              layout: dashboardToSave.layout,
+              savedDashboardId: dashboardToSave.id,
+            }
+          : currentDraft,
+      )
+    } catch (error) {
+      console.error('Error saving dashboard:', error)
     }
   }
 
@@ -843,33 +1113,54 @@ const Dashboards = () => {
   }
 
   const handleSaveDashboard = () => {
-    if (draftDashboard && dashboardName.trim() !== '') {
+    if (draftDashboard) {
       if (!hasDashboardContent(draftDashboard.layout)) {
         return
       }
 
       try {
-        const newDashboard: SavedDashboard = {
-          id: `dashboard-${Date.now()}`,
-          name: dashboardName.trim(),
-          folder: dashboardFolder.trim() || 'Default',
+        const dashboards = DashboardStorage.getAll()
+        const existingDashboard = draftDashboard.savedDashboardId
+          ? dashboards.find(
+              (dashboard) => dashboard.id === draftDashboard.savedDashboardId,
+            )
+          : undefined
+        const now = new Date().toISOString()
+        const nameToSave = existingDashboard
+          ? dashboardName.trim() || existingDashboard.name
+          : getUniqueDashboardName(dashboardName, dashboards)
+        const dashboardToSave: SavedDashboard = {
+          ...(existingDashboard || {
+            id: `dashboard-${Date.now()}`,
+            createdAt: now,
+          }),
+          name: nameToSave,
+          folder: normalizeFolderName(dashboardFolder),
           folderColor: normalizeFolderColor(dashboardFolderColor),
           layout: draftDashboard.layout,
           description: dashboardDescription.trim() || undefined,
-          tags: dashboardTags.length > 0 ? dashboardTags : ['study pack'],
+          tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
           isPublic: isAdmin ? isPublic : true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          updatedAt: now,
         }
 
-        DashboardStorage.save(newDashboard)
+        DashboardStorage.save(dashboardToSave)
         loadDashboardOptions()
-        addDashboard({
-          name: newDashboard.name,
-          layout: newDashboard.layout,
+        dispatchWorkspaceOnboardingEvent({
+          type: 'dashboard-saved',
+          dashboardId: dashboardToSave.id,
+          dashboardName: dashboardToSave.name,
         })
-        setDraftDashboard(null)
-        setDashboardEditorId(null)
+        setDraftDashboard((currentDraft) =>
+          currentDraft
+            ? {
+                ...currentDraft,
+                name: dashboardToSave.name,
+                layout: dashboardToSave.layout,
+                savedDashboardId: dashboardToSave.id,
+              }
+            : currentDraft,
+        )
         handleSaveDialogClose()
       } catch (error) {
         console.error('Error saving dashboard:', error)
@@ -877,7 +1168,7 @@ const Dashboards = () => {
       return
     }
 
-    if (currentTabIndex !== null && dashboardName.trim() !== '') {
+    if (currentTabIndex !== null) {
       const currentDashboard = openDashboards[currentTabIndex]
 
       if (!currentDashboard || !hasDashboardContent(currentDashboard.layout)) {
@@ -886,34 +1177,45 @@ const Dashboards = () => {
 
       try {
         if (hasDashboardContent(currentDashboard.layout)) {
+          const dashboards = DashboardStorage.getAll()
+          const existingDashboard = DashboardStorage.getByName(
+            currentDashboard.name,
+          )
+          const now = new Date().toISOString()
+          const nameToSave = existingDashboard
+            ? dashboardName.trim() || existingDashboard.name
+            : getUniqueDashboardName(dashboardName, dashboards)
           const newDashboard: SavedDashboard = {
-            id: `dashboard-${Date.now()}`,
-            name: dashboardName.trim(),
-            folder: dashboardFolder.trim() || 'Default',
+            ...(existingDashboard || {
+              id: `dashboard-${Date.now()}`,
+              createdAt: now,
+            }),
+            name: nameToSave,
+            folder: normalizeFolderName(dashboardFolder),
             folderColor: normalizeFolderColor(dashboardFolderColor),
-            layout: currentDashboard.layout,
+            layout: currentDashboard.layout as DashboardLayout,
             description: dashboardDescription.trim() || undefined,
-            tags: dashboardTags.length > 0 ? dashboardTags : ['study pack'],
+            tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
             isPublic: isAdmin ? isPublic : true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            updatedAt: now,
           }
 
           DashboardStorage.save(newDashboard)
           loadDashboardOptions()
+          dispatchWorkspaceOnboardingEvent({
+            type: 'dashboard-saved',
+            dashboardId: newDashboard.id,
+            dashboardName: newDashboard.name,
+          })
 
           // Update the dashboard name in the TabList
-          renameDashboard(currentDashboard.id, dashboardName)
+          renameDashboard(currentDashboard.id, nameToSave)
 
           // Mark this dashboard as no longer having changes
           setHasChanges((prev) => ({
             ...prev,
             [currentTabIndex]: false,
           }))
-          setDashboardEditing(currentDashboard.id, false)
-          if (dashboardEditorId === currentDashboard.id) {
-            setDashboardEditorId(null)
-          }
         }
 
         handleSaveDialogClose()
@@ -924,12 +1226,37 @@ const Dashboards = () => {
   }
 
   const handleDashboardEditorSave = () => {
-    if (dashboardEditorIsDraft) {
-      handleSaveDialogOpen(-1)
+    if (!isAdmin) {
       return
     }
 
-    handleSaveDialogOpen(dashboardEditorIndex)
+    if (dashboardEditorIsDraft) {
+      saveDraftDashboardDirectly()
+      return
+    }
+
+    saveDashboardDirectly(dashboardEditorIndex)
+  }
+
+  const handleOpenDashboardEditorInWorkspace = () => {
+    if (
+      dashboardEditorIsEmpty ||
+      dashboardEditorHasUnsavedChanges ||
+      !dashboardEditorSavedDashboard
+    ) {
+      return
+    }
+
+    addDashboard({
+      name: dashboardEditorSavedDashboard.name,
+      layout: dashboardEditorSavedDashboard.layout,
+    })
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboardEditorSavedDashboard.id,
+      dashboardName: dashboardEditorSavedDashboard.name,
+    })
+    closeDashboardEditor()
   }
 
   return (
@@ -948,44 +1275,30 @@ const Dashboards = () => {
 
             return (
               <Tab key={dashboard.id}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    flex: '1 0 0',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    marginLeft: '0.5rem',
-                  }}
+                <TooltipStyled
+                  title={dashboard.name}
+                  placement="bottom"
+                  enterTouchDelay={1000}
                 >
-                  {dashboard.name}
-                </Typography>
+                  <Typography
+                    component="span"
+                    variant="subtitle2"
+                    sx={{
+                      flex: '1 0 0',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginLeft: '0.5rem',
+                    }}
+                  >
+                    {dashboard.name}
+                  </Typography>
+                </TooltipStyled>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {hasChanges[index] &&
-                    hasDashboardContent(dashboard.layout) && (
-                      <TooltipStyled title="Save Study Pack">
-                        <IconButton
-                          aria-label={`Save dashboard ${dashboard.name}`}
-                          data-testid={`save-dashboard-${index}`}
-                          size="small"
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            handleSaveDialogOpen(index)
-                          }}
-                          sx={{
-                            p: 0.5,
-                            mr: 0.5,
-                            color: 'primary.light',
-                            '&:hover': { color: 'primary.main' },
-                          }}
-                        >
-                          <SaveIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </TooltipStyled>
-                    )}
-                  {dashboard.layout?.children &&
+                  {isAdmin &&
+                    dashboard.layout?.children &&
                     dashboard.layout.children.length > 0 && (
-                      <TooltipStyled title="Edit Study Pack">
+                      <TooltipStyled title="Edit Dashboard">
                         <IconButton
                           aria-label={`Edit dashboard ${dashboard.name}`}
                           size="small"
@@ -1034,47 +1347,44 @@ const Dashboards = () => {
               </Tab>
             )
           })}
-          <Button
-            size="small"
-            variant="text"
-            disableRipple
-            data-testid="add-dashboard-button"
-            sx={{
-              position: 'relative',
-              top: '3px',
-              marginBottom: '8px',
-              minWidth: 'fit-content',
-              display: 'flex',
-              alignItems: 'middle',
-              gap: '8px',
-              fontSize: '13px',
-              p: '4px 12px',
-              color: 'primary.light',
-              transition: 'all .25s ease',
-              '.MuiButton-startIcon': {
-                transition: 'all .25s ease',
-                m: 0,
+          {isAdmin && (
+            <Button
+              size="small"
+              variant="text"
+              disableRipple
+              data-testid="add-dashboard-button"
+              sx={{
+                position: 'relative',
+                top: '3px',
+                marginBottom: '8px',
+                minWidth: 'fit-content',
+                display: 'flex',
+                alignItems: 'middle',
+                gap: '8px',
+                fontSize: '13px',
+                p: '4px 12px',
                 color: 'primary.light',
-              },
-              ':hover': {
-                backgroundColor: 'transparent',
-                color: 'primary.main',
+                transition: 'all .25s ease',
                 '.MuiButton-startIcon': {
-                  color: 'primary.main',
+                  transition: 'all .25s ease',
+                  m: 0,
+                  color: 'primary.light',
                 },
-              },
-            }}
-            startIcon={<AddIcon width={16} height={16} />}
-            onClick={createEmptyDashboardTab}
-          />
+                ':hover': {
+                  backgroundColor: 'transparent',
+                  color: 'primary.main',
+                  '.MuiButton-startIcon': {
+                    color: 'primary.main',
+                  },
+                },
+              }}
+              startIcon={<AddIcon width={16} height={16} />}
+              onClick={createEmptyDashboardTab}
+            />
+          )}
         </TabList>
         {openDashboards.map((dashboard, index) => {
           const isEmptyDashboard = !hasDashboardContent(dashboard.layout)
-          const showDashboardOnboarding =
-            index === selectedDashboard &&
-            dashboardOnboardingStep !== 'done' &&
-            hasPlacedSavedWidget(dashboard.layout)
-
           return (
             <TabPanel key={dashboard.id}>
               <Box
@@ -1086,14 +1396,6 @@ const Dashboards = () => {
                 }}
               >
                 <Box sx={{ position: 'relative', flex: '1' }}>
-                  {showDashboardOnboarding && (
-                    <DashboardOnboardingCoach
-                      step={dashboardOnboardingStep}
-                      hasUnsavedChanges={Boolean(hasChanges[index])}
-                      dashboardName={dashboard.name}
-                      onGotIt={completeDashboardOnboarding}
-                    />
-                  )}
                   {isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}
@@ -1101,7 +1403,7 @@ const Dashboards = () => {
                       onCreateDashboard={() =>
                         openDashboardEditor(dashboard.id)
                       }
-                      dashboardOptions={dashboardOptions}
+                      dashboardOptions={visibleDashboardOptions}
                       onOpenDashboard={openSavedDashboardFromEmptyState}
                     />
                   ) : (
@@ -1130,7 +1432,7 @@ const Dashboards = () => {
           isAdmin={isAdmin}
           hasDashboard={false}
           onCreateDashboard={createDashboardInEditor}
-          dashboardOptions={dashboardOptions}
+          dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}
         />
       )}
@@ -1155,39 +1457,121 @@ const Dashboards = () => {
         >
           <Box
             sx={{
-              height: 56,
+              minHeight: { xs: 104, sm: 56 },
+              height: 'auto',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
               gap: 1,
-              px: 2,
+              px: { xs: 1, sm: 2 },
+              py: { xs: 1, sm: 0 },
               borderBottom: 1,
               borderColor: 'divider',
               bgcolor: 'background.paper',
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="subtitle1"
-                fontWeight={700}
+            <Box sx={{ minWidth: 0, flex: { xs: '1 1 100%', sm: 1 } }}>
+              {isEditingDashboardEditorTitle ? (
+                <TextField
+                  autoFocus
+                  size="small"
+                  variant="standard"
+                  value={dashboardEditorTitleInput}
+                  onChange={(event) =>
+                    setDashboardEditorTitleInput(event.target.value)
+                  }
+                  onBlur={handleDashboardEditorTitleBlur}
+                  onKeyDown={handleDashboardEditorTitleKeyDown}
+                  inputProps={{
+                    'aria-label': 'Dashboard title',
+                  }}
+                  sx={{
+                    maxWidth: { xs: '100%', sm: 420 },
+                    width: '100%',
+                    '& .MuiInputBase-input': {
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                    },
+                  }}
+                />
+              ) : (
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={700}
+                  onDoubleClick={() => {
+                    setDashboardEditorTitleInput(
+                      dashboardEditorDashboard?.name || '',
+                    )
+                    setIsEditingDashboardEditorTitle(true)
+                  }}
+                  title="Double-click to rename"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    cursor: 'text',
+                    maxWidth: { xs: '100%', sm: 420 },
+                  }}
+                >
+                  {dashboardEditorDashboard?.name || 'Dashboard'}
+                </Typography>
+              )}
+            </Box>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              useFlexGap
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                justifyContent: { xs: 'space-between', sm: 'flex-end' },
+              }}
+            >
+              <Button
+                variant="outlined"
+                startIcon={<FolderOpenIcon />}
+                onClick={() => {
+                  setDashboardLibraryInitialSearch('')
+                  setDashboardLibraryInitialFolder('')
+                  setDashboardLibraryInitialSearchKey(
+                    (currentKey) => currentKey + 1,
+                  )
+                  setDashboardLibraryOpen(true)
+                }}
                 sx={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
                   whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    mr: { xs: 0.5, sm: 1 },
+                  },
                 }}
               >
-                {dashboardEditorDashboard?.name || 'Dashboard'}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} alignItems="center">
+                {savedDashboardsLabel}
+              </Button>
               <Button
                 variant="outlined"
                 startIcon={<ExtensionIcon />}
                 onClick={handleDashboardWidgetsMenuOpen}
-                sx={{ textTransform: 'none' }}
+                data-onboarding-id="dashboard-editor-widgets"
+                sx={{
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    color: 'primary.main',
+                    mr: { xs: 0.5, sm: 1 },
+                  },
+                }}
               >
-                Study items
+                Widgets
               </Button>
               <Menu
                 anchorEl={dashboardWidgetsAnchorEl}
@@ -1197,7 +1581,8 @@ const Dashboards = () => {
                   sx: {
                     bgcolor: 'background.paper',
                     color: 'text.primary',
-                    width: 260,
+                    width: { xs: 'calc(100vw - 32px)', sm: 260 },
+                    maxWidth: 260,
                     boxShadow: 3,
                     border: 1,
                     borderColor: 'divider',
@@ -1212,15 +1597,33 @@ const Dashboards = () => {
                     color: 'text.primary',
                   }}
                 >
-                  Saved study items
+                  My Widgets
                 </Typography>
                 <Divider sx={{ borderColor: 'divider' }} />
+                {isAdmin && (
+                  <MenuItem
+                    onClick={handleCreateWidgetFromDashboardEditor}
+                    sx={{ p: 1.5 }}
+                  >
+                    <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>
+                      <ConstructionIcon fontSize="small" />
+                    </ListItemIcon>
+                    Create Widget
+                  </MenuItem>
+                )}
+                {isAdmin && <Divider sx={{ borderColor: 'divider' }} />}
                 {customWidgetPanels.length > 0 ? (
                   customWidgetPanels.map((topNavBarWidget) => (
                     <Box key={topNavBarWidget.name}>
                       {topNavBarWidget.items.map((item) => (
                         <MenuItem
                           key={item.name}
+                          data-onboarding-id="dashboard-widget-saved"
+                          data-widget-id={
+                            typeof item.customProps?.widgetId === 'string'
+                              ? item.customProps.widgetId
+                              : undefined
+                          }
                           onClick={() => {
                             addWidgetToDashboardEditor({
                               id: `panel-${Date.now()}`,
@@ -1248,7 +1651,8 @@ const Dashboards = () => {
                       variant="caption"
                       sx={{ color: 'text.secondary', lineHeight: 1.4 }}
                     >
-                      No saved study items yet. Create or generate items first, then return here to place them in a Study Pack.
+                      No saved widgets yet. Create a widget first, then return
+                      here to place it on a dashboard.
                     </Typography>
                   </MenuItem>
                 )}
@@ -1258,16 +1662,90 @@ const Dashboards = () => {
                 startIcon={<SaveIcon />}
                 disabled={
                   dashboardEditorIsEmpty ||
-                  (!dashboardEditorIsDraft && dashboardEditorIndex < 0)
+                  (!dashboardEditorIsDraft && dashboardEditorIndex < 0) ||
+                  (dashboardEditorIsUpdating &&
+                    !dashboardEditorHasUnsavedChanges)
                 }
                 onClick={handleDashboardEditorSave}
-                sx={{ textTransform: 'none' }}
+                data-onboarding-id="dashboard-editor-save"
+                sx={{
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    mr: { xs: 0.5, sm: 1 },
+                  },
+                }}
               >
-                Save
+                {dashboardEditorIsUpdating ? 'Update' : 'Save'}
               </Button>
+              <Button
+                variant="outlined"
+                startIcon={<OpenInBrowserIcon />}
+                disabled={
+                  dashboardEditorIsEmpty ||
+                  dashboardEditorHasUnsavedChanges ||
+                  !dashboardEditorSavedDashboard
+                }
+                onClick={handleOpenDashboardEditorInWorkspace}
+                sx={{
+                  textTransform: 'none',
+                  minWidth: 0,
+                  flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                  px: { xs: 1, sm: 2 },
+                  whiteSpace: 'nowrap',
+                  '& .MuiButton-startIcon': {
+                    mr: { xs: 0.5, sm: 1 },
+                  },
+                }}
+              >
+                Open in Workspace
+              </Button>
+              <TooltipStyled title="Edit dashboard details">
+                <span>
+                  <IconButton
+                    aria-label="Edit dashboard details"
+                    disabled={dashboardEditorIsEmpty}
+                    onClick={() =>
+                      handleDashboardDetailsOpen(dashboardEditorIndex)
+                    }
+                    sx={{
+                      color: 'text.secondary',
+                      border: 1,
+                      borderColor: 'divider',
+                      flex: '0 0 36px',
+                      width: 36,
+                      height: 36,
+                      '&:hover': {
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </TooltipStyled>
               <IconButton
                 aria-label="Close dashboard editor"
                 onClick={closeDashboardEditor}
+                data-onboarding-id="dashboard-editor-close"
+                sx={{
+                  color: 'text.primary',
+                  bgcolor: 'background.default',
+                  border: 1,
+                  borderColor: 'divider',
+                  flex: '0 0 36px',
+                  width: 36,
+                  height: 36,
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'text.secondary',
+                  },
+                }}
               >
                 <CloseIcon width={20} height={20} />
               </IconButton>
@@ -1302,13 +1780,14 @@ const Dashboards = () => {
                       sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
                     />
                     <Typography variant="h5" fontWeight="bold" gutterBottom>
-                      Empty Study Pack
+                      Empty dashboard
                     </Typography>
                     <Typography
                       variant="body1"
                       sx={{ color: 'text.secondary' }}
                     >
-                      Use study items, then choose saved notes, exercises, flashcards, or summaries.
+                      Add a saved widget from Widgets, or choose Create Widget
+                      there first.
                     </Typography>
                   </Paper>
                 </Box>
@@ -1317,6 +1796,10 @@ const Dashboards = () => {
                   key={dashboardEditorDashboard.id}
                   layout={dashboardEditorDashboard.layout}
                   updateLayout={(model) => {
+                    if (!isAdmin) {
+                      return
+                    }
+
                     if (dashboardEditorIsDraft) {
                       setDraftDashboard((currentDraft) =>
                         currentDraft
@@ -1338,7 +1821,20 @@ const Dashboards = () => {
         </Box>
       </Dialog>
 
-      {/* Save Study Pack Dialog */}
+      <SavedDashboardsDialog
+        open={dashboardLibraryOpen}
+        onClose={() => {
+          setDashboardLibraryOpen(false)
+          loadDashboardOptions()
+        }}
+        initialSearchTerm={dashboardLibraryInitialSearch}
+        initialFolderFilter={dashboardLibraryInitialFolder}
+        initialSearchKey={dashboardLibraryInitialSearchKey}
+        mode="builder"
+        onOpenInBuilder={loadSavedDashboardInBuilder}
+      />
+
+      {/* Dashboard Details Dialog */}
       <Dialog
         open={saveDialogOpen}
         onClose={handleSaveDialogClose}
@@ -1370,14 +1866,14 @@ const Dashboards = () => {
           >
             <Box>
               <Typography variant="h6" fontWeight="medium">
-                Save Study Pack
+                Save Dashboard
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
-                Choose its subject, tags, and library metadata
+                Name it and choose where it appears in Dashboards.
               </Typography>
             </Box>
             <IconButton
@@ -1395,7 +1891,7 @@ const Dashboards = () => {
             autoFocus
             margin="normal"
             id="name"
-            label="Study Pack Name"
+            label="Dashboard Name"
             type="text"
             fullWidth
             variant="outlined"
@@ -1406,7 +1902,7 @@ const Dashboards = () => {
             }}
             error={dashboardName.trim() === ''}
             helperText={
-              dashboardName.trim() === '' ? 'Study Pack name is required' : ''
+              dashboardName.trim() === '' ? 'Dashboard name is required' : ''
             }
             required
             InputLabelProps={{
@@ -1440,46 +1936,61 @@ const Dashboards = () => {
             }}
           />
 
-          <TextField
-            margin="normal"
-            id="folder"
-            label="Folder"
-            type="text"
-            fullWidth
-            variant="outlined"
+          <Autocomplete
+            freeSolo
+            options={dashboardFolderOptions}
             value={dashboardFolder}
-            onChange={(e) => {
-              const nextFolder = e.target.value
+            inputValue={dashboardFolder}
+            onChange={(_, nextValue) => {
+              const nextFolder = nextValue || ''
               setDashboardFolder(nextFolder)
               setDashboardFolderColor(
                 DashboardStorage.getFolderColor(nextFolder),
               )
             }}
-            helperText="Study Packs with the same subject/folder are grouped together."
-            InputLabelProps={{
-              shrink: true,
-              sx: { color: 'text.secondary' },
+            onInputChange={(_, nextInputValue) => {
+              setDashboardFolder(nextInputValue)
+              setDashboardFolderColor(
+                DashboardStorage.getFolderColor(nextInputValue),
+              )
             }}
-            InputProps={{
-              sx: {
-                bgcolor: 'background.paper',
-                color: 'text.primary',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'divider',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                margin="normal"
+                id="folder"
+                label="Folder"
+                fullWidth
+                variant="outlined"
+                helperText="Dashboards with the same folder name are grouped together."
+                InputLabelProps={{
+                  ...params.InputLabelProps,
+                  shrink: true,
+                  sx: { color: 'text.secondary' },
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
+              />
+            )}
           />
 
           <Box sx={{ mt: 2, mb: 1 }}>
             <Typography variant="subtitle2" color="text.primary" gutterBottom>
-              Subject color
+              Folder color
             </Typography>
             <Box
               sx={{
@@ -1679,10 +2190,7 @@ const Dashboards = () => {
             onClick={handleSaveDashboard}
             variant="contained"
             color="primary"
-            disabled={
-              dashboardName.trim() === '' ||
-              dashboardName.trim() === 'Dashboard'
-            }
+            disabled={dashboardName.trim() === ''}
             startIcon={<SaveIcon />}
             sx={{
               bgcolor: 'primary.dark',
@@ -1692,7 +2200,7 @@ const Dashboards = () => {
               },
             }}
           >
-            Save
+            Save Dashboard
           </Button>
         </DialogActions>
       </Dialog>

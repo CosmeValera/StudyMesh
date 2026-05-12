@@ -24,16 +24,24 @@ interface DashboardWidgetExplanationModalProps {
 
 const workflowSteps = [
   {
-    title: '1. Build a widget',
-    text: 'Use Widget Studio to combine blocks: text, lists, images, PDFs, inputs, buttons, charts, and layout groups.',
+    title: '1. Create a dashboard',
+    text: 'Open Create Dashboard first so you have a workspace ready for the widget you are about to build.',
   },
   {
-    title: '2. Build a dashboard',
-    text: 'Create a dashboard, open Widget → My Widgets, add saved widgets, arrange them, resize the layout, and save.',
+    title: '2. Create a widget',
+    text: 'Open Create Widget, add one layout block such as FieldSet, FlexBox, or GridBox, then add a normal content block inside it.',
   },
   {
-    title: '3. View or edit later',
-    text: 'Saved dashboards open as a clean view. Use the pencil when you want to add widgets or change the layout.',
+    title: '3. Save and close the widget',
+    text: 'Save the widget to the library, then close Create Widget and return to the dashboard builder.',
+  },
+  {
+    title: '4. Add the widget to the dashboard',
+    text: 'Use Widgets, choose the saved widget, place it on the dashboard, arrange the layout, and save the dashboard.',
+  },
+  {
+    title: '5. Reopen it from Dashboards',
+    text: 'Open the Dashboards menu later and choose the saved dashboard from its folder.',
   },
 ]
 
@@ -99,8 +107,8 @@ const DashboardWidgetExplanationModal: React.FC<
               Three simple layers
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Blocks make widgets. Widgets make dashboards. Dashboards are the
-              pages you open, read, present, and edit when needed.
+              Blocks make widgets. Widgets make dashboards. Start by creating a
+              dashboard, build one reusable widget, then place and save it.
             </Typography>
           </Box>
 

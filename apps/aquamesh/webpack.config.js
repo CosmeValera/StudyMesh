@@ -1,25 +1,26 @@
 /* eslint-disable semi */
 /* eslint-disable no-undef */
 /* eslint-disable @typescript-eslint/no-require-imports */
-const HtmlWebPackPlugin = require("html-webpack-plugin");
-const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
-const CopyWebpackPlugin = require("copy-webpack-plugin");
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const HtmlWebPackPlugin = require('html-webpack-plugin')
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
-const Dotenv = require('dotenv-webpack');
+const Dotenv = require('dotenv-webpack')
 const path = require('path')
-const deps = require("./package.json").dependencies;
+const fs = require('fs')
+const deps = require('./package.json').dependencies
 
-const printCompilationMessage = require('./compilation.config.js');
+const printCompilationMessage = require('./compilation.config.js')
 
 module.exports = (_, argv) => ({
   output: {
-    publicPath: "http://localhost:3000/",
-    path: path.resolve(__dirname, 'dist')
+    publicPath: 'http://localhost:3000/',
+    path: path.resolve(__dirname, 'dist'),
   },
 
   resolve: {
-    extensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
+    extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
   },
 
   devServer: {
@@ -41,14 +42,14 @@ module.exports = (_, argv) => ({
           }
         })
       })
-    }
+    },
   },
 
   module: {
     rules: [
       {
         test: /\.m?js/,
-        type: "javascript/auto",
+        type: 'javascript/auto',
         resolve: {
           fullySpecified: false,
         },
@@ -56,28 +57,27 @@ module.exports = (_, argv) => ({
       {
         test: /\.(css|s[ac]ss)$/i,
         use: [
-          "style-loader",
-          "css-loader",
+          'style-loader',
+          'css-loader',
           {
-            loader: "postcss-loader",
+            loader: 'postcss-loader',
             options: {
               postcssOptions: {
-                plugins: [
-                  "autoprefixer",
-                ],
+                plugins: ['autoprefixer'],
               },
             },
           },
-          "sass-loader",
+          'sass-loader',
         ],
       },
       {
         test: /\.(ts|tsx|js|jsx)$/,
         exclude: /node_modules/,
         use: {
-          loader: "babel-loader",
+          loader: 'babel-loader',
         },
-      },{
+      },
+      {
         test: /\.svg$/,
         use: [
           {
@@ -94,11 +94,13 @@ module.exports = (_, argv) => ({
 
   plugins: [
     new ModuleFederationPlugin({
-      name: "aquamesh",
-      filename: "remoteEntry.js",
+      name: 'aquamesh',
+      filename: 'remoteEntry.js',
       remotes: {
-        aquamesh_system_lens: "aquamesh_system_lens@http://localhost:3001/remoteEntry.js",
-        aquamesh_control_flow: "aquamesh_control_flow@http://localhost:3002/remoteEntry.js"
+        aquamesh_system_lens:
+          'aquamesh_system_lens@http://localhost:3001/remoteEntry.js',
+        aquamesh_control_flow:
+          'aquamesh_control_flow@http://localhost:3002/remoteEntry.js',
       },
       exposes: {},
       shared: {
@@ -107,23 +109,29 @@ module.exports = (_, argv) => ({
           singleton: true,
           requiredVersion: deps.react,
         },
-        "react-dom": {
+        'react-dom': {
           singleton: true,
-          requiredVersion: deps["react-dom"],
+          requiredVersion: deps['react-dom'],
         },
       },
     }),
     new HtmlWebPackPlugin({
-      template: "./src/index.html",
+      template: './src/index.html',
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'public/config/widgets.json', to: './config/', noErrorOnMissing: true }
+        {
+          from: 'public/config/widgets.json',
+          to: './config/',
+          noErrorOnMissing: true,
+        },
       ],
     }),
     new CleanWebpackPlugin(),
     new Dotenv({
-      path: `./.env.${argv.mode}`,
+      path: fs.existsSync(path.resolve(__dirname, `.env.${argv.mode}`))
+        ? `./.env.${argv.mode}`
+        : './.env',
     }),
   ],
-});
+})

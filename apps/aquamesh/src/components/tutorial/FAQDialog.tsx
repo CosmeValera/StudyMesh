@@ -49,8 +49,8 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
           1. Open <span style={accentText}>Create Widget</span>. 2. Build a
           focused widget for your work: operations status, site-review notes,
           lab observations, or a task board. 3. Click Save. 4. Open{' '}
-          <span style={accentText}>Add Widget</span> and place the saved widget
-          on a dashboard.
+          <span style={accentText}>Create Dashboard</span>, open Widgets, and
+          place the saved widget on a dashboard.
         </>
       ),
     },
@@ -75,16 +75,15 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       category: 'Create Widget',
       question: 'How do I save my widget?',
       answer:
-        'Click Save in Create Widget. Saved widgets appear in Add Widget so you can reuse them in dashboards.',
+        'Click Save in Create Widget. Saved widgets appear in Create Dashboard > Widgets so you can reuse them in dashboards.',
     },
     {
       category: 'Dashboards',
       question: 'How do I use my saved widget in a dashboard?',
       answer: (
         <>
-          Click <span style={accentText}>Add Widget</span> in the top bar, open
-          your saved widgets, choose the widget you just saved, and place it in
-          the current dashboard.
+          Click <span style={accentText}>Create Dashboard</span>, open Widgets,
+          choose the widget you just saved, and place it in the dashboard.
         </>
       ),
     },
@@ -110,7 +109,7 @@ const FAQDialog: React.FC<FAQDialogProps> = ({ open, onClose }) => {
       category: 'Troubleshooting',
       question: 'Can I update a widget later?',
       answer:
-        'Yes. Open Add Widget, go to your saved widgets, choose the widget, and edit it.',
+        'Yes. Open Create Widget, use the folder button to open saved widgets, choose the widget, and edit it.',
     },
   ]
 

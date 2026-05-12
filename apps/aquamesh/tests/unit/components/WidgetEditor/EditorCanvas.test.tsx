@@ -45,7 +45,6 @@ const renderEditorCanvas = (
       name: 'New Widget',
       components: [],
     },
-    setWidgetData: vi.fn(),
     dropAreaRef: React.createRef<HTMLDivElement>(),
     handleDrop: vi.fn(),
     handleDragOver: vi.fn(),
@@ -63,7 +62,6 @@ const renderEditorCanvas = (
     handleContainerDrop: vi.fn(),
     handleToggleFieldsetCollapse: vi.fn(),
     showSidebar: true,
-    handleWidgetNameChange: vi.fn(),
     onAddStarterComponent: vi.fn(),
     onStartOperationsWidget: vi.fn(),
     onUseTemplate: vi.fn(),
@@ -84,28 +82,22 @@ describe('EditorCanvas first-widget guide', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps widget naming in a compact editable canvas header', () => {
-    const props = renderEditorCanvas({
+  it('does not render the removed widget-name editor block', () => {
+    renderEditorCanvas({
       widgetData: {
         name: 'Daily Operations',
         components: [],
       },
     })
 
-    expect(screen.getByText('Widget name')).toBeInTheDocument()
-    expect(screen.getByLabelText('Widget name')).toHaveValue('Daily Operations')
+    expect(screen.queryByText('Widget name')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Widget name')).not.toBeInTheDocument()
     expect(
-      screen.getByText('Shown in dashboards and your saved widget library.'),
-    ).toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText('Widget name'), {
-      target: { value: 'Ops Overview' },
-    })
-
-    expect(props.handleWidgetNameChange).toHaveBeenCalledWith('Ops Overview')
+      screen.queryByText('Shown in dashboards and your saved widget library.'),
+    ).not.toBeInTheDocument()
   })
 
-  it('keeps first-time naming clear when the title is empty', () => {
+  it('does not show canvas name prompts when the title is empty', () => {
     renderEditorCanvas({
       widgetData: {
         name: '',
@@ -113,8 +105,12 @@ describe('EditorCanvas first-widget guide', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Name this widget')).toBeInTheDocument()
-    expect(screen.getByText('Required before saving.')).toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('Name this widget'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Required before saving.'),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the saved widget title without edit chrome in view mode', () => {
@@ -126,7 +122,7 @@ describe('EditorCanvas first-widget guide', () => {
       },
     })
 
-    expect(screen.getByText('Service Desk Summary')).toBeInTheDocument()
+    expect(screen.queryByText('Service Desk Summary')).not.toBeInTheDocument()
     expect(screen.queryByTestId('widget-name-input')).not.toBeInTheDocument()
   })
 
@@ -137,7 +133,7 @@ describe('EditorCanvas first-widget guide', () => {
       screen.getByText('Build your first reusable widget'),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /example operations template/i }),
+      screen.getByRole('button', { name: /daily operations widget/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /chart block/i }),
@@ -157,7 +153,7 @@ describe('EditorCanvas first-widget guide', () => {
     const props = renderEditorCanvas()
 
     fireEvent.click(
-      screen.getByRole('button', { name: /example operations template/i }),
+      screen.getByRole('button', { name: /daily operations widget/i }),
     )
     fireEvent.click(screen.getByRole('button', { name: /chart block/i }))
     fireEvent.click(screen.getByRole('button', { name: /status text/i }))
@@ -218,18 +214,14 @@ describe('EditorCanvas first-widget guide', () => {
   it('uses the standard canvas prompt while the guided drag is active', () => {
     renderEditorCanvas({
       isDragging: true,
-      onboardingActive: true,
-      onboardingStep: 'choose',
     })
 
     expect(screen.getByText('Drop it into your widget')).toBeInTheDocument()
     expect(screen.queryByText(/^Step 2$/)).not.toBeInTheDocument()
   })
 
-  it('shows the edit and save guidance after the first component exists', () => {
+  it('does not render the removed inline edit and save guidance after the first component exists', () => {
     renderEditorCanvas({
-      onboardingActive: true,
-      onboardingStep: 'save',
       widgetData: {
         name: 'New Widget',
         components: [
@@ -242,9 +234,9 @@ describe('EditorCanvas first-widget guide', () => {
       },
     })
 
-    expect(screen.getByTestId('widget-editor-save-coach')).toHaveTextContent(
-      'Step 2: tune it, then save it',
-    )
+    expect(
+      screen.queryByTestId('widget-editor-save-coach'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /show again/i }),
     ).not.toBeInTheDocument()

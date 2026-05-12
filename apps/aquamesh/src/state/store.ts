@@ -17,6 +17,7 @@ export interface DashboardLayout {
     customProps?: Record<string, unknown>
   }
   active?: boolean
+  selected?: number
   weight?: number
   children?: DashboardLayout[]
 }

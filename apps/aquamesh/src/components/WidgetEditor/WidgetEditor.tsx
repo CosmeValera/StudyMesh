@@ -7,21 +7,17 @@ import TemplateSelectionDialog from './components/dialogs/TemplateSelectionDialo
 import ExportImportDialog from './components/dialogs/ExportImportDialog'
 import WidgetVersioningDialog from './components/dialogs/WidgetVersioningDialog'
 import ComponentSearchDialog from './components/dialogs/ComponentSearchDialog'
-import SettingsDialog from './components/dialogs/SettingsDialog'
 import EditorToolbar from './components/core/EditorToolbar'
 import ComponentPalette from './components/core/ComponentPalette'
 import EditorCanvas from './components/core/EditorCanvas'
 import CustomWidgetPreview from './CustomWidget'
-import NotificationSystem from './components/ui/NotificationSystem'
 import DeleteConfirmationDialog from './components/dialogs/DeleteConfirmationDialog'
+import SettingsDialog from './components/dialogs/SettingsDialog'
 import { CustomWidget } from './WidgetStorage'
 import WidgetStorage, { WidgetVersion } from './WidgetStorage'
 import SaveWidgetDialog from './components/dialogs/SaveWidgetDialog'
 import { cloneTemplate } from './constants/templateWidgets'
-
-type OnboardingStep = 'choose' | 'save' | 'place'
-
-const WIDGET_EDITOR_ONBOARDING_KEY = 'aquamesh-widget-editor-onboarding-done'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 // Main Widget Editor component
 const WidgetEditor: React.FC<{
@@ -39,7 +35,6 @@ const WidgetEditor: React.FC<{
     editMode,
     viewMode,
     setViewMode,
-    notification,
     savedWidgets,
     showWidgetList,
     setShowWidgetList,
@@ -53,20 +48,12 @@ const WidgetEditor: React.FC<{
     showTooltips,
     setShowTooltips,
     showDeleteConfirmation,
-    setShowDeleteConfirmation,
     showComponentPaletteHelp,
     setShowComponentPaletteHelp,
     deleteConfirmOpen,
-    showDeleteWidgetConfirmation,
-    setShowDeleteWidgetConfirmation,
-    showDeleteDashboardConfirmation,
-    setShowDeleteDashboardConfirmation,
     showAdvancedInToolbar,
     setShowAdvancedInToolbar,
     showDeleteTemplateConfirmation,
-    setShowDeleteTemplateConfirmation,
-    requireNameEntryOnSave,
-    setRequireNameEntryOnSave,
 
     // Event handlers
     handleDragStart,
@@ -85,7 +72,6 @@ const WidgetEditor: React.FC<{
     handleSaveWidget,
     handleLoadWidget,
     handleDeleteSavedWidget,
-    handleCloseNotification,
     handleToggleVisibility,
     handleToggleFieldsetCollapse,
     confirmDeleteComponent,
@@ -131,16 +117,6 @@ const WidgetEditor: React.FC<{
   const [saveDialogDefaultName, setSaveDialogDefaultName] = React.useState('')
   const loadedInitialWidgetKeyRef = React.useRef<string | null>(null)
 
-  const [onboardingStep, setOnboardingStep] =
-    React.useState<OnboardingStep>('choose')
-  const [onboardingDismissed] = React.useState(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    return window.localStorage.getItem(WIDGET_EDITOR_ONBOARDING_KEY) === 'true'
-  })
-
   // State to track current widget for versioning
   const [currentVersioningWidget, setCurrentVersioningWidget] =
     React.useState<CustomWidget | null>(null)
@@ -150,7 +126,6 @@ const WidgetEditor: React.FC<{
     setShowSidebar(!showSidebar)
   }
 
-  const onboardingActive = editMode && !onboardingDismissed
   const defaultEditViewMode = isPhone ? 'edit' : 'both'
   const showEditorPane = viewMode === 'both' || viewMode === 'edit'
   const showPreviewPane = viewMode === 'both' || viewMode === 'preview'
@@ -170,65 +145,30 @@ const WidgetEditor: React.FC<{
 
   const handleGuidedDrop = React.useCallback(
     (event: React.DragEvent) => {
+      const componentType = event.dataTransfer.getData('componentType')
       handleDrop(event)
-      if (onboardingActive) {
-        setOnboardingStep('save')
+      if (componentType) {
+        dispatchWorkspaceOnboardingEvent({
+          type: 'component-added',
+          componentType,
+          componentId: activeContainerId || undefined,
+        })
       }
     },
-    [handleDrop, onboardingActive],
+    [activeContainerId, handleDrop],
   )
 
   const handleGuidedDirectAdd = React.useCallback(
     (componentType: string) => {
       handleDirectAdd(componentType)
-      if (onboardingActive) {
-        setOnboardingStep('save')
-      }
+      dispatchWorkspaceOnboardingEvent({
+        type: 'component-added',
+        componentType,
+        componentId: activeContainerId || undefined,
+      })
     },
-    [handleDirectAdd, onboardingActive],
+    [activeContainerId, handleDirectAdd],
   )
-
-  // Toast state for component interactions
-  const [componentToast, setComponentToast] = React.useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info' | 'warning'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
-
-  // Listen for custom toast events from components
-  React.useEffect(() => {
-    const handleComponentToast = (event: Event) => {
-      const customEvent = event as CustomEvent
-      if (customEvent.detail) {
-        setComponentToast({
-          open: true,
-          message: customEvent.detail.message || 'Action performed',
-          severity: customEvent.detail.severity || 'info',
-        })
-      }
-    }
-
-    document.addEventListener('showWidgetToast', handleComponentToast)
-
-    // Cleanup
-    return () => {
-      document.removeEventListener('showWidgetToast', handleComponentToast)
-    }
-  }, [])
-
-  React.useEffect(() => {
-    if (!onboardingActive) {
-      return
-    }
-
-    if (widgetData.components.length > 0 && onboardingStep === 'choose') {
-      setOnboardingStep('save')
-    }
-  }, [onboardingActive, onboardingStep, widgetData.components.length])
 
   // Listen for loadWidgetInEditor events from widget management
   React.useEffect(() => {
@@ -261,7 +201,9 @@ const WidgetEditor: React.FC<{
     const widget = customProps?.loadWidget
 
     if (widget) {
-      const initialWidgetKey = `${widget.id}-${customProps.initialEditMode ? 'edit' : 'preview'}`
+      const initialWidgetKey = `${widget.id}-${
+        customProps.initialEditMode ? 'edit' : 'preview'
+      }`
 
       if (loadedInitialWidgetKeyRef.current === initialWidgetKey) {
         return
@@ -316,17 +258,29 @@ const WidgetEditor: React.FC<{
     handleSaveWidget(false, name)
   }
 
-  // Handle closing component toasts
-  const handleCloseComponentToast = () => {
-    setComponentToast({
-      ...componentToast,
-      open: false,
-    })
-  }
+  const currentSavedWidget = React.useMemo(
+    () =>
+      widgetData.id
+        ? savedWidgets.find((widget) => widget.id === widgetData.id)
+        : undefined,
+    [savedWidgets, widgetData.id],
+  )
 
-  // Check if we're updating an existing widget
-  const isUpdating = savedWidgets.some(
-    (widget) => widget.name === widgetData.name,
+  // Check if we're updating an existing widget. Use the saved widget id instead
+  // of the name so a fresh default "New Widget" is still treated as a new save.
+  const isUpdating = Boolean(currentSavedWidget)
+
+  const handleToolbarSaveWidget = React.useCallback(
+    (isMajorUpdate?: boolean) => {
+      if (isPhone && !isUpdating) {
+        setSaveDialogDefaultName(widgetData.name || 'New Widget')
+        setShowSaveDialog(true)
+        return
+      }
+
+      handleSaveWidget(isMajorUpdate)
+    },
+    [handleSaveWidget, isPhone, isUpdating, widgetData.name],
   )
 
   // Check if there are changes to save/update
@@ -335,20 +289,19 @@ const WidgetEditor: React.FC<{
       return true // Always enable save for new widgets
     }
 
-    // Find the saved widget with the same name
-    const savedWidget = savedWidgets.find(
-      (widget) => widget.name === widgetData.name,
-    )
-    if (!savedWidget) {
+    if (!currentSavedWidget) {
       return true
     }
 
     const currentJson = JSON.stringify(widgetData.components)
-    const savedJson = JSON.stringify(savedWidget.components)
+    const savedJson = JSON.stringify(currentSavedWidget.components)
 
     // If we're previewing an older version without edits, treat as no changes
-    if (widgetData.version && widgetData.version !== savedWidget.version) {
-      const versions = WidgetStorage.getWidgetVersions(savedWidget.id)
+    if (
+      widgetData.version &&
+      widgetData.version !== currentSavedWidget.version
+    ) {
+      const versions = WidgetStorage.getWidgetVersions(currentSavedWidget.id)
       const matching = versions.find((v) => v.version === widgetData.version)
       if (matching && JSON.stringify(matching.components) === currentJson) {
         return false
@@ -357,38 +310,18 @@ const WidgetEditor: React.FC<{
 
     // Otherwise, compare current components to saved
     return savedJson !== currentJson
-  }, [widgetData, savedWidgets, isUpdating])
-
-  React.useEffect(() => {
-    if (
-      onboardingActive &&
-      onboardingStep === 'save' &&
-      widgetData.components.length > 0 &&
-      isUpdating &&
-      !hasChanges
-    ) {
-      setOnboardingStep('place')
-    }
-  }, [
-    hasChanges,
-    isUpdating,
-    onboardingActive,
-    onboardingStep,
-    widgetData.components.length,
-  ])
+  }, [currentSavedWidget, widgetData, isUpdating])
 
   // Check if the current widget (including any loaded preview) is the latest version
   const isLatestVersion = React.useMemo(() => {
     if (!isUpdating) {
       return true // New widgets are always the latest
     }
-    // Find the saved widget for history lookup
-    const currentWidget = savedWidgets.find((w) => w.name === widgetData.name)
-    if (!currentWidget) {
+    if (!currentSavedWidget) {
       return true
     }
     // Get stored history versions (sorted newest first)
-    const versions = WidgetStorage.getWidgetVersions(currentWidget.id)
+    const versions = WidgetStorage.getWidgetVersions(currentSavedWidget.id)
     if (versions.length === 0) {
       return true
     }
@@ -398,7 +331,8 @@ const WidgetEditor: React.FC<{
       return [major, minor]
     }
     // Use loaded widgetData.version for UI (preview or saved), fallback to stored version
-    const loadedVersion = widgetData.version ?? currentWidget.version ?? '0.0'
+    const loadedVersion =
+      widgetData.version ?? currentSavedWidget.version ?? '0.0'
     const [majorCurr, minorCurr] = parseVersion(loadedVersion)
     const [majorHist, minorHist] = parseVersion(versions[0].version)
     // If loaded version is at or ahead of stored latest, consider latest
@@ -406,7 +340,7 @@ const WidgetEditor: React.FC<{
       majorCurr > majorHist ||
       (majorCurr === majorHist && minorCurr >= minorHist)
     )
-  }, [widgetData.version, savedWidgets, isUpdating])
+  }, [currentSavedWidget, widgetData.version, isUpdating])
 
   // Get the current widget version
   const currentWidgetVersion = React.useMemo(() => {
@@ -423,61 +357,35 @@ const WidgetEditor: React.FC<{
   const handleStartOperationsWidget = () => {
     const operationsWidget = cloneTemplate('template-operations-dashboard')
     if (!operationsWidget) {
-      setComponentToast({
-        open: true,
-        message: 'Daily Operations widget template is not available',
-        severity: 'error',
-      })
       return
     }
 
     setViewMode(defaultEditViewMode)
     handleLoadWidget(operationsWidget, true)
-    if (onboardingActive) {
-      setOnboardingStep('save')
-    }
   }
 
   // Handler for when import is complete
   const handleImportComplete = () => {
     loadSavedWidgets()
-    setComponentToast({
-      open: true,
-      message: 'Widgets imported successfully',
-      severity: 'success',
-    })
   }
 
   // Open versioning dialog for a widget, marking the loaded preview version if any
   const handleOpenVersioningDialog = () => {
-    const currentWidget = savedWidgets.find((w) => w.name === widgetData.name)
-    if (currentWidget) {
+    if (currentSavedWidget) {
       // Prepare widget for dialog to reflect any previewed version and current components
       const dialogWidget: CustomWidget = {
-        ...currentWidget,
-        version: widgetData.version ?? currentWidget.version,
+        ...currentSavedWidget,
+        version: widgetData.version ?? currentSavedWidget.version,
         components: widgetData.components,
       }
       setCurrentVersioningWidget(dialogWidget)
       setShowVersioningDialog(true)
-    } else {
-      setComponentToast({
-        open: true,
-        message: 'Please save your widget first to access version history',
-        severity: 'info',
-      })
     }
   }
 
   // Open component search dialog
   const handleOpenSearchDialog = () => {
     if (widgetData.components.length === 0) {
-      // Show a message if there are no components to search
-      setComponentToast({
-        open: true,
-        message: 'No blocks to search. Add blocks to your widget first.',
-        severity: 'info',
-      })
       return
     }
 
@@ -488,13 +396,6 @@ const WidgetEditor: React.FC<{
   const handleSelectComponentFromSearch = (componentId: string) => {
     // Find the component in the widget tree
     handleEditComponent(componentId)
-
-    // Show a success message
-    setComponentToast({
-      open: true,
-      message: 'Block found and selected for editing',
-      severity: 'success',
-    })
   }
 
   // Handle restoring a previous version
@@ -514,12 +415,6 @@ const WidgetEditor: React.FC<{
     // Preview the restored version without modifying storage
     setViewMode(defaultEditViewMode)
     handleLoadWidget(restoredWidget, true)
-    // Inform the user this version is loaded for editing
-    setComponentToast({
-      open: true,
-      message: `Loaded version ${version.version} for editing`,
-      severity: 'info',
-    })
   }
 
   // Define handleMajorVersionUpdate function
@@ -532,25 +427,6 @@ const WidgetEditor: React.FC<{
 
     // Update the widget with a major version increment
     handleSaveWidget(true)
-
-    // Show success message
-    setComponentToast({
-      open: true,
-      message: `Updated to major version ${getNextMajorVersion(
-        widget.version || '1.0',
-      )}`,
-      severity: 'success',
-    })
-  }
-
-  // Helper function to calculate next major version
-  const getNextMajorVersion = (currentVersion: string): string => {
-    const versionParts = currentVersion.split('.')
-    if (versionParts.length >= 2) {
-      const major = parseInt(versionParts[0], 10) + 1
-      return `${major}.0`
-    }
-    return '2.0'
   }
 
   // Set up delete confirmation content based on what's being deleted
@@ -581,6 +457,30 @@ const WidgetEditor: React.FC<{
   }
 
   const deleteConfirmProps = getDeleteConfirmationProps()
+  const handleSelectContainer = React.useCallback(
+    (containerId: string) => {
+      setActiveContainerId(containerId)
+      if (containerId) {
+        dispatchWorkspaceOnboardingEvent({
+          type: 'container-selected',
+          componentId: containerId,
+        })
+      }
+    },
+    [setActiveContainerId],
+  )
+
+  const handleGuidedSaveComponent = React.useCallback(
+    (updatedComponent: Parameters<typeof handleSaveComponent>[0]) => {
+      handleSaveComponent(updatedComponent)
+      dispatchWorkspaceOnboardingEvent({
+        type: 'component-edit-saved',
+        componentId: updatedComponent.id,
+        componentType: updatedComponent.type,
+      })
+    },
+    [handleSaveComponent],
+  )
 
   return (
     <Box
@@ -604,13 +504,13 @@ const WidgetEditor: React.FC<{
         showSidebar={showSidebar}
         toggleSidebar={toggleSidebar}
         setViewMode={setViewMode}
-        handleSaveWidget={handleSaveWidget}
+        handleSaveWidget={handleToolbarSaveWidget}
         setShowWidgetList={setShowWidgetList}
+        setShowSettingsModal={setShowSettingsModal}
         handleUndo={handleUndo}
         handleRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
-        setShowSettingsModal={setShowSettingsModal}
         isUpdating={isUpdating}
         hasChanges={hasChanges}
         isEmpty={widgetData.components.length === 0}
@@ -624,6 +524,8 @@ const WidgetEditor: React.FC<{
         isLatestVersion={isLatestVersion}
         currentWidgetVersion={currentWidgetVersion}
         showAdvancedInToolbar={showAdvancedInToolbar}
+        widgetName={widgetData.name}
+        handleWidgetNameChange={handleWidgetNameChange}
       />
 
       {/* Main editor area */}
@@ -644,10 +546,8 @@ const WidgetEditor: React.FC<{
             showTooltips={showTooltips}
             handleDirectAdd={handleGuidedDirectAdd}
             activeContainerId={activeContainerId}
-            setActiveContainerId={setActiveContainerId}
+            setActiveContainerId={handleSelectContainer}
             widgetData={widgetData}
-            onboardingActive={onboardingActive}
-            onboardingStep={onboardingStep}
           />
         )}
 
@@ -664,7 +564,6 @@ const WidgetEditor: React.FC<{
             <EditorCanvas
               editMode={editMode}
               widgetData={widgetData}
-              setWidgetData={setWidgetData}
               dropAreaRef={dropAreaRef}
               handleDrop={handleGuidedDrop}
               handleDragOver={handleDragOver}
@@ -682,14 +581,11 @@ const WidgetEditor: React.FC<{
               handleContainerDrop={handleContainerDrop}
               handleToggleFieldsetCollapse={handleToggleFieldsetCollapse}
               showSidebar={showSidebar}
-              handleWidgetNameChange={handleWidgetNameChange}
               activeContainerId={activeContainerId}
-              onSelectContainer={setActiveContainerId}
+              onSelectContainer={handleSelectContainer}
               onAddStarterComponent={handleGuidedDirectAdd}
               onStartOperationsWidget={handleStartOperationsWidget}
               onUseTemplate={() => setShowTemplateDialog(true)}
-              onboardingActive={onboardingActive}
-              onboardingStep={onboardingStep}
             />
           </Box>
         )}
@@ -742,7 +638,7 @@ const WidgetEditor: React.FC<{
       <EditComponentDialog
         open={editDialogOpen}
         component={currentEditComponent}
-        onSave={handleSaveComponent}
+        onSave={handleGuidedSaveComponent}
         onClose={() => setEditDialogOpen(false)}
       />
 
@@ -813,26 +709,14 @@ const WidgetEditor: React.FC<{
       <SettingsDialog
         open={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+        title="Widget Editor Settings"
+        scope="editor"
         showTooltips={showTooltips}
         onShowTooltipsChange={setShowTooltips}
-        showDeleteConfirmation={showDeleteConfirmation}
-        onShowDeleteConfirmationChange={setShowDeleteConfirmation}
         showComponentPaletteHelp={showComponentPaletteHelp}
         onShowComponentPaletteHelpChange={setShowComponentPaletteHelp}
-        showDeleteWidgetConfirmation={showDeleteWidgetConfirmation}
-        onShowDeleteWidgetConfirmationChange={setShowDeleteWidgetConfirmation}
-        showDeleteDashboardConfirmation={showDeleteDashboardConfirmation}
-        onShowDeleteDashboardConfirmationChange={
-          setShowDeleteDashboardConfirmation
-        }
         showAdvancedInToolbar={showAdvancedInToolbar}
         onShowAdvancedInToolbarChange={setShowAdvancedInToolbar}
-        showDeleteTemplateConfirmation={showDeleteTemplateConfirmation}
-        onShowDeleteTemplateConfirmationChange={
-          setShowDeleteTemplateConfirmation
-        }
-        showRequireNameEntryOnSave={requireNameEntryOnSave}
-        onShowRequireNameEntryOnSaveChange={setRequireNameEntryOnSave}
       />
 
       <DeleteConfirmationDialog
@@ -857,14 +741,6 @@ const WidgetEditor: React.FC<{
         onSave={handleSaveWidgetWithName}
         defaultName={saveDialogDefaultName}
         existingWidgets={savedWidgets}
-      />
-
-      {/* Notification toasts */}
-      <NotificationSystem
-        notification={notification}
-        componentToast={componentToast}
-        handleCloseNotification={handleCloseNotification}
-        handleCloseComponentToast={handleCloseComponentToast}
       />
     </Box>
   )

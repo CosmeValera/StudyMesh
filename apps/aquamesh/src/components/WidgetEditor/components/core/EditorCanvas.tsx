@@ -3,14 +3,12 @@ import {
   Box,
   Typography,
   Paper,
-  TextField,
   Button,
   Stack,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
-import EditIcon from '@mui/icons-material/Edit'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import InputIcon from '@mui/icons-material/Input'
 import TextFieldsIcon from '@mui/icons-material/TextFields'
@@ -28,16 +26,6 @@ interface EditorCanvasProps {
     updatedAt?: number
     version?: string
   }
-  setWidgetData: React.Dispatch<
-    React.SetStateAction<{
-      name: string
-      components: ComponentData[]
-      id?: string
-      createdAt?: number
-      updatedAt?: number
-      version?: string
-    }>
-  >
   dropAreaRef: React.RefObject<HTMLDivElement>
   handleDrop: (e: React.DragEvent) => void
   handleDragOver: (e: React.DragEvent) => void
@@ -56,20 +44,16 @@ interface EditorCanvasProps {
   /** Toggle collapse for FieldSet components */
   handleToggleFieldsetCollapse: (id: string) => void
   showSidebar: boolean
-  handleWidgetNameChange?: (name: string) => void
   activeContainerId?: string | null
   onSelectContainer?: (containerId: string) => void
   onAddStarterComponent?: (componentType: string) => void
   onStartOperationsWidget?: () => void
   onUseTemplate?: () => void
-  onboardingActive?: boolean
-  onboardingStep?: 'choose' | 'save' | 'place' | null
 }
 
 const EditorCanvas: React.FC<EditorCanvasProps> = ({
   editMode,
   widgetData,
-  setWidgetData,
   dropAreaRef,
   handleDrop,
   handleDragOver,
@@ -87,35 +71,14 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
   handleContainerDrop,
   handleToggleFieldsetCollapse,
   showSidebar,
-  handleWidgetNameChange,
   activeContainerId,
   onSelectContainer,
   onAddStarterComponent,
   onStartOperationsWidget,
   onUseTemplate,
-  onboardingActive = false,
-  onboardingStep = null,
 }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-
-  const showOnboardingChoosePrompt =
-    editMode &&
-    onboardingActive &&
-    widgetData.components.length === 0 &&
-    onboardingStep === 'choose'
-
-  const showOnboardingSavePrompt =
-    editMode &&
-    onboardingActive &&
-    widgetData.components.length > 0 &&
-    onboardingStep === 'save'
-
-  const showOnboardingPlacePrompt =
-    editMode &&
-    onboardingActive &&
-    widgetData.components.length > 0 &&
-    onboardingStep === 'place'
 
   // Render the component hierarchy
   const renderComponents = (components: ComponentData[]) => {
@@ -159,176 +122,6 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
         width: '100%',
       }}
     >
-      {/* Compact widget title header */}
-      <Paper
-        elevation={0}
-        sx={{
-          mb: isPhone ? 1 : 1.5,
-          px: isPhone ? 1 : 1.25,
-          py: isPhone ? 0.75 : 1,
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 1,
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={isPhone ? 0.75 : 1}
-          alignItems="center"
-          sx={{ minWidth: 0 }}
-        >
-          {editMode && (
-            <EditIcon
-              aria-hidden="true"
-              sx={{
-                color: 'primary.dark',
-                fontSize: isPhone ? 18 : 20,
-                flexShrink: 0,
-              }}
-            />
-          )}
-
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography
-              variant="caption"
-              component="div"
-              sx={{
-                color: 'text.secondary',
-                fontWeight: 700,
-                lineHeight: 1.1,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Widget name
-            </Typography>
-
-            {editMode ? (
-              <TextField
-                aria-label="Widget name"
-                placeholder="Name this widget"
-                value={widgetData.name}
-                onChange={(e) =>
-                  handleWidgetNameChange
-                    ? handleWidgetNameChange(e.target.value)
-                    : setWidgetData((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                }
-                variant="standard"
-                fullWidth
-                size="small"
-                data-testid="widget-name-input"
-                helperText={
-                  widgetData.name.trim()
-                    ? isPhone
-                      ? ''
-                      : 'Shown in dashboards and your saved widget library.'
-                    : 'Required before saving.'
-                }
-                FormHelperTextProps={{
-                  sx: {
-                    mx: 0,
-                    mt: 0.25,
-                    color: widgetData.name.trim()
-                      ? 'text.secondary'
-                      : 'warning.dark',
-                    fontSize: isPhone ? '0.68rem' : '0.72rem',
-                    lineHeight: 1.2,
-                  },
-                }}
-                onFocus={(e) => {
-                  e.target.select()
-                }}
-                sx={{
-                  mt: -0.25,
-                  '& .MuiInputBase-input': {
-                    color: 'text.primary',
-                    fontWeight: 700,
-                    fontSize: isPhone ? '0.95rem' : '1.05rem',
-                    lineHeight: 1.25,
-                    py: 0.25,
-                  },
-                  '& .MuiInput-underline:before': {
-                    borderBottomColor: 'transparent',
-                  },
-                  '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
-                    borderBottomColor: 'primary.light',
-                  },
-                  '& .MuiInput-underline:after': {
-                    borderBottomColor: 'primary.main',
-                  },
-                }}
-              />
-            ) : (
-              <Typography
-                variant={isPhone ? 'body2' : 'subtitle1'}
-                sx={{
-                  color: 'text.primary',
-                  fontWeight: 700,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  userSelect: 'none',
-                }}
-              >
-                {widgetData.name || 'Untitled widget'}
-              </Typography>
-            )}
-          </Box>
-        </Stack>
-      </Paper>
-
-      {(showOnboardingSavePrompt || showOnboardingPlacePrompt) && (
-        <Paper
-          data-testid="widget-editor-save-coach"
-          sx={{
-            mb: isPhone ? 1 : 1.5,
-            p: isPhone ? 1.25 : 1.5,
-            border: '1px solid',
-            borderColor: 'primary.light',
-            borderRadius: 1,
-            bgcolor: 'background.accentSoft',
-            boxShadow: 'none',
-          }}
-        >
-          <Stack
-            direction={isPhone ? 'column' : 'row'}
-            spacing={1}
-            alignItems={isPhone ? 'flex-start' : 'center'}
-            justifyContent="space-between"
-          >
-            <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: 'text.primary',
-                  fontWeight: 700,
-                  mb: 0.25,
-                }}
-              >
-                {showOnboardingPlacePrompt
-                  ? 'Step 3: add it to your dashboard'
-                  : 'Step 2: tune it, then save it'}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: 'text.secondary',
-                  fontSize: isPhone ? '0.78rem' : undefined,
-                }}
-              >
-                {showOnboardingPlacePrompt
-                  ? `Open ${isPhone ? 'Add' : 'Add Widget'}, choose the widget called ${widgetData.name || 'My First Widget'}, and click it to place it on the dashboard.`
-                  : 'Select the blue pen in a block to change its label, data, colors, or layout. Save the widget when it is ready to be reused.'}
-              </Typography>
-            </Box>
-          </Stack>
-        </Paper>
-      )}
-
       {/* Drop area */}
       <Paper
         ref={dropAreaRef}
@@ -342,8 +135,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
               : 'background.accentSurface'
             : 'background.paper',
           border: editMode ? '2px dashed' : '1px solid',
-          outline: showOnboardingChoosePrompt ? '3px solid' : 'none',
-          outlineColor: 'primary.main',
+          outline: 'none',
           borderColor: editMode ? 'primary.light' : 'divider',
           outlineOffset: 3,
           borderRadius: 1,
@@ -394,9 +186,7 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         mb: 0.5,
                       }}
                     >
-                      {showOnboardingChoosePrompt
-                        ? 'Start with one block'
-                        : 'Build your first reusable widget'}
+                      Build your first reusable widget
                     </Typography>
                     <Typography
                       variant="body2"
@@ -405,97 +195,91 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
                         fontSize: isPhone ? '0.78rem' : undefined,
                       }}
                     >
-                      {showOnboardingChoosePrompt
-                        ? isPhone
-                          ? 'Tap any block in Building Blocks to add it here. You can experiment and adjust it after it lands here.'
-                          : 'Drag any block from Building Blocks into this canvas. You can experiment and adjust it after it lands here.'
-                        : isPhone
-                          ? 'Use a quick shortcut, then save it for dashboards.'
-                          : 'Use a shortcut for a concrete example, or drag any block from the palette.'}
+                      {isPhone
+                        ? 'Start from a working operations summary, then save it for dashboards.'
+                        : 'Start from a working operations summary, or drag any block from the palette.'}
                     </Typography>
                   </Box>
 
-                  {!showOnboardingChoosePrompt && (
-                    <Stack
-                      direction={isPhone ? 'column' : 'row'}
-                      spacing={1}
-                      useFlexGap
-                      flexWrap="wrap"
+                  <Stack
+                    direction={isPhone ? 'column' : 'row'}
+                    spacing={1}
+                    useFlexGap
+                    flexWrap="wrap"
+                  >
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<DashboardCustomizeIcon />}
+                      onClick={onStartOperationsWidget}
+                      disabled={!onStartOperationsWidget}
+                      sx={{ borderRadius: 1, textTransform: 'none' }}
                     >
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<DashboardCustomizeIcon />}
-                        onClick={onStartOperationsWidget}
-                        disabled={!onStartOperationsWidget}
-                        sx={{ borderRadius: 1, textTransform: 'none' }}
-                      >
-                        Example operations template
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<AutoGraphIcon />}
-                        onClick={() => onAddStarterComponent?.('Chart')}
-                        disabled={!onAddStarterComponent}
-                        sx={{
-                          display: { xs: 'none', sm: 'inline-flex' },
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                          borderColor: 'primary.dark',
-                        }}
-                      >
-                        Chart block
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<TextFieldsIcon />}
-                        onClick={() => onAddStarterComponent?.('Label')}
-                        disabled={!onAddStarterComponent}
-                        sx={{
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                          borderColor: 'primary.dark',
-                        }}
-                      >
-                        Status text
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<InputIcon />}
-                        onClick={() => onAddStarterComponent?.('TextField')}
-                        disabled={!onAddStarterComponent}
-                        sx={{
-                          display: { xs: 'none', sm: 'inline-flex' },
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                          borderColor: 'primary.dark',
-                        }}
-                      >
-                        Notes field
-                      </Button>
-                      <Button
-                        variant="text"
-                        size="small"
-                        startIcon={<ViewModuleIcon />}
-                        onClick={onUseTemplate}
-                        disabled={!onUseTemplate}
-                        sx={{
-                          display: { xs: 'none', sm: 'inline-flex' },
-                          borderRadius: 1,
-                          textTransform: 'none',
-                          color: 'primary.dark',
-                        }}
-                      >
-                        Browse templates
-                      </Button>
-                    </Stack>
-                  )}
+                      Daily Operations widget
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<AutoGraphIcon />}
+                      onClick={() => onAddStarterComponent?.('Chart')}
+                      disabled={!onAddStarterComponent}
+                      sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
+                    >
+                      Chart block
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<TextFieldsIcon />}
+                      onClick={() => onAddStarterComponent?.('Label')}
+                      disabled={!onAddStarterComponent}
+                      sx={{
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
+                    >
+                      Status text
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<InputIcon />}
+                      onClick={() => onAddStarterComponent?.('TextField')}
+                      disabled={!onAddStarterComponent}
+                      sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                        borderColor: 'primary.dark',
+                      }}
+                    >
+                      Notes field
+                    </Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<ViewModuleIcon />}
+                      onClick={onUseTemplate}
+                      disabled={!onUseTemplate}
+                      sx={{
+                        display: { xs: 'none', sm: 'inline-flex' },
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        color: 'primary.dark',
+                      }}
+                    >
+                      Browse templates
+                    </Button>
+                  </Stack>
                 </Stack>
               </Box>
             ) : (

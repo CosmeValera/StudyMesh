@@ -4,7 +4,7 @@ import {
   Typography,
   Paper,
   IconButton,
-  useMediaQuery
+  useMediaQuery,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { ComponentType } from '../../types/types'
@@ -22,7 +22,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
   component,
   showTooltips = false,
   handleDragStart,
-  onDirectAdd
+  onDirectAdd,
 }) => {
   // Create the icon element dynamically from the component's icon property
   const IconComponent = component.icon
@@ -39,7 +39,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
     // Store initial touch position
     touchStartPositionRef.current = {
       x: e.touches[0].clientX,
-      y: e.touches[0].clientY
+      y: e.touches[0].clientY,
     }
 
     // Set a timeout to determine if it's a touch-and-hold gesture
@@ -56,7 +56,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
         const dragEvent = new DragEvent('dragstart', {
           bubbles: true,
           cancelable: true,
-          dataTransfer
+          dataTransfer,
         })
 
         // Dispatch the event on the element
@@ -64,7 +64,8 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
 
         // Call the handler with the created event
         // Use a cast that preserves type safety better than 'any'
-        const syntheticDragEvent = dragEvent as unknown as React.DragEvent<HTMLDivElement>
+        const syntheticDragEvent =
+          dragEvent as unknown as React.DragEvent<HTMLDivElement>
         handleDragStart(syntheticDragEvent, component.type)
       }
     }, 300) // 300ms is a good balance for touch-and-hold
@@ -135,6 +136,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
           ref={itemRef}
           elevation={1}
           draggable
+          data-onboarding-id={`palette-item-${component.type}`}
           onClick={onDirectAdd ? handleItemClick : undefined}
           onDragStart={(e) => handleDragStart(e, component.type)}
           onTouchStart={handleTouchStart}
@@ -169,10 +171,12 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
               justifyContent: 'center',
             }}
           >
-            {IconComponent && <IconComponent sx={{ fontSize: isPhone ? '0.9rem' : '1.2rem' }} />}
+            {IconComponent && (
+              <IconComponent sx={{ fontSize: isPhone ? '0.9rem' : '1.2rem' }} />
+            )}
           </Box>
           <Typography
-            variant={isPhone ? "caption" : "body2"}
+            variant={isPhone ? 'caption' : 'body2'}
             sx={{
               fontWeight: 'medium',
               color: 'foreground.contrastPrimary',
@@ -205,7 +209,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
                 },
               }}
             >
-              <AddIcon fontSize={isPhone ? "inherit" : "small"} />
+              <AddIcon fontSize={isPhone ? 'inherit' : 'small'} />
             </IconButton>
           )}
         </Paper>

@@ -101,20 +101,11 @@ const WidgetEditorExplanationModal: React.FC<
       onCloseTutorial()
     }
 
-    // Programmatically open Add Widget, then click the Widget Editor shortcut.
-    const widgetsButton = document.querySelector(
-      '[data-tutorial-id="widgets-button"]',
+    const createWidgetButton = document.querySelector(
+      '[data-tutorial-id="create-widget-button"]',
     )
-    if (widgetsButton) {
-      ;(widgetsButton as HTMLElement).click()
-      window.setTimeout(() => {
-        const createWidgetButton = document.querySelector(
-          '[data-tutorial-id="create-widget-button"]',
-        )
-        if (createWidgetButton) {
-          ;(createWidgetButton as HTMLElement).click()
-        }
-      }, 0)
+    if (createWidgetButton) {
+      ;(createWidgetButton as HTMLElement).click()
     }
   }
 
@@ -123,7 +114,7 @@ const WidgetEditorExplanationModal: React.FC<
     {
       title: 'Create Widget Quick Start',
       content:
-        'Create one reusable widget first from Add Widget → Open Widget Editor: name it, add building blocks, preview it, save it, then add it to a dashboard from Add Widget.',
+        'Create one reusable widget: add a layout block, place a content block inside it, preview, save, then place it from Create Dashboard > Widgets.',
     },
     {
       title: 'Build The Widget',
@@ -138,8 +129,8 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Add Building Blocks',
           icon: <WidgetsIcon />,
           content: isMobile
-            ? 'Tap text, answer boxes, buttons, charts, and groups to add them to your widget.'
-            : 'Drag text, answer boxes, buttons, charts, and groups from the left panel into your widget.',
+            ? 'Tap a layout group first, then tap text, lists, inputs, buttons, or charts to add content inside it.'
+            : 'Drag one layout group first, then drag text, lists, inputs, buttons, or charts inside it.',
         },
         {
           title: 'Arrange The Canvas',
@@ -162,13 +153,13 @@ const WidgetEditorExplanationModal: React.FC<
           title: 'Save',
           icon: <SaveIcon />,
           content:
-            'Save the widget to the library. Saved widgets are available from Add Widget.',
+            'Save the widget to the library. Saved widgets are available from Create Dashboard > Widgets.',
         },
         {
           title: 'Use In Dashboard',
           icon: <WidgetsIcon />,
           content:
-            'Open Add Widget, choose your saved widget, and place it on the current dashboard.',
+            'Open Create Dashboard, choose Widgets, place your saved widget, save the dashboard, then reopen it later from Dashboards.',
         },
       ],
     },

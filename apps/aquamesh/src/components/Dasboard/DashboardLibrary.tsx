@@ -24,13 +24,14 @@ import {
   Switch,
   FormControlLabel,
   Menu,
+  Autocomplete,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
 import DashboardIcon from '@mui/icons-material/Dashboard'
-import SchoolIcon from '@mui/icons-material/School'
+import FolderIcon from '@mui/icons-material/Folder'
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
 import ReplayIcon from '@mui/icons-material/Replay'
 import QuizIcon from '@mui/icons-material/Quiz'
@@ -40,7 +41,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import EditIcon from '@mui/icons-material/Edit'
 import PublicIcon from '@mui/icons-material/Public'
 import LockIcon from '@mui/icons-material/Lock'
-import { Layout } from '../../types/types'
+import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import { DefaultDashboard } from './fixture'
 import { ensureStarterDashboards } from '../../customHooks/useWorkspaceActions'
@@ -57,7 +58,7 @@ interface SavedDashboard {
   name: string
   folder?: string
   folderColor?: string
-  layout: Layout
+  layout: DashboardLayout
   description?: string
   tags?: string[]
   isPublic?: boolean
@@ -69,6 +70,11 @@ interface SavedDashboard {
 interface SavedDashboardsDialogProps {
   open: boolean
   onClose: () => void
+  initialSearchTerm?: string
+  initialFolderFilter?: string
+  initialSearchKey?: number
+  mode?: 'workspace' | 'builder'
+  onOpenInBuilder?: (dashboard: SavedDashboard) => void
 }
 
 // Add a new interface for the edit dashboard dialog
@@ -77,6 +83,8 @@ interface EditDashboardDialogProps {
   onClose: () => void
   dashboard: SavedDashboard | null
   onSave: (dashboard: SavedDashboard) => void
+  folderOptions: string[]
+  folderColorsByName: Record<string, string>
 }
 
 // Sort types
@@ -91,7 +99,14 @@ type SortOption =
 const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   open,
   onClose,
+  initialSearchTerm = '',
+  initialFolderFilter = '',
+  initialSearchKey = 0,
+  mode = 'workspace',
+  onOpenInBuilder,
 }) => {
+  const openActionLabel =
+    mode === 'builder' ? 'Open in Builder' : 'Open in Workspace'
   // Increased card spacing and padding for mobile via responsive styles
 
   // Search state
@@ -102,7 +117,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
 
   // Filter state
   const [showPublicOnly, setShowPublicOnly] = useState(false)
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
+  const [folderFilter, setFolderFilter] = useState('')
 
   // Dashboard state
   const [dashboards, setDashboards] = useState<SavedDashboard[]>([])
@@ -185,7 +200,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             name: string
             folder?: string
             folderColor?: string
-            layout: Layout
+            layout: DashboardLayout
             description?: string
             tags?: string[]
             isPublic?: boolean
@@ -198,7 +213,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             folderColor: normalizeFolderColor(dashboard.folderColor),
             layout: dashboard.layout,
             description: dashboard.description || 'No description',
-            tags: dashboard.tags || ['study pack'],
+            tags: dashboard.tags || ['dashboard'],
             isPublic: dashboard.isPublic || false,
             createdAt: dashboard.createdAt || new Date().toISOString(),
             updatedAt: dashboard.updatedAt || new Date().toISOString(),
@@ -215,16 +230,36 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   }
 
   // Calculate the number of components in a layout
-  const calculateComponentsCount = (layout: Layout): number => {
-    let count = 0
-
+  const calculateComponentsCount = (layout: DashboardLayout): number => {
     // Define NodeType interface for better type safety
     interface NodeType {
       type?: string
       component?: string | unknown
+      config?: {
+        customProps?: {
+          components?: unknown
+        }
+      }
       children?: NodeType[]
       weight?: number
       name?: string
+    }
+
+    const countWidgetBlocks = (components?: unknown): number => {
+      if (!Array.isArray(components)) {
+        return 0
+      }
+
+      return components.reduce((sum, component) => {
+        if (!component || typeof component !== 'object') {
+          return sum
+        }
+
+        const children =
+          'children' in component ? component.children : undefined
+
+        return sum + 1 + countWidgetBlocks(children)
+      }, 0)
     }
 
     // Count tabs with components
@@ -234,6 +269,14 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       }
 
       if (node.type === 'tab' && node.component) {
+        if (node.component === 'CustomWidget') {
+          const widgetBlocks = countWidgetBlocks(
+            node.config?.customProps?.components,
+          )
+
+          return widgetBlocks || 1
+        }
+
         return 1
       }
 
@@ -247,21 +290,29 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       return 0
     }
 
-    count = countTabs(layout as unknown as NodeType)
-    return count
+    return countTabs(layout as unknown as NodeType)
   }
 
   // Load dashboards when dialog opens
   useEffect(() => {
     if (open) {
       loadDashboards()
-      setSearchTerm('')
+      setSearchTerm(initialSearchTerm)
+      setFolderFilter(
+        initialFolderFilter ? normalizeFolderName(initialFolderFilter) : '',
+      )
       setSortBy('dateNewest')
     }
-  }, [open])
+  }, [initialFolderFilter, initialSearchKey, initialSearchTerm, open])
 
   // Handle opening a dashboard
   const handleOpenDashboard = (dashboard: SavedDashboard) => {
+    if (mode === 'builder') {
+      onOpenInBuilder?.(dashboard)
+      onClose()
+      return
+    }
+
     // Convert saved dashboard to the format needed by DashboardProvider
     const dashboardToOpen: DefaultDashboard = {
       name: dashboard.name,
@@ -354,21 +405,61 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     setSortBy(e.target.value as SortOption)
   }
 
+  const handleFolderFilterChange = (e: SelectChangeEvent) => {
+    setFolderFilter(e.target.value)
+  }
+
   // Handle public filter toggle
   const handlePublicFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setShowPublicOnly(e.target.checked)
   }
 
-  // Filter dashboards based on search term, public filter, and user role
-  const filteredDashboards = useMemo(() => {
+  const roleVisibleDashboards = useMemo(() => {
     let filtered = dashboards
 
     // If not admin, only show public dashboards
     if (!isAdmin) {
       filtered = filtered.filter((dashboard) => dashboard.isPublic)
-    } else if (showPublicOnly) {
+    }
+
+    return filtered
+  }, [dashboards, isAdmin])
+
+  const folderOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        roleVisibleDashboards.map((dashboard) =>
+          normalizeFolderName(dashboard.folder),
+        ),
+      ),
+    ).sort((a, b) => a.localeCompare(b))
+  }, [roleVisibleDashboards])
+
+  const folderColorsByName = useMemo(() => {
+    return dashboards.reduce<Record<string, string>>((colors, dashboard) => {
+      const folderName = normalizeFolderName(dashboard.folder)
+
+      if (!colors[folderName]) {
+        colors[folderName] = normalizeFolderColor(dashboard.folderColor)
+      }
+
+      return colors
+    }, {})
+  }, [dashboards])
+
+  // Filter dashboards based on search term, folder, public filter, and user role
+  const filteredDashboards = useMemo(() => {
+    let filtered = roleVisibleDashboards
+
+    if (isAdmin && showPublicOnly) {
       // Admin user with public filter enabled
       filtered = filtered.filter((dashboard) => dashboard.isPublic)
+    }
+
+    if (folderFilter) {
+      filtered = filtered.filter(
+        (dashboard) => normalizeFolderName(dashboard.folder) === folderFilter,
+      )
     }
 
     // Apply search filter if there's a search term
@@ -384,7 +475,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     }
 
     return filtered
-  }, [dashboards, searchTerm, showPublicOnly, isAdmin])
+  }, [folderFilter, roleVisibleDashboards, searchTerm, showPublicOnly, isAdmin])
 
   // Sort filtered dashboards
   const sortedDashboards = useMemo(() => {
@@ -411,22 +502,6 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       }
     })
   }, [filteredDashboards, sortBy])
-
-  const groupedStudyPacks = useMemo(() => {
-    return sortedDashboards.reduce<Record<string, SavedDashboard[]>>((folders, dashboard) => {
-      const folderName = normalizeFolderName(dashboard.folder)
-      folders[folderName] = folders[folderName] || []
-      folders[folderName].push(dashboard)
-      return folders
-    }, {})
-  }, [sortedDashboards])
-
-  const toggleFolderExpanded = (folderName: string) => {
-    setExpandedFolders((current) => ({
-      ...current,
-      [folderName]: !current[folderName],
-    }))
-  }
 
   // Function to handle editing a dashboard
   const handleEditDashboard = (
@@ -555,7 +630,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         >
           {/* Search, Sort, and Filter Controls */}
           <Grid container spacing={2} sx={{ mb: 3, mt: 1 }}>
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 placeholder="Search study packs, subjects, notes..."
@@ -601,7 +676,48 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small" variant="outlined">
+                <InputLabel
+                  id="folder-filter-label"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  Folder
+                </InputLabel>
+                <Select
+                  labelId="folder-filter-label"
+                  value={folderFilter}
+                  onChange={handleFolderFilterChange}
+                  label="Folder"
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <FolderIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                  sx={{
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                  }}
+                >
+                  <MenuItem value="">All Folders</MenuItem>
+                  {folderOptions.map((folderName) => (
+                    <MenuItem key={folderName} value={folderName}>
+                      {folderName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small" variant="outlined">
                 <InputLabel id="sort-by-label" sx={{ color: 'text.secondary' }}>
                   Sort By
@@ -641,7 +757,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={2}>
               {isAdmin && (
                 <FormControlLabel
                   control={
@@ -678,6 +794,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 ? 'No study packs found'
                 : `Showing ${sortedDashboards.length} study pack${sortedDashboards.length !== 1 ? 's' : ''}`}
               {searchTerm && ` matching "${searchTerm}"`}
+              {folderFilter && ` in "${folderFilter}"`}
               {!isAdmin && ' (only showing public dashboards)'}
             </Typography>
           </Box>
@@ -705,52 +822,23 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
               <Typography color="text.primary" variant="h6" gutterBottom>
                 {searchTerm
                   ? 'No Matching Study Packs'
-                  : 'No Study Packs Available'}
+                  : folderFilter
+                    ? 'No Dashboards In Folder'
+                    : 'No Study Packs Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
-                  : !isAdmin
-                    ? 'No public study packs are currently available'
-                    : 'No study packs have been saved yet'}
+                  : folderFilter
+                    ? 'Select a different folder or clear the folder filter'
+                    : !isAdmin
+                      ? 'No public study packs are currently available'
+                      : 'No study packs have been saved yet'}
               </Typography>
             </Paper>
           ) : (
-            <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {Object.entries(groupedStudyPacks).map(([folderName, folderDashboards]) => {
-                const isExpanded = Boolean(expandedFolders[folderName])
-                const visibleDashboards = isExpanded
-                  ? folderDashboards
-                  : folderDashboards.slice(0, 20)
-                const hiddenCount = folderDashboards.length - visibleDashboards.length
-
-                return (
-                  <Box key={folderName}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        mb: 1,
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SchoolIcon sx={{ color: 'primary.main' }} />
-                        <Typography variant="subtitle1" fontWeight={800}>
-                          {folderName}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={`${folderDashboards.length} study pack${folderDashboards.length !== 1 ? 's' : ''}`}
-                        />
-                      </Box>
-                      {folderDashboards.length > 20 && (
-                        <Button size="small" onClick={() => toggleFolderExpanded(folderName)}>
-                          {isExpanded ? 'Show first 20' : `Show ${hiddenCount} more…`}
-                        </Button>
-                      )}
-                    </Box>
-                    {visibleDashboards.map((dashboard, index) => (
+            <List>
+              {sortedDashboards.map((dashboard, index) => (
                 <Fade
                   key={dashboard.id}
                   in={true}
@@ -776,6 +864,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                       cursor: 'pointer',
                     }}
                     onClick={() => handleOpenDashboard(dashboard)}
+                    aria-label={`${openActionLabel} ${dashboard.name}`}
                   >
                     <Box
                       sx={{
@@ -1089,28 +1178,13 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                           justifyContent: { xs: 'center', sm: 'flex-start' },
                         }}
                       >
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<FitnessCenterIcon />}
-                          sx={{ textTransform: 'none' }}
-                        >
+                        <Button size="small" variant="outlined" startIcon={<FitnessCenterIcon />} sx={{ textTransform: 'none' }}>
                           Generate more exercises
                         </Button>
-                        <Button
-                          size="small"
-                          variant="text"
-                          startIcon={<ReplayIcon />}
-                          sx={{ textTransform: 'none' }}
-                        >
+                        <Button size="small" variant="text" startIcon={<ReplayIcon />} sx={{ textTransform: 'none' }}>
                           Practice again
                         </Button>
-                        <Button
-                          size="small"
-                          variant="text"
-                          startIcon={<QuizIcon />}
-                          sx={{ textTransform: 'none' }}
-                        >
+                        <Button size="small" variant="text" startIcon={<QuizIcon />} sx={{ textTransform: 'none' }}>
                           Create quiz from section
                         </Button>
                       </Box>
@@ -1131,10 +1205,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                     </Box>
                   </Paper>
                 </Fade>
-                    ))}
-                  </Box>
-                )
-              })}
+              ))}
             </List>
           )}
         </DialogContent>
@@ -1179,6 +1250,8 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         onClose={() => setEditDialogOpen(false)}
         dashboard={dashboardToEdit}
         onSave={handleSaveEditedDashboard}
+        folderOptions={folderOptions}
+        folderColorsByName={folderColorsByName}
       />
     </>
   )
@@ -1190,6 +1263,8 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
   onClose,
   dashboard,
   onSave,
+  folderOptions,
+  folderColorsByName,
 }) => {
   const [name, setName] = useState('')
   const [folder, setFolder] = useState('Default')
@@ -1198,6 +1273,17 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
   const [tags, setTags] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
   const [tagInput, setTagInput] = useState('')
+
+  const updateFolder = (nextFolder: string) => {
+    setFolder(nextFolder)
+
+    const normalizedFolder = normalizeFolderName(nextFolder)
+    const existingFolderColor = folderColorsByName[normalizedFolder]
+
+    if (existingFolderColor) {
+      setFolderColor(existingFolderColor)
+    }
+  }
 
   // Initialize form values when dashboard changes
   useEffect(() => {
@@ -1220,7 +1306,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
         folder: normalizeFolderName(folder),
         folderColor: normalizeFolderColor(folderColor),
         description: description.trim() || 'No description',
-        tags: tags.length > 0 ? tags : ['study pack'],
+        tags: tags.length > 0 ? tags : ['dashboard'],
         isPublic,
         updatedAt: new Date().toISOString(),
       }
@@ -1322,29 +1408,45 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
             }}
           />
 
-          <TextField
-            fullWidth
-            label="Folder"
+          <Autocomplete
+            freeSolo
+            options={folderOptions}
             value={folder}
-            onChange={(e) => setFolder(e.target.value)}
-            margin="normal"
-            helperText="Study packs with the same subject/folder name are grouped in the library."
-            InputLabelProps={{ shrink: true, sx: { color: 'text.secondary' } }}
-            InputProps={{
-              sx: {
-                bgcolor: 'background.paper',
-                color: 'text.primary',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'divider',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main',
-                },
-              },
+            inputValue={folder}
+            onChange={(_, nextValue) => updateFolder(nextValue || '')}
+            onInputChange={(_, nextInputValue) => {
+              updateFolder(nextInputValue)
             }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                label="Folder"
+                margin="normal"
+                helperText="Study packs with the same subject/folder name are grouped in the library."
+                InputLabelProps={{
+                  ...params.InputLabelProps,
+                  shrink: true,
+                  sx: { color: 'text.secondary' },
+                }}
+                InputProps={{
+                  ...params.InputProps,
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
+              />
+            )}
           />
 
           <Box sx={{ mt: 2, mb: 1 }}>

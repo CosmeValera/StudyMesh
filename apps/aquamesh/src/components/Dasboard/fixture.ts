@@ -1,8 +1,8 @@
-import { Layout } from '../../types/types'
+import { DashboardLayout } from '../../state/store'
 
 export interface DefaultDashboard {
-  name: string;
-  layout?: Layout
+  name: string
+  layout?: DashboardLayout
 }
 
 export const DEFAULT_DASHBOARD: DefaultDashboard = {

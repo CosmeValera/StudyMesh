@@ -4,27 +4,31 @@ import {
   Menu,
   MenuItem,
   Divider,
-  ListItemIcon,
   Typography,
+  Box,
+  IconButton,
+  Tooltip,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import HomeIcon from '@mui/icons-material/Home'
-import FolderIcon from '@mui/icons-material/Folder'
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import EditIcon from '@mui/icons-material/Edit'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
-import SavedDashboardsDialog from './DashboardLibrary'
-import { Layout } from '../../types/types'
 import {
   ensureStarterDashboards,
-  OPEN_DASHBOARD_EDITOR_EVENT,
+  OPEN_SAVED_DASHBOARDS_EVENT,
 } from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
+
+const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 
 // Define saved dashboard type
 interface SavedDashboard {
@@ -32,7 +36,7 @@ interface SavedDashboard {
   name: string
   folder?: string
   folderColor?: string
-  layout: Layout
+  layout: DashboardLayout
   description?: string
   tags?: string[]
   isPublic?: boolean
@@ -47,6 +51,7 @@ interface ButtonWithLabelProps {
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void
   sx?: React.CSSProperties | Record<string, unknown>
   'data-tutorial-id'?: string
+  'data-onboarding-id'?: string
 }
 
 const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
@@ -82,18 +87,35 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   )
 }
 
+const hasDashboardContent = (layout?: DashboardLayout): boolean => {
+  if (!layout) {
+    return false
+  }
+
+  if (layout.type === 'tab' && Boolean(layout.component)) {
+    return true
+  }
+
+  return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
+}
+
 const DashboardOptionsMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [customDashboards, setCustomDashboards] = useState<SavedDashboard[]>([])
-  const [dashboardLibraryOpen, setDashboardLibraryOpen] = useState(false)
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
-  const { addDashboard } = useDashboards()
+  const { addDashboard, openDashboards, replaceDashboard, selectedDashboard } =
+    useDashboards()
 
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
+  const isDarkMode = theme.palette.mode === 'dark'
+  const studyPackHeaderColor = isDarkMode ? '#7FE3C4' : '#007C66'
+  const studyPackHeaderBackground = isDarkMode ? '#007C6652' : '#007C6624'
+  const customDashboardHeaderColor = isDarkMode ? '#C5D0D6' : '#455A64'
+  const customDashboardHeaderBackground = isDarkMode ? '#455A6466' : '#455A6420'
 
   // Load saved dashboards from localStorage on component mount
   useEffect(() => {
@@ -102,17 +124,28 @@ const DashboardOptionsMenu: React.FC = () => {
 
   // Determine if current user is admin
   useEffect(() => {
-    try {
-      const userData = localStorage.getItem('userData')
-      if (userData) {
-        const parsedData = JSON.parse(userData)
-        setIsAdmin(
-          parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
-        )
+    const readUserRole = () => {
+      try {
+        const userData = localStorage.getItem('userData')
+        if (userData) {
+          const parsedData = JSON.parse(userData)
+          setIsAdmin(
+            parsedData.id === 'admin' && parsedData.role === 'ADMIN_ROLE',
+          )
+          return
+        }
+        setIsAdmin(false)
+      } catch (error) {
+        console.error('Failed to parse user data', error)
+        setIsAdmin(false)
       }
-    } catch (error) {
-      console.error('Failed to parse user data', error)
-      setIsAdmin(false)
+    }
+
+    readUserRole()
+    window.addEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
+
+    return () => {
+      window.removeEventListener(USER_ROLE_CHANGED_EVENT, readUserRole)
     }
   }, [])
 
@@ -142,6 +175,24 @@ const DashboardOptionsMenu: React.FC = () => {
     return folders
   }, {})
 
+  const isStudyPackDashboard = (dashboard: SavedDashboard) => {
+    const folderName = normalizeFolderName(dashboard.folder).toLowerCase()
+    return (
+      folderName === 'study packs' ||
+      dashboard.id.startsWith('study-pack-dashboard-') ||
+      Boolean(dashboard.tags?.includes('study-pack'))
+    )
+  }
+
+  const studyPackDashboards = visibleCustomDashboards.filter(
+    isStudyPackDashboard,
+  )
+  const customDashboardFolders = Object.entries(dashboardsByFolder).filter(
+    ([folderName, dashboards]) =>
+      folderName.toLowerCase() !== 'study packs' &&
+      dashboards.some((dashboard) => !isStudyPackDashboard(dashboard)),
+  )
+
   const getFolderColor = (folderName: string, dashboards: SavedDashboard[]) =>
     normalizeFolderColor(
       dashboards.find((dashboard) => dashboard.folderColor)?.folderColor ||
@@ -156,6 +207,7 @@ const DashboardOptionsMenu: React.FC = () => {
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     loadSavedDashboards() // Refresh the list when opening menu
     setAnchorEl(event.currentTarget)
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-menu-opened' })
   }
 
   const handleClose = () => {
@@ -163,7 +215,21 @@ const DashboardOptionsMenu: React.FC = () => {
   }
 
   // Create a dashboard with predefined layout
-  const createDashboardWithLayout = (dashboardName: string, layout: Layout) => {
+  const createDashboardWithLayout = (
+    dashboardName: string,
+    layout: DashboardLayout,
+  ) => {
+    const focusedDashboard = openDashboards[selectedDashboard]
+
+    if (focusedDashboard && !hasDashboardContent(focusedDashboard.layout)) {
+      replaceDashboard(selectedDashboard, {
+        name: dashboardName,
+        layout,
+      })
+      handleClose()
+      return
+    }
+
     addDashboard({
       name: dashboardName,
       layout,
@@ -174,33 +240,35 @@ const DashboardOptionsMenu: React.FC = () => {
   // Load a saved dashboard
   const loadCustomDashboard = (dashboard: SavedDashboard) => {
     createDashboardWithLayout(dashboard.name, dashboard.layout)
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboard.id,
+      dashboardName: dashboard.name,
+    })
   }
 
-  // Open dashboard library dialog
-  const handleOpenDashboardLibrary = () => {
+  const openSavedDashboardsForFolder = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    folderName: string,
+  ) => {
+    event.stopPropagation()
     handleClose()
-    setDashboardLibraryOpen(true)
-  }
-
-  const handleCreateDashboard = () => {
-    window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
-    handleClose()
-  }
-
-  // Handle dashboard library dialog close
-  const handleDashboardLibraryClose = () => {
-    setDashboardLibraryOpen(false)
-    loadSavedDashboards() // Refresh dashboards list
+    window.dispatchEvent(
+      new CustomEvent(OPEN_SAVED_DASHBOARDS_EVENT, {
+        detail: { folderFilter: folderName },
+      }),
+    )
   }
 
   return (
     <>
       {isPhone || isTablet ? (
         <ButtonWithLabel
-          icon={<HomeIcon />}
-          label={isPhone ? 'Dashboard' : 'Dashboards'}
+          icon={<AutoStoriesIcon />}
+          label={'Study Packs'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
+          data-onboarding-id="topnav-dashboards"
         />
       ) : (
         <Button
@@ -213,11 +281,12 @@ const DashboardOptionsMenu: React.FC = () => {
             mx: 1,
             px: 2,
           }}
-          startIcon={<HomeIcon />}
+          startIcon={<AutoStoriesIcon />}
           endIcon={<KeyboardArrowDownIcon />}
           data-tutorial-id="dashboards-button"
+          data-onboarding-id="topnav-dashboards"
         >
-          Dashboards
+          Study Packs
         </Button>
       )}
 
@@ -236,58 +305,163 @@ const DashboardOptionsMenu: React.FC = () => {
           },
         }}
       >
-        {/* Dashboard Management Section */}
-        <MenuItem onClick={handleCreateDashboard} sx={{ p: 1.5 }}>
-          <ListItemIcon>
-            <AddCircleOutlineIcon
-              fontSize="small"
-              sx={{ color: 'text.secondary' }}
-            />
-          </ListItemIcon>
-          Create Dashboard
-        </MenuItem>
-        <Divider sx={{ my: 1, borderColor: 'divider' }} />
-
-        <MenuItem onClick={handleOpenDashboardLibrary} sx={{ p: 1.5 }}>
-          <ListItemIcon>
-            <FolderIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-          </ListItemIcon>
-          Open Saved Dashboards
-        </MenuItem>
-
-        <Divider sx={{ my: 1, borderColor: 'divider' }} />
-
-        {/* Dashboard folders */}
-        {visibleCustomDashboards.length > 0 && (
+        {studyPackDashboards.length > 0 && (
           <>
-            {Object.entries(dashboardsByFolder).map(
+            <Typography
+              component="div"
+              sx={{
+                px: 2,
+                py: 0.7,
+                fontWeight: 800,
+                mt: 0.5,
+                color: studyPackHeaderColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                bgcolor: studyPackHeaderBackground,
+                borderLeft: '4px solid',
+                borderLeftColor: studyPackHeaderColor,
+              }}
+            >
+              <AutoStoriesIcon
+                fontSize="small"
+                sx={{ color: studyPackHeaderColor }}
+              />
+              <Box
+                component="span"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Study Packs
+              </Box>
+              <Tooltip title="Show Study Packs in Saved Dashboards">
+                <IconButton
+                  size="small"
+                  aria-label="Show Study Packs in Saved Dashboards"
+                  onClick={(event) =>
+                    openSavedDashboardsForFolder(event, 'Study Packs')
+                  }
+                  sx={{
+                    color: studyPackHeaderColor,
+                    p: 0.5,
+                    '&:hover': {
+                      bgcolor: `${studyPackHeaderColor}1A`,
+                    },
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Typography>
+            <Divider sx={{ borderColor: 'divider' }} />
+            {[...studyPackDashboards].reverse().map((dashboard) => (
+              <MenuItem
+                key={dashboard.id}
+                data-onboarding-id="topnav-saved-dashboard"
+                data-dashboard-id={dashboard.id}
+                onClick={() => loadCustomDashboard(dashboard)}
+                sx={{ p: 1.5, pl: 2.5 }}
+              >
+                {dashboard.name}
+              </MenuItem>
+            ))}
+          </>
+        )}
+
+        {customDashboardFolders.length > 0 && (
+          <>
+            <Typography
+              component="div"
+              sx={{
+                px: 2,
+                py: 0.7,
+                fontWeight: 800,
+                mt: 0.75,
+                color: customDashboardHeaderColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                bgcolor: customDashboardHeaderBackground,
+                borderLeft: '4px solid',
+                borderLeftColor: customDashboardHeaderColor,
+              }}
+            >
+              Custom Dashboards
+            </Typography>
+            {customDashboardFolders.map(
               ([folderName, dashboards]) => {
                 const folderColor = getFolderColor(folderName, dashboards)
+                const nonStudyDashboards = dashboards.filter(
+                  (dashboard) => !isStudyPackDashboard(dashboard),
+                )
 
                 return (
                   <React.Fragment key={folderName}>
                     <Typography
+                      component="div"
                       sx={{
                         px: 2,
-                        py: 1,
+                        py: 0.6,
                         fontWeight: 'bold',
-                        mt: 1,
+                        mt: 0.75,
                         color: 'text.primary',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
+                        bgcolor: `${folderColor}24`,
+                        borderLeft: '4px solid',
+                        borderLeftColor: folderColor,
                       }}
                     >
-                      <FolderIcon
+                      <DashboardIcon
                         fontSize="small"
-                        sx={{ color: folderColor }}
+                        sx={{
+                          color: folderColor,
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))',
+                        }}
                       />
-                      {folderName}
+                      <Box
+                        component="span"
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {folderName}
+                      </Box>
+                      <Tooltip title={`Show ${folderName} in Saved Dashboards`}>
+                        <IconButton
+                          size="small"
+                          aria-label={`Show ${folderName} in Saved Dashboards`}
+                          onClick={(event) =>
+                            openSavedDashboardsForFolder(event, folderName)
+                          }
+                          sx={{
+                            color: folderColor,
+                            p: 0.5,
+                            '&:hover': {
+                              bgcolor: `${folderColor}22`,
+                            },
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Typography>
                     <Divider sx={{ borderColor: 'divider' }} />
-                    {[...dashboards].reverse().map((dashboard) => (
+                    {[...nonStudyDashboards].reverse().map((dashboard) => (
                       <MenuItem
                         key={dashboard.id}
+                        data-onboarding-id="topnav-saved-dashboard"
+                        data-dashboard-id={dashboard.id}
                         onClick={() => loadCustomDashboard(dashboard)}
                         sx={{ p: 1.5 }}
                       >
@@ -311,16 +485,24 @@ const DashboardOptionsMenu: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            No saved dashboards yet
+            No study packs or dashboards yet
+          </MenuItem>
+        )}
+        {!isPhone && visibleCustomDashboards.length === 0 && (
+          <MenuItem
+            disabled
+            sx={{
+              p: 1.5,
+              opacity: 1,
+              justifyContent: 'center',
+              whiteSpace: 'normal',
+              textAlign: 'center',
+            }}
+          >
+            No study packs or dashboards yet
           </MenuItem>
         )}
       </Menu>
-
-      {/* Saved Dashboards Dialog */}
-      <SavedDashboardsDialog
-        open={dashboardLibraryOpen}
-        onClose={handleDashboardLibraryClose}
-      />
     </>
   )
 }

@@ -8,7 +8,7 @@ import {
   Tooltip,
   IconButton,
   Fade,
-  useTheme
+  useTheme,
 } from '@mui/material'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -80,12 +80,13 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
   }>({
     isValid: true,
     message: '',
-    checked: false
+    checked: false,
   })
   const [showPassword, setShowPassword] = useState(false)
 
   // Generate an ID if not provided
-  const id = fieldId || `field-${label?.toString().toLowerCase().replace(/\s+/g, '-')}`
+  const id =
+    fieldId || `field-${label?.toString().toLowerCase().replace(/\s+/g, '-')}`
 
   // Handle local changes and validation
   const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,7 +99,7 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
       setValidationState({
         isValid: result.isValid,
         message: result.message,
-        checked: true
+        checked: true,
       })
     }
 
@@ -126,8 +127,8 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
     if (error || (validationState.checked && !validationState.isValid)) {
       return (
         <InputAdornment position="end">
-          <Tooltip 
-            title={validationState.message || helperText || 'Invalid input'} 
+          <Tooltip
+            title={validationState.message || helperText || 'Invalid input'}
             arrow
           >
             <ErrorOutlineIcon color="error" fontSize="small" />
@@ -140,12 +141,12 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
     if (showSuccessState && localValue && validationState.isValid) {
       return (
         <InputAdornment position="end">
-          <CheckCircleIcon 
-            sx={{ 
+          <CheckCircleIcon
+            sx={{
               color: theme.palette.success.main,
-              opacity: 0.8
-            }} 
-            fontSize="small" 
+              opacity: 0.8,
+            }}
+            fontSize="small"
           />
         </InputAdornment>
       )
@@ -161,7 +162,7 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
     return (
       <InputAdornment position="end">
         <IconButton
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-label={showPassword ? 'Hide password' : 'Show password'}
           onClick={() => setShowPassword(!showPassword)}
           edge="end"
           size="small"
@@ -178,17 +179,10 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
 
     return (
       <InputAdornment position="end">
-        <Tooltip 
-          title={
-            <Box sx={{ p: 0.5 }}>
-              {tooltipContent}
-            </Box>
-          } 
-          arrow
-        >
-          <InfoOutlinedIcon 
-            color="action" 
-            fontSize="small" 
+        <Tooltip title={<Box sx={{ p: 0.5 }}>{tooltipContent}</Box>} arrow>
+          <InfoOutlinedIcon
+            color="action"
+            fontSize="small"
             sx={{ ml: 0.5, opacity: 0.7, cursor: 'help' }}
           />
         </Tooltip>
@@ -199,29 +193,31 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
   // Combine all end adornments
   const getEndAdornments = () => {
     const adornments = []
-    
+
     if (renderValidationIcon()) {
       adornments.push(renderValidationIcon())
     }
-    
+
     if (renderPasswordToggle()) {
       adornments.push(renderPasswordToggle())
     }
-    
+
     if (renderTooltipIcon()) {
       adornments.push(renderTooltipIcon())
     }
-    
+
     return adornments.length > 0 ? adornments : null
   }
 
   // Determine actual error state
-  const hasError = error || (validationState.checked && !validationState.isValid)
+  const hasError =
+    error || (validationState.checked && !validationState.isValid)
 
   // Calculate actual helper text
-  const actualHelperText = validationState.checked && !validationState.isValid
-    ? validationState.message || helperText
-    : helperText
+  const actualHelperText =
+    validationState.checked && !validationState.isValid
+      ? validationState.message || helperText
+      : helperText
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -238,30 +234,30 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
         type={type === 'password' ? (showPassword ? 'text' : 'password') : type}
         InputProps={{
           ...InputProps,
-          endAdornment: getEndAdornments()
+          endAdornment: getEndAdornments(),
         }}
         inputProps={{
           'aria-invalid': hasError,
           'aria-describedby': `${id}-helper`,
-          ...inputProps
+          ...inputProps,
         }}
         FormHelperTextProps={{
-          id: `${id}-helper`
+          id: `${id}-helper`,
         }}
         {...rest}
       />
-      
+
       {/* Character count */}
       {showCharCount && (
         <Fade in={true}>
-          <Typography 
-            variant="caption" 
+          <Typography
+            variant="caption"
             color="text.secondary"
-            sx={{ 
-              display: 'block', 
+            sx={{
+              display: 'block',
               textAlign: 'right',
               mt: 0.5,
-              color: hasError ? 'error.main' : 'text.secondary'
+              color: hasError ? 'error.main' : 'text.secondary',
             }}
           >
             {localValue?.length || 0}
@@ -273,4 +269,4 @@ const EnhancedTextField: React.FC<EnhancedTextFieldProps> = ({
   )
 }
 
-export default EnhancedTextField 
+export default EnhancedTextField

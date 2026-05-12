@@ -74,9 +74,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
           color: 'primary',
           size: 'large',
           fullWidth: false,
-          showToast: true,
-          toastMessage: 'Form submitted successfully!',
-          toastSeverity: 'success',
+
           sx: {
             marginTop: 3,
             borderRadius: 2,
@@ -469,10 +467,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   defaultChecked: true,
                   labelPlacement: 'end',
                   color: 'success',
-                  showToast: true,
-                  onMessage: 'System marked healthy',
-                  offMessage: 'System needs attention',
-                  toastSeverity: 'success',
                 },
               },
               {
@@ -500,9 +494,8 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   size: 'medium',
                   showStartIcon: true,
                   iconName: 'notification',
-                  clickAction: 'toast',
-                  toastMessage: 'Daily operations handoff sent to the team',
-                  toastSeverity: 'success',
+                  clickAction: 'none',
+
                   borderRadius: 6,
                   fontWeight: 700,
                 },
@@ -596,10 +589,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   defaultChecked: true,
                   disabled: false,
                   color: 'primary',
-                  showToast: true,
-                  onMessage: 'Alerts enabled',
-                  offMessage: 'Alerts disabled',
-                  toastSeverity: 'info',
+
                   sx: { marginY: 1 },
                 },
               },
@@ -681,9 +671,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
               variant: 'outlined',
               icon: 'refresh',
               color: 'info',
-              showToast: true,
-              toastMessage: 'Data refreshed',
-              toastSeverity: 'info',
+
               sx: {
                 borderRadius: 2,
                 fontWeight: 'medium',
@@ -699,9 +687,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
               variant: 'contained',
               icon: 'save',
               color: 'primary',
-              showToast: true,
-              toastMessage: 'Report exported successfully',
-              toastSeverity: 'success',
+
               sx: {
                 borderRadius: 2,
                 fontWeight: 'bold',
@@ -728,7 +714,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
         id: 'template-math-title',
         type: 'Label',
         props: {
-          text: 'Mathematics 1 — Derivatives',
+          text: 'Mathematics 1 - Derivatives',
           variant: 'h4',
           gutterBottom: true,
           useCustomColor: true,
@@ -785,7 +771,7 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                 id: 'template-math-formula-label',
                 type: 'Label',
                 props: {
-                  text: 'Power rule: d/dx xⁿ = n·xⁿ⁻¹\nChain rule: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct rule: (fg)′ = f′g + fg′',
+                  text: 'Power rule: d/dx x^n = n*x^(n-1)\nChain rule: d/dx f(g(x)) = f prime(g(x))*g prime(x)\nProduct rule: (fg) prime = f prime*g + f*g prime',
                   variant: 'body1',
                   whiteSpace: 'pre-line',
                 },
@@ -979,108 +965,88 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
 
   {
     id: 'template-math-derivatives-chart',
-    name: 'Mathematics Derivatives Chart Template',
-    description: 'A chart widget for derivative practice progress.',
+    name: 'Mathematics Derivatives Progress Template',
+    description: 'A compact progress widget for tracking derivative confidence.',
     category: 'Knowledge Workspace',
     components: [
       {
-        id: 'template-math-chart-title',
-        type: 'Label',
+        id: 'template-math-chart-hero',
+        type: 'LongText',
         props: {
-          text: 'Mathematics 1 — Chart',
-          variant: 'h5',
-          gutterBottom: true,
-          useCustomColor: true,
-          customColor: '#1976D2',
-          fontWeight: 700,
+          __blockType: 'LongText',
+          title: 'Derivative Progress Tracker',
+          text: 'Track confidence by rule. Add your latest confidence score after practice.',
+          callout: true,
         },
       },
       {
-        id: 'template-math-progress-chart',
-        type: 'Chart',
-        props: {
-          title: 'Derivative practice progress',
-          chartType: 'bar',
-          height: 280,
-          description:
-            'Example chart: what is understood, what needs practice, and what needs help.',
-          data: `{
-            "labels": ["Power rule", "Chain rule", "Product rule", "Word problems"],
-            "datasets": [{
-              "label": "Confidence",
-              "data": [85, 55, 65, 35],
-              "backgroundColor": ["rgba(25, 118, 210, 0.75)", "rgba(239, 108, 0, 0.75)", "rgba(123, 31, 162, 0.75)", "rgba(0, 124, 102, 0.75)"],
-              "borderColor": ["rgba(25, 118, 210, 1)", "rgba(239, 108, 0, 1)", "rgba(123, 31, 162, 1)", "rgba(0, 124, 102, 1)"],
-              "borderWidth": 2
-            }]
-          }`,
-        },
-      },
-      {
-        id: 'template-math-chart-note',
-        type: 'Label',
-        props: {
-          text: 'This is a chart block. Use it to visualize progress, scores, or categories.',
-          variant: 'body2',
-        },
-      },
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    tags: ['mathematics', 'derivatives', 'chart'],
-  },
-  {
-    id: 'template-math-derivatives-example',
-    name: 'Mathematics Derivatives Example Template',
-    description:
-      'A widget with worked derivative examples and a question input.',
-    category: 'Knowledge Workspace',
-    components: [
-      {
-        id: 'template-math-example-title',
-        type: 'Label',
-        props: {
-          text: 'Mathematics 1 — Derivatives Example',
-          variant: 'h5',
-          gutterBottom: true,
-          useCustomColor: true,
-          customColor: '#EF6C00',
-          fontWeight: 700,
-        },
-      },
-      {
-        id: 'template-math-example-section',
-        type: 'FieldSet',
-        props: {
-          legend: 'Worked example',
-          borderStyle: 'solid',
-          borderColor: '#EF6C00',
-          legendColor: '#EF6C00',
-          useCustomBorderColor: true,
-          useCustomLegendColor: true,
-          padding: 2,
-          borderRadius: 8,
-        },
+        id: 'template-math-chart-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
         children: [
           {
-            id: 'template-math-example-text',
-            type: 'Label',
+            id: 'template-math-confidence-input-card',
+            type: 'FieldSet',
             props: {
-              text: 'Example: f(x)=3x⁴ - 2x² + 7\nf′(x)=12x³ - 4x\n\nWhy: apply the power rule to each term.',
-              variant: 'body1',
-              whiteSpace: 'pre-line',
+              legend: 'Log today’s confidence',
+              padding: 2,
+              borderRadius: 10,
+              borderColor: '#1976D2',
+              legendColor: '#1976D2',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              backgroundColor: 'rgba(25,118,210,0.06)',
             },
+            children: [
+              {
+                id: 'template-math-confidence-input',
+                type: 'TextField',
+                props: {
+                  label: 'Confidence score',
+                  placeholder: 'Example: 72',
+                  type: 'number',
+                  fullWidth: true,
+                  helperText: 'Enter a score from 0 to 100.',
+                },
+              },
+              {
+                id: 'template-math-confidence-button',
+                type: 'Button',
+                props: {
+                  text: 'Add score to chart',
+                  variant: 'contained',
+                  color: 'primary',
+                  fullWidth: true,
+                  clickAction: 'addChartValue',
+                  chartLabelSource: 'static',
+                  chartLabel: 'Latest score',
+                  chartValueSource: 'firstInput',
+                },
+              },
+            ],
           },
           {
-            id: 'template-math-example-input',
-            type: 'TextField',
+            id: 'template-math-progress-chart',
+            type: 'Chart',
             props: {
-              label: 'Try one yourself',
-              placeholder: 'Derivative of x³ + 5x?',
-              fullWidth: true,
-              variant: 'outlined',
-              helperText:
-                'This is an input block for answers, doubts, or notes.',
+              title: 'Confidence by derivative rule',
+              chartType: 'bar',
+              height: 280,
+              description: 'Use the input to append your latest score.',
+              data: `{
+                "labels": ["Power", "Chain", "Product", "Word problems"],
+                "datasets": [{
+                  "label": "Confidence",
+                  "data": [85, 55, 65, 35],
+                  "backgroundColor": [
+                    "rgba(25,118,210,0.75)",
+                    "rgba(239,108,0,0.75)",
+                    "rgba(123,31,162,0.75)",
+                    "rgba(0,124,102,0.75)"
+                  ],
+                  "borderWidth": 2
+                }]
+              }`,
             },
           },
         ],
@@ -1088,48 +1054,198 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
     ],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tags: ['mathematics', 'derivatives', 'example', 'input'],
+    tags: ['mathematics', 'derivatives', 'chart', 'progress'],
+  },
+  {
+    id: 'template-math-derivatives-example',
+    name: 'Mathematics Derivatives Example Template',
+    description: 'A short worked example with a realistic practice area.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-math-example-hero',
+        type: 'LongText',
+        props: {
+          __blockType: 'LongText',
+          title: 'Derivative Practice Card',
+          text: 'Study the example, then solve a similar one. The button records confidence, not correctness.',
+          callout: true,
+        },
+      },
+      {
+        id: 'template-math-example-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
+        children: [
+          {
+            id: 'template-math-worked-example',
+            type: 'FieldSet',
+            props: {
+              legend: 'Worked example',
+              padding: 2,
+              borderRadius: 10,
+              borderColor: '#EF6C00',
+              legendColor: '#EF6C00',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              backgroundColor: 'rgba(239,108,0,0.06)',
+            },
+            children: [
+              {
+                id: 'template-math-worked-example-text',
+                type: 'Label',
+                props: {
+                  text:
+                    'f(x) = 3x⁴ − 2x² + 7\n\nf′(x) = 12x³ − 4x\n\nReason: apply the power rule term by term. The constant becomes 0.',
+                  variant: 'body1',
+                  whiteSpace: 'pre-line',
+                },
+              },
+            ],
+          },
+          {
+            id: 'template-math-practice-card',
+            type: 'FieldSet',
+            props: {
+              legend: 'Your turn',
+              padding: 2,
+              borderRadius: 10,
+              borderColor: '#1976D2',
+              legendColor: '#1976D2',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              backgroundColor: 'rgba(25,118,210,0.06)',
+            },
+            children: [
+              {
+                id: 'template-math-practice-prompt',
+                type: 'Label',
+                props: {
+                  text: 'Find the derivative of y = x³ + 5x² − 8x + 4',
+                  variant: 'body1',
+                  fontWeight: 700,
+                },
+              },
+              {
+                id: 'template-math-example-confidence',
+                type: 'TextField',
+                props: {
+                  label: 'Confidence after solving',
+                  placeholder: 'Example: 70',
+                  type: 'number',
+                  fullWidth: true,
+                  margin: 'normal',
+                  helperText: 'This value is what the button adds to the chart.',
+                },
+              },
+              {
+                id: 'template-math-example-input',
+                type: 'TextField',
+                props: {
+                  label: 'Your derivative',
+                  placeholder: 'y′ = ...',
+                  fullWidth: true,
+                  variant: 'outlined',
+                  helperText: 'Write your answer here for review.',
+                },
+              },
+              {
+                id: 'template-math-example-button',
+                type: 'Button',
+                props: {
+                  text: 'Add confidence score',
+                  variant: 'contained',
+                  color: 'primary',
+                  fullWidth: true,
+                  clickAction: 'addChartValue',
+                  chartLabelSource: 'static',
+                  chartLabel: 'Practice confidence',
+                  chartValueSource: 'firstInput',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['mathematics', 'derivatives', 'example', 'practice'],
   },
   {
     id: 'template-math-derivatives-theory',
     name: 'Mathematics Derivatives Theory Template',
-    description: 'A widget with derivative theory and formulas.',
+    description: 'A cleaner theory widget with rules, meaning, and review checklist.',
     category: 'Knowledge Workspace',
     components: [
       {
-        id: 'template-math-theory-title',
-        type: 'Label',
+        id: 'template-math-theory-hero',
+        type: 'LongText',
         props: {
-          text: 'Mathematics 1 — Theory Derivatives',
-          variant: 'h5',
-          gutterBottom: true,
-          useCustomColor: true,
-          customColor: '#7B1FA2',
-          fontWeight: 700,
+          __blockType: 'LongText',
+          title: 'Derivative Theory Map',
+          text: 'A derivative measures instant rate of change: graphically, it is the slope of the tangent line.',
+          callout: true,
         },
       },
       {
-        id: 'template-math-theory-fieldset',
-        type: 'FieldSet',
-        props: {
-          legend: 'Core theory',
-          borderStyle: 'solid',
-          borderColor: '#7B1FA2',
-          legendColor: '#7B1FA2',
-          useCustomBorderColor: true,
-          useCustomLegendColor: true,
-          padding: 1.5,
-          borderRadius: 8,
-        },
+        id: 'template-math-theory-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 2, responsive: true },
         children: [
           {
-            id: 'template-math-theory-text',
-            type: 'Label',
+            id: 'template-math-rules-list',
+            type: 'ListBlock',
             props: {
-              text: 'Derivative = rate of change.\nPower: d/dx xⁿ = n·xⁿ⁻¹\nChain: d/dx f(g(x)) = f′(g(x))·g′(x)\nProduct: (fg)′ = f′g + fg′',
-              variant: 'body2',
-              whiteSpace: 'pre-line',
+              __blockType: 'ListBlock',
+              title: 'Core rules',
+              items:
+                'Power: d/dx xⁿ = n·xⁿ⁻¹\nConstant: d/dx c = 0\nSum: differentiate each term\nProduct: (fg)′ = f′g + fg′\nChain: f(g(x))′ = f′(g(x))·g′(x)',
+              ordered: false,
+              interactiveChecklist: false,
             },
+          },
+          {
+            id: 'template-math-review-checklist',
+            type: 'FieldSet',
+            props: {
+              legend: 'Review checklist',
+              padding: 2,
+              borderRadius: 10,
+              borderColor: '#7B1FA2',
+              legendColor: '#7B1FA2',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+              backgroundColor: 'rgba(123,31,162,0.06)',
+            },
+            children: [
+              {
+                id: 'template-math-checklist',
+                type: 'ListBlock',
+                props: {
+                  __blockType: 'ListBlock',
+                  title: 'Can I explain this?',
+                  items:
+                    'What the derivative means\nWhy constants disappear\nWhen to use the chain rule\nWhen to use the product rule',
+                  ordered: false,
+                  interactiveChecklist: true,
+                },
+              },
+              {
+                id: 'template-math-checklist-button',
+                type: 'Button',
+                props: {
+                  text: 'Add completed checklist count',
+                  variant: 'outlined',
+                  color: 'secondary',
+                  fullWidth: true,
+                  clickAction: 'addChartValue',
+                  chartLabelSource: 'static',
+                  chartLabel: 'Theory items mastered',
+                  chartValueSource: 'checkedListCount',
+                },
+              },
+            ],
           },
         ],
       },
@@ -1205,8 +1321,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   chartLabelSource: 'static',
                   chartLabel: 'Typed value',
                   chartValueSource: 'firstInput',
-                  showToast: true,
-                  toastSeverity: 'success',
                 },
               },
             ],
@@ -1243,8 +1357,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
                   chartLabelSource: 'static',
                   chartLabel: 'Completed tasks',
                   chartValueSource: 'checkedListCount',
-                  showToast: true,
-                  toastSeverity: 'success',
                 },
               },
             ],
@@ -1267,6 +1379,395 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
+  },
+  {
+    id: 'template-content-load-reference-pack',
+    name: 'Content Load Reference Pack Template',
+    description:
+      'A heavier reference widget that combines PDF, image, long text, list, chart, and summary text blocks.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-content-load-title',
+        type: 'Label',
+        props: {
+          text: 'Content Load Reference Pack',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#D81B60',
+          fontWeight: 800,
+        },
+      },
+      {
+        id: 'template-content-load-overview',
+        type: 'LongText',
+        props: {
+          __blockType: 'LongText',
+          title: 'Reference brief',
+          text: 'Use this widget when a dashboard needs to carry several kinds of reference material at once. It includes a PDF for source material, an image for visual context, a long note for interpretation, a checklist for review steps, and a compact chart with short commentary.',
+          callout: true,
+        },
+      },
+      {
+        id: 'template-content-load-media-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-content-load-pdf',
+            type: 'PdfBlock',
+            props: {
+              __blockType: 'PdfBlock',
+              src: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+              title: 'Reference PDF',
+              height: 420,
+            },
+          },
+          {
+            id: 'template-content-load-image',
+            type: 'ImageBlock',
+            props: {
+              __blockType: 'ImageBlock',
+              src: '/images/tutorial-blocks-concept.svg',
+              alt: 'Reference blocks arranged in a widget',
+              caption:
+                'Use image blocks for diagrams, screenshots, maps, or quick visual references.',
+              maxHeight: 320,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-content-load-notes-grid',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-content-load-reading-notes',
+            type: 'LongText',
+            props: {
+              __blockType: 'LongText',
+              title: 'Reading notes',
+              text: 'Summarize the important findings here. Keep the note practical: what the source says, why it matters, what decisions it affects, and what still needs verification.',
+              callout: false,
+            },
+          },
+          {
+            id: 'template-content-load-checklist',
+            type: 'ListBlock',
+            props: {
+              __blockType: 'ListBlock',
+              title: 'Review checklist',
+              items:
+                'Open and scan the PDF\nCompare the diagram with the source\nCapture key definitions\nMark unresolved questions\nUpdate the chart summary',
+              ordered: false,
+              interactiveChecklist: true,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-content-load-mix',
+        type: 'GridBox',
+        props: { columns: 2, spacing: 3, responsive: true },
+        children: [
+          {
+            id: 'template-content-load-chart',
+            type: 'Chart',
+            props: {
+              title: 'Reference Coverage',
+              chartType: 'pie',
+              height: 260,
+              description:
+                'A compact chart for coverage, confidence, or source mix.',
+              data: `{"labels":["PDF","Image","Notes","Checklist"],"datasets":[{"data":[35,20,30,15],"backgroundColor":["rgba(216,27,96,0.8)","rgba(25,118,210,0.8)","rgba(0,124,102,0.8)","rgba(251,140,0,0.8)"]}]}`,
+            },
+          },
+          {
+            id: 'template-content-load-summary',
+            type: 'FieldSet',
+            props: {
+              legend: 'Short synthesis',
+              padding: 2,
+              borderRadius: 8,
+              borderColor: '#D81B60',
+              legendColor: '#D81B60',
+              useCustomBorderColor: true,
+              useCustomLegendColor: true,
+            },
+            children: [
+              {
+                id: 'template-content-load-summary-text',
+                type: 'Label',
+                props: {
+                  text: 'This mixed area pairs a small chart with a plain text summary so the widget can show both evidence and interpretation in one place.',
+                  variant: 'body1',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['content', 'pdf', 'image', 'long text', 'reference'],
+  },
+  {
+    id: 'template-grouping-layout-tutorial',
+    name: 'Grouping Layout Tutorial Template',
+    description:
+      'A practical tutorial that demonstrates FieldSet, FlexBox, and GridBox layout groups with nested examples.',
+    category: 'Knowledge Workspace',
+    components: [
+      {
+        id: 'template-grouping-title',
+        type: 'Label',
+        props: {
+          text: 'Grouping Layout Tutorial',
+          variant: 'h4',
+          gutterBottom: true,
+          useCustomColor: true,
+          customColor: '#007C66',
+          fontWeight: 800,
+        },
+      },
+      {
+        id: 'template-grouping-intro',
+        type: 'LongText',
+        props: {
+          __blockType: 'LongText',
+          title: 'What grouping blocks do',
+          text: 'Grouping blocks control how other blocks sit together. FieldSet gives a named section, FlexBox lines items up in a row or column, and GridBox creates repeated columns for dashboards or comparisons.',
+          callout: true,
+        },
+      },
+      {
+        id: 'template-grouping-fieldset-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'FieldSet: named section',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#007C66',
+          legendColor: '#007C66',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-grouping-fieldset-copy',
+            type: 'Label',
+            props: {
+              text: 'Use FieldSet when the content has one clear topic and benefits from a visible title.',
+              variant: 'body1',
+            },
+          },
+          {
+            id: 'template-grouping-fieldset-nested-list',
+            type: 'ListBlock',
+            props: {
+              __blockType: 'ListBlock',
+              title: 'Good FieldSet uses',
+              items:
+                'Reference details\nA form section\nA status summary\nA collapsible explanation',
+              ordered: false,
+              interactiveChecklist: false,
+            },
+          },
+        ],
+      },
+      {
+        id: 'template-grouping-flex-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'FlexBox: align related items',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#1976D2',
+          legendColor: '#1976D2',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-grouping-flex-copy',
+            type: 'LongText',
+            props: {
+              __blockType: 'LongText',
+              title: 'FlexBox pattern',
+              text: 'Use FlexBox when items should sit beside each other, wrap when space is tight, or stack in a controlled order. It works well for compact status rows and action groups.',
+              callout: false,
+            },
+          },
+          {
+            id: 'template-grouping-flex-row',
+            type: 'FlexBox',
+            props: {
+              direction: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'stretch',
+              spacing: 2,
+              wrap: 'wrap',
+            },
+            children: [
+              {
+                id: 'template-grouping-flex-item-one',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Status',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-flex-item-one-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Ready',
+                      variant: 'h6',
+                      useCustomColor: true,
+                      customColor: '#2E7D32',
+                      fontWeight: 700,
+                    },
+                  },
+                ],
+              },
+              {
+                id: 'template-grouping-flex-item-two',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Owner',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-flex-item-two-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Team A',
+                      variant: 'h6',
+                      useCustomColor: true,
+                      customColor: '#1976D2',
+                      fontWeight: 700,
+                    },
+                  },
+                ],
+              },
+              {
+                id: 'template-grouping-flex-item-three',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Next step',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-flex-item-three-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Review',
+                      variant: 'h6',
+                      useCustomColor: true,
+                      customColor: '#EF6C00',
+                      fontWeight: 700,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-grouping-grid-demo',
+        type: 'FieldSet',
+        props: {
+          legend: 'GridBox: repeat columns',
+          padding: 2,
+          borderRadius: 8,
+          borderColor: '#7B1FA2',
+          legendColor: '#7B1FA2',
+          useCustomBorderColor: true,
+          useCustomLegendColor: true,
+        },
+        children: [
+          {
+            id: 'template-grouping-grid-copy',
+            type: 'Label',
+            props: {
+              text: 'Use GridBox when each child should occupy a predictable column. This is useful for dashboards, comparisons, and side by side examples.',
+              variant: 'body1',
+            },
+          },
+          {
+            id: 'template-grouping-grid-inner',
+            type: 'GridBox',
+            props: { columns: 3, spacing: 2, responsive: true },
+            children: [
+              {
+                id: 'template-grouping-grid-card-one',
+                type: 'LongText',
+                props: {
+                  __blockType: 'LongText',
+                  title: 'Column 1',
+                  text: 'A note can sit in one grid column.',
+                  callout: true,
+                },
+              },
+              {
+                id: 'template-grouping-grid-card-two',
+                type: 'ListBlock',
+                props: {
+                  __blockType: 'ListBlock',
+                  title: 'Column 2',
+                  items: 'Point A\nPoint B\nPoint C',
+                  ordered: false,
+                  interactiveChecklist: false,
+                },
+              },
+              {
+                id: 'template-grouping-grid-card-three',
+                type: 'FieldSet',
+                props: {
+                  legend: 'Column 3',
+                  padding: 1.5,
+                  borderRadius: 8,
+                },
+                children: [
+                  {
+                    id: 'template-grouping-grid-card-three-label',
+                    type: 'Label',
+                    props: {
+                      text: 'Nested groups are useful when a grid item needs its own title.',
+                      variant: 'body2',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'template-grouping-summary',
+        type: 'ListBlock',
+        props: {
+          __blockType: 'ListBlock',
+          title: 'Rule of thumb',
+          items:
+            'FieldSet: name and contain a topic\nFlexBox: align a small row or column\nGridBox: create repeatable columns\nNested groups: combine these patterns for real dashboards',
+          ordered: false,
+          interactiveChecklist: false,
+        },
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ['tutorial', 'grouping', 'layout', 'fieldset', 'flex', 'grid'],
   },
   {
     id: 'template-knowledge-tutorial',
@@ -1427,8 +1928,6 @@ export const WIDGET_TEMPLATES: CustomWidget[] = [
               chartLabelSource: 'static',
               chartLabel: 'Input value',
               chartValueSource: 'firstInput',
-              showToast: true,
-              toastSeverity: 'success',
             },
           },
           {

@@ -43,10 +43,13 @@ test.describe('User permission tests', () => {
     // Dismiss any dialogs before interacting
     await dismissActiveDialog(page)
 
-    // The Create Widget button should not be visible for viewers either
+    // Viewers can see the action, but cannot use it.
     await expect(
       page.getByRole('button', { name: 'Create Widget' }),
-    ).not.toBeVisible()
+    ).toBeDisabled()
+    await expect(
+      page.getByRole('button', { name: 'Create Dashboard' }),
+    ).toBeDisabled()
 
     // Wait before taking screenshot
     await page.waitForTimeout(1500)

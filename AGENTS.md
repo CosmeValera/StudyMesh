@@ -6,6 +6,28 @@ AquaMesh is an npm/Turborepo monorepo. Application code lives in `apps/`: `apps/
 
 Within each app, source files are in `src/`, public assets are in `public/`, and build output goes to `dist/`. AquaMesh tests are split into `apps/aquamesh/tests/unit` and `apps/aquamesh/tests/e2e`.
 
+## Product Direction & Core Workflows
+
+AquaMesh is evolving from a dashboard builder into a student knowledge wiki centered on the Create Study Pack feature. Study Packs should let students quickly turn notes, references, learning materials, and related data into useful widgets and reusable views without having to manually design every dashboard and widget first.
+
+Treat Create Study Pack as the primary workflow for most student users:
+
+- Create a Study Pack from student materials or a learning goal.
+- Generate or assemble the widgets needed for that Study Pack quickly.
+- Open the resulting Study Pack or dashboard in the main workspace for study, editing, and reuse.
+
+Manual dashboard and widget creation still exists, but it is now the advanced workflow. Keep those actions available for users who want precise control, but avoid making students rely on separate "create dashboard" and "create widget" steps before they can start studying.
+
+A planned future capability is allowing users to provide their own API key to improve LLM-generated Study Pack widgets. This should enable richer generated learning materials such as custom exercises, quizzes, flashcards, and related practice content, including useful study aids that were not explicitly mentioned in the raw notes.
+
+Keep the main AquaMesh experience clear about the difference between:
+
+- Fast path: Create Study Pack.
+- Advanced path: manually create a widget or dashboard.
+- Workspace path: open an existing Study Pack or dashboard in the main workspace.
+
+Creation flows can remain modal-driven when they are setup tasks. Opening an existing Study Pack or dashboard should take the user into the main workspace rather than sharing the same modal flow.
+
 ## Build, Test, and Development Commands
 
 Run commands from the repository root unless noted:

@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
-import { ServiceType } from '../provider/MifProvider';
-import { fetchGetAllAquamesh } from './fetchAllAquamesh';
+import { useState, useEffect } from "react";
+import { ServiceType } from "../provider/MifProvider";
+import { fetchGetAllAquamesh } from "./fetchAllAquamesh";
 
-export function useFetch(aquamesh: string, server: string, serviceType: ServiceType) {
+export function useFetch(
+  aquamesh: string,
+  server: string,
+  serviceType: ServiceType,
+) {
   const [data, setData] = useState<any>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -10,7 +14,7 @@ export function useFetch(aquamesh: string, server: string, serviceType: ServiceT
   useEffect(() => {
     const method = async () => {
       setLoading(true);
-      
+
       try {
         const fetchedData = await fetchGetAllAquamesh([aquamesh]);
         setData(fetchedData[0]);
@@ -20,7 +24,7 @@ export function useFetch(aquamesh: string, server: string, serviceType: ServiceT
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     method();
   }, [aquamesh]);

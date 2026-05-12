@@ -20,6 +20,8 @@ import FlexBoxEditor from '../editors/FlexBoxEditor'
 import GridBoxEditor from '../editors/GridBoxEditor'
 import FieldSetEditor from '../editors/FieldSetEditor'
 import KnowledgeBlockEditor from '../editors/KnowledgeBlockEditor'
+import StudyBlockEditor from '../editors/StudyBlockEditor'
+import { isStudyBlockType } from '../preview/StudyBlockView'
 
 const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   open,
@@ -153,6 +155,16 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   }
 
   const renderPropsEdit = () => {
+    if (isStudyBlockType(component.type)) {
+      return (
+        <StudyBlockEditor
+          blockType={component.type}
+          props={editedProps}
+          onChange={handlePropsChange}
+        />
+      )
+    }
+
     switch (component.type) {
       case 'SwitchEnable':
         // Pass the new handler
@@ -229,6 +241,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
       }
       case 'LongText':
       case 'ListBlock':
+      case 'TableBlock':
       case 'ImageBlock':
       case 'PdfBlock':
         return (
@@ -245,6 +258,10 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
 
   // Get the title text for the dialog
   const getDialogTitle = () => {
+    if (isStudyBlockType(component.type)) {
+      return `Edit ${component.type.replace('Block', '')}`
+    }
+
     switch (component.type) {
       case 'SwitchEnable':
         return 'Edit Switch'
@@ -266,6 +283,8 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
         return 'Edit Long Text'
       case 'ListBlock':
         return 'Edit List'
+      case 'TableBlock':
+        return 'Edit Table'
       case 'ImageBlock':
         return 'Edit Image'
       case 'PdfBlock':
@@ -295,7 +314,12 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
         <Button onClick={onClose} variant="outlined">
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="contained" color="primary">
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          color="primary"
+          data-onboarding-id="component-dialog-save"
+        >
           Save
         </Button>
       </DialogActions>

@@ -35,7 +35,9 @@ export interface DynamicMicrofrontendProps {
 
 const DynamicMicrofrontend: React.FC<DynamicMicrofrontendProps> = (props) => {
   const [remote, setRemote] = useState<Item>()
-  const [widgetData, setWidgetData] = useState<{ components?: ComponentData[] }>({})
+  const [widgetData, setWidgetData] = useState<{
+    components?: ComponentData[]
+  }>({})
 
   const { topNavBarWidgets } = useTopNavBarWidgets()
 
@@ -44,17 +46,22 @@ const DynamicMicrofrontend: React.FC<DynamicMicrofrontendProps> = (props) => {
 
   useEffect(() => {
     // Check if it's a local component first
-    if (props.component === 'WidgetEditor' || props.component === 'CustomWidget') {
+    if (
+      props.component === 'WidgetEditor' ||
+      props.component === 'CustomWidget'
+    ) {
       return
     }
-    
+
     // SET REMOTE from widgets.json
-    const topNavBarWidget = topNavBarWidgets.find(topNavBarWidget =>
-      topNavBarWidget.items.some(item => item.name === props.name)
+    const topNavBarWidget = topNavBarWidgets.find((topNavBarWidget) =>
+      topNavBarWidget.items.some((item) => item.name === props.name),
     )
 
     if (topNavBarWidget) {
-      const widgetItem: Item | undefined = topNavBarWidget.items.find(item => item.name === props.name)
+      const widgetItem: Item | undefined = topNavBarWidget.items.find(
+        (item) => item.name === props.name,
+      )
       if (widgetItem) {
         setRemote(widgetItem)
       }
@@ -64,19 +71,22 @@ const DynamicMicrofrontend: React.FC<DynamicMicrofrontendProps> = (props) => {
   // Load widget data from storage when needed
   useEffect(() => {
     if (props.component === 'CustomWidget') {
-      
       // Verify the widget exists in storage
       if (props.customProps && 'widgetId' in props.customProps) {
         const widgetId = props.customProps.widgetId as string
         const widget = WidgetStorage.getWidgetById(widgetId)
-        
-        if (widget && Array.isArray(widget.components) && widget.components.length > 0) {
+
+        if (
+          widget &&
+          Array.isArray(widget.components) &&
+          widget.components.length > 0
+        ) {
           setWidgetData({
-            components: widget.components
+            components: widget.components,
           })
         } else if (props.customProps && 'components' in props.customProps) {
           setWidgetData({
-            components: props.customProps.components as ComponentData[]
+            components: props.customProps.components as ComponentData[],
           })
         }
       }
@@ -87,32 +97,38 @@ const DynamicMicrofrontend: React.FC<DynamicMicrofrontendProps> = (props) => {
   if (props.component === 'WidgetEditor') {
     return <WidgetEditor />
   }
-  
+
   if (props.component === 'CustomWidget') {
     // Create a merged props object with both the original customProps and our loaded components
     const customWidgetProps: CustomWidgetProps = {
       ...(props.customProps as CustomWidgetProps),
-      ...(widgetData.components && { components: widgetData.components })
+      ...(widgetData.components && { components: widgetData.components }),
     }
-    
-    
-    return <CustomWidget 
-      widgetId={customWidgetProps.widgetId} 
-      components={customWidgetProps.components}
-      customProps={props.customProps as { widgetId?: string, components?: ComponentData[] }}
-      name={props.name}
-    />
+
+    return (
+      <CustomWidget
+        widgetId={customWidgetProps.widgetId}
+        components={customWidgetProps.components}
+        customProps={
+          props.customProps as {
+            widgetId?: string
+            components?: ComponentData[]
+          }
+        }
+        name={props.name}
+      />
+    )
   }
 
   return (
     <>
       {remote && (
-        <ModuleLoader 
-          url={remote.url} 
-          {...props} 
-          {...remote.customProps} 
-          changeWidgetData={changeWidgetData} 
-          getCurrentView={getCurrentDashboard} 
+        <ModuleLoader
+          url={remote.url}
+          {...props}
+          {...remote.customProps}
+          changeWidgetData={changeWidgetData}
+          getCurrentView={getCurrentDashboard}
           component={remote.component}
         />
       )}
