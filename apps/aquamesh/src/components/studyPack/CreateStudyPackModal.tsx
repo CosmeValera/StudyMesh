@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -44,6 +45,7 @@ import {
 type ReviewType = StudyObjectKind | 'flashcard' | 'ignore'
 type SourceInputType = 'text' | 'image'
 type StudyPackCreationMode = 'basic' | 'ai'
+type GenerationAmount = 'few' | 'medium' | 'many'
 
 interface ReviewItem {
   object: StudyObject
@@ -71,7 +73,7 @@ const sourceOptions: Array<{
   label: string
   value: SourceInputType
 }> = [
-  { label: 'Text', value: 'text' },
+  { label: 'Text notes / files', value: 'text' },
   { label: 'Image', value: 'image' },
 ]
 
@@ -79,8 +81,27 @@ const creationModeOptions: Array<{
   label: string
   value: StudyPackCreationMode
 }> = [
-  { label: 'Basic', value: 'basic' },
   { label: 'AI', value: 'ai' },
+  { label: 'Basic fallback', value: 'basic' },
+]
+
+const generationTargetOptions = [
+  { key: 'summaries', label: 'Summaries' },
+  { key: 'definitions', label: 'Definitions' },
+  { key: 'flashcards', label: 'Flashcards' },
+  { key: 'quizzes', label: 'Quizzes' },
+  { key: 'exercises', label: 'Exercises' },
+  { key: 'pages', label: 'Study pages' },
+]
+
+const generationAmountOptions: Array<{
+  label: string
+  value: GenerationAmount
+  helper: string
+}> = [
+  { label: 'Few', value: 'few', helper: '4-7 strong items' },
+  { label: 'Medium', value: 'medium', helper: '8-14 balanced items' },
+  { label: 'Many', value: 'many', helper: '14-24 useful items' },
 ]
 
 const supportedImageExtensions = [
@@ -385,8 +406,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCreatePack,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
-  const [creationMode, setCreationMode] =
-    useState<StudyPackCreationMode>('basic')
+  const [creationMode, setCreationMode] = useState<StudyPackCreationMode>('ai')
   const [sourceInputType, setSourceInputType] =
     useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
@@ -407,6 +427,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [includeSourceChart, setIncludeSourceChart] = useState(true)
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('orchestrator')
+  const [generationTargets, setGenerationTargets] = useState<string[]>([
+    'summaries',
+    'definitions',
+    'flashcards',
+    'quizzes',
+    'exercises',
+  ])
+  const [generationAmount, setGenerationAmount] =
+    useState<GenerationAmount>('medium')
   const [error, setError] = useState('')
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
@@ -425,7 +454,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
   const reset = () => {
     setStep('source')
-    setCreationMode('basic')
+    setCreationMode('ai')
     setSourceInputType('text')
     setSourceText('')
     setSourceFormat('text')
@@ -443,6 +472,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setIncludeSourceWidget(true)
     setIncludeSourceChart(true)
     setLayoutMode('orchestrator')
+    setGenerationTargets([
+      'summaries',
+      'definitions',
+      'flashcards',
+      'quizzes',
+      'exercises',
+    ])
+    setGenerationAmount('medium')
     setError('')
   }
 
@@ -502,20 +539,20 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const credentials = resolveStudyPackAiCredentials()
     if (!credentials.apiToken) {
       setError(
-        'Add a Gemini API key in Application Settings before using AI mode.',
+        'AI mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
       )
       return
     }
 
     setIsGeneratingAi(true)
-    setOcrStatus('Generating study widgets with AI')
+    setOcrStatus('Generating study materials with AI')
     setAiProgressLabel('Connecting to Gemini')
     setError('')
 
     try {
       window.setTimeout(() => {
         setAiProgressLabel((current) =>
-          current ? 'Reading notes and planning widgets' : current,
+          current ? 'Reading notes and planning study sections' : current,
         )
       }, 700)
       window.setTimeout(() => {
@@ -529,6 +566,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         title: packTitle.trim() || 'Study Pack',
         rawNotes: sourceText,
         packId: getPackId(packTitle),
+        generationTargets,
+        generationAmount,
       })
       const nextTitle = draft.title || packTitle
       setAiProgressLabel('Preparing review screen')
@@ -545,7 +584,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setError(
         draft.warnings[0] ||
           (reviewableItems.length === 0
-            ? 'AI did not create any reviewable knowledge widgets from these notes.'
+            ? 'AI did not create any reviewable study materials from these notes.'
             : ''),
       )
       setStep('review')
@@ -553,7 +592,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setError(
         error instanceof Error
           ? error.message
-          : 'Could not generate study widgets with AI.',
+          : 'Could not generate study materials with AI.',
       )
     } finally {
       setIsGeneratingAi(false)
@@ -571,7 +610,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const credentials = resolveStudyPackAiCredentials()
     if (creationMode === 'ai' && !credentials.apiToken) {
       setError(
-        'Add a Gemini API key in Application Settings before using AI mode.',
+        'AI mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
       )
       return
     }
@@ -654,22 +693,51 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = event.target.files?.[0]
-    if (!file) {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) {
       return
     }
 
-    const extension = file.name.split('.').pop()?.toLowerCase()
-    if (!['md', 'txt', 'csv'].includes(extension || '')) {
-      setError('Use .md, .txt, or .csv files.')
+    const unsupportedFile = files.find((file) => {
+      const extension = file.name.split('.').pop()?.toLowerCase()
+      return !['md', 'txt', 'csv'].includes(extension || '')
+    })
+    if (unsupportedFile) {
+      setError(
+        unsupportedFile.name.toLowerCase().endsWith('.pdf')
+          ? 'PDF upload needs a parser before it can be read here. Export the PDF text, paste it, or add the PDF link in your notes for now.'
+          : 'Use .md, .txt, or .csv files.',
+      )
+      event.target.value = ''
       return
     }
 
-    const text = await file.text()
+    const fileTexts = await Promise.all(
+      files.map(async (file) => ({
+        name: file.name,
+        text: await file.text(),
+      })),
+    )
+    const text = fileTexts
+      .map(({ name, text }) => `# ${getFileTitle({ name } as File)}\n\n${text}`)
+      .join('\n\n---\n\n')
     setSourceText(text)
-    setPackTitle(file.name.replace(/\.[^.]+$/, '') || 'Study Pack')
+    setPackTitle(
+      files.length === 1
+        ? getFileTitle(files[0])
+        : `${getFileTitle(files[0])} Study Pack`,
+    )
     setSourceFormat('text')
     setError('')
+    event.target.value = ''
+  }
+
+  const toggleGenerationTarget = (target: string) => {
+    setGenerationTargets((current) =>
+      current.includes(target)
+        ? current.filter((item) => item !== target)
+        : [...current, target],
+    )
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -783,7 +851,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
     if (!includeSourceWidget && groups.length === 0) {
       setError(
-        'Keep the source widget or add at least one generated knowledge widget.',
+        'Keep the source notes or add at least one generated study section.',
       )
       return
     }
@@ -837,10 +905,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             <AutoStoriesIcon color="primary" />
             <Box>
               <Typography variant="h6" fontWeight={800}>
-                Create study pack
+                Create Study Pack
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Paste notes, review AquaMesh guesses, then create a dashboard.
+                Upload messy notes and turn them into an interactive study
+                workspace.
               </Typography>
             </Box>
           </Stack>
@@ -902,11 +971,76 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 ))}
               </TextField>
             </Stack>
-            {creationMode === 'ai' && (
-              <Alert severity="info" icon={<AutoAwesomeIcon />}>
-                AI mode uses your Gemini API key to read difficult images and
-                create grounded flashcards, quizzes, definitions, and other
-                widgets from the notes.
+            {creationMode === 'ai' ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'primary.main',
+                  bgcolor: 'background.paper',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <AutoAwesomeIcon color="primary" fontSize="small" />
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800}>
+                        AI mode
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Default path for Study Packs. AquaMesh can read notes
+                        and generate summaries, flashcards, quizzes, and
+                        practice prompts from grounded source material.
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    {generationTargetOptions.map((option) => (
+                      <FormControlLabel
+                        key={option.key}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={generationTargets.includes(option.key)}
+                            onChange={() => toggleGenerationTarget(option.key)}
+                          />
+                        }
+                        label={option.label}
+                        sx={{
+                          mr: 0.5,
+                          '& .MuiFormControlLabel-label': {
+                            fontSize: '0.875rem',
+                          },
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                  <TextField
+                    select
+                    label="Approximate amount"
+                    value={generationAmount}
+                    onChange={(event) =>
+                      setGenerationAmount(
+                        event.target.value as GenerationAmount,
+                      )
+                    }
+                    size="small"
+                    sx={{ maxWidth: 320 }}
+                  >
+                    {generationAmountOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label} - {option.helper}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              </Paper>
+            ) : (
+              <Alert severity="info">
+                Basic mode is a fallback for offline or simple extraction. It
+                creates fewer, high-confidence study blocks from explicit note
+                patterns.
               </Alert>
             )}
             {sourceInputType === 'text' ? (
@@ -926,14 +1060,19 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   startIcon={<UploadFileIcon />}
                   sx={{ alignSelf: 'flex-start' }}
                 >
-                  Upload .md, .txt, or .csv
+                  Upload notes
                   <input
                     hidden
                     type="file"
-                    accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
+                    multiple
+                    accept=".md,.txt,.csv,.pdf,text/markdown,text/plain,text/csv,application/pdf"
                     onChange={handleFileUpload}
                   />
                 </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Supports multiple .md, .txt, or .csv files. PDF parsing is a
+                  planned upgrade; paste exported PDF text for now.
+                </Typography>
               </>
             ) : (
               <>
@@ -1035,7 +1174,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   multiline
                   minRows={10}
                   disabled={isExtractingImage}
-                  placeholder="Extracted notes will appear here for review before AquaMesh creates widgets."
+                  placeholder="Extracted notes will appear here for review before AquaMesh creates study materials."
                   helperText={
                     imageTextExtracted
                       ? 'Review and edit the extracted notes before continuing.'
@@ -1064,7 +1203,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     AquaMesh is sending your notes to Gemini, waiting for a
                     structured response, then converting it into editable study
-                    widgets.
+                    materials.
                   </Typography>
                   <LinearProgress />
                 </Stack>
@@ -1108,7 +1247,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       flexWrap="wrap"
                     >
                       <Typography variant="subtitle2" fontWeight={800}>
-                        Source notes widget
+                        Source notes
                       </Typography>
                       <Chip label="Special" color="primary" size="small" />
                       <Chip label="Locked" size="small" />
@@ -1127,7 +1266,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       )}
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      First widget stays pinned to the left when source split
+                      Source notes stay pinned to the left when source split
                       layout is selected.
                     </Typography>
                     <Stack spacing={0.5}>
@@ -1148,8 +1287,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                         }
                         label={
                           sourceFormat === 'csv'
-                            ? 'Create source table widget'
-                            : 'Create source Markdown widget'
+                            ? 'Create source table'
+                            : 'Create source notes page'
                         }
                       />
                       <FormControlLabel
@@ -1170,7 +1309,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 {widgetGroups.length > 0 && (
                   <TextField
                     select
-                    label="Dashboard layout"
+                    label="Workspace layout"
                     value={layoutMode}
                     onChange={(event) =>
                       setLayoutMode(
@@ -1184,7 +1323,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       value="orchestrator"
                       disabled={!includeSourceWidget}
                     >
-                      Source left, widgets right
+                      Source left, study materials right
                     </MenuItem>
                     <MenuItem value="tabs">Single tabset</MenuItem>
                   </TextField>
@@ -1202,7 +1341,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   </>
                 ) : (
                   <Typography variant="subtitle2" color="text.secondary">
-                    AquaMesh was not able to extract any knowledge widgets from
+                    AquaMesh was not able to extract any study materials from
                     these notes.
                   </Typography>
                 )}
@@ -1215,10 +1354,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       gap={1}
                     >
                       <Typography variant="subtitle2">
-                        Generated widgets
+                        Generated study sections
                       </Typography>
                       <Button size="small" onClick={addWidgetGroup}>
-                        Add widget
+                        Add section
                       </Button>
                     </Stack>
                     {widgetGroups.map((group) => (
@@ -1295,7 +1434,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                           {widgetGroups.length > 0 && (
                             <TextField
                               select
-                              label="Widget"
+                              label="Study section"
                               value={getItemWidgetGroupId(item.object.id)}
                               onChange={(event) =>
                                 moveItemToWidgetGroup(

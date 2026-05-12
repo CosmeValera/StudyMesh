@@ -31,6 +31,8 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
 import DashboardIcon from '@mui/icons-material/Dashboard'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import FolderIcon from '@mui/icons-material/Folder'
 import SearchIcon from '@mui/icons-material/Search'
 import SortIcon from '@mui/icons-material/Sort'
@@ -38,6 +40,9 @@ import CloseIcon from '@mui/icons-material/Close'
 import EditIcon from '@mui/icons-material/Edit'
 import PublicIcon from '@mui/icons-material/Public'
 import LockIcon from '@mui/icons-material/Lock'
+import ReplayIcon from '@mui/icons-material/Replay'
+import QuizIcon from '@mui/icons-material/Quiz'
+import SchoolIcon from '@mui/icons-material/School'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import { DefaultDashboard } from './fixture'
@@ -72,6 +77,7 @@ interface SavedDashboardsDialogProps {
   initialSearchKey?: number
   mode?: 'workspace' | 'builder'
   onOpenInBuilder?: (dashboard: SavedDashboard) => void
+  onOpenInWorkspace?: (dashboard: SavedDashboard) => void
 }
 
 // Add a new interface for the edit dashboard dialog
@@ -101,6 +107,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   initialSearchKey = 0,
   mode = 'workspace',
   onOpenInBuilder,
+  onOpenInWorkspace,
 }) => {
   const openActionLabel =
     mode === 'builder' ? 'Open in Builder' : 'Open in Workspace'
@@ -310,6 +317,12 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       return
     }
 
+    if (onOpenInWorkspace) {
+      onOpenInWorkspace(dashboard)
+      onClose()
+      return
+    }
+
     // Convert saved dashboard to the format needed by DashboardProvider
     const dashboardToOpen: DefaultDashboard = {
       name: dashboard.name,
@@ -444,6 +457,15 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     }, {})
   }, [dashboards])
 
+  const isStudyPackDashboard = (dashboard: SavedDashboard) => {
+    const folderName = normalizeFolderName(dashboard.folder).toLowerCase()
+    return (
+      folderName === 'study packs' ||
+      dashboard.id.startsWith('study-pack-dashboard-') ||
+      Boolean(dashboard.tags?.includes('study-pack'))
+    )
+  }
+
   // Filter dashboards based on search term, folder, public filter, and user role
   const filteredDashboards = useMemo(() => {
     let filtered = roleVisibleDashboards
@@ -474,31 +496,108 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     return filtered
   }, [folderFilter, roleVisibleDashboards, searchTerm, showPublicOnly, isAdmin])
 
-  // Sort filtered dashboards
+  const getDashboardUpdatedAt = (dashboard: SavedDashboard) =>
+    new Date(dashboard.updatedAt).getTime()
+
+  const compareDashboards = (
+    a: SavedDashboard,
+    b: SavedDashboard,
+    option: SortOption,
+  ) => {
+    switch (option) {
+      case 'nameAsc':
+        return a.name.localeCompare(b.name)
+      case 'nameDesc':
+        return b.name.localeCompare(a.name)
+      case 'dateNewest':
+        return getDashboardUpdatedAt(b) - getDashboardUpdatedAt(a)
+      case 'dateOldest':
+        return getDashboardUpdatedAt(a) - getDashboardUpdatedAt(b)
+      case 'mostComponents':
+        return b.componentsCount - a.componentsCount
+      case 'fewestComponents':
+        return a.componentsCount - b.componentsCount
+      default:
+        return 0
+    }
+  }
+
+  // Sort filtered dashboards for counts and empty states.
   const sortedDashboards = useMemo(() => {
     return [...filteredDashboards].sort((a, b) => {
-      switch (sortBy) {
-        case 'nameAsc':
-          return a.name.localeCompare(b.name)
-        case 'nameDesc':
-          return b.name.localeCompare(a.name)
-        case 'dateNewest':
-          return (
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
-        case 'dateOldest':
-          return (
-            new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
-          )
-        case 'mostComponents':
-          return b.componentsCount - a.componentsCount
-        case 'fewestComponents':
-          return a.componentsCount - b.componentsCount
-        default:
-          return 0
-      }
+      const result = compareDashboards(a, b, sortBy)
+      return result || normalizeFolderName(a.folder).localeCompare(
+        normalizeFolderName(b.folder),
+      )
     })
   }, [filteredDashboards, sortBy])
+
+  const groupedDashboards = useMemo(() => {
+    const groups = new Map<string, SavedDashboard[]>()
+
+    filteredDashboards.forEach((dashboard) => {
+      const folderName = normalizeFolderName(dashboard.folder)
+      groups.set(folderName, [...(groups.get(folderName) || []), dashboard])
+    })
+
+    return Array.from(groups.entries())
+      .map(([folderName, dashboards]) => {
+        const sortedFolderDashboards = [...dashboards].sort((a, b) => {
+          const result = compareDashboards(a, b, sortBy)
+          return result || a.name.localeCompare(b.name)
+        })
+
+        const folderUpdatedTimes = dashboards.map(getDashboardUpdatedAt)
+        const folderComponentsCount = dashboards.reduce(
+          (sum, dashboard) => sum + dashboard.componentsCount,
+          0,
+        )
+
+        return {
+          folderName,
+          dashboards: sortedFolderDashboards,
+          folderColor: normalizeFolderColor(dashboards[0]?.folderColor),
+          newestUpdatedAt: Math.max(...folderUpdatedTimes),
+          oldestUpdatedAt: Math.min(...folderUpdatedTimes),
+          componentsCount: folderComponentsCount,
+        }
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'nameDesc':
+            return b.folderName.localeCompare(a.folderName)
+          case 'dateNewest':
+            return b.newestUpdatedAt - a.newestUpdatedAt
+          case 'dateOldest':
+            return a.oldestUpdatedAt - b.oldestUpdatedAt
+          case 'mostComponents':
+            return b.componentsCount - a.componentsCount
+          case 'fewestComponents':
+            return a.componentsCount - b.componentsCount
+          case 'nameAsc':
+          default:
+            return a.folderName.localeCompare(b.folderName)
+        }
+      })
+  }, [filteredDashboards, sortBy])
+
+  const handleStudyAction = (
+    action: 'generate-exercises' | 'practice-again' | 'create-quiz',
+    dashboard: SavedDashboard,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation()
+
+    window.dispatchEvent(
+      new CustomEvent('aquamesh-study-pack-action-requested', {
+        detail: {
+          action,
+          dashboardId: dashboard.id,
+          dashboardName: dashboard.name,
+        },
+      }),
+    )
+  }
 
   // Function to handle editing a dashboard
   const handleEditDashboard = (
@@ -593,17 +692,22 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             justifyContent="space-between"
           >
             <Box display="flex" alignItems="center">
-              <DashboardIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-              <Typography
-                variant="h5"
-                component="div"
-                fontWeight="bold"
-                sx={{
-                  color: 'text.primary',
-                }}
-              >
-                Saved Dashboards
-              </Typography>
+              <AutoStoriesIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+              <Box>
+                <Typography
+                  variant="h5"
+                  component="div"
+                  fontWeight="bold"
+                  sx={{
+                    color: 'text.primary',
+                  }}
+                >
+                  Library
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Study Packs, subjects, and advanced workspaces.
+                </Typography>
+              </Box>
             </Box>
             <Box display="flex" alignItems="center">
               <IconButton
@@ -630,7 +734,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="Search dashboards..."
+                placeholder="Search Study Packs..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 variant="outlined"
@@ -705,7 +809,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                     },
                   }}
                 >
-                  <MenuItem value="">All Folders</MenuItem>
+                  <MenuItem value="">All Subjects</MenuItem>
                   {folderOptions.map((folderName) => (
                     <MenuItem key={folderName} value={folderName}>
                       {folderName}
@@ -747,10 +851,8 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                   <MenuItem value="nameDesc">Name (Z-A)</MenuItem>
                   <MenuItem value="dateNewest">Date (Newest First)</MenuItem>
                   <MenuItem value="dateOldest">Date (Oldest First)</MenuItem>
-                  <MenuItem value="mostComponents">Most Components</MenuItem>
-                  <MenuItem value="fewestComponents">
-                    Fewest Components
-                  </MenuItem>
+                  <MenuItem value="mostComponents">Most Blocks</MenuItem>
+                  <MenuItem value="fewestComponents">Fewest Blocks</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -788,11 +890,11 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               {sortedDashboards.length === 0
-                ? 'No dashboards found'
-                : `Showing ${sortedDashboards.length} dashboard${sortedDashboards.length !== 1 ? 's' : ''}`}
+                ? 'No Study Packs found'
+                : `Showing ${sortedDashboards.length} item${sortedDashboards.length !== 1 ? 's' : ''}`}
               {searchTerm && ` matching "${searchTerm}"`}
               {folderFilter && ` in "${folderFilter}"`}
-              {!isAdmin && ' (only showing public dashboards)'}
+              {!isAdmin && ' (only showing public library items)'}
             </Typography>
           </Box>
 
@@ -818,370 +920,539 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
               />
               <Typography color="text.primary" variant="h6" gutterBottom>
                 {searchTerm
-                  ? 'No Matching Dashboards'
+                  ? 'No Matching Study Packs'
                   : folderFilter
-                    ? 'No Dashboards In Folder'
-                    : 'No Dashboards Available'}
+                    ? 'No Study Packs In Subject'
+                    : 'No Study Packs Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
                   : folderFilter
-                    ? 'Select a different folder or clear the folder filter'
+                    ? 'Select a different subject or clear the filter'
                     : !isAdmin
-                      ? 'No public dashboards are currently available'
-                      : 'No dashboards have been saved yet'}
+                      ? 'No public Study Packs are currently available'
+                      : 'Create a Study Pack from notes to start your library'}
               </Typography>
             </Paper>
           ) : (
-            <List>
-              {sortedDashboards.map((dashboard, index) => (
-                <Fade
-                  key={dashboard.id}
-                  in={true}
-                  timeout={300}
-                  style={{ transitionDelay: `${index * 50}ms` }}
-                >
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      mb: { xs: 1, sm: 2 },
-                      width: '100%',
-                      overflow: 'hidden',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 2,
-                      transition: 'all 0.2s ease-in-out',
-                      bgcolor: 'background.paper',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
-                        borderColor: 'primary.main',
-                      },
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => handleOpenDashboard(dashboard)}
-                    aria-label={`${openActionLabel} ${dashboard.name}`}
-                  >
+            <List sx={{ p: 0 }}>
+              {groupedDashboards.map(
+                ({ folderName, dashboards, folderColor }) => (
+                  <Box key={folderName} sx={{ mb: 3 }}>
                     <Box
                       sx={{
-                        p: { xs: 1, sm: 2 },
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: { xs: 'center', sm: 'flex-start' },
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 1.25,
+                        color: 'text.primary',
                       }}
                     >
-                      <Box
+                      <SchoolIcon
                         sx={{
-                          width: '100%',
-                          display: 'flex',
-                          justifyContent: { xs: 'center', sm: 'space-between' },
-                          alignItems: { xs: 'center', sm: 'flex-start' },
-                          position: { xs: 'relative', sm: 'static' },
+                          color: folderColor,
+                          fontSize: { xs: '1.35rem', sm: '1.55rem' },
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.18))',
                         }}
+                      />
+                      <Typography
+                        variant="h6"
+                        fontWeight={800}
+                        sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}
                       >
-                        <Box
+                        {folderName}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={`${dashboards.length} study pack${
+                          dashboards.length === 1 ? '' : 's'
+                        }`}
+                        sx={{
+                          height: 24,
+                          bgcolor: `${folderColor}22`,
+                          color: folderColor,
+                          fontWeight: 700,
+                        }}
+                      />
+                    </Box>
+                    {dashboards.map((dashboard, index) => (
+                      <Fade
+                        key={dashboard.id}
+                        in={true}
+                        timeout={300}
+                        style={{ transitionDelay: `${index * 40}ms` }}
+                      >
+                        <Paper
+                          elevation={0}
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            flexGrow: { xs: 0, sm: 1 },
-                            flexDirection: { xs: 'column', sm: 'row' },
+                            mb: { xs: 1, sm: 2 },
+                            width: '100%',
+                            overflow: 'hidden',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2,
+                            transition: 'all 0.2s ease-in-out',
+                            bgcolor: 'background.paper',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+                              borderColor: 'primary.main',
+                            },
+                            cursor: 'pointer',
                           }}
+                          onClick={() => handleOpenDashboard(dashboard)}
+                          aria-label={`${openActionLabel} ${dashboard.name}`}
                         >
                           <Box
                             sx={{
-                              bgcolor: 'rgba(0, 124, 102, 0.1)',
-                              color: 'primary.dark',
+                              p: { xs: 1, sm: 2 },
                               display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '50%',
-                              width: { xs: 32, sm: 40 },
-                              height: { xs: 32, sm: 40 },
-                              mr: 2,
+                              flexDirection: 'column',
+                              alignItems: { xs: 'center', sm: 'flex-start' },
                             }}
                           >
-                            <DashboardIcon
-                              fontSize={isXs ? 'small' : 'medium'}
-                            />
-                          </Box>
-                          <Box>
-                            <Typography
-                              variant="subtitle1"
-                              fontWeight="bold"
-                              color="text.primary"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              {dashboard.name}
-                            </Typography>
                             <Box
                               sx={{
+                                width: '100%',
                                 display: 'flex',
-                                flexDirection: { xs: 'column', sm: 'row' },
-                                alignItems: { xs: 'flex-start', sm: 'center' },
-                                mt: 0.5,
+                                justifyContent: {
+                                  xs: 'center',
+                                  sm: 'space-between',
+                                },
+                                alignItems: { xs: 'center', sm: 'flex-start' },
+                                position: { xs: 'relative', sm: 'static' },
                               }}
                             >
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{
-                                  display: { xs: 'none', sm: 'block' },
-                                  fontSize: '0.8rem',
-                                }}
-                              >
-                                Last modified:{' '}
-                                {new Date(
-                                  dashboard.updatedAt,
-                                ).toLocaleDateString()}{' '}
-                                at{' '}
-                                {new Date(
-                                  dashboard.updatedAt,
-                                ).toLocaleTimeString()}
-                              </Typography>
                               <Box
                                 sx={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  mt: { xs: 0.5, sm: 0 },
-                                  ml: { xs: 0, sm: 2 },
+                                  flexGrow: { xs: 0, sm: 1 },
+                                  flexDirection: { xs: 'column', sm: 'row' },
                                 }}
                               >
-                                <Chip
-                                  size="small"
-                                  label={`${dashboard.componentsCount} components`}
+                                <Box
                                   sx={{
-                                    height: 20,
-                                    fontSize: '0.7rem',
                                     bgcolor: 'rgba(0, 124, 102, 0.1)',
                                     color: 'primary.dark',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    width: { xs: 32, sm: 40 },
+                                    height: { xs: 32, sm: 40 },
+                                    mr: 2,
                                   }}
-                                />
-                                <Chip
-                                  size="small"
-                                  label={dashboard.folder || 'Default'}
-                                  sx={{
-                                    ml: 1,
-                                    height: 20,
-                                    fontSize: '0.7rem',
-                                    bgcolor: `${normalizeFolderColor(dashboard.folderColor)}22`,
-                                    color: normalizeFolderColor(
-                                      dashboard.folderColor,
-                                    ),
-                                  }}
-                                />
-                                {dashboard.isPublic && (
-                                  <Chip
-                                    size="small"
-                                    label="Public"
-                                    icon={
-                                      <PublicIcon
-                                        style={{ width: 12, height: 12 }}
-                                      />
-                                    }
+                                >
+                                  {isStudyPackDashboard(dashboard) ? (
+                                    <AutoStoriesIcon
+                                      fontSize={isXs ? 'small' : 'medium'}
+                                    />
+                                  ) : (
+                                    <DashboardIcon
+                                      fontSize={isXs ? 'small' : 'medium'}
+                                    />
+                                  )}
+                                </Box>
+                                <Box>
+                                  <Typography
+                                    variant="subtitle1"
+                                    fontWeight="bold"
+                                    color="text.primary"
                                     sx={{
-                                      ml: 1,
-                                      height: 20,
-                                      fontSize: '0.7rem',
-                                      bgcolor: 'rgba(0, 124, 102, 0.14)',
-                                      color: 'primary.dark',
-                                      '& .MuiChip-icon': {
-                                        color: 'primary.dark',
-                                      },
+                                      fontSize: { xs: '0.9rem', sm: '1rem' },
                                     }}
-                                  />
+                                  >
+                                    {dashboard.name}
+                                  </Typography>
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      flexDirection: {
+                                        xs: 'column',
+                                        sm: 'row',
+                                      },
+                                      alignItems: {
+                                        xs: 'flex-start',
+                                        sm: 'center',
+                                      },
+                                      mt: 0.5,
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{
+                                        display: { xs: 'none', sm: 'block' },
+                                        fontSize: '0.8rem',
+                                      }}
+                                    >
+                                      Last modified:{' '}
+                                      {new Date(
+                                        dashboard.updatedAt,
+                                      ).toLocaleDateString()}{' '}
+                                      at{' '}
+                                      {new Date(
+                                        dashboard.updatedAt,
+                                      ).toLocaleTimeString()}
+                                    </Typography>
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        mt: { xs: 0.5, sm: 0 },
+                                        ml: { xs: 0, sm: 2 },
+                                      }}
+                                    >
+                                      <Chip
+                                        size="small"
+                                        label={`${dashboard.componentsCount} blocks`}
+                                        sx={{
+                                          height: 20,
+                                          fontSize: '0.7rem',
+                                          bgcolor: 'rgba(0, 124, 102, 0.1)',
+                                          color: 'primary.dark',
+                                        }}
+                                      />
+                                      <Chip
+                                        size="small"
+                                        label={dashboard.folder || 'Unsorted'}
+                                        sx={{
+                                          ml: 1,
+                                          height: 20,
+                                          fontSize: '0.7rem',
+                                          bgcolor: `${normalizeFolderColor(dashboard.folderColor)}22`,
+                                          color: normalizeFolderColor(
+                                            dashboard.folderColor,
+                                          ),
+                                        }}
+                                      />
+                                      {dashboard.isPublic && (
+                                        <Chip
+                                          size="small"
+                                          label="Public"
+                                          icon={
+                                            <PublicIcon
+                                              style={{ width: 12, height: 12 }}
+                                            />
+                                          }
+                                          sx={{
+                                            ml: 1,
+                                            height: 20,
+                                            fontSize: '0.7rem',
+                                            bgcolor: 'rgba(0, 124, 102, 0.14)',
+                                            color: 'primary.dark',
+                                            '& .MuiChip-icon': {
+                                              color: 'primary.dark',
+                                            },
+                                          }}
+                                        />
+                                      )}
+                                    </Box>
+                                  </Box>
+                                  {dashboard.tags &&
+                                    dashboard.tags.length > 0 && (
+                                      <Box
+                                        sx={{
+                                          display: { xs: 'none', sm: 'flex' },
+                                          flexWrap: 'wrap',
+                                          gap: 0.5,
+                                          mt: 1,
+                                        }}
+                                      >
+                                        {dashboard.tags.map((tag, tagIndex) => (
+                                          <Chip
+                                            key={tagIndex}
+                                            label={tag}
+                                            size="small"
+                                            sx={{
+                                              height: 18,
+                                              fontSize: '0.65rem',
+                                              bgcolor: 'action.hover',
+                                              color: 'text.secondary',
+                                            }}
+                                          />
+                                        ))}
+                                      </Box>
+                                    )}
+                                  {isStudyPackDashboard(dashboard) && (
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        gap: 1,
+                                        alignItems: 'center',
+                                        mt: 1,
+                                      }}
+                                    >
+                                      <Chip
+                                        size="small"
+                                        label="Progress ready"
+                                        sx={{
+                                          height: 18,
+                                          fontSize: '0.65rem',
+                                          bgcolor: 'action.hover',
+                                          color: 'text.secondary',
+                                        }}
+                                      />
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        XP, streaks, and mastery can attach here
+                                        after practice data exists.
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                  <Box
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{
+                                      display: 'flex',
+                                      gap: 1,
+                                      flexWrap: 'wrap',
+                                      mt: 1.25,
+                                    }}
+                                  >
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<AutoAwesomeIcon />}
+                                      onClick={(e) =>
+                                        handleStudyAction(
+                                          'generate-exercises',
+                                          dashboard,
+                                          e,
+                                        )
+                                      }
+                                      title="Request new practice exercises from this Study Pack"
+                                      sx={{
+                                        borderColor: 'primary.main',
+                                        color: 'primary.dark',
+                                        bgcolor: 'background.paper',
+                                        textTransform: 'none',
+                                        fontWeight: 800,
+                                      }}
+                                    >
+                                      Generate more exercises
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      startIcon={<ReplayIcon />}
+                                      onClick={(e) =>
+                                        handleStudyAction(
+                                          'practice-again',
+                                          dashboard,
+                                          e,
+                                        )
+                                      }
+                                      title="Open this Study Pack for another practice session"
+                                      sx={{
+                                        color: 'primary.dark',
+                                        textTransform: 'none',
+                                        fontWeight: 800,
+                                      }}
+                                    >
+                                      Practice again
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      startIcon={<QuizIcon />}
+                                      onClick={(e) =>
+                                        handleStudyAction(
+                                          'create-quiz',
+                                          dashboard,
+                                          e,
+                                        )
+                                      }
+                                      title="Request a quiz from this Study Pack section"
+                                      sx={{
+                                        color: 'primary.dark',
+                                        textTransform: 'none',
+                                        fontWeight: 800,
+                                      }}
+                                    >
+                                      Create quiz from section
+                                    </Button>
+                                  </Box>
+                                </Box>
+                              </Box>
+                              <Box
+                                onClick={(e) => e.stopPropagation()}
+                                sx={{
+                                  position: { xs: 'absolute', sm: 'static' },
+                                  top: { xs: '8px', sm: 'auto' },
+                                  right: { xs: '8px', sm: 'auto' },
+                                }}
+                              >
+                                {isAdmin && (
+                                  <>
+                                    {/* xs: overflow menu, sm+: inline icons */}
+                                    <Box
+                                      sx={{
+                                        display: { xs: 'block', sm: 'none' },
+                                      }}
+                                    >
+                                      <IconButton
+                                        size="small"
+                                        sx={{ color: 'text.secondary' }}
+                                        onClick={(e) =>
+                                          handleMenuOpen(dashboard, e)
+                                        }
+                                      >
+                                        <MoreVertIcon fontSize="small" />
+                                      </IconButton>
+                                    </Box>
+                                    <Box
+                                      sx={{
+                                        display: { xs: 'none', sm: 'flex' },
+                                      }}
+                                    >
+                                      <Tooltip title="Edit details">
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) =>
+                                            handleEditDashboard(dashboard, e)
+                                          }
+                                          sx={{
+                                            mr: 1,
+                                            bgcolor: 'rgba(0,150,136,0.1)',
+                                            color: 'primary.dark',
+                                            '&:hover': {
+                                              bgcolor: 'rgba(0,150,136,0.18)',
+                                            },
+                                          }}
+                                        >
+                                          <EditIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip
+                                        title={
+                                          dashboard.isPublic
+                                            ? 'Make Private'
+                                            : 'Make Public'
+                                        }
+                                      >
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) =>
+                                            handleTogglePublic(dashboard.id, e)
+                                          }
+                                          sx={{
+                                            mr: 1,
+                                            bgcolor: dashboard.isPublic
+                                              ? 'rgba(0,124,102,0.14)'
+                                              : 'action.hover',
+                                            color: 'primary.dark',
+                                            '&:hover': {
+                                              bgcolor: dashboard.isPublic
+                                                ? 'rgba(0,124,102,0.2)'
+                                                : 'rgba(0,124,102,0.08)',
+                                            },
+                                          }}
+                                        >
+                                          {dashboard.isPublic ? (
+                                            <LockIcon fontSize="small" />
+                                          ) : (
+                                            <PublicIcon fontSize="small" />
+                                          )}
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Delete from Library">
+                                        <IconButton
+                                          size="small"
+                                          color="error"
+                                          onClick={(e) =>
+                                            handleDeleteDashboard(
+                                              dashboard.id,
+                                              e,
+                                            )
+                                          }
+                                          sx={{
+                                            bgcolor: 'rgba(211,47,47,0.1)',
+                                            '&:hover': {
+                                              bgcolor: 'rgba(211,47,47,0.2)',
+                                            },
+                                          }}
+                                        >
+                                          <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </Box>
+                                    {/* Mobile action menu */}
+                                    <Menu
+                                      anchorEl={menuAnchorEl}
+                                      open={
+                                        Boolean(menuAnchorEl) &&
+                                        menuDashboard?.id === dashboard.id
+                                      }
+                                      onClose={handleMenuClose}
+                                      anchorOrigin={{
+                                        vertical: 'bottom',
+                                        horizontal: 'right',
+                                      }}
+                                      transformOrigin={{
+                                        vertical: 'top',
+                                        horizontal: 'right',
+                                      }}
+                                    >
+                                      <MenuItem
+                                        onClick={(
+                                          e: React.MouseEvent<HTMLElement>,
+                                        ) => {
+                                          handleEditDashboard(dashboard, e)
+                                          handleMenuClose()
+                                        }}
+                                      >
+                                        Edit
+                                      </MenuItem>
+                                      <MenuItem
+                                        onClick={(
+                                          e: React.MouseEvent<HTMLElement>,
+                                        ) => {
+                                          handleTogglePublic(dashboard.id, e)
+                                          handleMenuClose()
+                                        }}
+                                      >
+                                        {dashboard.isPublic
+                                          ? 'Make Private'
+                                          : 'Make Public'}
+                                      </MenuItem>
+                                      <MenuItem
+                                        onClick={(
+                                          e: React.MouseEvent<HTMLElement>,
+                                        ) => {
+                                          handleDeleteDashboard(dashboard.id, e)
+                                          handleMenuClose()
+                                        }}
+                                      >
+                                        Delete
+                                      </MenuItem>
+                                    </Menu>
+                                  </>
                                 )}
                               </Box>
                             </Box>
-                            {dashboard.tags && dashboard.tags.length > 0 && (
-                              <Box
+                            {dashboard.description && (
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
                                 sx={{
-                                  display: { xs: 'none', sm: 'flex' },
-                                  flexWrap: 'wrap',
-                                  gap: 0.5,
-                                  mt: 1,
+                                  mt: { xs: 0.5, sm: 1 },
+                                  pl: { xs: 0, sm: 7 },
+                                  textAlign: { xs: 'center', sm: 'left' },
+                                  fontSize: { xs: '0.7rem', sm: '0.875rem' },
                                 }}
                               >
-                                {dashboard.tags.map((tag, tagIndex) => (
-                                  <Chip
-                                    key={tagIndex}
-                                    label={tag}
-                                    size="small"
-                                    sx={{
-                                      height: 18,
-                                      fontSize: '0.65rem',
-                                      bgcolor: 'action.hover',
-                                      color: 'text.secondary',
-                                    }}
-                                  />
-                                ))}
-                              </Box>
+                                {dashboard.description}
+                              </Typography>
                             )}
                           </Box>
-                        </Box>
-                        <Box
-                          onClick={(e) => e.stopPropagation()}
-                          sx={{
-                            position: { xs: 'absolute', sm: 'static' },
-                            top: { xs: '8px', sm: 'auto' },
-                            right: { xs: '8px', sm: 'auto' },
-                          }}
-                        >
-                          {isAdmin && (
-                            <>
-                              {/* xs: overflow menu, sm+: inline icons */}
-                              <Box
-                                sx={{ display: { xs: 'block', sm: 'none' } }}
-                              >
-                                <IconButton
-                                  size="small"
-                                  sx={{ color: 'text.secondary' }}
-                                  onClick={(e) => handleMenuOpen(dashboard, e)}
-                                >
-                                  <MoreVertIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                              <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
-                                <Tooltip title="Edit Dashboard">
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) =>
-                                      handleEditDashboard(dashboard, e)
-                                    }
-                                    sx={{
-                                      mr: 1,
-                                      bgcolor: 'rgba(0,150,136,0.1)',
-                                      color: 'primary.dark',
-                                      '&:hover': {
-                                        bgcolor: 'rgba(0,150,136,0.18)',
-                                      },
-                                    }}
-                                  >
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip
-                                  title={
-                                    dashboard.isPublic
-                                      ? 'Make Private'
-                                      : 'Make Public'
-                                  }
-                                >
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) =>
-                                      handleTogglePublic(dashboard.id, e)
-                                    }
-                                    sx={{
-                                      mr: 1,
-                                      bgcolor: dashboard.isPublic
-                                        ? 'rgba(0,124,102,0.14)'
-                                        : 'action.hover',
-                                      color: 'primary.dark',
-                                      '&:hover': {
-                                        bgcolor: dashboard.isPublic
-                                          ? 'rgba(0,124,102,0.2)'
-                                          : 'rgba(0,124,102,0.08)',
-                                      },
-                                    }}
-                                  >
-                                    {dashboard.isPublic ? (
-                                      <LockIcon fontSize="small" />
-                                    ) : (
-                                      <PublicIcon fontSize="small" />
-                                    )}
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Delete Dashboard">
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={(e) =>
-                                      handleDeleteDashboard(dashboard.id, e)
-                                    }
-                                    sx={{
-                                      bgcolor: 'rgba(211,47,47,0.1)',
-                                      '&:hover': {
-                                        bgcolor: 'rgba(211,47,47,0.2)',
-                                      },
-                                    }}
-                                  >
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                              {/* Mobile action menu */}
-                              <Menu
-                                anchorEl={menuAnchorEl}
-                                open={
-                                  Boolean(menuAnchorEl) &&
-                                  menuDashboard?.id === dashboard.id
-                                }
-                                onClose={handleMenuClose}
-                                anchorOrigin={{
-                                  vertical: 'bottom',
-                                  horizontal: 'right',
-                                }}
-                                transformOrigin={{
-                                  vertical: 'top',
-                                  horizontal: 'right',
-                                }}
-                              >
-                                <MenuItem
-                                  onClick={(
-                                    e: React.MouseEvent<HTMLElement>,
-                                  ) => {
-                                    handleEditDashboard(dashboard, e)
-                                    handleMenuClose()
-                                  }}
-                                >
-                                  Edit
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={(
-                                    e: React.MouseEvent<HTMLElement>,
-                                  ) => {
-                                    handleTogglePublic(dashboard.id, e)
-                                    handleMenuClose()
-                                  }}
-                                >
-                                  {dashboard.isPublic
-                                    ? 'Make Private'
-                                    : 'Make Public'}
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={(
-                                    e: React.MouseEvent<HTMLElement>,
-                                  ) => {
-                                    handleDeleteDashboard(dashboard.id, e)
-                                    handleMenuClose()
-                                  }}
-                                >
-                                  Delete
-                                </MenuItem>
-                              </Menu>
-                            </>
-                          )}
-                        </Box>
-                      </Box>
-                      {dashboard.description && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            mt: { xs: 0.5, sm: 1 },
-                            pl: { xs: 0, sm: 7 },
-                            textAlign: { xs: 'center', sm: 'left' },
-                            fontSize: { xs: '0.7rem', sm: '0.875rem' },
-                          }}
-                        >
-                          {dashboard.description}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Paper>
-                </Fade>
-              ))}
+                        </Paper>
+                      </Fade>
+                    ))}
+                  </Box>
+                ),
+              )}
             </List>
           )}
         </DialogContent>
@@ -1214,8 +1485,8 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       {/* Delete Confirmation Dialog - Replace with the imported DeleteConfirmationDialog */}
       <DeleteConfirmationDialog
         open={deleteConfirmOpen}
-        title="Delete Dashboard"
-        content="Are you sure you want to delete this dashboard? This action cannot be undone."
+        title="Delete from Library"
+        content="Are you sure you want to delete this Study Pack or workspace? Export first if you need a backup. This action cannot be undone."
         onConfirm={confirmDeleteDashboard}
         onCancel={cancelDeleteDashboard}
       />
@@ -1342,7 +1613,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
         <Box display="flex" alignItems="center">
           <EditIcon sx={{ mr: 1.5, color: 'primary.main' }} />
           <Typography variant="h6" component="div" fontWeight="bold">
-            Edit Dashboard
+            Edit Library Item
           </Typography>
         </Box>
         <IconButton
@@ -1358,7 +1629,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
         <Box component="form" sx={{ mt: 1 }}>
           <TextField
             fullWidth
-            label="Dashboard Name"
+            label="Study Pack Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onFocus={(e) => {
@@ -1399,7 +1670,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
                 fullWidth
                 label="Folder"
                 margin="normal"
-                helperText="Dashboards with the same folder name are grouped in the dashboard menu."
+                helperText="Use a subject or folder name such as Mathematics, French, or Exam Prep."
                 InputLabelProps={{
                   ...params.InputLabelProps,
                   shrink: true,
@@ -1467,7 +1738,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
               />
             </Box>
             <Typography variant="caption" color="text.secondary">
-              The color is applied to every dashboard in this folder.
+              The color is applied to every item in this subject.
             </Typography>
           </Box>
 
@@ -1584,7 +1855,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
                 }}
               />
             }
-            label="Make dashboard public"
+            label="Make visible in shared library"
             sx={{
               color: 'text.primary',
               mt: 2,
