@@ -12,9 +12,9 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import HomeIcon from '@mui/icons-material/Home'
-import FolderIcon from '@mui/icons-material/Folder'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import EditIcon from '@mui/icons-material/Edit'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import {
@@ -51,6 +51,7 @@ interface ButtonWithLabelProps {
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void
   sx?: React.CSSProperties | Record<string, unknown>
   'data-tutorial-id'?: string
+  'data-onboarding-id'?: string
 }
 
 const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
@@ -110,6 +111,11 @@ const DashboardOptionsMenu: React.FC = () => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
+  const isDarkMode = theme.palette.mode === 'dark'
+  const studyPackHeaderColor = isDarkMode ? '#7FE3C4' : '#007C66'
+  const studyPackHeaderBackground = isDarkMode ? '#007C6652' : '#007C6624'
+  const customDashboardHeaderColor = isDarkMode ? '#C5D0D6' : '#455A64'
+  const customDashboardHeaderBackground = isDarkMode ? '#455A6466' : '#455A6420'
 
   // Load saved dashboards from localStorage on component mount
   useEffect(() => {
@@ -168,6 +174,24 @@ const DashboardOptionsMenu: React.FC = () => {
     folders[folderName].push(dashboard)
     return folders
   }, {})
+
+  const isStudyPackDashboard = (dashboard: SavedDashboard) => {
+    const folderName = normalizeFolderName(dashboard.folder).toLowerCase()
+    return (
+      folderName === 'study packs' ||
+      dashboard.id.startsWith('study-pack-dashboard-') ||
+      Boolean(dashboard.tags?.includes('study-pack'))
+    )
+  }
+
+  const studyPackDashboards = visibleCustomDashboards.filter(
+    isStudyPackDashboard,
+  )
+  const customDashboardFolders = Object.entries(dashboardsByFolder).filter(
+    ([folderName, dashboards]) =>
+      folderName.toLowerCase() !== 'study packs' &&
+      dashboards.some((dashboard) => !isStudyPackDashboard(dashboard)),
+  )
 
   const getFolderColor = (folderName: string, dashboards: SavedDashboard[]) =>
     normalizeFolderColor(
@@ -240,8 +264,8 @@ const DashboardOptionsMenu: React.FC = () => {
     <>
       {isPhone || isTablet ? (
         <ButtonWithLabel
-          icon={<HomeIcon />}
-          label={'Dashboards'}
+          icon={<AutoStoriesIcon />}
+          label={'Study Packs'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
           data-onboarding-id="topnav-dashboards"
@@ -257,12 +281,12 @@ const DashboardOptionsMenu: React.FC = () => {
             mx: 1,
             px: 2,
           }}
-          startIcon={<HomeIcon />}
+          startIcon={<AutoStoriesIcon />}
           endIcon={<KeyboardArrowDownIcon />}
           data-tutorial-id="dashboards-button"
           data-onboarding-id="topnav-dashboards"
         >
-          Dashboards
+          Study Packs
         </Button>
       )}
 
@@ -281,12 +305,100 @@ const DashboardOptionsMenu: React.FC = () => {
           },
         }}
       >
-        {/* Dashboard folders */}
-        {visibleCustomDashboards.length > 0 && (
+        {studyPackDashboards.length > 0 && (
           <>
-            {Object.entries(dashboardsByFolder).map(
+            <Typography
+              component="div"
+              sx={{
+                px: 2,
+                py: 0.7,
+                fontWeight: 800,
+                mt: 0.5,
+                color: studyPackHeaderColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                bgcolor: studyPackHeaderBackground,
+                borderLeft: '4px solid',
+                borderLeftColor: studyPackHeaderColor,
+              }}
+            >
+              <AutoStoriesIcon
+                fontSize="small"
+                sx={{ color: studyPackHeaderColor }}
+              />
+              <Box
+                component="span"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Study Packs
+              </Box>
+              <Tooltip title="Show Study Packs in Saved Dashboards">
+                <IconButton
+                  size="small"
+                  aria-label="Show Study Packs in Saved Dashboards"
+                  onClick={(event) =>
+                    openSavedDashboardsForFolder(event, 'Study Packs')
+                  }
+                  sx={{
+                    color: studyPackHeaderColor,
+                    p: 0.5,
+                    '&:hover': {
+                      bgcolor: `${studyPackHeaderColor}1A`,
+                    },
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Typography>
+            <Divider sx={{ borderColor: 'divider' }} />
+            {[...studyPackDashboards].reverse().map((dashboard) => (
+              <MenuItem
+                key={dashboard.id}
+                data-onboarding-id="topnav-saved-dashboard"
+                data-dashboard-id={dashboard.id}
+                onClick={() => loadCustomDashboard(dashboard)}
+                sx={{ p: 1.5, pl: 2.5 }}
+              >
+                {dashboard.name}
+              </MenuItem>
+            ))}
+          </>
+        )}
+
+        {customDashboardFolders.length > 0 && (
+          <>
+            <Typography
+              component="div"
+              sx={{
+                px: 2,
+                py: 0.7,
+                fontWeight: 800,
+                mt: 0.75,
+                color: customDashboardHeaderColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                bgcolor: customDashboardHeaderBackground,
+                borderLeft: '4px solid',
+                borderLeftColor: customDashboardHeaderColor,
+              }}
+            >
+              Custom Dashboards
+            </Typography>
+            {customDashboardFolders.map(
               ([folderName, dashboards]) => {
                 const folderColor = getFolderColor(folderName, dashboards)
+                const nonStudyDashboards = dashboards.filter(
+                  (dashboard) => !isStudyPackDashboard(dashboard),
+                )
 
                 return (
                   <React.Fragment key={folderName}>
@@ -306,7 +418,7 @@ const DashboardOptionsMenu: React.FC = () => {
                         borderLeftColor: folderColor,
                       }}
                     >
-                      <FolderIcon
+                      <DashboardIcon
                         fontSize="small"
                         sx={{
                           color: folderColor,
@@ -345,7 +457,7 @@ const DashboardOptionsMenu: React.FC = () => {
                       </Tooltip>
                     </Typography>
                     <Divider sx={{ borderColor: 'divider' }} />
-                    {[...dashboards].reverse().map((dashboard) => (
+                    {[...nonStudyDashboards].reverse().map((dashboard) => (
                       <MenuItem
                         key={dashboard.id}
                         data-onboarding-id="topnav-saved-dashboard"
@@ -373,7 +485,7 @@ const DashboardOptionsMenu: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            No saved dashboards yet
+            No study packs or dashboards yet
           </MenuItem>
         )}
         {!isPhone && visibleCustomDashboards.length === 0 && (
@@ -387,7 +499,7 @@ const DashboardOptionsMenu: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            No saved dashboards yet
+            No study packs or dashboards yet
           </MenuItem>
         )}
       </Menu>

@@ -144,6 +144,8 @@ const useStoredBoolean = (key: string, defaultValue: boolean) => {
 const TopNavBar: React.FC<TopNavBarProps> = () => {
   // State for different dropdown menus
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
+  const [advancedAnchorEl, setAdvancedAnchorEl] =
+    useState<null | HTMLElement>(null)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [studyPackOpen, setStudyPackOpen] = useState(false)
@@ -277,6 +279,20 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     setUserAnchorEl(event.currentTarget)
   }
 
+  const handleAdvancedMenuOpen = (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    if (!isAdmin) {
+      return
+    }
+
+    setAdvancedAnchorEl(event.currentTarget)
+  }
+
+  const handleAdvancedMenuClose = () => {
+    setAdvancedAnchorEl(null)
+  }
+
   const handleClose = () => {
     setUserAnchorEl(null)
   }
@@ -336,24 +352,23 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
           {/* Main Navigation Items */}
           <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
-            {/* Dashboard Options Menu */}
+            {/* Study Pack Options Menu */}
             {isPhone || isTablet ? (
               <DashboardOptionsMenu />
             ) : (
               <DashboardOptionsMenu />
             )}
 
-            {/* Create Dashboard */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<AutoStoriesIcon />}
-                label="Study Pack"
+                label="Create Study Pack"
                 onClick={() => openCreateStudyPack()}
                 data-tutorial-id="create-study-pack-button"
                 disabled={!isAdmin}
                 title={
                   isAdmin
-                    ? 'Create study pack'
+                    ? 'Create Study Pack'
                     : 'Viewer mode cannot create study packs'
                 }
                 sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
@@ -374,29 +389,27 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 startIcon={<AutoStoriesIcon />}
                 data-tutorial-id="create-study-pack-button"
               >
-                Create study pack
+                Create Study Pack
               </Button>
             )}
 
-            {/* Create Dashboard */}
+            {/* Advanced creation menu */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<DashboardCustomizeIcon />}
-                label="Create Dashboard"
-                onClick={() => openCreateDashboard()}
-                data-tutorial-id="create-dashboard-button"
-                data-onboarding-id="create-dashboard"
+                label="Advanced"
+                onClick={handleAdvancedMenuOpen}
                 disabled={!isAdmin}
                 title={
                   isAdmin
-                    ? 'Create Dashboard'
-                    : 'Viewer mode cannot create dashboards'
+                    ? 'Advanced creation tools'
+                    : 'Viewer mode cannot use advanced creation tools'
                 }
                 sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
               />
             ) : (
               <Button
-                onClick={() => openCreateDashboard()}
+                onClick={handleAdvancedMenuOpen}
                 disabled={!isAdmin}
                 sx={{
                   color: 'foreground.contrastPrimary',
@@ -408,49 +421,75 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   opacity: isAdmin ? 1 : 0.45,
                 }}
                 startIcon={<DashboardCustomizeIcon />}
-                data-tutorial-id="create-dashboard-button"
-                data-onboarding-id="create-dashboard"
-              >
-                Create Dashboard
-              </Button>
-            )}
-
-            {/* Create Widget */}
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={<ConstructionIcon />}
-                label="Create Widget"
-                onClick={() => openCreateWidget()}
-                data-tutorial-id="create-widget-button"
-                data-onboarding-id="dashboard-widget-create"
-                disabled={!isAdmin}
+                endIcon={<KeyboardArrowDownIcon />}
                 title={
                   isAdmin
-                    ? 'Create Widget'
-                    : 'Viewer mode cannot create widgets'
+                    ? 'Advanced creation tools'
+                    : 'Viewer mode cannot use advanced creation tools'
                 }
-                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
-              />
-            ) : (
-              <Button
-                onClick={() => openCreateWidget()}
-                disabled={!isAdmin}
-                sx={{
-                  color: 'foreground.contrastPrimary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: 'auto',
-                  mx: 1,
-                  px: 2,
-                  opacity: isAdmin ? 1 : 0.45,
-                }}
-                startIcon={<ConstructionIcon />}
-                data-tutorial-id="create-widget-button"
-                data-onboarding-id="dashboard-widget-create"
               >
-                Create Widget
+                Advanced
               </Button>
             )}
+            <Menu
+              anchorEl={advancedAnchorEl}
+              open={Boolean(advancedAnchorEl)}
+              onClose={handleAdvancedMenuClose}
+              PaperProps={{
+                sx: {
+                  bgcolor: 'background.paper',
+                  color: 'text.primary',
+                  border: 1,
+                  borderColor: 'divider',
+                  minWidth: 230,
+                  mt: 1,
+                },
+              }}
+            >
+              <MenuItem
+                onClick={() => {
+                  openCreateDashboard()
+                  handleAdvancedMenuClose()
+                }}
+                disabled={!isAdmin}
+                data-tutorial-id="create-dashboard-button"
+                data-onboarding-id="create-dashboard"
+                sx={{ p: 1.5 }}
+              >
+                <ListItemIcon>
+                  <DashboardCustomizeIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
+                </ListItemIcon>
+                Create Dashboard
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  openCreateWidget()
+                  handleAdvancedMenuClose()
+                }}
+                disabled={!isAdmin}
+                data-tutorial-id="create-widget-button"
+                data-onboarding-id="dashboard-widget-create"
+                sx={{ p: 1.5 }}
+              >
+                <ListItemIcon>
+                  <ConstructionIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
+                </ListItemIcon>
+                Create Widget
+              </MenuItem>
+              {!isAdmin && (
+                <Box sx={{ px: 2, py: 1, maxWidth: 260 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Viewer mode cannot create dashboards or widgets.
+                  </Typography>
+                </Box>
+              )}
+            </Menu>
           </Box>
 
           {/* Right Side Elements */}
