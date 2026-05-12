@@ -12,6 +12,19 @@ import {
   Dialog,
   IconButton,
   ListItemIcon,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Stack,
+  Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  FormControlLabel,
+  Checkbox,
+  RadioGroup,
+  Radio,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -20,10 +33,13 @@ import { useNavigate } from 'react-router-dom'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
 import ConstructionIcon from '@mui/icons-material/Construction'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import TuneIcon from '@mui/icons-material/Tune'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
@@ -98,6 +114,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
+  const [studyPackDialogOpen, setStudyPackDialogOpen] = useState(false)
   const [widgetEditorPayload, setWidgetEditorPayload] = useState<{
     loadWidget?: CustomWidget
     initialEditMode?: boolean
@@ -111,6 +128,15 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     userData.role === 'ADMIN_ROLE' ? 'Builder mode' : 'Viewer mode'
 
   const { openCreateWidget } = useWorkspaceActions()
+
+  const openStudyPackFlow = () => {
+    setStudyPackDialogOpen(true)
+  }
+
+  const continueToManualBuilder = () => {
+    setStudyPackDialogOpen(false)
+    openCreateWidget()
+  }
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -214,17 +240,17 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <DashboardOptionsMenu />
             )}
 
-            {/* Create Widget */}
+            {/* Create Study Pack */}
             {isPhone || isTablet ? (
               <ButtonWithLabel
-                icon={<ConstructionIcon />}
-                label="Create"
-                onClick={() => openCreateWidget()}
+                icon={<AutoAwesomeIcon />}
+                label="Study Pack"
+                onClick={openStudyPackFlow}
                 data-tutorial-id="create-widget-button"
               />
             ) : (
               <Button
-                onClick={() => openCreateWidget()}
+                onClick={openStudyPackFlow}
                 sx={{
                   color: 'foreground.contrastPrimary',
                   display: 'flex',
@@ -233,10 +259,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   mx: 1,
                   px: 2,
                 }}
-                startIcon={<ConstructionIcon />}
+                startIcon={<AutoAwesomeIcon />}
                 data-tutorial-id="create-widget-button"
               >
-                Create Widget
+                Create Study Pack
               </Button>
             )}
           </Box>
@@ -404,10 +430,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             }}
           >
             <Typography variant="subtitle1" fontWeight={700}>
-              Create Widget
+              Create Study Pack
             </Typography>
             <IconButton
-              aria-label="Close Create Widget"
+              aria-label="Close Create Study Pack"
               onClick={() => setWidgetEditorOpen(false)}
             >
               <CloseIcon />

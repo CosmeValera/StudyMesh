@@ -257,15 +257,15 @@ const DashboardEmptyState = ({
           sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
         />
         <Typography variant="h5" fontWeight="bold" gutterBottom>
-          {hasDashboard ? 'Empty dashboard' : 'Open a dashboard'}
+          {hasDashboard ? 'Empty Study Pack' : 'Open a Study Pack'}
         </Typography>
         <Typography
           variant="body1"
           sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
         >
           {hasDashboard
-            ? 'Create a new dashboard from this empty space, or open an existing dashboard from a folder below.'
-            : 'Create a new dashboard, or open an existing dashboard from a folder below.'}
+            ? 'Create an AI-generated Study Pack from notes, or open an existing Study Pack from a subject below.'
+            : 'Create an AI-generated Study Pack from notes, or open an existing Study Pack from a subject below.'}
         </Typography>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -283,7 +283,7 @@ const DashboardEmptyState = ({
                 '&:hover': { bgcolor: 'primary.main' },
               }}
             >
-              Create Dashboard
+              Create Study Pack
             </Button>
           )}
         </Stack>
@@ -293,7 +293,7 @@ const DashboardEmptyState = ({
               variant="subtitle2"
               sx={{ color: 'foreground.contrastSecondary', mb: 1.5 }}
             >
-              Open existing dashboard
+              Open existing Study Pack
             </Typography>
             <Box
               sx={{
@@ -433,22 +433,22 @@ const DashboardOnboardingCoach = ({
         )}
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
           {isLayoutStep
-            ? 'Shape your dashboard'
+            ? 'Shape your Study Pack'
             : isCompleteStep
               ? 'Congratulations 🎉'
-              : 'Save this dashboard'}
+              : 'Save this Study Pack'}
         </Typography>
         <Typography
           variant="body2"
           sx={{ color: 'text.secondary', lineHeight: 1.45 }}
         >
           {isCompleteStep
-            ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own widgets and dashboards. You’ll be able to find your saved dashboard “${dashboardName}” inside the ${dashboardMenuName} menu.`
+            ? `You finished the AquaMesh onboarding. You can keep exploring the app and creating your own study cards and Study Packs. You’ll be able to find your saved Study Pack “${dashboardName}” inside the ${dashboardMenuName} menu.`
             : isLayoutStep
-              ? 'Drag the widget tab to a new spot in the dashboard.'
+              ? 'Drag a study item to a new spot in the Study Pack.'
               : hasUnsavedChanges
-                ? 'Save the dashboard using the disk icon on the Dashboard tab.'
-                : 'Nice — this dashboard is saved. You can reopen it later from your saved dashboards.'}
+                ? 'Save the Study Pack using the disk icon on the tab.'
+                : 'Nice — this Study Pack is saved. You can reopen it later from your Library.'}
         </Typography>
         {isCompleteStep && (
           <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -579,7 +579,7 @@ const Dashboards = () => {
     setDashboardEditorId(null)
     setDraftDashboard({
       id: `draft-dashboard-${Date.now()}`,
-      name: 'Create Dashboard',
+      name: 'Create Study Pack',
       layout: {
         type: 'row',
         weight: 100,
@@ -756,7 +756,7 @@ const Dashboards = () => {
       setDashboardFolder('Default')
       setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
       setDashboardDescription('')
-      setDashboardTags(['dashboard'])
+      setDashboardTags(['study pack'])
       setIsPublic(false)
       setTagInput('')
       setSaveDialogOpen(true)
@@ -805,7 +805,7 @@ const Dashboards = () => {
       setDashboardFolder('Default')
       setDashboardFolderColor(DashboardStorage.getFolderColor('Default'))
       setDashboardDescription('')
-      setDashboardTags(['dashboard'])
+      setDashboardTags(['study pack'])
       setIsPublic(false)
       setTagInput('')
       setSaveDialogOpen(true)
@@ -856,7 +856,7 @@ const Dashboards = () => {
           folderColor: normalizeFolderColor(dashboardFolderColor),
           layout: draftDashboard.layout,
           description: dashboardDescription.trim() || undefined,
-          tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
+          tags: dashboardTags.length > 0 ? dashboardTags : ['study pack'],
           isPublic: isAdmin ? isPublic : true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -893,7 +893,7 @@ const Dashboards = () => {
             folderColor: normalizeFolderColor(dashboardFolderColor),
             layout: currentDashboard.layout,
             description: dashboardDescription.trim() || undefined,
-            tags: dashboardTags.length > 0 ? dashboardTags : ['dashboard'],
+            tags: dashboardTags.length > 0 ? dashboardTags : ['study pack'],
             isPublic: isAdmin ? isPublic : true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -963,7 +963,7 @@ const Dashboards = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {hasChanges[index] &&
                     hasDashboardContent(dashboard.layout) && (
-                      <TooltipStyled title="Save Dashboard">
+                      <TooltipStyled title="Save Study Pack">
                         <IconButton
                           aria-label={`Save dashboard ${dashboard.name}`}
                           data-testid={`save-dashboard-${index}`}
@@ -985,7 +985,7 @@ const Dashboards = () => {
                     )}
                   {dashboard.layout?.children &&
                     dashboard.layout.children.length > 0 && (
-                      <TooltipStyled title="Edit Dashboard">
+                      <TooltipStyled title="Edit Study Pack">
                         <IconButton
                           aria-label={`Edit dashboard ${dashboard.name}`}
                           size="small"
@@ -1187,7 +1187,7 @@ const Dashboards = () => {
                 onClick={handleDashboardWidgetsMenuOpen}
                 sx={{ textTransform: 'none' }}
               >
-                Widgets
+                Study items
               </Button>
               <Menu
                 anchorEl={dashboardWidgetsAnchorEl}
@@ -1212,7 +1212,7 @@ const Dashboards = () => {
                     color: 'text.primary',
                   }}
                 >
-                  My Widgets
+                  Saved study items
                 </Typography>
                 <Divider sx={{ borderColor: 'divider' }} />
                 {customWidgetPanels.length > 0 ? (
@@ -1248,8 +1248,7 @@ const Dashboards = () => {
                       variant="caption"
                       sx={{ color: 'text.secondary', lineHeight: 1.4 }}
                     >
-                      No saved widgets yet. Create a widget first, then return
-                      here to place it on a dashboard.
+                      No saved study items yet. Create or generate items first, then return here to place them in a Study Pack.
                     </Typography>
                   </MenuItem>
                 )}
@@ -1303,13 +1302,13 @@ const Dashboards = () => {
                       sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
                     />
                     <Typography variant="h5" fontWeight="bold" gutterBottom>
-                      Empty dashboard
+                      Empty Study Pack
                     </Typography>
                     <Typography
                       variant="body1"
                       sx={{ color: 'text.secondary' }}
                     >
-                      Use Widgets, then choose a saved item from My Widgets.
+                      Use study items, then choose saved notes, exercises, flashcards, or summaries.
                     </Typography>
                   </Paper>
                 </Box>
@@ -1339,7 +1338,7 @@ const Dashboards = () => {
         </Box>
       </Dialog>
 
-      {/* Save Dashboard Dialog */}
+      {/* Save Study Pack Dialog */}
       <Dialog
         open={saveDialogOpen}
         onClose={handleSaveDialogClose}
@@ -1371,14 +1370,14 @@ const Dashboards = () => {
           >
             <Box>
               <Typography variant="h6" fontWeight="medium">
-                Save Dashboard
+                Save Study Pack
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
-                Configure your dashboard settings
+                Choose its subject, tags, and library metadata
               </Typography>
             </Box>
             <IconButton
@@ -1396,7 +1395,7 @@ const Dashboards = () => {
             autoFocus
             margin="normal"
             id="name"
-            label="Dashboard Name"
+            label="Study Pack Name"
             type="text"
             fullWidth
             variant="outlined"
@@ -1407,7 +1406,7 @@ const Dashboards = () => {
             }}
             error={dashboardName.trim() === ''}
             helperText={
-              dashboardName.trim() === '' ? 'Dashboard name is required' : ''
+              dashboardName.trim() === '' ? 'Study Pack name is required' : ''
             }
             required
             InputLabelProps={{
@@ -1456,7 +1455,7 @@ const Dashboards = () => {
                 DashboardStorage.getFolderColor(nextFolder),
               )
             }}
-            helperText="Dashboards with the same folder name are grouped together."
+            helperText="Study Packs with the same subject/folder are grouped together."
             InputLabelProps={{
               shrink: true,
               sx: { color: 'text.secondary' },
@@ -1480,7 +1479,7 @@ const Dashboards = () => {
 
           <Box sx={{ mt: 2, mb: 1 }}>
             <Typography variant="subtitle2" color="text.primary" gutterBottom>
-              Folder color
+              Subject color
             </Typography>
             <Box
               sx={{

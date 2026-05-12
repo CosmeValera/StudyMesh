@@ -27,6 +27,8 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import KeyIcon from '@mui/icons-material/Key'
 
 import AccentColorPicker from '../../../../theme/AccentColorPicker'
 
@@ -209,12 +211,39 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             fontWeight="bold"
             color="text.primary"
           >
-            Widget Editor Settings
+            Workspace Settings
           </Typography>
         </Box>
       </DialogTitle>
       <DialogContent>
         <Box sx={{ py: 2 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.default',
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <AutoAwesomeIcon color="primary" />
+              <Typography variant="subtitle1" fontWeight={800}>
+                AI Study Pack generation
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Gemini is the default provider for turning notes into summaries, flashcards, quizzes, and exercises. OpenAI, Anthropic, and DeepSeek are planned provider options.
+            </Typography>
+            <Chip
+              icon={<KeyIcon />}
+              label="API keys are advanced settings"
+              size="small"
+              variant="outlined"
+            />
+          </Paper>
           <Typography
             variant="h6"
             gutterBottom

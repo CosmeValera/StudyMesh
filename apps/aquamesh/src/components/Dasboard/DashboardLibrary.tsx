@@ -30,6 +30,10 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
 import DashboardIcon from '@mui/icons-material/Dashboard'
+import SchoolIcon from '@mui/icons-material/School'
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
+import ReplayIcon from '@mui/icons-material/Replay'
+import QuizIcon from '@mui/icons-material/Quiz'
 import SearchIcon from '@mui/icons-material/Search'
 import SortIcon from '@mui/icons-material/Sort'
 import CloseIcon from '@mui/icons-material/Close'
@@ -98,6 +102,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
 
   // Filter state
   const [showPublicOnly, setShowPublicOnly] = useState(false)
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
 
   // Dashboard state
   const [dashboards, setDashboards] = useState<SavedDashboard[]>([])
@@ -193,7 +198,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             folderColor: normalizeFolderColor(dashboard.folderColor),
             layout: dashboard.layout,
             description: dashboard.description || 'No description',
-            tags: dashboard.tags || ['dashboard'],
+            tags: dashboard.tags || ['study pack'],
             isPublic: dashboard.isPublic || false,
             createdAt: dashboard.createdAt || new Date().toISOString(),
             updatedAt: dashboard.updatedAt || new Date().toISOString(),
@@ -407,6 +412,22 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     })
   }, [filteredDashboards, sortBy])
 
+  const groupedStudyPacks = useMemo(() => {
+    return sortedDashboards.reduce<Record<string, SavedDashboard[]>>((folders, dashboard) => {
+      const folderName = normalizeFolderName(dashboard.folder)
+      folders[folderName] = folders[folderName] || []
+      folders[folderName].push(dashboard)
+      return folders
+    }, {})
+  }, [sortedDashboards])
+
+  const toggleFolderExpanded = (folderName: string) => {
+    setExpandedFolders((current) => ({
+      ...current,
+      [folderName]: !current[folderName],
+    }))
+  }
+
   // Function to handle editing a dashboard
   const handleEditDashboard = (
     dashboard: SavedDashboard,
@@ -509,7 +530,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                   color: 'text.primary',
                 }}
               >
-                Saved Dashboards
+                Study Pack Library
               </Typography>
             </Box>
             <Box display="flex" alignItems="center">
@@ -537,7 +558,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             <Grid item xs={12} md={5}>
               <TextField
                 fullWidth
-                placeholder="Search dashboards..."
+                placeholder="Search study packs, subjects, notes..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 variant="outlined"
@@ -613,9 +634,9 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                   <MenuItem value="nameDesc">Name (Z-A)</MenuItem>
                   <MenuItem value="dateNewest">Date (Newest First)</MenuItem>
                   <MenuItem value="dateOldest">Date (Oldest First)</MenuItem>
-                  <MenuItem value="mostComponents">Most Components</MenuItem>
+                  <MenuItem value="mostComponents">Most Study Items</MenuItem>
                   <MenuItem value="fewestComponents">
-                    Fewest Components
+                    Fewest Study Items
                   </MenuItem>
                 </Select>
               </FormControl>
@@ -654,8 +675,8 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               {sortedDashboards.length === 0
-                ? 'No dashboards found'
-                : `Showing ${sortedDashboards.length} dashboard${sortedDashboards.length !== 1 ? 's' : ''}`}
+                ? 'No study packs found'
+                : `Showing ${sortedDashboards.length} study pack${sortedDashboards.length !== 1 ? 's' : ''}`}
               {searchTerm && ` matching "${searchTerm}"`}
               {!isAdmin && ' (only showing public dashboards)'}
             </Typography>
@@ -683,20 +704,53 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
               />
               <Typography color="text.primary" variant="h6" gutterBottom>
                 {searchTerm
-                  ? 'No Matching Dashboards'
-                  : 'No Dashboards Available'}
+                  ? 'No Matching Study Packs'
+                  : 'No Study Packs Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
                   : !isAdmin
-                    ? 'No public dashboards are currently available'
-                    : 'No dashboards have been saved yet'}
+                    ? 'No public study packs are currently available'
+                    : 'No study packs have been saved yet'}
               </Typography>
             </Paper>
           ) : (
-            <List>
-              {sortedDashboards.map((dashboard, index) => (
+            <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {Object.entries(groupedStudyPacks).map(([folderName, folderDashboards]) => {
+                const isExpanded = Boolean(expandedFolders[folderName])
+                const visibleDashboards = isExpanded
+                  ? folderDashboards
+                  : folderDashboards.slice(0, 20)
+                const hiddenCount = folderDashboards.length - visibleDashboards.length
+
+                return (
+                  <Box key={folderName}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: 1,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <SchoolIcon sx={{ color: 'primary.main' }} />
+                        <Typography variant="subtitle1" fontWeight={800}>
+                          {folderName}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={`${folderDashboards.length} study pack${folderDashboards.length !== 1 ? 's' : ''}`}
+                        />
+                      </Box>
+                      {folderDashboards.length > 20 && (
+                        <Button size="small" onClick={() => toggleFolderExpanded(folderName)}>
+                          {isExpanded ? 'Show first 20' : `Show ${hiddenCount} more…`}
+                        </Button>
+                      )}
+                    </Box>
+                    {visibleDashboards.map((dashboard, index) => (
                 <Fade
                   key={dashboard.id}
                   in={true}
@@ -809,7 +863,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                               >
                                 <Chip
                                   size="small"
-                                  label={`${dashboard.componentsCount} components`}
+                                  label={`${dashboard.componentsCount} study item${dashboard.componentsCount !== 1 ? 's' : ''}`}
                                   sx={{
                                     height: 20,
                                     fontSize: '0.7rem',
@@ -902,7 +956,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                 </IconButton>
                               </Box>
                               <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
-                                <Tooltip title="Edit Dashboard">
+                                <Tooltip title="Edit Study Pack">
                                   <IconButton
                                     size="small"
                                     onClick={(e) =>
@@ -952,7 +1006,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                     )}
                                   </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Delete Dashboard">
+                                <Tooltip title="Delete Study Pack">
                                   <IconButton
                                     size="small"
                                     color="error"
@@ -1024,6 +1078,42 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                           )}
                         </Box>
                       </Box>
+                      <Box
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{
+                          mt: 1.25,
+                          pl: { xs: 0, sm: 7 },
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 1,
+                          justifyContent: { xs: 'center', sm: 'flex-start' },
+                        }}
+                      >
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<FitnessCenterIcon />}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          Generate more exercises
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="text"
+                          startIcon={<ReplayIcon />}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          Practice again
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="text"
+                          startIcon={<QuizIcon />}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          Create quiz from section
+                        </Button>
+                      </Box>
                       {dashboard.description && (
                         <Typography
                           variant="body2"
@@ -1041,7 +1131,10 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                     </Box>
                   </Paper>
                 </Fade>
-              ))}
+                    ))}
+                  </Box>
+                )
+              })}
             </List>
           )}
         </DialogContent>
@@ -1074,13 +1167,13 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       {/* Delete Confirmation Dialog - Replace with the imported DeleteConfirmationDialog */}
       <DeleteConfirmationDialog
         open={deleteConfirmOpen}
-        title="Delete Dashboard"
-        content="Are you sure you want to delete this dashboard? This action cannot be undone."
+        title="Delete Study Pack"
+        content="Are you sure you want to delete this study pack? This action cannot be undone."
         onConfirm={confirmDeleteDashboard}
         onCancel={cancelDeleteDashboard}
       />
 
-      {/* Edit Dashboard Dialog */}
+      {/* Edit Study Pack Dialog */}
       <EditDashboardDialog
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
@@ -1127,7 +1220,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
         folder: normalizeFolderName(folder),
         folderColor: normalizeFolderColor(folderColor),
         description: description.trim() || 'No description',
-        tags: tags.length > 0 ? tags : ['dashboard'],
+        tags: tags.length > 0 ? tags : ['study pack'],
         isPublic,
         updatedAt: new Date().toISOString(),
       }
@@ -1187,7 +1280,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
         <Box display="flex" alignItems="center">
           <EditIcon sx={{ mr: 1.5, color: 'primary.main' }} />
           <Typography variant="h6" component="div" fontWeight="bold">
-            Edit Dashboard
+            Edit Study Pack
           </Typography>
         </Box>
         <IconButton
@@ -1235,7 +1328,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
             value={folder}
             onChange={(e) => setFolder(e.target.value)}
             margin="normal"
-            helperText="Dashboards with the same folder name are grouped in the dashboard menu."
+            helperText="Study packs with the same subject/folder name are grouped in the library."
             InputLabelProps={{ shrink: true, sx: { color: 'text.secondary' } }}
             InputProps={{
               sx: {
@@ -1296,7 +1389,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
               />
             </Box>
             <Typography variant="caption" color="text.secondary">
-              The color is applied to every dashboard in this folder.
+              The color is applied to every study pack in this subject/folder.
             </Typography>
           </Box>
 
@@ -1413,7 +1506,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
                 }}
               />
             }
-            label="Make dashboard public"
+            label="Make study pack public"
             sx={{
               color: 'text.primary',
               mt: 2,
