@@ -13,6 +13,7 @@ import {
   Grid,
   Chip,
   TextField,
+  MenuItem,
 } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -154,6 +155,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const showGlobalSettings = scope === 'global'
   const [aiApiToken, setAiApiToken] = React.useState('')
   const [aiModel, setAiModel] = React.useState(DEFAULT_STUDY_PACK_AI_MODEL)
+  const [libraryTransferStatus, setLibraryTransferStatus] = React.useState('')
   const hasEnvToken = Boolean(getEnvGeminiApiKey())
 
   React.useEffect(() => {
@@ -222,6 +224,70 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
       apiToken: '',
       model: aiModel,
     })
+  }
+
+  const handleExportLibrary = () => {
+    try {
+      const savedDashboards = window.localStorage.getItem('customDashboards')
+      const dashboards = savedDashboards ? JSON.parse(savedDashboards) : []
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        dashboards,
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `aquamesh-study-library-${new Date()
+        .toISOString()
+        .slice(0, 10)}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setLibraryTransferStatus('Library export created.')
+    } catch (error) {
+      console.error('Failed to export Study Pack library', error)
+      setLibraryTransferStatus('Could not export the library.')
+    }
+  }
+
+  const handleImportLibrary = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const payload = JSON.parse(await file.text()) as {
+        dashboards?: unknown
+      }
+      if (!Array.isArray(payload.dashboards)) {
+        setLibraryTransferStatus('Import file must include a dashboards array.')
+        return
+      }
+
+      window.localStorage.setItem(
+        'customDashboards',
+        JSON.stringify(payload.dashboards),
+      )
+      window.dispatchEvent(new CustomEvent('dashboardStorageUpdated'))
+      setLibraryTransferStatus(
+        `Imported ${payload.dashboards.length} library item${
+          payload.dashboards.length === 1 ? '' : 's'
+        }.`,
+      )
+    } catch (error) {
+      console.error('Failed to import Study Pack library', error)
+      setLibraryTransferStatus('Could not import that library file.')
+    }
   }
 
   return (
@@ -325,6 +391,65 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 borderRadius: 2,
               }}
             >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                <FolderOpenIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Study Library Backup
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                  >
+                    Export or replace all saved Study Packs, subjects, and
+                    advanced workspaces stored in this browser.
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleExportLibrary}
+                    >
+                      Export library
+                    </Button>
+                    <Button component="label" variant="outlined" size="small">
+                      Import library
+                      <input
+                        hidden
+                        type="file"
+                        accept="application/json,.json"
+                        onChange={handleImportLibrary}
+                      />
+                    </Button>
+                    {libraryTransferStatus && (
+                      <Typography variant="caption" color="text.secondary">
+                        {libraryTransferStatus}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <ReplayIcon sx={{ mr: 1.5, color: 'primary.main' }} />
                 <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -362,19 +487,39 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <AutoAwesomeIcon sx={{ mr: 1.5, color: 'primary.main' }} />
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography fontWeight="medium" color="text.primary">
-                    Study Pack AI
+                    Advanced AI Provider Settings
                   </Typography>
                   <Typography
                     variant="body2"
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Add a Gemini API key to enable AI mode in Create study pack.
-                    The key is stored locally in this browser and sent directly
-                    to Google from AquaMesh.
+                    Create Study Pack uses the configured provider only when AI
+                    mode runs. API keys are optional advanced settings and stay
+                    in this browser.
                   </Typography>
                   <TextField
-                    label="Gemini API key"
+                    select
+                    label="Provider"
+                    value="gemini"
+                    fullWidth
+                    size="small"
+                    sx={{ mb: 1.5 }}
+                    helperText="Gemini is active today. Additional providers need adapter work before they can run."
+                  >
+                    <MenuItem value="gemini">Gemini (active)</MenuItem>
+                    <MenuItem value="openai" disabled>
+                      OpenAI (planned)
+                    </MenuItem>
+                    <MenuItem value="anthropic" disabled>
+                      Anthropic (planned)
+                    </MenuItem>
+                    <MenuItem value="deepseek" disabled>
+                      DeepSeek (planned)
+                    </MenuItem>
+                  </TextField>
+                  <TextField
+                    label="API key"
                     type="password"
                     value={aiApiToken}
                     onChange={(event) => setAiApiToken(event.target.value)}
@@ -383,7 +528,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     placeholder={
                       hasEnvToken
                         ? 'Using .env key unless you enter one here'
-                        : 'Paste your Gemini API key'
+                        : 'Paste your provider API key'
                     }
                     sx={{ mb: 1.5 }}
                   />

@@ -14,6 +14,7 @@ import {
   InputAdornment,
   Badge,
   useMediaQuery,
+  useTheme,
   Table,
   TableBody,
   TableCell,
@@ -43,7 +44,6 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import TargetIcon from '@mui/icons-material/GpsFixed'
 import TooltipStyled from '../../../TooltipStyled'
-import theme from '../../../../theme'
 
 // Fix for type issues with MUI icons
 type IconType = React.ElementType
@@ -78,6 +78,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
   const isContainer = ['FieldSet', 'FlexBox', 'GridBox'].includes(
     component.type,
   )
+  const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const actionButtonSize = isPhone ? 32 : 28
   const actionIconSize = isPhone ? '1.15rem' : '1.3rem'
@@ -97,9 +98,12 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
         const customLabel = component.props.customLabelColor as
           | string
           | undefined
-        // Always render label with custom label color or default black
+        // Custom labels keep their color; default labels follow the active theme.
         const labelNode = (
-          <Typography component="span" sx={{ color: customLabel ?? '#000000' }}>
+          <Typography
+            component="span"
+            sx={{ color: customLabel ?? 'text.primary' }}
+          >
             {labelValue}
           </Typography>
         )
@@ -338,7 +342,7 @@ const ComponentPreview: React.FC<ComponentPreviewProps> = ({
                 | 'justify',
               color: component.props.useCustomColor
                 ? (component.props.customColor as string)
-                : '#000',
+                : 'text.primary',
               whiteSpace: component.props.noWrap ? 'nowrap' : 'normal',
               overflow: component.props.noWrap ? 'hidden' : 'visible',
               textOverflow: component.props.noWrap ? 'ellipsis' : 'clip',
