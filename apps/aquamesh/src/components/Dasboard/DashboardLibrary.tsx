@@ -77,6 +77,7 @@ interface SavedDashboardsDialogProps {
   initialSearchKey?: number
   mode?: 'workspace' | 'builder'
   onOpenInBuilder?: (dashboard: SavedDashboard) => void
+  onOpenInWorkspace?: (dashboard: SavedDashboard) => void
 }
 
 // Add a new interface for the edit dashboard dialog
@@ -106,6 +107,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   initialSearchKey = 0,
   mode = 'workspace',
   onOpenInBuilder,
+  onOpenInWorkspace,
 }) => {
   const openActionLabel =
     mode === 'builder' ? 'Open in Builder' : 'Open in Workspace'
@@ -315,6 +317,12 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       return
     }
 
+    if (onOpenInWorkspace) {
+      onOpenInWorkspace(dashboard)
+      onClose()
+      return
+    }
+
     // Convert saved dashboard to the format needed by DashboardProvider
     const dashboardToOpen: DefaultDashboard = {
       name: dashboard.name,
@@ -488,46 +496,90 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     return filtered
   }, [folderFilter, roleVisibleDashboards, searchTerm, showPublicOnly, isAdmin])
 
-  // Sort filtered dashboards
+  const getDashboardUpdatedAt = (dashboard: SavedDashboard) =>
+    new Date(dashboard.updatedAt).getTime()
+
+  const compareDashboards = (
+    a: SavedDashboard,
+    b: SavedDashboard,
+    option: SortOption,
+  ) => {
+    switch (option) {
+      case 'nameAsc':
+        return a.name.localeCompare(b.name)
+      case 'nameDesc':
+        return b.name.localeCompare(a.name)
+      case 'dateNewest':
+        return getDashboardUpdatedAt(b) - getDashboardUpdatedAt(a)
+      case 'dateOldest':
+        return getDashboardUpdatedAt(a) - getDashboardUpdatedAt(b)
+      case 'mostComponents':
+        return b.componentsCount - a.componentsCount
+      case 'fewestComponents':
+        return a.componentsCount - b.componentsCount
+      default:
+        return 0
+    }
+  }
+
+  // Sort filtered dashboards for counts and empty states.
   const sortedDashboards = useMemo(() => {
     return [...filteredDashboards].sort((a, b) => {
-      switch (sortBy) {
-        case 'nameAsc':
-          return a.name.localeCompare(b.name)
-        case 'nameDesc':
-          return b.name.localeCompare(a.name)
-        case 'dateNewest':
-          return (
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
-        case 'dateOldest':
-          return (
-            new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
-          )
-        case 'mostComponents':
-          return b.componentsCount - a.componentsCount
-        case 'fewestComponents':
-          return a.componentsCount - b.componentsCount
-        default:
-          return 0
-      }
+      const result = compareDashboards(a, b, sortBy)
+      return result || normalizeFolderName(a.folder).localeCompare(
+        normalizeFolderName(b.folder),
+      )
     })
   }, [filteredDashboards, sortBy])
 
   const groupedDashboards = useMemo(() => {
     const groups = new Map<string, SavedDashboard[]>()
 
-    sortedDashboards.forEach((dashboard) => {
+    filteredDashboards.forEach((dashboard) => {
       const folderName = normalizeFolderName(dashboard.folder)
       groups.set(folderName, [...(groups.get(folderName) || []), dashboard])
     })
 
-    return Array.from(groups.entries()).map(([folderName, dashboards]) => ({
-      folderName,
-      dashboards,
-      folderColor: normalizeFolderColor(dashboards[0]?.folderColor),
-    }))
-  }, [sortedDashboards])
+    return Array.from(groups.entries())
+      .map(([folderName, dashboards]) => {
+        const sortedFolderDashboards = [...dashboards].sort((a, b) => {
+          const result = compareDashboards(a, b, sortBy)
+          return result || a.name.localeCompare(b.name)
+        })
+
+        const folderUpdatedTimes = dashboards.map(getDashboardUpdatedAt)
+        const folderComponentsCount = dashboards.reduce(
+          (sum, dashboard) => sum + dashboard.componentsCount,
+          0,
+        )
+
+        return {
+          folderName,
+          dashboards: sortedFolderDashboards,
+          folderColor: normalizeFolderColor(dashboards[0]?.folderColor),
+          newestUpdatedAt: Math.max(...folderUpdatedTimes),
+          oldestUpdatedAt: Math.min(...folderUpdatedTimes),
+          componentsCount: folderComponentsCount,
+        }
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'nameDesc':
+            return b.folderName.localeCompare(a.folderName)
+          case 'dateNewest':
+            return b.newestUpdatedAt - a.newestUpdatedAt
+          case 'dateOldest':
+            return a.oldestUpdatedAt - b.oldestUpdatedAt
+          case 'mostComponents':
+            return b.componentsCount - a.componentsCount
+          case 'fewestComponents':
+            return a.componentsCount - b.componentsCount
+          case 'nameAsc':
+          default:
+            return a.folderName.localeCompare(b.folderName)
+        }
+      })
+  }, [filteredDashboards, sortBy])
 
   const handleStudyAction = (
     action: 'generate-exercises' | 'practice-again' | 'create-quiz',

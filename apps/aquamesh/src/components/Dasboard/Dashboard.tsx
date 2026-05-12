@@ -498,6 +498,9 @@ const Dashboards = () => {
     useState('')
   const [dashboardLibraryInitialFolder, setDashboardLibraryInitialFolder] =
     useState('')
+  const [dashboardLibraryMode, setDashboardLibraryMode] = useState<
+    'workspace' | 'builder'
+  >('workspace')
   const [
     dashboardLibraryInitialSearchKey,
     setDashboardLibraryInitialSearchKey,
@@ -596,7 +599,7 @@ const Dashboards = () => {
     addDashboard()
   }
 
-  const openSavedDashboardFromEmptyState = (dashboard: SavedDashboard) => {
+  const openSavedDashboardInWorkspace = (dashboard: SavedDashboard) => {
     if (openDashboards[selectedDashboard] && selectedDashboardIsEmpty) {
       replaceDashboard(selectedDashboard, {
         name: dashboard.name,
@@ -619,6 +622,11 @@ const Dashboards = () => {
       dashboardId: dashboard.id,
       dashboardName: dashboard.name,
     })
+  }
+
+  const openSavedDashboardFromLibrary = (dashboard: SavedDashboard) => {
+    openSavedDashboardInWorkspace(dashboard)
+    closeDashboardEditor()
   }
 
   const closeDashboardEditor = () => {
@@ -845,6 +853,7 @@ const Dashboards = () => {
 
       setDashboardLibraryInitialSearch(customEvent.detail?.searchTerm || '')
       setDashboardLibraryInitialFolder(customEvent.detail?.folderFilter || '')
+      setDashboardLibraryMode('workspace')
       setDashboardLibraryInitialSearchKey((currentKey) => currentKey + 1)
       setDashboardLibraryOpen(true)
     }
@@ -1404,12 +1413,11 @@ const Dashboards = () => {
                         openDashboardEditor(dashboard.id)
                       }
                       dashboardOptions={visibleDashboardOptions}
-                      onOpenDashboard={openSavedDashboardFromEmptyState}
+                      onOpenDashboard={openSavedDashboardInWorkspace}
                     />
                   ) : (
                     <DashboardLayoutView
                       layout={dashboard.layout}
-                      readOnly
                       updateLayout={(model) => {
                         updateLayout(model)
                         // Mark this dashboard as having changes after layout update
@@ -1536,6 +1544,7 @@ const Dashboards = () => {
                 onClick={() => {
                   setDashboardLibraryInitialSearch('')
                   setDashboardLibraryInitialFolder('')
+                  setDashboardLibraryMode('builder')
                   setDashboardLibraryInitialSearchKey(
                     (currentKey) => currentKey + 1,
                   )
@@ -1830,8 +1839,9 @@ const Dashboards = () => {
         initialSearchTerm={dashboardLibraryInitialSearch}
         initialFolderFilter={dashboardLibraryInitialFolder}
         initialSearchKey={dashboardLibraryInitialSearchKey}
-        mode="builder"
+        mode={dashboardLibraryMode}
         onOpenInBuilder={loadSavedDashboardInBuilder}
+        onOpenInWorkspace={openSavedDashboardFromLibrary}
       />
 
       {/* Dashboard Details Dialog */}
