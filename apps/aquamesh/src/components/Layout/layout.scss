@@ -150,7 +150,7 @@
 }
 
 .flexlayout__tab_button {
-  background-color: var(--background-paper);
+  background-color: var(--background-bar-medium);
   height: 32px;
   line-height: 1;
   min-width: 132px;
@@ -159,6 +159,7 @@
   color: var(--foreground-secondary);
 
   &:only-child {
+    background-color: var(--background-paper);
     padding-left: 16px;
 
     .flexlayout__tab_button_trailing {
@@ -171,7 +172,7 @@
 
     &.flexlayout__tab_button--selected {
       color: var(--foreground-primary);
-      background-color: var(--background-bar-medium);
+      background-color: var(--background-paper);
     }
 
     .flexlayout__tab_button_trailing {
