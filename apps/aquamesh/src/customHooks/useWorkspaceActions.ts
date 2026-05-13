@@ -218,13 +218,14 @@ const getUniqueSavedDashboardName = (
 const saveStudyPackDashboard = (
   name: string,
   layout: DashboardLayout,
+  folderName = 'Study Packs',
 ): SavedDashboardRecord => {
   const dashboards = getSavedDashboards()
   const now = new Date().toISOString()
   const dashboard: SavedDashboardRecord = {
     id: `study-pack-dashboard-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
     name: getUniqueSavedDashboardName(name, dashboards),
-    folder: 'Study Packs',
+    folder: folderName.trim() || 'Study Packs',
     folderColor: '#007C66',
     layout,
     description: 'Generated from student notes.',
@@ -573,6 +574,7 @@ export const useWorkspaceActions = () => {
       name,
       widgets,
       layoutMode = 'smart',
+      folderName = 'Study Packs',
     }: {
       name: string
       widgets: Array<{
@@ -585,6 +587,7 @@ export const useWorkspaceActions = () => {
         author?: string
       }>
       layoutMode?: StudyPackDashboardLayoutMode
+      folderName?: string
     }) => {
       const savedWidgets = widgets.map((widget) =>
         WidgetStorage.saveWidget({
@@ -600,7 +603,7 @@ export const useWorkspaceActions = () => {
       const layout = createStudyPackDashboardLayout(savedWidgets, {
         mode: layoutMode,
       })
-      const dashboard = saveStudyPackDashboard(name, layout)
+      const dashboard = saveStudyPackDashboard(name, layout, folderName)
 
       addDashboard({
         name: dashboard.name,
@@ -610,6 +613,36 @@ export const useWorkspaceActions = () => {
       return dashboard
     },
     [addDashboard],
+  )
+
+  const createStudyPackDashboards = useCallback(
+    ({
+      dashboards,
+      folderName = 'Study Packs',
+    }: {
+      folderName?: string
+      dashboards: Array<{
+        name: string
+        widgets: Array<{
+          name: string
+          components: ComponentData[]
+          category?: string
+          tags?: string[]
+          description?: string
+          version?: string
+          author?: string
+        }>
+        layoutMode?: StudyPackDashboardLayoutMode
+        folderName?: string
+      }>
+    }) =>
+      dashboards.map((dashboard) =>
+        createStudyPackDashboard({
+          ...dashboard,
+          folderName: dashboard.folderName || folderName,
+        }),
+      ),
+    [createStudyPackDashboard],
   )
 
   const openTemplateDashboard = useCallback(
@@ -705,6 +738,7 @@ export const useWorkspaceActions = () => {
     openCreateDashboard,
     openCreateStudyPack,
     createStudyPackDashboard,
+    createStudyPackDashboards,
     openOperationsExample,
     openMathExample,
     openTutorialExample,

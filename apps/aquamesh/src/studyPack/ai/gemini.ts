@@ -63,6 +63,26 @@ export interface GenerateStudyPackWithAiOptions {
   studyPathMode?: boolean
 }
 
+export interface AiStudyPathDashboardDraft extends AiStudyPackDraft {
+  summary: string
+}
+
+export interface AiStudyPathDraft {
+  title: string
+  folderName: string
+  dashboards: AiStudyPathDashboardDraft[]
+  warnings: string[]
+}
+
+export interface GenerateStudyPathWithAiOptions {
+  apiToken: string
+  model: string
+  title: string
+  prompt: string
+  folderName: string
+  generationAmount?: 'few' | 'medium' | 'many'
+}
+
 const asksForHeavyResource = (text: string): boolean =>
   /\b(pdf|image|images|picture|pictures|diagram|diagrams|visual|visuals|photo|photos|screenshot|screenshots)\b/i.test(
     text,
@@ -168,6 +188,47 @@ const objectSchema = {
     },
   },
   required: ['objects'],
+}
+
+const studyPathSchema = {
+  type: 'OBJECT',
+  properties: {
+    title: { type: 'STRING' },
+    folderName: { type: 'STRING' },
+    dashboards: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          title: { type: 'STRING' },
+          summary: { type: 'STRING' },
+          rawNotes: { type: 'STRING' },
+          objects: objectSchema.properties.objects,
+        },
+        required: ['title', 'summary', 'objects'],
+      },
+    },
+  },
+  required: ['title', 'folderName', 'dashboards'],
+}
+
+const parseGeminiJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
+    if (fenced) {
+      return JSON.parse(fenced)
+    }
+
+    const firstObject = text.indexOf('{')
+    const lastObject = text.lastIndexOf('}')
+    if (firstObject >= 0 && lastObject > firstObject) {
+      return JSON.parse(text.slice(firstObject, lastObject + 1))
+    }
+
+    throw new Error('Gemini returned invalid JSON.')
+  }
 }
 
 const fileToBase64 = (file: File): Promise<string> =>
@@ -344,12 +405,7 @@ ${rawNotes}`,
     objectSchema,
   )
 
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    throw new Error('Gemini returned invalid JSON.')
-  }
+  const parsed = parseGeminiJson(text)
 
   const draft = normalizeAiStudyPackDraft(parsed, packId)
   const safeDraft = removeUnrequestedHeavyResources(draft.objects, rawNotes)
@@ -367,5 +423,149 @@ ${rawNotes}`,
     warnings: [...draft.warnings, ...safeDraft.warnings, ...augmented.warnings],
     title: draft.title || title,
     sourceFormat: draft.sourceFormat || ('text' as StudyPackSourceFormat),
+  }
+}
+
+export const generateStudyPathWithAi = async ({
+  apiToken,
+  model,
+  title,
+  prompt,
+  folderName,
+  generationAmount = 'medium',
+}: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
+  const stepNames = [
+    'Introduction',
+    'Theory',
+    'Examples',
+    'Practice',
+    'Final Review',
+  ]
+  const practiceProfile = createStudyPackPracticeProfile(generationAmount, [
+    'summaries',
+    'definitions',
+    'flashcards',
+    'quizzes',
+    'exercises',
+  ])
+  const text = await callGemini(
+    apiToken,
+    model,
+    [
+      {
+        text: `Create a Study Path JSON object. A Study Path is NOT one dashboard. It is a folder containing multiple ordered dashboards/study packs.
+
+Return exactly this structure:
+{
+  "title": "Path title",
+  "folderName": "Folder name for all dashboards",
+  "dashboards": [
+    { "title": "01 - Introduction", "summary": "One sentence preview", "rawNotes": "Short source notes for this lesson", "objects": [...] }
+  ]
+}
+
+Rules:
+- Create exactly 5 dashboards unless the topic is tiny. Use these ordered lessons: ${stepNames.join(' → ')}.
+- Each dashboard must be useful by itself and contain 4-10 objects.
+- Start each dashboard with a markdown or note object containing the teaching explanation for that lesson.
+- Include practice in later dashboards: quizzes, flashcards as "qa", review prompts, lists, sequences, code, or tables when relevant.
+- Every dashboard needs a short "summary" sentence so the review screen can preview it.
+- Do not wrap JSON in markdown. Do not add commentary outside JSON.
+- Do not create PDFs/images/resources unless the user explicitly asks for heavy media.
+- For multiple-choice quizzes, include 3-4 options, correctIndex, answer, and explanation.
+- Keep content concise, beginner-friendly, and appropriate for the requested topic.
+- Aim for about ${practiceProfile.minTotal}-${practiceProfile.maxTotal} reviewable items across the whole path.
+
+Path title: ${title}
+Folder name: ${folderName}
+User request/topic:
+${prompt}`,
+      },
+    ],
+    studyPathSchema,
+  )
+
+  const parsed = parseGeminiJson(text)
+  const record =
+    parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
+  const rawDashboards = Array.isArray(record.dashboards)
+    ? record.dashboards
+    : []
+  const warnings: string[] = []
+  const dashboards = rawDashboards
+    .slice(0, 8)
+    .map((item, index): AiStudyPathDashboardDraft | null => {
+      const input =
+        item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+      const dashboardTitle =
+        typeof input.title === 'string' && input.title.trim()
+          ? input.title.trim()
+          : `${index + 1}. ${stepNames[index] || 'Lesson'}`
+      const packId = `${title}-${index + 1}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+      const draft = normalizeAiStudyPackDraft(
+        {
+          ...input,
+          title: dashboardTitle,
+          sourceFormat: 'text',
+        },
+        packId,
+      )
+      const safeDraft = removeUnrequestedHeavyResources(draft.objects, prompt)
+      const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
+        packId,
+        title: dashboardTitle,
+        rawNotes:
+          typeof input.rawNotes === 'string' ? input.rawNotes : prompt,
+        generationTargets: [
+          'summaries',
+          'definitions',
+          'flashcards',
+          'quizzes',
+          'exercises',
+        ],
+        generationAmount,
+      })
+
+      warnings.push(...draft.warnings, ...safeDraft.warnings, ...augmented.warnings)
+
+      if (augmented.objects.length === 0) {
+        warnings.push(`Skipped ${dashboardTitle}: no usable study objects.`)
+        return null
+      }
+
+      return {
+        ...draft,
+        title: dashboardTitle,
+        summary:
+          typeof input.summary === 'string' && input.summary.trim()
+            ? input.summary.trim()
+            : 'Generated lesson dashboard.',
+        rawNotes: typeof input.rawNotes === 'string' ? input.rawNotes : prompt,
+        objects: augmented.objects,
+        warnings: [],
+        sourceFormat: 'text' as StudyPackSourceFormat,
+      }
+    })
+    .filter((dashboard): dashboard is AiStudyPathDashboardDraft =>
+      Boolean(dashboard),
+    )
+
+  if (dashboards.length === 0) {
+    throw new Error('Gemini did not return any usable Study Path dashboards.')
+  }
+
+  return {
+    title:
+      typeof record.title === 'string' && record.title.trim()
+        ? record.title.trim()
+        : title,
+    folderName:
+      typeof record.folderName === 'string' && record.folderName.trim()
+        ? record.folderName.trim()
+        : folderName,
+    dashboards,
+    warnings,
   }
 }

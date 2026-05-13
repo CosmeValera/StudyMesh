@@ -109,26 +109,9 @@ const studyTaskModeOptions: Array<{
     helper: 'Turn pasted notes, files, or images into study material.',
   },
   {
-    label: 'AI prompt',
+    label: 'AI Tutor',
     value: 'aiPrompt',
     helper: 'Ask AquaMesh to teach a topic and create the notes plus practice.',
-  },
-]
-
-const learningOutputOptions: Array<{
-  label: string
-  value: LearningOutputMode
-  helper: string
-}> = [
-  {
-    label: 'Single Study Pack',
-    value: 'studyPack',
-    helper: 'One dashboard with source notes, summaries, quizzes, and flashcards.',
-  },
-  {
-    label: 'Study Path',
-    value: 'studyPath',
-    helper: 'An ordered journey: intro, theory, examples, practice, final review.',
   },
 ]
 
@@ -1179,23 +1162,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 sx={{ minWidth: { md: 190 } }}
               >
                 {studyTaskModeOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Output"
-                value={learningOutputMode}
-                onChange={(event) =>
-                  setLearningOutputMode(
-                    event.target.value as LearningOutputMode,
-                  )
-                }
-                sx={{ minWidth: { md: 190 } }}
-              >
-                {learningOutputOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
                     {option.label}
                   </MenuItem>

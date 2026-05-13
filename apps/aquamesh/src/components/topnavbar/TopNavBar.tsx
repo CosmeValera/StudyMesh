@@ -28,6 +28,7 @@ import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
+import RouteIcon from '@mui/icons-material/Route'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import { ReactComponent as Logo } from '../../../public/logo.svg'
@@ -44,6 +45,7 @@ import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import CreateStudyPackModal from '../studyPack/CreateStudyPackModal'
+import CreateStudyPathModal from '../studyPack/CreateStudyPathModal'
 
 // Define user data type
 interface UserData {
@@ -149,6 +151,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [studyPackOpen, setStudyPackOpen] = useState(false)
+  const [studyPathOpen, setStudyPathOpen] = useState(false)
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
   const [widgetEditorPayload, setWidgetEditorPayload] = useState<{
     loadWidget?: CustomWidget
@@ -183,6 +186,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     openCreateDashboard,
     openCreateStudyPack,
     createStudyPackDashboard,
+    createStudyPackDashboards,
   } = useWorkspaceActions()
   const navigate = useNavigate()
 
@@ -390,6 +394,38 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 data-tutorial-id="create-study-pack-button"
               >
                 Create Study Pack
+              </Button>
+            )}
+
+            {isPhone || isTablet ? (
+              <ButtonWithLabel
+                icon={<RouteIcon />}
+                label="Study Path"
+                onClick={() => setStudyPathOpen(true)}
+                disabled={!isAdmin}
+                title={
+                  isAdmin
+                    ? 'Create Study Path'
+                    : 'Viewer mode cannot create study paths'
+                }
+                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
+              />
+            ) : (
+              <Button
+                onClick={() => setStudyPathOpen(true)}
+                disabled={!isAdmin}
+                sx={{
+                  color: 'foreground.contrastPrimary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: 'auto',
+                  mx: 1,
+                  px: 2,
+                  opacity: isAdmin ? 1 : 0.45,
+                }}
+                startIcon={<RouteIcon />}
+              >
+                Study Path
               </Button>
             )}
 
@@ -704,6 +740,11 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         open={studyPackOpen}
         onClose={() => setStudyPackOpen(false)}
         onCreatePack={createStudyPackDashboard}
+      />
+      <CreateStudyPathModal
+        open={studyPathOpen}
+        onClose={() => setStudyPathOpen(false)}
+        onCreatePath={createStudyPackDashboards}
       />
       <Dialog
         fullScreen
