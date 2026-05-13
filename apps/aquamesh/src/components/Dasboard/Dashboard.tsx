@@ -541,6 +541,26 @@ const Dashboards = () => {
       ).sort((a, b) => a.localeCompare(b)),
     [dashboardOptions],
   )
+  const getFolderColorForDetailsInput = (folder: string) => {
+    const normalizedFolder = normalizeFolderName(folder)
+
+    if (!folder.trim()) {
+      return DashboardStorage.getFolderColor('Default')
+    }
+
+    if (dashboardFolderOptions.includes(normalizedFolder)) {
+      return DashboardStorage.getFolderColor(normalizedFolder)
+    }
+
+    const currentColor = normalizeFolderColor(dashboardFolderColor)
+    const availableColors = FOLDER_COLOR_PRESETS.filter(
+      (color) => color !== currentColor,
+    )
+    const nextColors =
+      availableColors.length > 0 ? availableColors : FOLDER_COLOR_PRESETS
+
+    return nextColors[Math.floor(Math.random() * nextColors.length)]
+  }
 
   const loadDashboardOptions = () => {
     ensureStarterDashboards()
@@ -1954,14 +1974,12 @@ const Dashboards = () => {
             onChange={(_, nextValue) => {
               const nextFolder = nextValue || ''
               setDashboardFolder(nextFolder)
-              setDashboardFolderColor(
-                DashboardStorage.getFolderColor(nextFolder),
-              )
+              setDashboardFolderColor(getFolderColorForDetailsInput(nextFolder))
             }}
             onInputChange={(_, nextInputValue) => {
               setDashboardFolder(nextInputValue)
               setDashboardFolderColor(
-                DashboardStorage.getFolderColor(nextInputValue),
+                getFolderColorForDetailsInput(nextInputValue),
               )
             }}
             renderInput={(params) => (

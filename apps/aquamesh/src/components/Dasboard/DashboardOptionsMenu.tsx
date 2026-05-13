@@ -103,6 +103,9 @@ const hasDashboardContent = (layout?: DashboardLayout): boolean => {
 const DashboardOptionsMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [customDashboards, setCustomDashboards] = useState<SavedDashboard[]>([])
+  const [expandedDashboardFolders, setExpandedDashboardFolders] = useState<
+    string[]
+  >([])
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -210,12 +213,14 @@ const DashboardOptionsMenu: React.FC = () => {
   // Handle opening and closing dropdown
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     loadSavedDashboards() // Refresh the list when opening menu
+    setExpandedDashboardFolders([])
     setAnchorEl(event.currentTarget)
     dispatchWorkspaceOnboardingEvent({ type: 'dashboard-menu-opened' })
   }
 
   const handleClose = () => {
     setAnchorEl(null)
+    setExpandedDashboardFolders([])
   }
 
   // Create a dashboard with predefined layout
@@ -261,6 +266,18 @@ const DashboardOptionsMenu: React.FC = () => {
       new CustomEvent(OPEN_SAVED_DASHBOARDS_EVENT, {
         detail: { folderFilter: folderName },
       }),
+    )
+  }
+
+  const showAllDashboardsForFolder = (
+    event: React.MouseEvent<HTMLElement>,
+    folderName: string,
+  ) => {
+    event.stopPropagation()
+    setExpandedDashboardFolders((currentFolders) =>
+      currentFolders.includes(folderName)
+        ? currentFolders
+        : [...currentFolders, folderName],
     )
   }
 
@@ -427,13 +444,23 @@ const DashboardOptionsMenu: React.FC = () => {
                 borderLeftColor: customDashboardHeaderColor,
               }}
             >
-              Advanced Workspaces
+              Custom Dashboards
             </Typography>
             {customDashboardFolders.map(([folderName, dashboards]) => {
               const folderColor = getFolderColor(folderName, dashboards)
               const nonStudyDashboards = dashboards.filter(
                 (dashboard) => !isStudyPackDashboard(dashboard),
               )
+              const orderedNonStudyDashboards = [...nonStudyDashboards].reverse()
+              const isFolderExpanded =
+                expandedDashboardFolders.includes(folderName)
+              const visibleNonStudyDashboards =
+                isFolderExpanded
+                  ? orderedNonStudyDashboards
+                  : orderedNonStudyDashboards.slice(
+                      0,
+                      MAX_MENU_ITEMS_PER_FOLDER,
+                    )
 
               return (
                 <React.Fragment key={folderName}>
@@ -492,10 +519,7 @@ const DashboardOptionsMenu: React.FC = () => {
                     </Tooltip>
                   </Typography>
                   <Divider sx={{ borderColor: 'divider' }} />
-                  {[...nonStudyDashboards]
-                    .reverse()
-                    .slice(0, MAX_MENU_ITEMS_PER_FOLDER)
-                    .map((dashboard) => (
+                  {visibleNonStudyDashboards.map((dashboard) => (
                       <MenuItem
                         key={dashboard.id}
                         data-onboarding-id="topnav-saved-dashboard"
@@ -512,10 +536,11 @@ const DashboardOptionsMenu: React.FC = () => {
                         {dashboard.name}
                       </MenuItem>
                     ))}
-                  {nonStudyDashboards.length > MAX_MENU_ITEMS_PER_FOLDER && (
+                  {!isFolderExpanded &&
+                    nonStudyDashboards.length > MAX_MENU_ITEMS_PER_FOLDER && (
                     <MenuItem
                       onClick={(event) =>
-                        openSavedDashboardsForFolder(event, folderName)
+                        showAllDashboardsForFolder(event, folderName)
                       }
                       sx={{
                         p: 1.5,
@@ -528,7 +553,7 @@ const DashboardOptionsMenu: React.FC = () => {
                     >
                       ... Show all {nonStudyDashboards.length}
                     </MenuItem>
-                  )}
+                    )}
                 </React.Fragment>
               )
             })}

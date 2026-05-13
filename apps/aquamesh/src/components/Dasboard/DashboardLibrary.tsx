@@ -705,7 +705,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                   Library
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Study Packs, subjects, and advanced workspaces.
+                  Study Packs and custom dashboards.
                 </Typography>
               </Box>
             </Box>
@@ -811,7 +811,25 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 >
                   <MenuItem value="">All Subjects</MenuItem>
                   {folderOptions.map((folderName) => (
-                    <MenuItem key={folderName} value={folderName}>
+                    <MenuItem
+                      key={folderName}
+                      value={folderName}
+                      sx={{
+                        borderLeft: '4px solid',
+                        borderLeftColor: folderColorsByName[folderName],
+                        bgcolor: `${folderColorsByName[folderName]}14`,
+                        color: 'text.primary',
+                        '&:hover': {
+                          bgcolor: `${folderColorsByName[folderName]}24`,
+                        },
+                        '&.Mui-selected': {
+                          bgcolor: `${folderColorsByName[folderName]}30`,
+                          '&:hover': {
+                            bgcolor: `${folderColorsByName[folderName]}3D`,
+                          },
+                        },
+                      }}
+                    >
                       {folderName}
                     </MenuItem>
                   ))}
