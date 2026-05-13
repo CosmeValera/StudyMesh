@@ -45,7 +45,7 @@ function render_message() {
 function check_AquaMesh_commit() {
   local commitMsg=$1
   readonly COMMIT_MSG_REGEX="^AquaMesh:[\s\S]*"
-  if [[ "$commitMsg" =~ $COMMIT_MSG_REGEX || "$commitMsg" =~ $COMMIT_MSG_REGEX_DEV ]]; then
+  if [[ "$commitMsg" =~ $COMMIT_MSG_REGEX ]]; then
     if [[ "$DEBUG" == true ]]; then
       echo "sanitizedMsg = $sanitizedMsg"
       echo "The commit sanitizedMsg is already a AquaMesh commit: ignoring the hook."
