@@ -1,4 +1,5 @@
 import { StudyPackSourceFormat } from '../types'
+import { StudyObject } from '../types'
 import {
   augmentStudyPackPracticeObjects,
   createStudyPackPracticeProfile,
@@ -58,6 +59,38 @@ export interface GenerateStudyPackWithAiOptions {
   packId: string
   generationTargets?: string[]
   generationAmount?: 'few' | 'medium' | 'many'
+  promptMode?: boolean
+  studyPathMode?: boolean
+}
+
+const asksForHeavyResource = (text: string): boolean =>
+  /\b(pdf|image|images|picture|pictures|diagram|diagrams|visual|visuals|photo|photos|screenshot|screenshots)\b/i.test(
+    text,
+  )
+
+const removeUnrequestedHeavyResources = (
+  objects: StudyObject[],
+  rawNotes: string,
+): { objects: StudyObject[]; warnings: string[] } => {
+  if (asksForHeavyResource(rawNotes)) {
+    return { objects, warnings: [] }
+  }
+
+  const filtered = objects.filter(
+    (object) =>
+      object.kind !== 'resource' ||
+      (object.resourceType !== 'pdf' && object.resourceType !== 'image'),
+  )
+
+  return {
+    objects: filtered,
+    warnings:
+      filtered.length === objects.length
+        ? []
+        : [
+            'Skipped AI-generated PDF/image resources because the source did not explicitly ask for heavy media.',
+          ],
+  }
 }
 
 export interface ExtractRawNotesWithAiOptions {
@@ -256,6 +289,8 @@ export const generateStudyPackWithAi = async ({
   packId,
   generationTargets = [],
   generationAmount = 'medium',
+  promptMode = false,
+  studyPathMode = false,
 }: GenerateStudyPackWithAiOptions): Promise<AiStudyPackDraft> => {
   const effectiveTargets = getEffectiveGenerationTargets(generationTargets)
   const practiceProfile = createStudyPackPracticeProfile(
@@ -270,6 +305,12 @@ export const generateStudyPackWithAi = async ({
     practiceProfile.enforceQuizzes || practiceProfile.enforceFlashcards
       ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
       : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
+  const sourceInstruction = promptMode
+    ? 'The raw input is a learning prompt, not notes. First create concise source notes that teach the requested topic, then generate practice grounded in those generated notes. Include explanation/theory objects before exercises.'
+    : 'The raw input is source notes. Stay grounded in those notes.'
+  const pathInstruction = studyPathMode
+    ? 'Organize the material as a Study Path progression. Use titles/tags that clearly fit: Introduction, Theory, Examples, Practice, Final Review.'
+    : 'Organize the material as a single Study Pack.'
 
   const text = await callGemini(
     apiToken,
@@ -280,11 +321,14 @@ export const generateStudyPackWithAi = async ({
 
 Rules:
 - Use only facts answerable from the notes.
+- ${sourceInstruction}
+- ${pathInstruction}
 - Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
 - Prefer useful learning widgets from the selected target types: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, code notes, tables, and review prompts.
 - For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - Do not invent outside facts or practice content requiring unstated knowledge.
+- Do not create or reference heavy resources such as PDFs or images unless the user explicitly asks for PDFs, images, screenshots, diagrams, or visual resources.
 - Keep objects concise and student-friendly.
 - ${targetInstruction}
 - ${amountInstruction}
@@ -308,7 +352,8 @@ ${rawNotes}`,
   }
 
   const draft = normalizeAiStudyPackDraft(parsed, packId)
-  const augmented = augmentStudyPackPracticeObjects(draft.objects, {
+  const safeDraft = removeUnrequestedHeavyResources(draft.objects, rawNotes)
+  const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
     packId,
     title: draft.title || title,
     rawNotes,
@@ -319,7 +364,7 @@ ${rawNotes}`,
   return {
     ...draft,
     objects: augmented.objects,
-    warnings: [...draft.warnings, ...augmented.warnings],
+    warnings: [...draft.warnings, ...safeDraft.warnings, ...augmented.warnings],
     title: draft.title || title,
     sourceFormat: draft.sourceFormat || ('text' as StudyPackSourceFormat),
   }

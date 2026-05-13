@@ -57,6 +57,8 @@ type ReviewType =
 type SourceInputType = 'text' | 'image'
 type StudyPackCreationMode = 'basic' | 'ai'
 type GenerationAmount = 'few' | 'medium' | 'many'
+type StudyTaskMode = 'importNotes' | 'aiPrompt'
+type LearningOutputMode = 'studyPack' | 'studyPath'
 
 interface ReviewItem {
   object: StudyObject
@@ -94,6 +96,40 @@ const creationModeOptions: Array<{
 }> = [
   { label: 'AI', value: 'ai' },
   { label: 'Basic fallback', value: 'basic' },
+]
+
+const studyTaskModeOptions: Array<{
+  label: string
+  value: StudyTaskMode
+  helper: string
+}> = [
+  {
+    label: 'Import notes',
+    value: 'importNotes',
+    helper: 'Turn pasted notes, files, or images into study material.',
+  },
+  {
+    label: 'AI prompt',
+    value: 'aiPrompt',
+    helper: 'Ask AquaMesh to teach a topic and create the notes plus practice.',
+  },
+]
+
+const learningOutputOptions: Array<{
+  label: string
+  value: LearningOutputMode
+  helper: string
+}> = [
+  {
+    label: 'Single Study Pack',
+    value: 'studyPack',
+    helper: 'One dashboard with source notes, summaries, quizzes, and flashcards.',
+  },
+  {
+    label: 'Study Path',
+    value: 'studyPath',
+    helper: 'An ordered journey: intro, theory, examples, practice, final review.',
+  },
 ]
 
 const generationTargetGroups = [
@@ -322,6 +358,70 @@ const createPreviewWidgetGroups = (
     objectIds: group.objects.map((object) => object.id),
   }))
 
+const studyPathStepNames = [
+  '1. Introduction',
+  '2. Theory',
+  '3. Examples',
+  '4. Practice',
+  '5. Final Review',
+]
+
+const getStudyPathStepIndex = (object: StudyObject, index: number): number => {
+  if (object.kind === 'quiz' || object.kind === 'qa' || object.kind === 'reveal') {
+    return 3
+  }
+
+  if (object.kind === 'reviewPrompt') {
+    return 4
+  }
+
+  if (object.kind === 'comparison' || object.kind === 'sequence' || object.kind === 'table') {
+    return 2
+  }
+
+  if (object.kind === 'term' || object.kind === 'note' || object.kind === 'markdown') {
+    return index < 2 ? 0 : 1
+  }
+
+  return Math.min(index % studyPathStepNames.length, studyPathStepNames.length - 1)
+}
+
+const createStudyPathPreviewGroups = (
+  objects: StudyObject[],
+): PreviewWidgetGroup[] => {
+  const groups = studyPathStepNames.map((name, index) => ({
+    id: `study-path-step-${index + 1}`,
+    name,
+    objectIds: [] as string[],
+  }))
+
+  objects.forEach((object, index) => {
+    groups[getStudyPathStepIndex(object, index)].objectIds.push(object.id)
+  })
+
+  return groups.filter((group) => group.objectIds.length > 0)
+}
+
+const createGeneratedSourceNotes = (
+  title: string,
+  prompt: string,
+  objects: StudyObject[],
+): string => {
+  const sourceSections = objects
+    .filter((object) =>
+      ['markdown', 'note', 'term', 'list', 'comparison', 'sequence', 'table', 'code'].includes(
+        object.kind,
+      ),
+    )
+    .slice(0, 10)
+    .map((object) => `## ${getObjectTitle(object)}\n\n${getObjectPreview(object)}`)
+    .join('\n\n')
+
+  return `# ${title}\n\nGenerated from AI prompt: ${prompt.trim()}\n\n${
+    sourceSections || 'AquaMesh generated practice-first study material from this learning prompt.'
+  }`
+}
+
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
     return null
@@ -469,6 +569,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [creationMode, setCreationMode] = useState<StudyPackCreationMode>('ai')
+  const [studyTaskMode, setStudyTaskMode] =
+    useState<StudyTaskMode>('importNotes')
+  const [learningOutputMode, setLearningOutputMode] =
+    useState<LearningOutputMode>('studyPack')
   const [sourceInputType, setSourceInputType] =
     useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
@@ -529,6 +633,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const reset = () => {
     setStep('source')
     setCreationMode('ai')
+    setStudyTaskMode('importNotes')
+    setLearningOutputMode('studyPack')
     setSourceInputType('text')
     setSourceText('')
     setSourceFormat('text')
@@ -611,10 +717,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setSourceFormat(parsed.sourceFormat)
     setReviewItems(reviewableItems)
     setWidgetGroups(
-      createPreviewWidgetGroups(
-        reviewableItems.map((item) => item.object),
-        parsed.title,
-      ),
+      learningOutputMode === 'studyPath'
+        ? createStudyPathPreviewGroups(reviewableItems.map((item) => item.object))
+        : createPreviewWidgetGroups(
+            reviewableItems.map((item) => item.object),
+            parsed.title,
+          ),
     )
     setError(parsed.warnings[0] || augmented.warnings[0] || '')
     setStep('review')
@@ -653,6 +761,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         packId: getPackId(packTitle),
         generationTargets,
         generationAmount,
+        promptMode: studyTaskMode === 'aiPrompt',
+        studyPathMode: learningOutputMode === 'studyPath',
       })
       const nextTitle = draft.title || packTitle
       setAiProgressLabel('Preparing review screen')
@@ -661,10 +771,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setSourceFormat(draft.sourceFormat || 'text')
       setReviewItems(reviewableItems)
       setWidgetGroups(
-        createPreviewWidgetGroups(
-          reviewableItems.map((item) => item.object),
-          nextTitle,
-        ),
+        learningOutputMode === 'studyPath'
+          ? createStudyPathPreviewGroups(
+              reviewableItems.map((item) => item.object),
+            )
+          : createPreviewWidgetGroups(
+              reviewableItems.map((item) => item.object),
+              nextTitle,
+            ),
       )
       setError(
         draft.warnings[0] ||
@@ -763,11 +877,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
 
     if (!sourceText.trim()) {
-      setError('Add notes before continuing.')
+      setError(
+        studyTaskMode === 'aiPrompt'
+          ? 'Describe what you want to learn before continuing.'
+          : 'Add notes before continuing.',
+      )
       return
     }
 
-    if (creationMode === 'ai') {
+    if (creationMode === 'ai' || studyTaskMode === 'aiPrompt') {
       await parseSourceWithAi()
       return
     }
@@ -953,12 +1071,18 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const widgets = createStudyPackOrchestratorWidgets(pack, {
       includeSourceWidget,
       includeSummaryChart: includeSourceChart,
-      rawSource: sourceText,
+      rawSource:
+        studyTaskMode === 'aiPrompt'
+          ? createGeneratedSourceNotes(pack.title, sourceText, objects)
+          : sourceText,
       widgetGroups: groups,
     })
 
     onCreatePack({
-      name: packTitle.trim() || 'Study Pack',
+      name:
+        learningOutputMode === 'studyPath'
+          ? `${packTitle.trim() || 'Study Pack'} Study Path`
+          : packTitle.trim() || 'Study Pack',
       widgets,
       layoutMode:
         includeSourceWidget || layoutMode !== 'orchestrator'
@@ -1042,8 +1166,46 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </TextField>
               <TextField
                 select
+                label="Study task"
+                value={studyTaskMode}
+                onChange={(event) => {
+                  const value = event.target.value as StudyTaskMode
+                  setStudyTaskMode(value)
+                  if (value === 'aiPrompt') {
+                    setCreationMode('ai')
+                    setSourceInputType('text')
+                  }
+                }}
+                sx={{ minWidth: { md: 190 } }}
+              >
+                {studyTaskModeOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Output"
+                value={learningOutputMode}
+                onChange={(event) =>
+                  setLearningOutputMode(
+                    event.target.value as LearningOutputMode,
+                  )
+                }
+                sx={{ minWidth: { md: 190 } }}
+              >
+                {learningOutputOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
                 label="Source type"
                 value={sourceInputType}
+                disabled={studyTaskMode === 'aiPrompt'}
                 onChange={(event) =>
                   handleSourceInputTypeChange(
                     event.target.value as SourceInputType,
@@ -1068,6 +1230,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               }}
             >
               <Stack spacing={1.5}>
+                <Alert severity="info">
+                  {studyTaskMode === 'aiPrompt'
+                    ? 'AI Prompt mode lets you say what you want to learn. AquaMesh writes the source notes first, then builds exercises from that generated lesson.'
+                    : 'Import Notes mode keeps generation grounded in your pasted notes, uploaded text, or extracted image text.'}{' '}
+                  {learningOutputMode === 'studyPath'
+                    ? 'Study Path output organizes the pack as an ordered learning journey instead of one mixed dashboard.'
+                    : 'Single Study Pack output keeps everything in one compact workspace.'}
+                </Alert>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <AutoAwesomeIcon
                     color={creationMode === 'ai' ? 'primary' : 'action'}
@@ -1077,9 +1247,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     <Typography variant="subtitle2" fontWeight={800}>
                       {creationMode === 'ai' ? 'AI mode' : 'Basic mode'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary">
                       {creationMode === 'ai'
-                        ? 'Default path for Study Packs. AquaMesh can read notes and generate summaries, flashcards, quizzes, and practice prompts from grounded source material.'
+                        ? studyTaskMode === 'aiPrompt'
+                          ? 'Describe a learning goal like “Teach me French passé composé”; AquaMesh creates lesson notes, practice, flashcards, and review steps.'
+                          : 'Default path for Study Packs. AquaMesh can read notes and generate summaries, flashcards, quizzes, and practice prompts from grounded source material.'
                         : 'Offline fallback for Study Packs. AquaMesh uses local parsing and grounded practice generation from the notes you provide.'}
                     </Typography>
                   </Box>
@@ -1142,33 +1314,52 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             {sourceInputType === 'text' ? (
               <>
                 <TextField
-                  label="Paste notes"
+                  label={
+                    studyTaskMode === 'aiPrompt'
+                      ? 'What do you want to learn?'
+                      : 'Paste notes'
+                  }
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
                   fullWidth
                   multiline
                   minRows={16}
-                  placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)\n\n- [ ] I can explain what a derivative means`}
+                  placeholder={
+                    studyTaskMode === 'aiPrompt'
+                      ? 'Teach me French passé composé for a beginner. Put the explanation on the left and exercises on the right.'
+                      : `# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)\n\n- [ ] I can explain what a derivative means`
+                  }
                 />
-                <Button
-                  component="label"
-                  variant="outlined"
-                  startIcon={<UploadFileIcon />}
-                  sx={{ alignSelf: 'flex-start' }}
-                >
-                  Upload notes
-                  <input
-                    hidden
-                    type="file"
-                    multiple
-                    accept=".md,.txt,.csv,.pdf,text/markdown,text/plain,text/csv,application/pdf"
-                    onChange={handleFileUpload}
-                  />
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  Supports multiple .md, .txt, or .csv files. PDF parsing is a
-                  planned upgrade; paste exported PDF text for now.
-                </Typography>
+                {studyTaskMode === 'importNotes' && (
+                  <>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      Upload notes
+                      <input
+                        hidden
+                        type="file"
+                        multiple
+                        accept=".md,.txt,.csv,.pdf,text/markdown,text/plain,text/csv,application/pdf"
+                        onChange={handleFileUpload}
+                      />
+                    </Button>
+                    <Typography variant="caption" color="text.secondary">
+                      Supports multiple .md, .txt, or .csv files. PDF parsing is a
+                      planned upgrade; paste exported PDF text for now.
+                    </Typography>
+                  </>
+                )}
+                {studyTaskMode === 'aiPrompt' && (
+                  <Typography variant="caption" color="text.secondary">
+                    AquaMesh will not create heavy PDF/image resources unless you
+                    explicitly ask for them. It will prefer text, quizzes,
+                    flashcards, tables, and review prompts.
+                  </Typography>
+                )}
               </>
             ) : (
               <>
@@ -1465,7 +1656,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       gap={1}
                     >
                       <Typography variant="subtitle2">
-                        Generated study sections
+                        {learningOutputMode === 'studyPath'
+                          ? 'Study Path steps'
+                          : 'Generated study sections'}
                       </Typography>
                       <Button size="small" onClick={addWidgetGroup}>
                         Add section
@@ -1626,7 +1819,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>
-            Create pack
+            {learningOutputMode === 'studyPath'
+              ? 'Create Study Path'
+              : 'Create pack'}
           </Button>
         )}
       </DialogActions>
