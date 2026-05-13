@@ -351,138 +351,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 borderRadius: 2,
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    width: '100%',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <ColorLensIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                    <Typography fontWeight="medium" color="text.primary">
-                      Accent Color
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ ml: 5, mb: 2 }}
-                  >
-                    Pick the highlight color used by navigation, dialogs,
-                    onboarding, and editor controls.
-                  </Typography>
-                  <Box sx={{ ml: 5 }}>
-                    <AccentColorPicker />
-                  </Box>
-                </Box>
-              </Box>
-            </Paper>
-          )}
-
-          {showGlobalSettings && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 2,
-                bgcolor: 'background.default',
-                borderRadius: 2,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                <FolderOpenIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography fontWeight="medium" color="text.primary">
-                    Study Library Backup
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1.5 }}
-                  >
-                    Export or replace all saved Study Packs, subjects, and
-                    advanced workspaces stored in this browser.
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      gap: 1,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={handleExportLibrary}
-                    >
-                      Export library
-                    </Button>
-                    <Button component="label" variant="outlined" size="small">
-                      Import library
-                      <input
-                        hidden
-                        type="file"
-                        accept="application/json,.json"
-                        onChange={handleImportLibrary}
-                      />
-                    </Button>
-                    {libraryTransferStatus && (
-                      <Typography variant="caption" color="text.secondary">
-                        {libraryTransferStatus}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-            </Paper>
-          )}
-
-          {showGlobalSettings && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 2,
-                bgcolor: 'background.default',
-                borderRadius: 2,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <ReplayIcon sx={{ mr: 1.5, color: 'primary.main' }} />
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography fontWeight="medium" color="text.primary">
-                    Replay Workspace Tutorial
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Restart the guided dashboard and widget tutorial from the
-                    first step.
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleReplayTutorial}
-                  sx={{ ml: 2, whiteSpace: 'nowrap' }}
-                >
-                  Replay
-                </Button>
-              </Box>
-            </Paper>
-          )}
-
-          {showGlobalSettings && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 2,
-                bgcolor: 'background.default',
-                borderRadius: 2,
-              }}
-            >
               <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
                 <AutoAwesomeIcon sx={{ mr: 1.5, color: 'primary.main' }} />
                 <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -578,6 +446,98 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     </Button>
                   </Box>
                 </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                <FolderOpenIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Study Library Backup
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                  >
+                    Export or replace all saved Study Packs, subjects, and
+                    advanced workspaces stored in this browser.
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleExportLibrary}
+                    >
+                      Export library
+                    </Button>
+                    <Button component="label" variant="outlined" size="small">
+                      Import library
+                      <input
+                        hidden
+                        type="file"
+                        accept="application/json,.json"
+                        onChange={handleImportLibrary}
+                      />
+                    </Button>
+                    {libraryTransferStatus && (
+                      <Typography variant="caption" color="text.secondary">
+                        {libraryTransferStatus}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ReplayIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Replay Workspace Tutorial
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Restart the guided dashboard and widget tutorial from the
+                    first step.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleReplayTutorial}
+                  sx={{ ml: 2, whiteSpace: 'nowrap' }}
+                >
+                  Replay
+                </Button>
               </Box>
             </Paper>
           )}

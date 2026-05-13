@@ -29,7 +29,7 @@ import {
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
-const MAX_MENU_ITEMS_PER_FOLDER = 20
+const MAX_MENU_ITEMS_PER_FOLDER = 15
 
 // Define saved dashboard type
 interface SavedDashboard {
@@ -117,6 +117,10 @@ const DashboardOptionsMenu: React.FC = () => {
   const studyPackHeaderBackground = isDarkMode ? '#007C6652' : '#007C6624'
   const customDashboardHeaderColor = isDarkMode ? '#C5D0D6' : '#455A64'
   const customDashboardHeaderBackground = isDarkMode ? '#455A6466' : '#455A6420'
+  const getFolderItemBackground = (folderColor: string) =>
+    `${folderColor}${isDarkMode ? '0E' : '10'}`
+  const getFolderItemHoverBackground = (folderColor: string) =>
+    `${folderColor}${isDarkMode ? '23' : '22'}`
 
   // Load saved dashboards from localStorage on component mount
   useEffect(() => {
@@ -368,7 +372,16 @@ const DashboardOptionsMenu: React.FC = () => {
                   data-onboarding-id="topnav-saved-dashboard"
                   data-dashboard-id={dashboard.id}
                   onClick={() => loadCustomDashboard(dashboard)}
-                  sx={{ p: 1.5, pl: 2.5 }}
+                  sx={{
+                    p: 1.5,
+                    pl: 2.5,
+                    bgcolor: getFolderItemBackground(studyPackHeaderColor),
+                    '&:hover': {
+                      bgcolor: getFolderItemHoverBackground(
+                        studyPackHeaderColor,
+                      ),
+                    },
+                  }}
                 >
                   {dashboard.name}
                 </MenuItem>
@@ -378,7 +391,17 @@ const DashboardOptionsMenu: React.FC = () => {
                 onClick={(event) =>
                   openSavedDashboardsForFolder(event, 'Study Packs')
                 }
-                sx={{ p: 1.5, pl: 2.5, fontWeight: 700 }}
+                sx={{
+                  p: 1.5,
+                  pl: 2.5,
+                  fontWeight: 700,
+                  bgcolor: getFolderItemBackground(studyPackHeaderColor),
+                  '&:hover': {
+                    bgcolor: getFolderItemHoverBackground(
+                      studyPackHeaderColor,
+                    ),
+                  },
+                }}
               >
                 ... Show all {studyPackDashboards.length} Study Packs
               </MenuItem>
@@ -478,7 +501,13 @@ const DashboardOptionsMenu: React.FC = () => {
                         data-onboarding-id="topnav-saved-dashboard"
                         data-dashboard-id={dashboard.id}
                         onClick={() => loadCustomDashboard(dashboard)}
-                        sx={{ p: 1.5 }}
+                        sx={{
+                          p: 1.5,
+                          bgcolor: getFolderItemBackground(folderColor),
+                          '&:hover': {
+                            bgcolor: getFolderItemHoverBackground(folderColor),
+                          },
+                        }}
                       >
                         {dashboard.name}
                       </MenuItem>
@@ -488,7 +517,14 @@ const DashboardOptionsMenu: React.FC = () => {
                       onClick={(event) =>
                         openSavedDashboardsForFolder(event, folderName)
                       }
-                      sx={{ p: 1.5, fontWeight: 700 }}
+                      sx={{
+                        p: 1.5,
+                        fontWeight: 700,
+                        bgcolor: getFolderItemBackground(folderColor),
+                        '&:hover': {
+                          bgcolor: getFolderItemHoverBackground(folderColor),
+                        },
+                      }}
                     >
                       ... Show all {nonStudyDashboards.length}
                     </MenuItem>
