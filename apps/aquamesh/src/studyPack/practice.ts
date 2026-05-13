@@ -1,4 +1,4 @@
-import { StudyObject, StudyObjectKind } from './types'
+import { StudyObject, StudyObjectKind, StudyQuizObject } from './types'
 
 export type StudyPackGenerationAmount = 'few' | 'medium' | 'many'
 
@@ -113,6 +113,62 @@ export const createStudyPackPracticeProfile = (
 
 export const isReviewableStudyObject = (object: StudyObject): boolean =>
   reviewableKinds.has(object.kind)
+
+const hashValue = (value: string): number => {
+  let hash = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return hash
+}
+
+const reorderOptions = (
+  options: string[],
+  correctAnswer: string,
+  targetIndex: number,
+): string[] => {
+  const wrongOptions = options.filter((option) => option !== correctAnswer)
+  const nextOptions = [...wrongOptions]
+  nextOptions.splice(targetIndex, 0, correctAnswer)
+
+  return nextOptions
+}
+
+export const shuffleStudyQuizOptions = (
+  quiz: StudyQuizObject,
+): StudyQuizObject => {
+  if (quiz.quizMode !== 'multipleChoice' || quiz.options.length < 2) {
+    return quiz
+  }
+
+  const currentAnswer = quiz.answer || quiz.options[quiz.correctIndex] || ''
+  if (!currentAnswer) {
+    return quiz
+  }
+
+  const uniqueOptions = Array.from(new Set(quiz.options))
+  if (uniqueOptions.length < 2 || !uniqueOptions.includes(currentAnswer)) {
+    return quiz
+  }
+
+  const targetIndex =
+    hashValue(`${quiz.id}:${quiz.question}`) % uniqueOptions.length
+  const options = reorderOptions(uniqueOptions, currentAnswer, targetIndex)
+
+  return {
+    ...quiz,
+    options,
+    correctIndex: options.findIndex((option) => option === currentAnswer),
+    answer: currentAnswer,
+  }
+}
+
+export const shuffleStudyObjectQuizOptions = (
+  object: StudyObject,
+): StudyObject =>
+  object.kind === 'quiz' ? shuffleStudyQuizOptions(object) : object
 
 const sanitizeIdPart = (value: string): string => {
   const sanitized = value
@@ -277,7 +333,7 @@ export const augmentStudyPackPracticeObjects = (
     options.generationTargets,
   )
   const packId = sanitizeIdPart(options.packId || options.title)
-  const objects = [...inputObjects]
+  const objects = inputObjects.map(shuffleStudyObjectQuizOptions)
   const facts = splitIntoFacts(options.rawNotes)
   const warnings: string[] = []
 
@@ -385,5 +441,10 @@ export const augmentStudyPackPracticeObjects = (
     )
   }
 
-  return { objects, addedCount, warnings, profile }
+  return {
+    objects: objects.map(shuffleStudyObjectQuizOptions),
+    addedCount,
+    warnings,
+    profile,
+  }
 }

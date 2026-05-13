@@ -192,8 +192,18 @@ describe('Gemini study pack client', () => {
       3,
     )
     expect(draft.objects.length).toBeGreaterThanOrEqual(8)
+    expect(
+      new Set(
+        draft.objects
+          .filter((object) => object.kind === 'quiz')
+          .map((object) => object.correctIndex),
+      ).size,
+    ).toBeGreaterThan(1)
     expect(fetchMock.mock.calls[0][1].body).toContain(
       'Quizzes should be 50-60% of the pack',
+    )
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'do not always put the correct answer first',
     )
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
   })

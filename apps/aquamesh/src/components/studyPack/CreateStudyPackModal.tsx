@@ -1030,78 +1030,72 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 ))}
               </TextField>
             </Stack>
-            {creationMode === 'ai' ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  border: 1,
-                  borderColor: 'primary.main',
-                  bgcolor: 'background.paper',
-                }}
-              >
-                <Stack spacing={1.5}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <AutoAwesomeIcon color="primary" fontSize="small" />
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={800}>
-                        AI mode
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Default path for Study Packs. AquaMesh can read notes
-                        and generate summaries, flashcards, quizzes, and
-                        practice prompts from grounded source material.
-                      </Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" gap={1} flexWrap="wrap">
-                    {generationTargetOptions.map((option) => (
-                      <FormControlLabel
-                        key={option.key}
-                        control={
-                          <Checkbox
-                            size="small"
-                            checked={generationTargets.includes(option.key)}
-                            onChange={() => toggleGenerationTarget(option.key)}
-                          />
-                        }
-                        label={option.label}
-                        sx={{
-                          mr: 0.5,
-                          '& .MuiFormControlLabel-label': {
-                            fontSize: '0.875rem',
-                          },
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                  <TextField
-                    select
-                    label="Target amount"
-                    value={generationAmount}
-                    onChange={(event) =>
-                      setGenerationAmount(
-                        event.target.value as GenerationAmount,
-                      )
-                    }
-                    size="small"
-                    sx={{ maxWidth: 320 }}
-                  >
-                    {generationAmountOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label} - {option.helper}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor:
+                  creationMode === 'ai' ? 'primary.main' : 'divider',
+                bgcolor: 'background.paper',
+              }}
+            >
+              <Stack spacing={1.5}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <AutoAwesomeIcon
+                    color={creationMode === 'ai' ? 'primary' : 'action'}
+                    fontSize="small"
+                  />
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      {creationMode === 'ai' ? 'AI mode' : 'Basic mode'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {creationMode === 'ai'
+                        ? 'Default path for Study Packs. AquaMesh can read notes and generate summaries, flashcards, quizzes, and practice prompts from grounded source material.'
+                        : 'Offline fallback for Study Packs. AquaMesh uses local parsing and grounded practice generation from the notes you provide.'}
+                    </Typography>
+                  </Box>
                 </Stack>
-              </Paper>
-            ) : (
-              <Alert severity="info">
-                Basic mode is a fallback for offline or simple extraction. It
-                creates fewer, high-confidence study blocks from explicit note
-                patterns.
-              </Alert>
-            )}
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  {generationTargetOptions.map((option) => (
+                    <FormControlLabel
+                      key={option.key}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={generationTargets.includes(option.key)}
+                          onChange={() => toggleGenerationTarget(option.key)}
+                        />
+                      }
+                      label={option.label}
+                      sx={{
+                        mr: 0.5,
+                        '& .MuiFormControlLabel-label': {
+                          fontSize: '0.875rem',
+                        },
+                      }}
+                    />
+                  ))}
+                </Stack>
+                <TextField
+                  select
+                  label="Target amount"
+                  value={generationAmount}
+                  onChange={(event) =>
+                    setGenerationAmount(event.target.value as GenerationAmount)
+                  }
+                  size="small"
+                  sx={{ maxWidth: 320 }}
+                >
+                  {generationAmountOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label} - {option.helper}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+            </Paper>
             {sourceInputType === 'text' ? (
               <>
                 <TextField

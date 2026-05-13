@@ -267,7 +267,7 @@ Rules:
 - Use only facts answerable from the notes.
 - Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
 - Prefer useful learning widgets: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, and review prompts.
-- For multiple-choice quizzes, include 3-4 options and correctIndex.
+- For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - Do not invent outside facts or practice content requiring unstated knowledge.
 - Keep objects concise and student-friendly.
