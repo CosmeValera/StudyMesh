@@ -35,6 +35,8 @@ const GEMINI_TIMEOUT_MESSAGE =
   'Gemini took longer than 5 minutes, so AquaMesh stopped the request. Try again with shorter notes, fewer generated blocks, or Basic fallback.'
 const GEMINI_RATE_LIMIT_MESSAGE =
   'Gemini rate limit reached for today. Try again later, use Basic fallback, or check your Gemini API quota.'
+const GEMINI_OUTPUT_FORMAT_MESSAGE =
+  'Gemini could not follow the requested output format. AquaMesh retried with a simpler JSON prompt, but the response was still unusable.'
 
 const generationTargetLabels: Record<string, string> = {
   quizzes: 'multiple-choice quizzes',
@@ -233,6 +235,12 @@ const parseGeminiJson = (text: string): unknown => {
   }
 }
 
+const isGeminiOutputFormatError = (error: unknown): boolean =>
+  error instanceof Error &&
+  /wrong output format|invalid json|output format|response format|malformed/i.test(
+    error.message,
+  )
+
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -375,12 +383,7 @@ export const generateStudyPackWithAi = async ({
     ? 'Organize the material as a Study Path progression. Use titles/tags that clearly fit: Introduction, Theory, Examples, Practice, Final Review.'
     : 'Organize the material as a single Study Pack.'
 
-  const text = await callGemini(
-    apiToken,
-    model,
-    [
-      {
-        text: `Create a study pack JSON object ${
+  const promptText = `Create a study pack JSON object ${
           promptMode
             ? 'from this learning prompt'
             : 'from these raw notes'
@@ -411,7 +414,11 @@ Rules:
 - Prefer useful learning widgets from the selected target types: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, code notes, tables, and review prompts.
 - For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
-- Do not invent outside facts or practice content requiring unstated knowledge.
+- ${
+          promptMode
+            ? 'Do not fabricate facts. If unsure, keep explanations broad and safe.'
+            : 'Do not invent outside facts or practice content requiring unstated knowledge.'
+        }
 - Do not create or reference heavy resources such as PDFs or images unless the user explicitly asks for PDFs, images, screenshots, diagrams, or visual resources.
 - Keep objects concise and student-friendly.
 - ${targetInstruction}
@@ -422,13 +429,58 @@ Rules:
 Pack title: ${title}
 
 Raw notes:
-${rawNotes}`,
-      },
-    ],
-    objectSchema,
-  )
+${rawNotes}`
 
-  const parsed = parseGeminiJson(text)
+  const callPromptModeFallback = () =>
+    callGemini(apiToken, model, [
+      {
+        text: `${promptText}
+
+The previous response failed JSON formatting. Retry with a simpler response:
+- Return plain JSON only.
+- Use only: markdown, qa, quiz, term, list, reviewPrompt.
+- Do not use markdown code fences.
+- Do not include comments, trailing commas, undefined, NaN, or extra text.`,
+      },
+    ])
+
+  let text: string
+  let usedPromptModeFallback = false
+  try {
+    text = await callGemini(
+      apiToken,
+      model,
+      [{ text: promptText }],
+      objectSchema,
+    )
+  } catch (error) {
+    if (!promptMode || !isGeminiOutputFormatError(error)) {
+      throw error
+    }
+
+    usedPromptModeFallback = true
+    text = await callPromptModeFallback()
+  }
+
+  let parsed: unknown
+  try {
+    parsed = parseGeminiJson(text)
+  } catch (error) {
+    if (!promptMode) {
+      throw error
+    }
+
+    if (!usedPromptModeFallback) {
+      try {
+        text = await callPromptModeFallback()
+        parsed = parseGeminiJson(text)
+      } catch {
+        throw new Error(GEMINI_OUTPUT_FORMAT_MESSAGE)
+      }
+    } else {
+      throw new Error(GEMINI_OUTPUT_FORMAT_MESSAGE)
+    }
+  }
 
   const draft = normalizeAiStudyPackDraft(parsed, packId)
   const safeDraft = removeUnrequestedHeavyResources(draft.objects, rawNotes)
