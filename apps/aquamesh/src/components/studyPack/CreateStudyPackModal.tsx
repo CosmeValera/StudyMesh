@@ -29,9 +29,11 @@ import {
   createStudyPackOrchestratorWidgets,
   createStudyPackSmartWidgetGroups,
   createStudyPackWidgets,
+  augmentStudyPackPracticeObjects,
+  createStudyPackPracticeProfile,
+  isReviewableStudyObject,
   parseStudyPack,
   StudyObject,
-  StudyObjectKind,
   StudyPackSourceFormat,
   StudyPackDashboardLayoutMode,
 } from '../../studyPack'
@@ -42,7 +44,16 @@ import {
   resolveStudyPackAiCredentials,
 } from '../../studyPack/ai'
 
-type ReviewType = StudyObjectKind | 'flashcard' | 'ignore'
+type ReviewType =
+  | 'flashcard'
+  | 'quiz'
+  | 'term'
+  | 'code'
+  | 'comparison'
+  | 'list'
+  | 'table'
+  | 'reviewPrompt'
+  | 'ignore'
 type SourceInputType = 'text' | 'image'
 type StudyPackCreationMode = 'basic' | 'ai'
 type GenerationAmount = 'few' | 'medium' | 'many'
@@ -99,9 +110,9 @@ const generationAmountOptions: Array<{
   value: GenerationAmount
   helper: string
 }> = [
-  { label: 'Few', value: 'few', helper: '4-7 strong items' },
-  { label: 'Medium', value: 'medium', helper: '8-14 balanced items' },
-  { label: 'Many', value: 'many', helper: '14-24 useful items' },
+  { label: 'Few', value: 'few', helper: '6 target, 4 minimum' },
+  { label: 'Medium', value: 'medium', helper: '11 target, 8 minimum' },
+  { label: 'Many', value: 'many', helper: '18 target, 14 minimum' },
 ]
 
 const supportedImageExtensions = [
@@ -139,15 +150,12 @@ const reviewTypeOptions: Array<{
 }> = [
   { label: 'Flashcard', value: 'flashcard' },
   { label: 'Quiz', value: 'quiz' },
-  { label: 'Reveal answer', value: 'reveal' },
   { label: 'Definition', value: 'term' },
   { label: 'Code note', value: 'code' },
   { label: 'Comparison', value: 'comparison' },
-  { label: 'Sequence', value: 'sequence' },
   { label: 'Review prompt', value: 'reviewPrompt' },
   { label: 'Checklist / list', value: 'list' },
   { label: 'Table', value: 'table' },
-  { label: 'Resource', value: 'resource' },
   { label: 'Ignore', value: 'ignore' },
 ]
 
@@ -219,6 +227,30 @@ const getObjectPreview = (object: StudyObject) => {
   }
 }
 
+const getReviewType = (object: StudyObject): ReviewType => {
+  if (object.kind === 'qa' || object.kind === 'reveal') {
+    return 'flashcard'
+  }
+
+  if (object.kind === 'sequence') {
+    return 'list'
+  }
+
+  if (
+    object.kind === 'quiz' ||
+    object.kind === 'term' ||
+    object.kind === 'code' ||
+    object.kind === 'comparison' ||
+    object.kind === 'list' ||
+    object.kind === 'table' ||
+    object.kind === 'reviewPrompt'
+  ) {
+    return object.kind
+  }
+
+  return 'ignore'
+}
+
 const getCounts = (items: ReviewItem[]) =>
   items.reduce<Record<string, number>>((counts, item) => {
     if (item.type !== 'ignore') {
@@ -245,12 +277,13 @@ const isSupportedImageFile = (file: File) => {
 
 const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
   objects
-    .filter((object) => object.kind !== 'note' && object.kind !== 'markdown')
+    .filter(isReviewableStudyObject)
     .map((object) => ({
       object,
       title: getObjectTitle(object),
-      type: object.kind === 'qa' ? 'flashcard' : object.kind,
+      type: getReviewType(object),
     }))
+    .filter((item) => item.type !== 'ignore')
 
 const createPreviewWidgetGroups = (
   objects: StudyObject[],
@@ -278,6 +311,17 @@ const applyReviewItem = (item: ReviewItem): StudyObject | null => {
 
   if (item.type === 'flashcard' && item.object.kind === 'qa') {
     return { ...item.object, title: item.title }
+  }
+
+  if (item.type === 'list' && item.object.kind === 'sequence') {
+    return {
+      ...item.object,
+      kind: 'list',
+      title: item.title,
+      items: item.object.steps,
+      ordered: item.object.ordered,
+      checklist: item.object.interactiveChecklist,
+    }
   }
 
   if (item.type === item.object.kind) {
@@ -439,6 +483,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [error, setError] = useState('')
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
+  const practiceProfile = useMemo(
+    () => createStudyPackPracticeProfile(generationAmount, generationTargets),
+    [generationAmount, generationTargets],
+  )
+  const reviewableCount = useMemo(
+    () => reviewItems.filter((item) => item.type !== 'ignore').length,
+    [reviewItems],
+  )
 
   useEffect(() => {
     if (!imageFile) {
@@ -521,7 +573,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       title: packTitle,
       defaultTags: ['study-pack'],
     })
-    const reviewableItems = toReviewItems(parsed.objects)
+    const augmented = augmentStudyPackPracticeObjects(parsed.objects, {
+      packId: parsed.id,
+      title: parsed.title,
+      rawNotes: sourceText,
+      generationTargets,
+      generationAmount,
+    })
+    const reviewableItems = toReviewItems(augmented.objects)
     setPackTitle(parsed.title)
     setSourceFormat(parsed.sourceFormat)
     setReviewItems(reviewableItems)
@@ -531,7 +590,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         parsed.title,
       ),
     )
-    setError(parsed.warnings[0] || '')
+    setError(parsed.warnings[0] || augmented.warnings[0] || '')
     setStep('review')
   }
 
@@ -1018,7 +1077,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   </Stack>
                   <TextField
                     select
-                    label="Approximate amount"
+                    label="Target amount"
                     value={generationAmount}
                     onChange={(event) =>
                       setGenerationAmount(
@@ -1333,6 +1392,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     <Typography variant="subtitle2" gutterBottom>
                       AquaMesh found
                     </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
+                      {`${reviewableCount}/${
+                        practiceProfile.targetTotal
+                      } target study blocks: ${counts.quiz || 0} quizzes, ${
+                        counts.flashcard || 0
+                      } flashcards, ${
+                        reviewableCount -
+                        (counts.quiz || 0) -
+                        (counts.flashcard || 0)
+                      } support.`}
+                    </Typography>
                     <Stack direction="row" gap={1} flexWrap="wrap">
                       {Object.entries(counts).map(([kind, count]) => (
                         <Chip key={kind} label={`${count} ${kind}`} />
@@ -1510,8 +1584,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             {isGeneratingAi
               ? 'Generating...'
               : sourceInputType === 'image' && !imageTextExtracted
-                ? 'Extract notes'
-                : 'Continue'}
+              ? 'Extract notes'
+              : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>

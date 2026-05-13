@@ -8,6 +8,12 @@ export {
   generateStudyPack,
 } from './generator'
 export { detectMarkdownSource, parseStudyPack } from './parser'
+export {
+  augmentStudyPackPracticeObjects,
+  createStudyPackPracticeProfile,
+  getEffectiveGenerationTargets,
+  isReviewableStudyObject,
+} from './practice'
 export type {
   GeneratedStudyPack,
   StudyCodeObject,

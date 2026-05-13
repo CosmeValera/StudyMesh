@@ -33,11 +33,11 @@ const asStringArray = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.map((item) => asString(item)).filter(Boolean)
     : typeof value === 'string'
-      ? value
-          .split('\n')
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : []
+    ? value
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
 
 const asRows = (value: unknown): string[][] =>
   Array.isArray(value)
@@ -110,18 +110,18 @@ export const normalizeAiStudyPackDraft = (
 
       if (kind === 'quiz') {
         const question = asString(input.question)
-        const answer = asString(input.answer)
         const options = asStringArray(input.options)
         const correctIndex = Math.max(
           0,
           Math.min(options.length - 1, Number(input.correctIndex) || 0),
         )
+        const answer = asString(input.answer) || options[correctIndex] || ''
         return question && answer
           ? {
               ...base,
               kind,
               quizMode:
-                input.quizMode === 'multipleChoice'
+                input.quizMode === 'multipleChoice' || options.length >= 2
                   ? 'multipleChoice'
                   : 'shortAnswer',
               question,

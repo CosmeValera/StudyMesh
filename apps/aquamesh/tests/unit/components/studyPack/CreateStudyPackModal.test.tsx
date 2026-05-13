@@ -29,57 +29,78 @@ vi.mock('../../../../src/studyPack/ai', () => ({
   })),
 }))
 
-vi.mock('../../../../src/studyPack', () => ({
-  createStudyPackWidgets: vi.fn(),
-  createStudyPackOrchestratorWidgets: vi.fn(() => [
-    {
-      name: 'Study Pack Source',
-      components: [],
-      category: 'Study Pack',
-      tags: ['study-pack', 'source', 'text'],
-      description: 'Original study notes rendered as Markdown.',
-      version: '1.0',
-      author: 'AquaMesh',
-    },
-  ]),
-  createStudyPackSmartWidgetGroups: vi.fn((pack) => {
-    const objects = pack.objects.filter(
-      (object: { kind: string }) =>
-        object.kind !== 'note' && object.kind !== 'markdown',
-    )
+vi.mock('../../../../src/studyPack', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../../src/studyPack')
+  >('../../../../src/studyPack')
 
-    return objects.length > 0
-      ? [{ name: `${pack.title} Generated`, objects }]
-      : []
-  }),
-  parseStudyPack: vi.fn(
-    (source: string, options: { sourceFormat?: string } = {}) => {
-      const basePack = {
-        id: 'study-pack',
-        title: 'Study Pack',
-        sourceFormat: options.sourceFormat || 'text',
-        warnings: [],
-      }
+  return {
+    ...actual,
+    createStudyPackWidgets: vi.fn(),
+    createStudyPackOrchestratorWidgets: vi.fn(() => [
+      {
+        name: 'Study Pack Source',
+        components: [],
+        category: 'Study Pack',
+        tags: ['study-pack', 'source', 'text'],
+        description: 'Original study notes rendered as Markdown.',
+        version: '1.0',
+        author: 'AquaMesh',
+      },
+    ]),
+    createStudyPackSmartWidgetGroups: vi.fn((pack) => {
+      const objects = pack.objects.filter(
+        (object: { kind: string }) =>
+          object.kind !== 'note' && object.kind !== 'markdown',
+      )
 
-      if (source.includes('Rule,Formula')) {
-        return {
-          ...basePack,
-          sourceFormat: 'csv',
-          objects: [
-            {
-              id: 'study-pack-table-1',
-              kind: 'table',
-              title: 'CSV Table',
-              sourceLine: 1,
-              tags: [],
-              headers: ['Rule', 'Formula'],
-              rows: [['Power', 'nx^(n-1)']],
-            },
-          ],
+      return objects.length > 0
+        ? [{ name: `${pack.title} Generated`, objects }]
+        : []
+    }),
+    parseStudyPack: vi.fn(
+      (source: string, options: { sourceFormat?: string } = {}) => {
+        const basePack = {
+          id: 'study-pack',
+          title: 'Study Pack',
+          sourceFormat: options.sourceFormat || 'text',
+          warnings: [],
         }
-      }
 
-      if (source.includes('Only loose')) {
+        if (source.includes('Rule,Formula')) {
+          return {
+            ...basePack,
+            sourceFormat: 'csv',
+            objects: [
+              {
+                id: 'study-pack-table-1',
+                kind: 'table',
+                title: 'CSV Table',
+                sourceLine: 1,
+                tags: [],
+                headers: ['Rule', 'Formula'],
+                rows: [['Power', 'nx^(n-1)']],
+              },
+            ],
+          }
+        }
+
+        if (source.includes('Only loose')) {
+          return {
+            ...basePack,
+            objects: [
+              {
+                id: 'study-pack-note-1',
+                kind: 'note',
+                title: 'Loose note',
+                sourceLine: 1,
+                tags: [],
+                body: 'Only loose notes here',
+              },
+            ],
+          }
+        }
+
         return {
           ...basePack,
           objects: [
@@ -89,41 +110,27 @@ vi.mock('../../../../src/studyPack', () => ({
               title: 'Loose note',
               sourceLine: 1,
               tags: [],
-              body: 'Only loose notes here',
+              body: 'Loose text that should stay in the source widget.',
+            },
+            {
+              id: 'study-pack-quiz-1',
+              kind: 'quiz',
+              quizMode: 'shortAnswer',
+              title: 'Derivative quiz',
+              sourceLine: 1,
+              tags: [],
+              question: 'What is a derivative?',
+              options: [],
+              correctIndex: 0,
+              answer: 'Rate of change',
+              explanation: '',
             },
           ],
         }
-      }
-
-      return {
-        ...basePack,
-        objects: [
-          {
-            id: 'study-pack-note-1',
-            kind: 'note',
-            title: 'Loose note',
-            sourceLine: 1,
-            tags: [],
-            body: 'Loose text that should stay in the source widget.',
-          },
-          {
-            id: 'study-pack-quiz-1',
-            kind: 'quiz',
-            quizMode: 'shortAnswer',
-            title: 'Derivative quiz',
-            sourceLine: 1,
-            tags: [],
-            question: 'What is a derivative?',
-            options: [],
-            correctIndex: 0,
-            answer: 'Rate of change',
-            explanation: '',
-          },
-        ],
-      }
-    },
-  ),
-}))
+      },
+    ),
+  }
+})
 
 describe('CreateStudyPackModal orchestrator pipeline', () => {
   beforeEach(() => {
@@ -243,7 +250,9 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
         widgetGroups: [
           expect.objectContaining({
             name: 'Study Pack Generated',
-            objects: [expect.objectContaining({ kind: 'quiz' })],
+            objects: expect.arrayContaining([
+              expect.objectContaining({ kind: 'quiz' }),
+            ]),
           }),
         ],
       }),
@@ -253,7 +262,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     )
   })
 
-  it('can create a source-only pack when parsing only finds study notes', async () => {
+  it('adds basic practice when parsing only finds study notes', async () => {
     const onCreatePack = vi.fn()
 
     render(
@@ -265,22 +274,25 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     )
 
     selectBasicMode()
-    pasteNotes('Only loose notes here')
+    pasteNotes('Only loose notes here with one useful fact for review.')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    expect(await screen.findByText('AquaMesh found')).toBeInTheDocument()
+    expect(screen.getByText(/target study blocks/i)).toBeInTheDocument()
     expect(
-      await screen.findByText(
-        /AquaMesh was not able to extract any study materials/i,
-      ),
+      screen.getByRole('combobox', { name: /workspace layout/i }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('AquaMesh found')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('combobox', { name: /workspace layout/i }),
-    ).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
 
     expect(createStudyPackOrchestratorWidgets).toHaveBeenCalledWith(
-      expect.objectContaining({ objects: [] }),
-      expect.objectContaining({ rawSource: 'Only loose notes here' }),
+      expect.objectContaining({
+        objects: expect.arrayContaining([
+          expect.objectContaining({ kind: 'quiz' }),
+          expect.objectContaining({ kind: 'qa' }),
+        ]),
+      }),
+      expect.objectContaining({
+        rawSource: 'Only loose notes here with one useful fact for review.',
+      }),
     )
     expect(onCreatePack).toHaveBeenCalledWith(
       expect.objectContaining({ layoutMode: 'orchestrator' }),

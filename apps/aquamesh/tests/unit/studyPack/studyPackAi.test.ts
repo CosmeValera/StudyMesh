@@ -92,6 +92,12 @@ describe('study pack AI normalizer', () => {
             correctIndex: 1,
           },
           {
+            kind: 'quiz',
+            question: 'Which molecule carries genetic information?',
+            options: ['DNA', 'Glucose', 'Water'],
+            correctIndex: 0,
+          },
+          {
             kind: 'unsupported',
             question: 'Skip me',
           },
@@ -100,7 +106,7 @@ describe('study pack AI normalizer', () => {
       'cell-biology',
     )
 
-    expect(draft.objects).toHaveLength(2)
+    expect(draft.objects).toHaveLength(3)
     expect(draft.objects[0]).toMatchObject({
       kind: 'qa',
       question: 'What do cells contain?',
@@ -108,10 +114,14 @@ describe('study pack AI normalizer', () => {
     })
     expect(draft.objects[1]).toMatchObject({
       kind: 'quiz',
-      quizMode: 'shortAnswer',
+      quizMode: 'multipleChoice',
       correctIndex: 1,
     })
-    expect(draft.warnings).toEqual(['Skipped item 3: unsupported kind.'])
+    expect(draft.objects[2]).toMatchObject({
+      kind: 'quiz',
+      answer: 'DNA',
+    })
+    expect(draft.warnings).toEqual(['Skipped item 4: unsupported kind.'])
   })
 })
 
@@ -175,5 +185,68 @@ describe('Gemini study pack client', () => {
       kind: 'term',
       term: 'Derivative',
     })
+    expect(
+      draft.objects.filter((object) => object.kind === 'quiz'),
+    ).toHaveLength(6)
+    expect(draft.objects.filter((object) => object.kind === 'qa')).toHaveLength(
+      3,
+    )
+    expect(draft.objects.length).toBeGreaterThanOrEqual(8)
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'Quizzes should be 50-60% of the pack',
+    )
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('stops Gemini requests after the hard timeout', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Request aborted', 'AbortError'))
+          })
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const request = generateStudyPackWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'Derivatives',
+      rawNotes: 'Derivative = instantaneous rate of change',
+      packId: 'derivatives',
+    })
+    const rejection = expect(request).rejects.toThrow(/longer than 5 minutes/i)
+
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000)
+    await rejection
+    expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true)
+    vi.useRealTimers()
+  })
+
+  it('returns a useful message when Gemini rate limits the request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({
+        error: {
+          status: 'RESOURCE_EXHAUSTED',
+          message:
+            'You reached your peak requests per day to gemini, revise the usage here https://ai.google.dev/gemini-api/docs/rate-limits',
+        },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      generateStudyPackWithAi({
+        apiToken: 'test-token',
+        model: 'gemini-test',
+        title: 'Derivatives',
+        rawNotes: 'Derivative = instantaneous rate of change',
+        packId: 'derivatives',
+      }),
+    ).rejects.toThrow(/Gemini rate limit reached for today/i)
   })
 })

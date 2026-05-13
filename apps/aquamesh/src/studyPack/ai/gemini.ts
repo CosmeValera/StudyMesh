@@ -1,4 +1,9 @@
 import { StudyPackSourceFormat } from '../types'
+import {
+  augmentStudyPackPracticeObjects,
+  createStudyPackPracticeProfile,
+  getEffectiveGenerationTargets,
+} from '../practice'
 import { normalizeAiStudyPackDraft, AiStudyPackDraft } from './normalizer'
 
 interface GeminiPart {
@@ -23,6 +28,12 @@ interface GeminiResponse {
     status?: string
   }
 }
+
+const GEMINI_REQUEST_TIMEOUT_MS = 5 * 60 * 1000
+const GEMINI_TIMEOUT_MESSAGE =
+  'Gemini took longer than 5 minutes, so AquaMesh stopped the request. Try again with shorter notes, fewer generated blocks, or Basic fallback.'
+const GEMINI_RATE_LIMIT_MESSAGE =
+  'Gemini rate limit reached for today. Try again later, use Basic fallback, or check your Gemini API quota.'
 
 export interface GenerateStudyPackWithAiOptions {
   apiToken: string
@@ -128,32 +139,60 @@ const callGemini = async (
   parts: GeminiPart[],
   responseSchema?: Record<string, unknown>,
 ): Promise<string> => {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      model,
-    )}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiToken,
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: responseSchema ? 'application/json' : 'text/plain',
-          ...(responseSchema ? { responseSchema } : {}),
-        },
-      }),
-    },
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(
+    () => controller.abort(),
+    GEMINI_REQUEST_TIMEOUT_MS,
   )
+  let response: Response
+
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        model,
+      )}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiToken,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: responseSchema
+              ? 'application/json'
+              : 'text/plain',
+            ...(responseSchema ? { responseSchema } : {}),
+          },
+        }),
+      },
+    )
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(GEMINI_TIMEOUT_MESSAGE)
+    }
+
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 
   const payload = (await response.json()) as GeminiResponse
   if (!response.ok) {
-    throw new Error(
-      payload.error?.message || `Gemini request failed (${response.status}).`,
-    )
+    const message = payload.error?.message || ''
+    const status = payload.error?.status || ''
+    if (
+      response.status === 429 ||
+      status === 'RESOURCE_EXHAUSTED' ||
+      /rate limit|quota|peak requests/i.test(message)
+    ) {
+      throw new Error(`${GEMINI_RATE_LIMIT_MESSAGE} ${message}`.trim())
+    }
+
+    throw new Error(message || `Gemini request failed (${response.status}).`)
   }
 
   const candidate = payload.candidates?.[0]
@@ -203,15 +242,19 @@ export const generateStudyPackWithAi = async ({
   generationTargets = [],
   generationAmount = 'medium',
 }: GenerateStudyPackWithAiOptions): Promise<AiStudyPackDraft> => {
-  const targetInstruction = generationTargets.length
-    ? `Prioritize these study materials: ${generationTargets.join(', ')}.`
-    : 'Prioritize summaries, definitions, flashcards, quizzes, and practice prompts when supported by the notes.'
-  const amountInstruction =
-    generationAmount === 'few'
-      ? 'Create a small set: about 4-7 strong items total.'
-      : generationAmount === 'many'
-        ? 'Create a larger set: about 14-24 useful items total, without padding weak material.'
-        : 'Create a balanced set: about 8-14 useful items total.'
+  const effectiveTargets = getEffectiveGenerationTargets(generationTargets)
+  const practiceProfile = createStudyPackPracticeProfile(
+    generationAmount,
+    generationTargets,
+  )
+  const targetInstruction = `Prioritize these study materials: ${effectiveTargets.join(
+    ', ',
+  )}. Treat selected targets as a hard UI contract.`
+  const amountInstruction = `Create ${practiceProfile.targetTotal} reviewable study items when possible, never fewer than ${practiceProfile.minTotal} if the notes contain usable facts. Keep the total within ${practiceProfile.minTotal}-${practiceProfile.maxTotal} items.`
+  const mixInstruction =
+    practiceProfile.enforceQuizzes || practiceProfile.enforceFlashcards
+      ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
+      : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
 
   const text = await callGemini(
     apiToken,
@@ -222,12 +265,16 @@ export const generateStudyPackWithAi = async ({
 
 Rules:
 - Use only facts answerable from the notes.
-- Prefer useful learning widgets: term definitions, flashcards as "qa", quizzes, lists, comparisons, sequences, and review prompts.
+- Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
+- Prefer useful learning widgets: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, and review prompts.
 - For multiple-choice quizzes, include 3-4 options and correctIndex.
+- Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - Do not invent outside facts or practice content requiring unstated knowledge.
 - Keep objects concise and student-friendly.
 - ${targetInstruction}
 - ${amountInstruction}
+- ${mixInstruction}
+- Do not return 0, 1, or 2 reviewable items when the notes contain enough text for more practice.
 
 Pack title: ${title}
 
@@ -246,9 +293,18 @@ ${rawNotes}`,
   }
 
   const draft = normalizeAiStudyPackDraft(parsed, packId)
+  const augmented = augmentStudyPackPracticeObjects(draft.objects, {
+    packId,
+    title: draft.title || title,
+    rawNotes,
+    generationTargets,
+    generationAmount,
+  })
 
   return {
     ...draft,
+    objects: augmented.objects,
+    warnings: [...draft.warnings, ...augmented.warnings],
     title: draft.title || title,
     sourceFormat: draft.sourceFormat || ('text' as StudyPackSourceFormat),
   }
