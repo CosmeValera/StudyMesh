@@ -236,6 +236,9 @@ const sanitizeIdPart = (value: string): string => {
 const normalizeSpaces = (value: string): string =>
   value.replace(/\s+/g, ' ').trim()
 
+const normalizeForCompare = (value: string): string =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
 const stripMarkdown = (value: string): string =>
   value
     .replace(/```[\s\S]*?```/g, ' ')
@@ -272,10 +275,11 @@ const splitIntoFacts = (rawNotes: string): string[] => {
 }
 
 const extractConcept = (fact: string, title: string): string => {
+  const quotedConcept = fact.match(/["'“‘]([^"'”’]{2,60})["'”’]/)?.[1]
   const definitionMatch = fact.match(
     /^(.{2,80}?)\s+(?:is|are|was|were|means|refers to|es|son|fue|era|significa|consiste en)\s+/i,
   )
-  const rawConcept = definitionMatch?.[1] || title || fact
+  const rawConcept = quotedConcept || definitionMatch?.[1] || fact
   const concept = normalizeSpaces(
     rawConcept
       .replace(/^(?:the|a|an|el|la|los|las|un|una)\s+/i, '')
@@ -283,16 +287,27 @@ const extractConcept = (fact: string, title: string): string => {
   )
   const words = concept.split(/\s+/).filter(Boolean)
 
-  return words.slice(0, 8).join(' ') || title || 'this topic'
+  const shortened = words.slice(0, 8).join(' ')
+  const normalizedConcept = normalizeForCompare(shortened)
+  const normalizedTitle = normalizeForCompare(title)
+
+  if (
+    !shortened ||
+    (normalizedTitle &&
+      (normalizedConcept === normalizedTitle ||
+        normalizedTitle.includes(normalizedConcept) ||
+        normalizedConcept.includes(normalizedTitle)))
+  ) {
+    return 'this lesson point'
+  }
+
+  return shortened
 }
 
 const isUsefulPracticeFact = (fact: string, title: string): boolean => {
   const words = fact.split(/\s+/).filter(Boolean)
-  const normalizedFact = fact.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-  const normalizedTitle = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
+  const normalizedFact = normalizeForCompare(fact)
+  const normalizedTitle = normalizeForCompare(title)
 
   if (words.length < 8) {
     return false
@@ -335,7 +350,7 @@ const createQuiz = (
     tags: ['study-pack', 'practice'],
     quizMode: 'multipleChoice',
     question: useFactOptions
-      ? `Which statement matches the notes about ${concept}?`
+      ? `Which statement is correct about ${concept}?`
       : `According to the notes, is this statement supported: "${fact}"?`,
     options,
     correctIndex: 0,
@@ -358,7 +373,10 @@ const createFlashcard = (
     title: `${concept} flashcard`,
     sourceLine: index + 1,
     tags: ['study-pack', 'practice'],
-    question: `What do the notes say about ${concept}?`,
+    question:
+      concept === 'this lesson point'
+        ? 'What is the key idea in this note?'
+        : `What should you remember about ${concept}?`,
     answer: fact,
   }
 }

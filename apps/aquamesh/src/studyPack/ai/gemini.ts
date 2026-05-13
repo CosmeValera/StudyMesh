@@ -118,6 +118,63 @@ const removeUnrequestedHeavyResources = (
 const hasUsefulLessonNotes = (value: string): boolean =>
   value.trim().split(/\s+/).filter(Boolean).length >= 80
 
+const hasReadableLessonStructure = (value: string): boolean =>
+  /(^|\n)#{1,3}\s+\S/.test(value) ||
+  /(^|\n)\s*[-*]\s+\S/.test(value) ||
+  /(^|\n)\s*\d+[.)]\s+\S/.test(value)
+
+const splitIntoSentences = (value: string): string[] =>
+  value
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
+const formatLessonNotesForReading = (
+  title: string,
+  summary: string,
+  rawNotes: string,
+): string => {
+  const trimmed = rawNotes.trim()
+  if (!trimmed || hasReadableLessonStructure(trimmed)) {
+    return trimmed
+  }
+
+  const sentences = splitIntoSentences(trimmed)
+  if (sentences.length < 5) {
+    return [`# ${title}`, summary, trimmed]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
+  const overview = sentences.slice(0, 2)
+  const conceptCount = Math.max(3, Math.ceil((sentences.length - 2) * 0.45))
+  const keyConcepts = sentences.slice(2, 2 + conceptCount)
+  const remaining = sentences.slice(2 + conceptCount)
+  const examples = remaining.slice(0, Math.max(2, Math.floor(remaining.length / 2)))
+  const tips = remaining.slice(examples.length)
+
+  return [
+    `# ${title}`,
+    summary ? `## Goal\n${summary}` : '',
+    overview.length > 0 ? `## Overview\n${overview.join(' ')}` : '',
+    keyConcepts.length > 0
+      ? `## Key points\n${keyConcepts.map((sentence) => `- ${sentence}`).join('\n')}`
+      : '',
+    examples.length > 0
+      ? `## Examples and usage\n${examples.map((sentence) => `- ${sentence}`).join('\n')}`
+      : '',
+    tips.length > 0
+      ? `## Remember\n${tips.map((sentence) => `- ${sentence}`).join('\n')}`
+      : '',
+  ]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 const studyObjectToLessonNote = (object: StudyObject): string => {
   switch (object.kind) {
     case 'markdown':
@@ -164,7 +221,7 @@ const buildStudyPathLessonNotes = (
   objects: StudyObject[],
 ): string => {
   if (hasUsefulLessonNotes(rawNotes)) {
-    return rawNotes.trim()
+    return formatLessonNotesForReading(title, summary, rawNotes)
   }
 
   const objectNotes = objects
@@ -607,8 +664,9 @@ Rules:
 - Create exactly 5 dashboards unless the topic is tiny. Use these ordered lessons: ${stepNames.join(' → ')}.
 - Each dashboard must be useful by itself and contain 6-12 objects.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
+- Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
 - Start each dashboard with a markdown object containing the full teaching explanation for that lesson. Use the "markdown" field, not "body".
-- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?".
+- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?" or "Which statement matches the notes about <dashboard title>?".
 - Include practice in later dashboards: quizzes, flashcards as "qa", review prompts, lists, sequences, code, or tables when relevant.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
