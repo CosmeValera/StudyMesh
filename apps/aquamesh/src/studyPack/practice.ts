@@ -286,6 +286,29 @@ const extractConcept = (fact: string, title: string): string => {
   return words.slice(0, 8).join(' ') || title || 'this topic'
 }
 
+const isUsefulPracticeFact = (fact: string, title: string): boolean => {
+  const words = fact.split(/\s+/).filter(Boolean)
+  const normalizedFact = fact.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const normalizedTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+  if (words.length < 8) {
+    return false
+  }
+
+  if (normalizedTitle && normalizedFact === normalizedTitle) {
+    return false
+  }
+
+  if (/^(introduction|theory|examples|practice|final review|next steps)\b/i.test(fact)) {
+    return words.length >= 14
+  }
+
+  return true
+}
+
 const createQuiz = (
   packId: string,
   index: number,
@@ -479,7 +502,9 @@ export const augmentStudyPackPracticeObjects = (
   const objects = inputObjects
     .filter((object) => objectMatchesTargets(object, targets))
     .map(shuffleStudyObjectQuizOptions)
-  const facts = splitIntoFacts(options.rawNotes)
+  const facts = splitIntoFacts(options.rawNotes).filter((fact) =>
+    isUsefulPracticeFact(fact, options.title),
+  )
   const warnings: string[] = []
 
   if (facts.length === 0) {

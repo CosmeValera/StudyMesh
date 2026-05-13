@@ -115,6 +115,70 @@ const removeUnrequestedHeavyResources = (
   }
 }
 
+const hasUsefulLessonNotes = (value: string): boolean =>
+  value.trim().split(/\s+/).filter(Boolean).length >= 80
+
+const studyObjectToLessonNote = (object: StudyObject): string => {
+  switch (object.kind) {
+    case 'markdown':
+      return object.markdown
+    case 'note':
+      return object.body
+    case 'term':
+      return `Definition — ${object.term}: ${object.definition}`
+    case 'qa':
+      return `Flashcard — ${object.question}\nAnswer: ${object.answer}`
+    case 'quiz':
+      return `Quiz concept — ${object.question}\nAnswer: ${object.answer}. ${object.explanation}`
+    case 'list':
+      return `${object.title || 'Key list'}:\n${object.items
+        .map((item) => `- ${item}`)
+        .join('\n')}`
+    case 'sequence':
+      return `${object.title || 'Steps'}:\n${object.steps
+        .map((step, index) => `${index + 1}. ${step}`)
+        .join('\n')}`
+    case 'comparison':
+      return `${object.title || 'Comparison'}: ${object.columns.join(' vs ')}`
+    case 'table':
+      return `${object.title || 'Table'}: ${object.headers.join(', ')}`
+    case 'reviewPrompt':
+      return `Review prompt — ${object.prompt}${
+        object.reason ? ` (${object.reason})` : ''
+      }`
+    case 'code':
+      return `${object.caption || object.title || 'Code note'}\n${object.code}`
+    case 'resource':
+      return `${object.label}: ${object.url}`
+    case 'reveal':
+      return `${object.prompt}: ${object.hiddenText}`
+    default:
+      return ''
+  }
+}
+
+const buildStudyPathLessonNotes = (
+  title: string,
+  summary: string,
+  rawNotes: string,
+  objects: StudyObject[],
+): string => {
+  if (hasUsefulLessonNotes(rawNotes)) {
+    return rawNotes.trim()
+  }
+
+  const objectNotes = objects
+    .map(studyObjectToLessonNote)
+    .map((note) => note.trim())
+    .filter(Boolean)
+    .join('\n\n')
+
+  return [`# ${title}`, objectNotes, summary, rawNotes]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 export interface ExtractRawNotesWithAiOptions {
   apiToken: string
   model: string
@@ -535,14 +599,16 @@ Return exactly this structure:
   "title": "Path title",
   "folderName": "Folder name for all dashboards",
   "dashboards": [
-    { "title": "01 - Introduction", "summary": "One sentence preview", "rawNotes": "Short source notes for this lesson", "objects": [...] }
+    { "title": "01 - Introduction", "summary": "One sentence preview", "rawNotes": "Complete lesson notes for this dashboard", "objects": [...] }
   ]
 }
 
 Rules:
 - Create exactly 5 dashboards unless the topic is tiny. Use these ordered lessons: ${stepNames.join(' → ')}.
-- Each dashboard must be useful by itself and contain 4-10 objects.
-- Start each dashboard with a markdown or note object containing the teaching explanation for that lesson.
+- Each dashboard must be useful by itself and contain 6-12 objects.
+- rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
+- Start each dashboard with a markdown object containing the full teaching explanation for that lesson. Use the "markdown" field, not "body".
+- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?".
 - Include practice in later dashboards: quizzes, flashcards as "qa", review prompts, lists, sequences, code, or tables when relevant.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
@@ -576,6 +642,10 @@ ${prompt}`,
         typeof input.title === 'string' && input.title.trim()
           ? input.title.trim()
           : `${index + 1}. ${stepNames[index] || 'Lesson'}`
+      const dashboardSummary =
+        typeof input.summary === 'string' && input.summary.trim()
+          ? input.summary.trim()
+          : 'Generated lesson dashboard.'
       const packId = `${title}-${index + 1}`
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -588,11 +658,16 @@ ${prompt}`,
         packId,
       )
       const safeDraft = removeUnrequestedHeavyResources(draft.objects, prompt)
+      const lessonNotes = buildStudyPathLessonNotes(
+        dashboardTitle,
+        dashboardSummary,
+        typeof input.rawNotes === 'string' ? input.rawNotes : '',
+        safeDraft.objects,
+      )
       const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
         packId,
         title: dashboardTitle,
-        rawNotes:
-          typeof input.rawNotes === 'string' ? input.rawNotes : prompt,
+        rawNotes: lessonNotes,
         generationTargets: [
           'summaries',
           'definitions',
@@ -613,11 +688,8 @@ ${prompt}`,
       return {
         ...draft,
         title: dashboardTitle,
-        summary:
-          typeof input.summary === 'string' && input.summary.trim()
-            ? input.summary.trim()
-            : 'Generated lesson dashboard.',
-        rawNotes: typeof input.rawNotes === 'string' ? input.rawNotes : prompt,
+        summary: dashboardSummary,
+        rawNotes: lessonNotes,
         objects: augmented.objects,
         warnings: [],
         sourceFormat: 'text' as StudyPackSourceFormat,
