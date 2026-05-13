@@ -1035,8 +1035,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               sx={{
                 p: 2,
                 border: 1,
-                borderColor:
-                  creationMode === 'ai' ? 'primary.main' : 'divider',
+                borderColor: creationMode === 'ai' ? 'primary.main' : 'divider',
                 bgcolor: 'background.paper',
               }}
             >

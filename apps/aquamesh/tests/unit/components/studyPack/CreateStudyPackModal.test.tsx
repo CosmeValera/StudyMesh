@@ -200,6 +200,14 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     ).toHaveTextContent('Text')
 
     selectBasicMode()
+    expect(screen.getByText('Basic mode')).toBeInTheDocument()
+    expect(screen.getByLabelText('Summaries')).toBeInTheDocument()
+    expect(screen.getByLabelText('Definitions')).toBeInTheDocument()
+    expect(screen.getByLabelText('Flashcards')).toBeInTheDocument()
+    expect(screen.getByLabelText('Quizzes')).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: /target amount/i }),
+    ).toBeInTheDocument()
     pasteNotes('# Biology\n\n## Cell theory\n\n- Cells carry DNA')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
