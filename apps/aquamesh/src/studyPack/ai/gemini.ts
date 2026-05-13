@@ -35,6 +35,21 @@ const GEMINI_TIMEOUT_MESSAGE =
 const GEMINI_RATE_LIMIT_MESSAGE =
   'Gemini rate limit reached for today. Try again later, use Basic fallback, or check your Gemini API quota.'
 
+const generationTargetLabels: Record<string, string> = {
+  quizzes: 'multiple-choice quizzes',
+  flashcards: 'flashcards',
+  summaries: 'summaries or key-point lists',
+  definitions: 'term definitions',
+  reviewPrompts: 'review prompts',
+  lists: 'lists or ordered steps',
+  tables: 'tables',
+  comparisons: 'comparisons',
+  code: 'code notes',
+}
+
+const formatGenerationTargets = (targets: string[]): string =>
+  targets.map((target) => generationTargetLabels[target] || target).join(', ')
+
 export interface GenerateStudyPackWithAiOptions {
   apiToken: string
   model: string
@@ -247,8 +262,8 @@ export const generateStudyPackWithAi = async ({
     generationAmount,
     generationTargets,
   )
-  const targetInstruction = `Prioritize these study materials: ${effectiveTargets.join(
-    ', ',
+  const targetInstruction = `Create only these selected study material types when possible: ${formatGenerationTargets(
+    effectiveTargets,
   )}. Treat selected targets as a hard UI contract.`
   const amountInstruction = `Create ${practiceProfile.targetTotal} reviewable study items when possible, never fewer than ${practiceProfile.minTotal} if the notes contain usable facts. Keep the total within ${practiceProfile.minTotal}-${practiceProfile.maxTotal} items.`
   const mixInstruction =
@@ -266,7 +281,7 @@ export const generateStudyPackWithAi = async ({
 Rules:
 - Use only facts answerable from the notes.
 - Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
-- Prefer useful learning widgets: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, and review prompts.
+- Prefer useful learning widgets from the selected target types: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, code notes, tables, and review prompts.
 - For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - Do not invent outside facts or practice content requiring unstated knowledge.

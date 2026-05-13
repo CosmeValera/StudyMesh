@@ -96,13 +96,31 @@ const creationModeOptions: Array<{
   { label: 'Basic fallback', value: 'basic' },
 ]
 
-const generationTargetOptions = [
-  { key: 'summaries', label: 'Summaries' },
-  { key: 'definitions', label: 'Definitions' },
-  { key: 'flashcards', label: 'Flashcards' },
-  { key: 'quizzes', label: 'Quizzes' },
-  { key: 'exercises', label: 'Exercises' },
-  { key: 'pages', label: 'Study pages' },
+const generationTargetGroups = [
+  {
+    label: 'Practice',
+    options: [
+      { key: 'quizzes', label: 'Quizzes' },
+      { key: 'flashcards', label: 'Flashcards' },
+    ],
+  },
+  {
+    label: 'Support',
+    options: [
+      { key: 'summaries', label: 'Summaries' },
+      { key: 'definitions', label: 'Definitions' },
+      { key: 'reviewPrompts', label: 'Review prompts' },
+    ],
+  },
+  {
+    label: 'Structured',
+    options: [
+      { key: 'lists', label: 'Lists / steps' },
+      { key: 'tables', label: 'Tables' },
+      { key: 'comparisons', label: 'Comparisons' },
+      { key: 'code', label: 'Code notes' },
+    ],
+  },
 ]
 
 const generationAmountOptions: Array<{
@@ -472,11 +490,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('orchestrator')
   const [generationTargets, setGenerationTargets] = useState<string[]>([
+    'quizzes',
+    'flashcards',
     'summaries',
     'definitions',
-    'flashcards',
-    'quizzes',
-    'exercises',
+    'reviewPrompts',
+    'lists',
+    'tables',
+    'comparisons',
+    'code',
   ])
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('medium')
@@ -525,11 +547,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setIncludeSourceChart(true)
     setLayoutMode('orchestrator')
     setGenerationTargets([
+      'quizzes',
+      'flashcards',
       'summaries',
       'definitions',
-      'flashcards',
-      'quizzes',
-      'exercises',
+      'reviewPrompts',
+      'lists',
+      'tables',
+      'comparisons',
+      'code',
     ])
     setGenerationAmount('medium')
     setError('')
@@ -794,7 +820,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const toggleGenerationTarget = (target: string) => {
     setGenerationTargets((current) =>
       current.includes(target)
-        ? current.filter((item) => item !== target)
+        ? current.length > 1
+          ? current.filter((item) => item !== target)
+          : current
         : [...current, target],
     )
   }
@@ -1056,25 +1084,41 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     </Typography>
                   </Box>
                 </Stack>
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                  {generationTargetOptions.map((option) => (
-                    <FormControlLabel
-                      key={option.key}
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={generationTargets.includes(option.key)}
-                          onChange={() => toggleGenerationTarget(option.key)}
-                        />
-                      }
-                      label={option.label}
-                      sx={{
-                        mr: 0.5,
-                        '& .MuiFormControlLabel-label': {
-                          fontSize: '0.875rem',
-                        },
-                      }}
-                    />
+                <Stack direction={{ xs: 'column', md: 'row' }} gap={2}>
+                  {generationTargetGroups.map((group) => (
+                    <Box key={group.label} sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        fontWeight={800}
+                        sx={{ display: 'block', mb: 0.5 }}
+                      >
+                        {group.label}
+                      </Typography>
+                      <Stack direction="row" gap={1} flexWrap="wrap">
+                        {group.options.map((option) => (
+                          <FormControlLabel
+                            key={option.key}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={generationTargets.includes(option.key)}
+                                onChange={() =>
+                                  toggleGenerationTarget(option.key)
+                                }
+                              />
+                            }
+                            label={option.label}
+                            sx={{
+                              mr: 0.5,
+                              '& .MuiFormControlLabel-label': {
+                                fontSize: '0.875rem',
+                              },
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
                   ))}
                 </Stack>
                 <TextField

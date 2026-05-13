@@ -32,11 +32,15 @@ export interface AugmentStudyPackPracticeResult {
 }
 
 const DEFAULT_TARGETS = [
+  'quizzes',
+  'flashcards',
   'summaries',
   'definitions',
-  'flashcards',
-  'quizzes',
-  'exercises',
+  'reviewPrompts',
+  'lists',
+  'tables',
+  'comparisons',
+  'code',
 ]
 
 const amountProfiles: Record<
@@ -71,6 +75,14 @@ const supportKinds = new Set<StudyObjectKind>([
   'table',
 ])
 
+const supportTargetOrder = [
+  'summaries',
+  'definitions',
+  'reviewPrompts',
+  'lists',
+  'tables',
+]
+
 export const getEffectiveGenerationTargets = (
   generationTargets: string[] = [],
 ): string[] =>
@@ -83,8 +95,7 @@ export const createStudyPackPracticeProfile = (
   const amount = generationAmount
   const base = amountProfiles[amount]
   const targets = getEffectiveGenerationTargets(generationTargets)
-  const enforceQuizzes =
-    targets.includes('quizzes') || targets.includes('exercises')
+  const enforceQuizzes = targets.includes('quizzes')
   const enforceFlashcards = targets.includes('flashcards')
   const targetQuizzes = enforceQuizzes ? Math.round(base.targetTotal * 0.55) : 0
   const minQuizzes = enforceQuizzes ? Math.ceil(base.minTotal * 0.5) : 0
@@ -113,6 +124,49 @@ export const createStudyPackPracticeProfile = (
 
 export const isReviewableStudyObject = (object: StudyObject): boolean =>
   reviewableKinds.has(object.kind)
+
+const objectMatchesTargets = (
+  object: StudyObject,
+  targets: string[],
+): boolean => {
+  if (object.kind === 'quiz') {
+    return targets.includes('quizzes')
+  }
+
+  if (object.kind === 'qa' || object.kind === 'reveal') {
+    return targets.includes('flashcards')
+  }
+
+  if (object.kind === 'term') {
+    return targets.includes('definitions')
+  }
+
+  if (object.kind === 'reviewPrompt') {
+    return targets.includes('reviewPrompts')
+  }
+
+  if (object.kind === 'list' || object.kind === 'sequence') {
+    return targets.includes('lists') || targets.includes('summaries')
+  }
+
+  if (object.kind === 'table') {
+    return targets.includes('tables')
+  }
+
+  if (object.kind === 'comparison') {
+    return targets.includes('comparisons')
+  }
+
+  if (object.kind === 'code') {
+    return targets.includes('code')
+  }
+
+  if (object.kind === 'note' || object.kind === 'markdown') {
+    return targets.includes('summaries')
+  }
+
+  return true
+}
 
 const hashValue = (value: string): number => {
   let hash = 0
@@ -286,6 +340,67 @@ const createFlashcard = (
   }
 }
 
+const createDefinition = (
+  packId: string,
+  index: number,
+  fact: string,
+  title: string,
+): StudyObject => {
+  const concept = extractConcept(fact, title)
+
+  return {
+    id: `${packId}-practice-definition-${index + 1}`,
+    kind: 'term',
+    title: `${concept} definition`,
+    sourceLine: index + 1,
+    tags: ['study-pack', 'practice'],
+    term: concept,
+    definition: fact,
+  }
+}
+
+const createSummaryList = (
+  packId: string,
+  index: number,
+  facts: string[],
+  title: string,
+): StudyObject => {
+  const items =
+    facts.length > 0 ? facts.slice(0, 5) : ['Review the source notes.']
+
+  return {
+    id: `${packId}-practice-summary-${index + 1}`,
+    kind: 'list',
+    title: `${title || 'Study Pack'} summary`,
+    sourceLine: index + 1,
+    tags: ['study-pack', 'practice'],
+    items,
+    ordered: false,
+    checklist: false,
+  }
+}
+
+const createFactTable = (
+  packId: string,
+  index: number,
+  facts: string[],
+  title: string,
+): StudyObject => {
+  const rows = (
+    facts.length > 0 ? facts.slice(0, 5) : ['Review the source notes.']
+  ).map((fact, factIndex) => [String(factIndex + 1), fact])
+
+  return {
+    id: `${packId}-practice-table-${index + 1}`,
+    kind: 'table',
+    title: `${title || 'Study Pack'} key facts`,
+    sourceLine: index + 1,
+    tags: ['study-pack', 'practice'],
+    headers: ['#', 'Source fact'],
+    rows,
+  }
+}
+
 const createSupportPrompt = (
   packId: string,
   index: number,
@@ -304,6 +419,32 @@ const createSupportPrompt = (
     reason: 'Generated to keep the Study Pack practice-focused.',
     status: 'needsReview',
   }
+}
+
+const getSupportTargets = (targets: string[]): string[] =>
+  supportTargetOrder.filter((target) => targets.includes(target))
+
+const createSupportObject = (
+  target: string,
+  packId: string,
+  index: number,
+  fact: string,
+  facts: string[],
+  title: string,
+): StudyObject => {
+  if (target === 'definitions') {
+    return createDefinition(packId, index, fact, title)
+  }
+
+  if (target === 'summaries' || target === 'lists') {
+    return createSummaryList(packId, index, facts.slice(index), title)
+  }
+
+  if (target === 'tables') {
+    return createFactTable(packId, index, facts.slice(index), title)
+  }
+
+  return createSupportPrompt(packId, index, fact, title)
 }
 
 const countReviewable = (objects: StudyObject[]) =>
@@ -333,7 +474,11 @@ export const augmentStudyPackPracticeObjects = (
     options.generationTargets,
   )
   const packId = sanitizeIdPart(options.packId || options.title)
-  const objects = inputObjects.map(shuffleStudyObjectQuizOptions)
+  const targets = getEffectiveGenerationTargets(options.generationTargets)
+  const supportTargets = getSupportTargets(targets)
+  const objects = inputObjects
+    .filter((object) => objectMatchesTargets(object, targets))
+    .map(shuffleStudyObjectQuizOptions)
   const facts = splitIntoFacts(options.rawNotes)
   const warnings: string[] = []
 
@@ -421,12 +566,20 @@ export const augmentStudyPackPracticeObjects = (
       continue
     }
 
+    if (supportTargets.length === 0) {
+      break
+    }
+
+    const supportIndex = countSupport(objects)
+    const target = supportTargets[supportIndex % supportTargets.length]
     pushUnique(
       objects,
-      createSupportPrompt(
+      createSupportObject(
+        target,
         packId,
-        countSupport(objects),
+        supportIndex,
         nextFact(),
+        facts,
         options.title,
       ),
     )

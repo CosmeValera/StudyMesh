@@ -201,10 +201,15 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
 
     selectBasicMode()
     expect(screen.getByText('Basic mode')).toBeInTheDocument()
+    expect(screen.getByText('Practice')).toBeInTheDocument()
+    expect(screen.getByText('Support')).toBeInTheDocument()
+    expect(screen.getByText('Structured')).toBeInTheDocument()
     expect(screen.getByLabelText('Summaries')).toBeInTheDocument()
     expect(screen.getByLabelText('Definitions')).toBeInTheDocument()
     expect(screen.getByLabelText('Flashcards')).toBeInTheDocument()
     expect(screen.getByLabelText('Quizzes')).toBeInTheDocument()
+    expect(screen.getByLabelText('Review prompts')).toBeInTheDocument()
+    expect(screen.getByLabelText('Lists / steps')).toBeInTheDocument()
     expect(
       screen.getByRole('combobox', { name: /target amount/i }),
     ).toBeInTheDocument()
@@ -231,6 +236,27 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     expect(
       screen.queryByRole('dialog', { name: /use markdown format/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('respects selected widget types in Basic mode', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    selectBasicMode()
+    fireEvent.click(screen.getByLabelText('Quizzes'))
+    pasteNotes('Only loose notes here with one useful fact for review.')
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
+
+    const createdPack = vi.mocked(createStudyPackOrchestratorWidgets).mock
+      .calls[0][0]
+    expect(createdPack.objects.some((object) => object.kind === 'quiz')).toBe(
+      false,
+    )
+    expect(createdPack.objects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'qa' })]),
+    )
   })
 
   it('creates orchestrator widgets with the raw source and orchestrator layout', async () => {
