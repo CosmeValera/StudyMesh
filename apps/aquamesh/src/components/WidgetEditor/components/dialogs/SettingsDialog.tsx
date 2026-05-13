@@ -32,6 +32,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ReplayIcon from '@mui/icons-material/Replay'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import CreditCardIcon from '@mui/icons-material/CreditCard'
 
 import AccentColorPicker from '../../../../theme/AccentColorPicker'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
@@ -413,6 +414,48 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     premium/credit-based later because they consume ongoing AI
                     compute.
                   </Alert>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      mb: 2,
+                      border: 1,
+                      borderColor: 'warning.main',
+                      bgcolor: 'warning.light',
+                    }}
+                  >
+                    <Grid container spacing={1.5} alignItems="center">
+                      <Grid item xs={12} md={7}>
+                        <Typography variant="subtitle2" fontWeight={800}>
+                          End-user paywall preview
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          When hosted AI is exhausted, users should see a clear
+                          upgrade card at the moment they try to generate:
+                          “5 free AI generations used”, “Add hosted AI credits”,
+                          “Bring your own key”, or “Continue free with Basic”.
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={5}>
+                        <Button
+                          variant="contained"
+                          startIcon={<CreditCardIcon />}
+                          fullWidth
+                          disabled
+                        >
+                          Add hosted AI credits
+                        </Button>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                          sx={{ mt: 0.75 }}
+                        >
+                          Disabled until a real checkout provider is connected.
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Paper>
                   <TextField
                     select
                     label="Provider"

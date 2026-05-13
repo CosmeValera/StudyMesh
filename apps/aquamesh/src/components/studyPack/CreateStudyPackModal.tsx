@@ -25,6 +25,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ImageIcon from '@mui/icons-material/Image'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import CreditCardIcon from '@mui/icons-material/CreditCard'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import {
   createStudyPackOrchestratorWidgets,
   createStudyPackSmartWidgetGroups,
@@ -106,6 +108,7 @@ const generationAmountOptions: Array<{
 
 const freeHostedAiGenerationRange = '5–10'
 const hostedAiCreditLabel = 'Hosted AI credits'
+const mockFreeHostedAiGenerationsLeft = 5
 
 const supportedImageExtensions = [
   'bmp',
@@ -440,8 +443,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('medium')
   const [error, setError] = useState('')
+  const [monetizationNotice, setMonetizationNotice] = useState('')
 
   const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
+  const hasConfiguredAiKey = Boolean(resolveStudyPackAiCredentials().apiToken)
 
   useEffect(() => {
     if (!imageFile) {
@@ -484,6 +489,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     ])
     setGenerationAmount('medium')
     setError('')
+    setMonetizationNotice('')
   }
 
   const handleClose = () => {
@@ -500,6 +506,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setOcrProgress(0)
     setOcrStatus('')
     setError('')
+    setMonetizationNotice('')
+  }
+
+  const showCheckoutPreview = () => {
+    setError('')
+    setMonetizationNotice(
+      'Checkout preview: this is where AquaMesh would open payment for hosted AI credits. The payment provider is not connected in this prototype yet.',
+    )
+  }
+
+  const showFreeGenerationPreview = () => {
+    setError('')
+    setMonetizationNotice(
+      `Free hosted AI preview: new users would spend 1 of ${freeHostedAiGenerationRange} starter generations here before any paywall appears.`,
+    )
   }
 
   const selectImageFile = (file: File) => {
@@ -542,7 +563,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const credentials = resolveStudyPackAiCredentials()
     if (!credentials.apiToken) {
       setError(
-        'AI mode needs a configured provider key. Use Basic mode for free, add your own AI key in Settings, or use hosted AI credits when they become available.',
+        'AI generation is gated here: use a free hosted AI generation, add hosted AI credits, add your own AI key in Settings, or switch to free Basic mode.',
       )
       return
     }
@@ -613,7 +634,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const credentials = resolveStudyPackAiCredentials()
     if (creationMode === 'ai' && !credentials.apiToken) {
       setError(
-        'AI mode needs a configured provider key. Use Basic mode for free, add your own AI key in Settings, or use hosted AI credits when they become available.',
+        'AI generation is gated here: use a free hosted AI generation, add hosted AI credits, add your own AI key in Settings, or switch to free Basic mode.',
       )
       return
     }
@@ -1050,27 +1071,72 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   sx={{
                     p: 2,
                     border: 1,
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
+                    borderColor: hasConfiguredAiKey
+                      ? 'divider'
+                      : 'warning.main',
+                    bgcolor: hasConfiguredAiKey
+                      ? 'background.paper'
+                      : 'warning.light',
                   }}
                 >
-                  <Stack spacing={1}>
+                  <Stack spacing={1.25}>
                     <Stack direction="row" gap={1} flexWrap="wrap">
                       <Chip
-                        label={`${hostedAiCreditLabel}: friendly free starter allowance`}
+                        icon={
+                          hasConfiguredAiKey ? (
+                            <AutoAwesomeIcon />
+                          ) : (
+                            <LockOutlinedIcon />
+                          )
+                        }
+                        label={
+                          hasConfiguredAiKey
+                            ? 'Own AI key connected'
+                            : `${mockFreeHostedAiGenerationsLeft} free hosted AI generations left`
+                        }
                         color="primary"
                         size="small"
                       />
                       <Chip label="Basic mode remains free" size="small" />
                       <Chip label="Own API key supported" size="small" />
                     </Stack>
-                    <Typography variant="body2" color="text.secondary">
-                      Future hosted AI top-ups should be framed as covering AI
-                      compute, not as a hard Pro upsell. Existing Study Packs
-                      and manually created content should never be locked behind
-                      credits. Local AI models such as Ollama can be added later
-                      as another student-friendly option.
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      {hasConfiguredAiKey
+                        ? 'Ready to generate with your own key'
+                        : 'AI generation paywall preview'}
                     </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {hasConfiguredAiKey
+                        ? 'AquaMesh will use the private key saved in this browser. Hosted credits are only needed for students who do not bring their own provider.'
+                        : 'End users should see a simple choice here: use a free starter AI generation, add hosted AI credits, bring their own key, or switch to Basic mode. Existing Study Packs and manually created content stay unlocked.'}
+                    </Typography>
+                    {!hasConfiguredAiKey && (
+                      <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+                        <Button
+                          variant="contained"
+                          startIcon={<AutoAwesomeIcon />}
+                          onClick={showFreeGenerationPreview}
+                        >
+                          Use free AI generation
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          startIcon={<CreditCardIcon />}
+                          onClick={showCheckoutPreview}
+                        >
+                          Add hosted AI credits
+                        </Button>
+                        <Button
+                          variant="text"
+                          onClick={() => setCreationMode('basic')}
+                        >
+                          Switch to free Basic mode
+                        </Button>
+                      </Stack>
+                    )}
+                    {monetizationNotice && (
+                      <Alert severity="info">{monetizationNotice}</Alert>
+                    )}
                   </Stack>
                 </Paper>
               </Stack>
