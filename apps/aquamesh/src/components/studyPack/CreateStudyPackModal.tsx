@@ -83,6 +83,9 @@ const creationModeOptions: Array<{
   { label: 'AI', value: 'ai' },
 ]
 
+const freeHostedAiGenerationRange = '5–10'
+const hostedAiCreditLabel = 'Hosted AI credits'
+
 const supportedImageExtensions = [
   'bmp',
   'jpg',
@@ -502,7 +505,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const credentials = resolveStudyPackAiCredentials()
     if (!credentials.apiToken) {
       setError(
-        'Add a Gemini API key in Application Settings before using AI mode.',
+        'Use Basic mode for free, add your own AI key in Settings, or use hosted AI credits when they become available.',
       )
       return
     }
@@ -571,7 +574,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const credentials = resolveStudyPackAiCredentials()
     if (creationMode === 'ai' && !credentials.apiToken) {
       setError(
-        'Add a Gemini API key in Application Settings before using AI mode.',
+        'Use Basic mode for free, add your own AI key in Settings, or use hosted AI credits when they become available.',
       )
       return
     }
@@ -903,11 +906,43 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </TextField>
             </Stack>
             {creationMode === 'ai' && (
-              <Alert severity="info" icon={<AutoAwesomeIcon />}>
-                AI mode uses your Gemini API key to read difficult images and
-                create grounded flashcards, quizzes, definitions, and other
-                widgets from the notes.
-              </Alert>
+              <Stack spacing={1.5}>
+                <Alert severity="info" icon={<AutoAwesomeIcon />}>
+                  AI mode can turn notes into grounded flashcards, quizzes,
+                  definitions, and other study items. New students should get
+                  {` ${freeHostedAiGenerationRange} free hosted AI generations`}
+                  before seeing any payment prompt. Basic mode stays free, and
+                  power users can bring their own AI key.
+                </Alert>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      <Chip
+                        label={`${hostedAiCreditLabel}: friendly free starter allowance`}
+                        color="primary"
+                        size="small"
+                      />
+                      <Chip label="Basic mode remains free" size="small" />
+                      <Chip label="Own API key supported" size="small" />
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      Future hosted AI top-ups should be framed as covering AI
+                      compute, not as a hard Pro upsell. Existing Study Packs
+                      and manually created content should never be locked behind
+                      credits. Local AI models such as Ollama can be added later
+                      as another student-friendly option.
+                    </Typography>
+                  </Stack>
+                </Paper>
+              </Stack>
             )}
             {sourceInputType === 'text' ? (
               <>
@@ -1062,9 +1097,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     </Typography>
                   </Stack>
                   <Typography variant="body2" color="text.secondary">
-                    AquaMesh is sending your notes to Gemini, waiting for a
-                    structured response, then converting it into editable study
-                    widgets.
+                    AquaMesh is using the selected AI option to structure your
+                    notes, then converting the result into editable study
+                    widgets. Hosted AI should consume credits only after an
+                    explicit action.
                   </Typography>
                   <LinearProgress />
                 </Stack>

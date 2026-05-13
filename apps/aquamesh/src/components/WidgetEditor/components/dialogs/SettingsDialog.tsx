@@ -369,12 +369,57 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Add a Gemini API key to enable AI mode in Create study pack.
-                    The key is stored locally in this browser and sent directly
-                    to Google from AquaMesh.
+                    Choose how AI is powered. Basic mode stays free, new
+                    students should get 5–10 free hosted generations, and API
+                    keys are an advanced option for people who want to bring
+                    their own provider. Hosted AI credits should exist mainly to
+                    cover compute costs, not to make the app feel like
+                    aggressive SaaS.
                   </Typography>
+                  <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                    {[
+                      {
+                        title: 'Basic mode',
+                        body: 'Free forever for manual Study Packs, notes, flashcards, quizzes, folders, import/export, and re-practicing existing content.',
+                      },
+                      {
+                        title: 'Hosted AI credits',
+                        body: 'Optional convenience for students without an API key. Use wording like “Add hosted AI credits” or “Supporter pack”, not “pay for our token”.',
+                      },
+                      {
+                        title: 'Bring your own key',
+                        body: 'Advanced users can use their own Gemini key now; OpenAI, Anthropic, DeepSeek, or local Ollama-style models can fit later.',
+                      },
+                    ].map((item) => (
+                      <Grid item xs={12} md={4} key={item.title}>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            height: '100%',
+                            border: 1,
+                            borderColor: 'divider',
+                            bgcolor: 'background.paper',
+                          }}
+                        >
+                          <Typography variant="subtitle2" fontWeight={800}>
+                            {item.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {item.body}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Trust rule: never lock existing Study Packs or Basic mode
+                    behind credits. Dynamic AI exercises can become experimental
+                    premium/credit-based later because they consume ongoing AI
+                    compute.
+                  </Alert>
                   <TextField
-                    label="Gemini API key"
+                    label="Own Gemini API key (advanced)"
                     type="password"
                     value={aiApiToken}
                     onChange={(event) => setAiApiToken(event.target.value)}
