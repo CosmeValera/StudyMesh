@@ -173,9 +173,9 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     fireEvent.click(screen.getByRole('option', { name: /^image$/i }))
   }
 
-  const selectAiMode = () => {
+  const selectBasicMode = () => {
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /mode/i }))
-    fireEvent.click(screen.getByRole('option', { name: /^ai$/i }))
+    fireEvent.click(screen.getByRole('option', { name: /basic fallback/i }))
   }
 
   const getImageFileInput = () =>
@@ -192,6 +192,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       screen.getByRole('combobox', { name: /source type/i }),
     ).toHaveTextContent('Text')
 
+    selectBasicMode()
     pasteNotes('# Biology\n\n## Cell theory\n\n- Cells carry DNA')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
@@ -201,13 +202,13 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
         expect.objectContaining({ defaultTags: ['study-pack'] }),
       )
     })
-    expect(screen.getByText('Source notes widget')).toBeInTheDocument()
+    expect(screen.getByText('Source notes')).toBeInTheDocument()
     expect(screen.getByText('1 MarkdownBlock')).toBeInTheDocument()
     expect(screen.getByText('Locked')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Derivative quiz')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Study Pack Generated')).toBeInTheDocument()
     expect(
-      screen.getByRole('combobox', { name: /dashboard layout/i }),
+      screen.getByRole('combobox', { name: /workspace layout/i }),
     ).toBeInTheDocument()
     expect(screen.queryByText('Smart split')).not.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Loose note')).not.toBeInTheDocument()
@@ -228,6 +229,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       />,
     )
 
+    selectBasicMode()
     pasteNotes('Quiz:: What is derivative? | Rate of change')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
     fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
@@ -262,16 +264,17 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       />,
     )
 
+    selectBasicMode()
     pasteNotes('Only loose notes here')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
     expect(
       await screen.findByText(
-        /AquaMesh was not able to extract any knowledge widgets/i,
+        /AquaMesh was not able to extract any study materials/i,
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText('AquaMesh found')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('combobox', { name: /dashboard layout/i }),
+      screen.queryByRole('combobox', { name: /workspace layout/i }),
     ).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
 
@@ -289,6 +292,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
+    selectBasicMode()
     pasteNotes('Rule,Formula\nPower,nx^(n-1)')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
@@ -302,11 +306,12 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    selectAiMode()
     pasteNotes('Photosynthesis happens in chloroplasts.')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
-    expect(await screen.findByText(/add a gemini api key/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/configured provider key/i),
+    ).toBeInTheDocument()
     expect(generateStudyPackWithAi).not.toHaveBeenCalled()
     expect(parseStudyPack).not.toHaveBeenCalled()
   })
@@ -321,7 +326,6 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       tokenSource: 'settings',
     })
 
-    selectAiMode()
     pasteNotes('Photosynthesis happens in chloroplasts.')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
@@ -345,6 +349,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
+    selectBasicMode()
     selectImageSource()
 
     expect(screen.getByText(/drop an image of your notes/i)).toBeInTheDocument()
@@ -387,7 +392,6 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       tokenSource: 'settings',
     })
 
-    selectAiMode()
     selectImageSource()
     const input = getImageFileInput()
     const image = new File(['image-bytes'], 'handwritten.png', {
@@ -422,6 +426,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       />,
     )
 
+    selectBasicMode()
     selectImageSource()
     const input = getImageFileInput()
     const image = new File(['image-bytes'], 'lecture.png', {
@@ -458,6 +463,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
+    selectBasicMode()
     selectImageSource()
     const input = getImageFileInput()
     const unsupported = new File(['pdf-bytes'], 'notes.pdf', {

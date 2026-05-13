@@ -30,6 +30,8 @@ export interface GenerateStudyPackWithAiOptions {
   title: string
   rawNotes: string
   packId: string
+  generationTargets?: string[]
+  generationAmount?: 'few' | 'medium' | 'many'
 }
 
 export interface ExtractRawNotesWithAiOptions {
@@ -198,7 +200,19 @@ export const generateStudyPackWithAi = async ({
   title,
   rawNotes,
   packId,
+  generationTargets = [],
+  generationAmount = 'medium',
 }: GenerateStudyPackWithAiOptions): Promise<AiStudyPackDraft> => {
+  const targetInstruction = generationTargets.length
+    ? `Prioritize these study materials: ${generationTargets.join(', ')}.`
+    : 'Prioritize summaries, definitions, flashcards, quizzes, and practice prompts when supported by the notes.'
+  const amountInstruction =
+    generationAmount === 'few'
+      ? 'Create a small set: about 4-7 strong items total.'
+      : generationAmount === 'many'
+        ? 'Create a larger set: about 14-24 useful items total, without padding weak material.'
+        : 'Create a balanced set: about 8-14 useful items total.'
+
   const text = await callGemini(
     apiToken,
     model,
@@ -212,6 +226,8 @@ Rules:
 - For multiple-choice quizzes, include 3-4 options and correctIndex.
 - Do not invent outside facts or practice content requiring unstated knowledge.
 - Keep objects concise and student-friendly.
+- ${targetInstruction}
+- ${amountInstruction}
 
 Pack title: ${title}
 
