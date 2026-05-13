@@ -740,7 +740,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         apiToken: credentials.apiToken,
         model: credentials.model,
         title: packTitle.trim() || 'Study Pack',
-        rawNotes: sourceText,
+        rawNotes:
+          studyTaskMode === 'aiPrompt'
+            ? `AI Tutor request: ${sourceText}`
+            : sourceText,
         packId: getPackId(packTitle),
         generationTargets,
         generationAmount,

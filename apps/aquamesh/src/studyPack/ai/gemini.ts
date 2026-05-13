@@ -142,6 +142,7 @@ const objectSchema = {
           kind: {
             type: 'STRING',
             enum: [
+              'markdown',
               'note',
               'term',
               'qa',
@@ -157,6 +158,7 @@ const objectSchema = {
           },
           title: { type: 'STRING' },
           tags: { type: 'ARRAY', items: { type: 'STRING' } },
+          markdown: { type: 'STRING' },
           body: { type: 'STRING' },
           term: { type: 'STRING' },
           definition: { type: 'STRING' },
@@ -367,7 +369,7 @@ export const generateStudyPackWithAi = async ({
       ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
       : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
   const sourceInstruction = promptMode
-    ? 'The raw input is a learning prompt, not notes. First create concise source notes that teach the requested topic, then generate practice grounded in those generated notes. Include explanation/theory objects before exercises.'
+    ? 'The raw input is a learning prompt, not notes. Teach the requested topic from scratch. Because the input is not source notes, you may use accurate general knowledge for this topic. First create concise source notes/explanations, then generate practice grounded in those generated explanations. Include explanation/theory objects before exercises.'
     : 'The raw input is source notes. Stay grounded in those notes.'
   const pathInstruction = studyPathMode
     ? 'Organize the material as a Study Path progression. Use titles/tags that clearly fit: Introduction, Theory, Examples, Practice, Final Review.'
@@ -378,12 +380,33 @@ export const generateStudyPackWithAi = async ({
     model,
     [
       {
-        text: `Create a study pack JSON object from these raw notes.
+        text: `Create a study pack JSON object ${
+          promptMode
+            ? 'from this learning prompt'
+            : 'from these raw notes'
+        }.
+
+Return exactly one JSON object with this shape:
+{
+  "title": "Short study pack title",
+  "sourceFormat": "text",
+  "objects": [
+    { "kind": "markdown", "title": "Explanation", "markdown": "..." },
+    { "kind": "quiz", "question": "...", "quizMode": "multipleChoice", "options": ["...", "...", "..."], "correctIndex": 0, "answer": "...", "explanation": "..." }
+  ]
+}
+
+Do not wrap the JSON in markdown fences. Do not add commentary outside JSON.
 
 Rules:
-- Use only facts answerable from the notes.
+- ${
+          promptMode
+            ? 'Use accurate general knowledge to teach the requested topic; do not pretend the prompt is source notes.'
+            : 'Use only facts answerable from the notes.'
+        }
 - ${sourceInstruction}
 - ${pathInstruction}
+- In AI Tutor mode, include at least one markdown explanation object as the first object. Use the "markdown" field for markdown objects, not "body".
 - Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
 - Prefer useful learning widgets from the selected target types: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, code notes, tables, and review prompts.
 - For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
