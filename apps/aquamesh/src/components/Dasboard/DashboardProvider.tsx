@@ -20,6 +20,7 @@ interface DashboardContextType {
   removeDashboard: (id: string) => void
   closeAllDashboards: () => void
   closeDashboardsToRight: (index: number) => void
+  reorderDashboard: (fromIndex: number, toIndex: number) => void
   addDashboard: (dashboard?: DefaultDashboard) => string
   addDashboards: (
     dashboards: DefaultDashboard[],
@@ -133,6 +134,25 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         dashboards.some((dashboard) => dashboard.id === currentId),
       ),
     )
+  }
+
+  const reorderDashboard = (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= openDashboards.length ||
+      toIndex < 0 ||
+      toIndex >= openDashboards.length ||
+      fromIndex === toIndex
+    ) {
+      return
+    }
+
+    const dashboards = [...openDashboards]
+    const [movedDashboard] = dashboards.splice(fromIndex, 1)
+    dashboards.splice(toIndex, 0, movedDashboard)
+
+    setDashboards(dashboards)
+    setSelectedDashboard(toIndex)
   }
 
   const addDashboard = (dashboard = DEFAULT_DASHBOARD) => {
@@ -264,6 +284,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         removeDashboard,
         closeAllDashboards,
         closeDashboardsToRight,
+        reorderDashboard,
         addDashboard,
         addDashboards,
         replaceDashboard,

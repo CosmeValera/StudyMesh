@@ -47,6 +47,15 @@
     transition: opacity 0.25s ease;
 
     cursor: pointer;
+    user-select: none;
+
+    &[draggable='true'] {
+      cursor: grab;
+    }
+
+    &[draggable='true']:active {
+      cursor: grabbing;
+    }
 
     .close {
       cursor: pointer;

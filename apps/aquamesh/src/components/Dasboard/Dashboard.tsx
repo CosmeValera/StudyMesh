@@ -461,6 +461,7 @@ const Dashboards = () => {
     removeDashboard,
     closeAllDashboards,
     closeDashboardsToRight,
+    reorderDashboard,
     addDashboard,
     replaceDashboard,
     updateLayout,
@@ -484,6 +485,9 @@ const Dashboards = () => {
     mouseY: number
     tabIndex: number
   } | null>(null)
+  const [draggedDashboardIndex, setDraggedDashboardIndex] = useState<
+    number | null
+  >(null)
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
   const [isAdmin, setIsAdmin] = useState(false)
   const [dashboardOptions, setDashboardOptions] = useState<SavedDashboard[]>([])
@@ -1367,6 +1371,57 @@ const Dashboards = () => {
     closeDashboardTabMenu()
   }
 
+  const startDashboardTabDrag = (event: React.DragEvent, tabIndex: number) => {
+    setDraggedDashboardIndex(tabIndex)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(tabIndex))
+  }
+
+  const dropDashboardTab = (event: React.DragEvent, targetIndex: number) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const rawDraggedIndex = event.dataTransfer.getData('text/plain')
+    const sourceIndex =
+      draggedDashboardIndex ?? Number.parseInt(rawDraggedIndex, 10)
+
+    if (!Number.isInteger(sourceIndex)) {
+      setDraggedDashboardIndex(null)
+      return
+    }
+
+    const targetRect = event.currentTarget.getBoundingClientRect()
+    const shouldDropAfter =
+      event.clientX > targetRect.left + targetRect.width / 2
+    let nextIndex = shouldDropAfter ? targetIndex + 1 : targetIndex
+
+    if (sourceIndex < nextIndex) {
+      nextIndex -= 1
+    }
+
+    nextIndex = Math.max(0, Math.min(openDashboards.length - 1, nextIndex))
+    reorderDashboard(sourceIndex, nextIndex)
+    setDraggedDashboardIndex(null)
+  }
+
+  const allowDashboardTabListDrop = (event: React.DragEvent) => {
+    if (draggedDashboardIndex === null) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+  }
+
+  const dropDashboardTabAtEnd = (event: React.DragEvent) => {
+    if (draggedDashboardIndex === null) {
+      return
+    }
+
+    event.preventDefault()
+    reorderDashboard(draggedDashboardIndex, openDashboards.length - 1)
+    setDraggedDashboardIndex(null)
+  }
+
   return (
     <Box>
       <Tabs
@@ -1375,7 +1430,10 @@ const Dashboards = () => {
         onSelect={(index) => setSelectedDashboard(index)}
         style={{ position: 'relative' }}
       >
-        <TabList>
+        <TabList
+          onDragOver={allowDashboardTabListDrop}
+          onDrop={dropDashboardTabAtEnd}
+        >
           {openDashboards.map((dashboard, index) => {
             const isOnlyEmptyDashboard =
               openDashboards.length === 1 &&
@@ -1384,6 +1442,14 @@ const Dashboards = () => {
             return (
               <Tab
                 key={dashboard.id}
+                draggable
+                onDragStart={(event) => startDashboardTabDrag(event, index)}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(event) => dropDashboardTab(event, index)}
+                onDragEnd={() => setDraggedDashboardIndex(null)}
                 onContextMenu={(event) => openDashboardTabMenu(event, index)}
               >
                 <TooltipStyled
