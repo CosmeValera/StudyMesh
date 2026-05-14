@@ -12,6 +12,7 @@ import {
   Typography,
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import LaunchIcon from '@mui/icons-material/Launch'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
@@ -29,9 +30,6 @@ interface StudyPathWorkspaceViewProps {
   onOpenLesson: (dashboard: StudyPathDashboardItem) => void
   onOpenAll: () => void
 }
-
-const formatLessonLabel = (index: number, name: string) =>
-  `${String(index + 1).padStart(2, '0')} ${name}`
 
 const getProgressForLesson = (
   studyPath: StudyPathContainerState,
@@ -130,34 +128,78 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', md: '280px minmax(0, 1fr)' },
-        minHeight: 'calc(100dvh - 112px)',
-        backgroundColor: 'background.default',
+        gridTemplateColumns: { xs: '1fr', lg: '340px minmax(0, 1fr)' },
+        height: 'calc(100dvh - 104px)',
+        minHeight: 620,
+        overflow: 'hidden',
+        background:
+          'linear-gradient(135deg, rgba(0,124,102,0.12), rgba(25,118,210,0.08))',
+        border: 1,
+        borderColor: 'primary.main',
+        borderRadius: { xs: 0, md: 2 },
+        m: { xs: 0, md: 1 },
       }}
     >
       <Paper
         square
         elevation={0}
         sx={{
-          borderRight: { md: 1 },
-          borderBottom: { xs: 1, md: 0 },
+          borderRight: { lg: 1 },
+          borderBottom: { xs: 1, lg: 0 },
           borderColor: 'divider',
-          p: 2,
-          backgroundColor: 'background.paper',
+          p: 2.25,
+          background:
+            'linear-gradient(180deg, rgba(0,124,102,0.18), rgba(0,16,38,0.02)), var(--background-paper)',
+          overflowY: 'auto',
+          position: 'relative',
+          zIndex: 2,
         }}
       >
-        <Stack spacing={2}>
-          <Box>
-            <Typography variant="overline" color="primary.main">
-              Study Path
-            </Typography>
+        <Stack spacing={2.25}>
+          <Stack direction="row" spacing={1.25} alignItems="flex-start">
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: 2,
+                display: 'grid',
+                placeItems: 'center',
+                color: 'primary.contrastText',
+                bgcolor: 'primary.main',
+                boxShadow: 2,
+                flex: '0 0 auto',
+              }}
+            >
+              <AutoStoriesIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="overline"
+                color="primary.main"
+                sx={{ fontWeight: 900, letterSpacing: '.08em' }}
+              >
+                Course navigator
+              </Typography>
+              <Typography variant="h6" sx={{ lineHeight: 1.18 }}>
+                {studyPath.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                One Study Path tab · switch lessons below
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Paper
+            variant="outlined"
+            sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default' }}
+          >
             <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
-              {studyPath.title}
+              Step {selectedIndex + 1}/{studyPath.dashboards.length}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              One workspace tab · {studyPath.dashboards.length} lessons
+              {currentLesson.name}
             </Typography>
-          </Box>
+          </Paper>
 
           <Box>
             <Stack direction="row" justifyContent="space-between" spacing={1}>
@@ -175,7 +217,11 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
             />
           </Box>
 
-          <Stack spacing={1}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+            Lessons
+          </Typography>
+
+          <Stack spacing={1.1}>
             {studyPath.dashboards.map((lesson, index) => {
               const progress = progressByKey[lesson.dashboardKey]
               const active = index === selectedIndex
@@ -185,19 +231,45 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 <Button
                   key={lesson.dashboardKey}
                   onClick={() => selectLesson(index)}
-                  variant={active ? 'contained' : 'outlined'}
+                  variant={active ? 'contained' : 'text'}
                   color={active ? 'primary' : 'inherit'}
                   sx={{
                     justifyContent: 'flex-start',
                     textAlign: 'left',
-                    borderRadius: 2,
-                    py: 1,
+                    alignItems: 'stretch',
+                    borderRadius: 2.5,
+                    py: 1.15,
+                    px: 1.25,
+                    border: 1,
+                    borderColor: active ? 'primary.main' : 'divider',
+                    bgcolor: active ? 'primary.main' : 'background.paper',
+                    boxShadow: active ? 2 : 0,
+                    '&:hover': {
+                      bgcolor: active ? 'primary.dark' : 'action.hover',
+                    },
                   }}
                 >
-                  <Stack spacing={0.3} sx={{ width: '100%' }}>
+                  <Stack direction="row" spacing={1.2} sx={{ width: '100%' }}>
+                    <Box
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        display: 'grid',
+                        placeItems: 'center',
+                        flex: '0 0 auto',
+                        fontWeight: 900,
+                        bgcolor: active
+                          ? 'rgba(255,255,255,0.22)'
+                          : 'action.hover',
+                      }}
+                    >
+                      {String(index + 1).padStart(2, '0')}
+                    </Box>
+                    <Stack spacing={0.3} sx={{ minWidth: 0, flex: 1 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography variant="body2" fontWeight={700} noWrap>
-                        {formatLessonLabel(index, lesson.name)}
+                        {lesson.name}
                       </Typography>
                       {pinned && <PushPinIcon sx={{ fontSize: 14 }} />}
                       {progress?.completedAt && (
@@ -208,6 +280,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                       Step {lesson.dashboardIndex}/{lesson.dashboardCount}
                       {progress?.score ? ` · Score ${progress.score}%` : ''}
                     </Typography>
+                    </Stack>
                   </Stack>
                 </Button>
               )
@@ -216,21 +289,30 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
 
           <Divider />
 
-          <Button size="small" variant="outlined" onClick={onOpenAll}>
+          <Button size="small" variant="outlined" onClick={onOpenAll} fullWidth>
             Open all dashboards
           </Button>
         </Stack>
       </Paper>
 
-      <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          p: { xs: 1, md: 1.5 },
+          gap: 1.5,
+        }}
+      >
         <Paper
-          square
-          elevation={0}
+          elevation={1}
           sx={{
-            px: 2,
+            px: 2.25,
             py: 1.5,
-            borderBottom: 1,
+            border: 1,
             borderColor: 'divider',
+            borderRadius: 2,
             backgroundColor: 'background.paper',
           }}
         >
@@ -257,6 +339,9 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               </Stack>
               <Typography variant="h6" sx={{ mt: 0.75 }}>
                 {currentLesson.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Embedded dashboard preview — use the sidebar to move through this Study Path without creating more workspace tabs.
               </Typography>
             </Box>
 
@@ -291,12 +376,25 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           </Stack>
         </Paper>
 
-        <Box sx={{ flex: 1, minHeight: 0 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            p: 1,
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 2,
+            backgroundColor: 'background.paper',
+            overflow: 'hidden',
+          }}
+        >
           <DashboardLayoutView
             layout={currentLesson.layout}
+            readOnly
             updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
           />
-        </Box>
+        </Paper>
       </Box>
     </Box>
   )
