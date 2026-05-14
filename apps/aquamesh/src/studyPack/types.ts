@@ -160,6 +160,17 @@ export interface StudyPackGeneratorOptions {
   maxObjectsPerWidget?: number
   widgetIdPrefix?: string
   widgetGroups?: StudyPackWidgetGroupInput[]
+  studyPath?: StudyPathDashboardContext
+}
+
+export interface StudyPathDashboardContext {
+  pathId: string
+  title: string
+  dashboardKey: string
+  dashboardName: string
+  dashboardIndex: number
+  dashboardCount: number
+  folderName: string
 }
 
 export type StudyPackDashboardLayoutMode = 'smart' | 'tabs' | 'orchestrator'

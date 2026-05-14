@@ -16,6 +16,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import {
+  completeStudyPathDashboard,
+  getStudyPathDashboardProgress,
+  OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT,
+  registerStudyPathAttempt,
+  StudyPathDashboardMeta,
+} from '../../../../studyPack/progress'
 
 interface StudyBlockViewProps {
   type: string
@@ -34,12 +41,39 @@ const STUDY_BLOCK_TYPES = [
   'SequenceBlock',
   'ReviewPromptBlock',
   'MarkdownBlock',
+  'StudyPathProgressBlock',
 ]
 
 export const isStudyBlockType = (type: string) =>
   STUDY_BLOCK_TYPES.includes(type)
 
 const normalizeAnswer = (value: string) => value.trim().toLowerCase()
+
+const getStudyPathMeta = (
+  props: Record<string, unknown>,
+): StudyPathDashboardMeta | null => {
+  const studyPathId = String(props.studyPathId || '')
+  const dashboardKey = String(props.studyPathDashboardKey || '')
+
+  if (!studyPathId || !dashboardKey) {
+    return null
+  }
+
+  return {
+    studyPathId,
+    studyPathTitle: String(props.studyPathTitle || 'Study Path'),
+    dashboardKey,
+    dashboardName: String(props.studyPathDashboardName || 'Dashboard'),
+    dashboardIndex: Number(props.studyPathDashboardIndex || 1),
+    dashboardCount: Number(props.studyPathDashboardCount || 7),
+    folderName: String(props.studyPathFolderName || 'Study Path'),
+  }
+}
+
+const getStudyPathItemId = (
+  props: Record<string, unknown>,
+  fallback: string,
+): string => String(props.studyPathItemId || fallback)
 
 const hashValue = (value: string): string => {
   let hash = 0
@@ -455,12 +489,95 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   )
   const columns = useMemo(() => toStringArray(props.columns), [props.columns])
   const rows = useMemo(() => toRows(props.rows), [props.rows])
+  const studyPathMeta = useMemo(() => getStudyPathMeta(props), [props])
+  const [studyPathProgress, setStudyPathProgress] = useState(() =>
+    studyPathMeta ? getStudyPathDashboardProgress(studyPathMeta) : null,
+  )
+
+  if (type === 'StudyPathProgressBlock') {
+    const isComplete = Boolean(studyPathProgress?.completedAt)
+    const completeDashboard = () => {
+      if (!studyPathMeta) {
+        return
+      }
+
+      const result = completeStudyPathDashboard(studyPathMeta)
+      setStudyPathProgress(result.dashboard)
+
+      if (result.reviewDashboard) {
+        window.dispatchEvent(
+          new CustomEvent(OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT, {
+            detail: { dashboard: result.reviewDashboard },
+          }),
+        )
+      }
+    }
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+          >
+            <Chip
+              label={`Step ${studyPathMeta?.dashboardIndex || 1}/${
+                studyPathMeta?.dashboardCount || 7
+              }`}
+              color="primary"
+              size="small"
+            />
+            <Chip
+              label={
+                isComplete
+                  ? `Score ${studyPathProgress?.score || 0}%`
+                  : 'In progress'
+              }
+              color={isComplete ? 'success' : 'default'}
+              size="small"
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {studyPathProgress?.answered || 0} answered /{' '}
+            {studyPathProgress?.correct || 0} correct /{' '}
+            {studyPathProgress?.missed || 0} missed
+          </Typography>
+          <Button
+            variant={isComplete ? 'outlined' : 'contained'}
+            size="small"
+            onClick={completeDashboard}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {isComplete ? 'Completed' : 'Complete dashboard'}
+          </Button>
+        </Stack>
+      </Paper>
+    )
+  }
 
   if (type === 'FlashcardBlock') {
     const front = String(props.front || 'Question')
     const back = String(props.back || 'Answer')
     const hint = String(props.hint || '')
     const tag = String(props.tag || '')
+    const registerFlashcardGrade = (grade: 'known' | 'missed') => {
+      setSelfGrade(grade)
+      if (!studyPathMeta) {
+        return
+      }
+
+      registerStudyPathAttempt({
+        ...studyPathMeta,
+        itemId: getStudyPathItemId(props, hashValue(`${front}:${back}`)),
+        type: 'flashcard',
+        prompt: front,
+        answer: grade === 'known' ? 'I knew it' : "I didn't know it",
+        expectedAnswer: back,
+        correct: grade === 'known',
+      })
+    }
 
     return (
       <Paper
@@ -493,7 +610,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                 size="small"
                 variant={selfGrade === 'known' ? 'contained' : 'outlined'}
                 color="success"
-                onClick={() => setSelfGrade('known')}
+                onClick={() => registerFlashcardGrade('known')}
               >
                 I knew it
               </Button>
@@ -501,9 +618,9 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                 size="small"
                 variant={selfGrade === 'missed' ? 'contained' : 'outlined'}
                 color="error"
-                onClick={() => setSelfGrade('missed')}
+                onClick={() => registerFlashcardGrade('missed')}
               >
-                I missed it
+                I didn&apos;t know it
               </Button>
             </Stack>
           )}
@@ -522,6 +639,32 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     const shortAnswerCorrect =
       submittedShortAnswer &&
       normalizeAnswer(shortAnswer) === normalizeAnswer(answer)
+    const registerQuizAttempt = (nextSelectedIndex: number | null) => {
+      if (!studyPathMeta) {
+        return
+      }
+
+      const isShortAnswer = quizMode === 'shortAnswer'
+      const selectedAnswer = isShortAnswer
+        ? shortAnswer
+        : options[nextSelectedIndex || 0] || ''
+      const isCorrect = isShortAnswer
+        ? normalizeAnswer(selectedAnswer) === normalizeAnswer(answer)
+        : nextSelectedIndex === correctIndex
+
+      registerStudyPathAttempt({
+        ...studyPathMeta,
+        itemId: getStudyPathItemId(props, hashValue(`${question}:${answer}`)),
+        type: 'quiz',
+        prompt: question,
+        answer: selectedAnswer,
+        expectedAnswer: answer,
+        explanation,
+        options,
+        correctIndex,
+        correct: isCorrect,
+      })
+    }
 
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -535,6 +678,11 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                 label="Answer"
                 value={shortAnswer}
                 onChange={(event) => setShortAnswer(event.target.value)}
+                onBlur={() => {
+                  if (shortAnswer.trim()) {
+                    registerQuizAttempt(null)
+                  }
+                }}
                 size="small"
                 fullWidth
               />
@@ -552,28 +700,38 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
               {options.map((option, index) => {
                 const isSelected = selectedIndex === index
                 const isCorrect = index === correctIndex
-                const color =
-                  selectedIndex === null
-                    ? 'inherit'
-                    : isCorrect
-                    ? 'success.main'
-                    : isSelected
+                const showResult = selectedIndex !== null
+                const resultColor = isCorrect
+                  ? 'success.main'
+                  : isSelected
                     ? 'error.main'
-                    : 'inherit'
+                    : 'divider'
 
                 return (
                   <Button
                     key={`${option}-${index}`}
-                    variant={isSelected ? 'contained' : 'outlined'}
-                    color={
-                      selectedIndex !== null && isCorrect
-                        ? 'success'
-                        : selectedIndex !== null && isSelected
-                        ? 'error'
-                        : 'primary'
-                    }
-                    onClick={() => setSelectedIndex(index)}
-                    sx={{ justifyContent: 'flex-start', color }}
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => {
+                      setSelectedIndex(index)
+                      registerQuizAttempt(index)
+                    }}
+                    sx={{
+                      justifyContent: 'flex-start',
+                      color: 'text.primary',
+                      borderColor: showResult ? resultColor : 'divider',
+                      bgcolor:
+                        showResult && (isCorrect || isSelected)
+                          ? `${isCorrect ? '#2E7D32' : '#D32F2F'}14`
+                          : 'transparent',
+                      '&:hover': {
+                        borderColor: showResult ? resultColor : 'primary.main',
+                        bgcolor:
+                          showResult && (isCorrect || isSelected)
+                            ? `${isCorrect ? '#2E7D32' : '#D32F2F'}20`
+                            : 'action.hover',
+                      },
+                    }}
                   >
                     {option}
                   </Button>

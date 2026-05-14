@@ -153,7 +153,10 @@ const formatLessonNotesForReading = (
   const conceptCount = Math.max(3, Math.ceil((sentences.length - 2) * 0.45))
   const keyConcepts = sentences.slice(2, 2 + conceptCount)
   const remaining = sentences.slice(2 + conceptCount)
-  const examples = remaining.slice(0, Math.max(2, Math.floor(remaining.length / 2)))
+  const examples = remaining.slice(
+    0,
+    Math.max(2, Math.floor(remaining.length / 2)),
+  )
   const tips = remaining.slice(examples.length)
 
   return [
@@ -505,10 +508,8 @@ export const generateStudyPackWithAi = async ({
     : 'Organize the material as a single Study Pack.'
 
   const promptText = `Create a study pack JSON object ${
-          promptMode
-            ? 'from this learning prompt'
-            : 'from these raw notes'
-        }.
+    promptMode ? 'from this learning prompt' : 'from these raw notes'
+  }.
 
 Return exactly one JSON object with this shape:
 {
@@ -524,10 +525,10 @@ Do not wrap the JSON in markdown fences. Do not add commentary outside JSON.
 
 Rules:
 - ${
-          promptMode
-            ? 'Use accurate general knowledge to teach the requested topic; do not pretend the prompt is source notes.'
-            : 'Use only facts answerable from the notes.'
-        }
+    promptMode
+      ? 'Use accurate general knowledge to teach the requested topic; do not pretend the prompt is source notes.'
+      : 'Use only facts answerable from the notes.'
+  }
 - ${sourceInstruction}
 - ${pathInstruction}
 - In AI Tutor mode, include at least one markdown explanation object as the first object. Use the "markdown" field for markdown objects, not "body".
@@ -536,10 +537,10 @@ Rules:
 - For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - ${
-          promptMode
-            ? 'Do not fabricate facts. If unsure, keep explanations broad and safe.'
-            : 'Do not invent outside facts or practice content requiring unstated knowledge.'
-        }
+    promptMode
+      ? 'Do not fabricate facts. If unsure, keep explanations broad and safe.'
+      : 'Do not invent outside facts or practice content requiring unstated knowledge.'
+  }
 - Do not create or reference heavy resources such as PDFs or images unless the user explicitly asks for PDFs, images, screenshots, diagrams, or visual resources.
 - Keep objects concise and student-friendly.
 - ${targetInstruction}
@@ -631,11 +632,13 @@ export const generateStudyPathWithAi = async ({
   generationAmount = 'medium',
 }: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
   const stepNames = [
-    'Introduction',
-    'Theory',
-    'Examples',
-    'Practice',
-    'Final Review',
+    'Content 1',
+    'Content 2',
+    'Content 3',
+    'Content 4',
+    'Content 5',
+    'Summary',
+    'Exercises',
   ]
   const practiceProfile = createStudyPackPracticeProfile(generationAmount, [
     'summaries',
@@ -656,17 +659,20 @@ Return exactly this structure:
   "title": "Path title",
   "folderName": "Folder name for all dashboards",
   "dashboards": [
-    { "title": "01 - Introduction", "summary": "One sentence preview", "rawNotes": "Complete lesson notes for this dashboard", "objects": [...] }
+    { "title": "01 - Content 1", "summary": "One sentence preview", "rawNotes": "Complete lesson notes for this dashboard", "objects": [...] }
   ]
 }
 
 Rules:
 - Create exactly 5 dashboards unless the topic is tiny. Use these ordered lessons: ${stepNames.join(' → ')}.
 - Each dashboard must be useful by itself and contain 6-12 objects.
+- Always return 7 dashboards total: 5 content dashboards, 1 summary dashboard, and 1 exercises dashboard.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
 - Start each dashboard with a markdown object containing the full teaching explanation for that lesson. Use the "markdown" field, not "body".
 - Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?" or "Which statement matches the notes about <dashboard title>?".
+- Practice questions must test concepts and uses, not copied headings or answer options made obvious by the dashboard title.
+- Flashcards should ask useful conceptual prompts such as "When is the subjunctive used?" instead of "What should you remember about <copied line>?".
 - Include practice in later dashboards: quizzes, flashcards as "qa", review prompts, lists, sequences, code, or tables when relevant.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
@@ -686,16 +692,63 @@ ${prompt}`,
 
   const parsed = parseGeminiJson(text)
   const record =
-    parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
+    parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, unknown>)
+      : {}
   const rawDashboards = Array.isArray(record.dashboards)
     ? record.dashboards
     : []
+  const normalizedRawDashboards =
+    rawDashboards.length >= stepNames.length
+      ? rawDashboards.slice(0, stepNames.length)
+      : stepNames.map((stepName, index) => {
+          const existing = rawDashboards[index]
+          if (existing) {
+            return existing
+          }
+
+          const titlePrefix = `${String(index + 1).padStart(2, '0')} - ${stepName}`
+          const rawNotes =
+            stepName === 'Summary'
+              ? `# ${titlePrefix}
+
+## Key points
+- Review the five previous content dashboards.
+- Connect the main concepts from the path.
+- Identify weak areas before exercises.`
+              : stepName === 'Exercises'
+                ? `# ${titlePrefix}
+
+## Practice
+Use this dashboard to answer mixed exercises from the Study Path.`
+                : `# ${titlePrefix}
+
+## Goal
+Study this section of ${title}.
+
+## Key points
+${prompt}`
+
+          return {
+            title: titlePrefix,
+            summary: `Generated ${stepName.toLowerCase()} dashboard.`,
+            rawNotes,
+            objects: [
+              {
+                kind: 'markdown',
+                title: titlePrefix,
+                markdown: rawNotes,
+              },
+            ],
+          }
+        })
   const warnings: string[] = []
-  const dashboards = rawDashboards
-    .slice(0, 8)
+  const dashboards = normalizedRawDashboards
     .map((item, index): AiStudyPathDashboardDraft | null => {
       const input =
-        item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+        item && typeof item === 'object'
+          ? (item as Record<string, unknown>)
+          : {}
       const dashboardTitle =
         typeof input.title === 'string' && input.title.trim()
           ? input.title.trim()
@@ -736,7 +789,11 @@ ${prompt}`,
         generationAmount,
       })
 
-      warnings.push(...draft.warnings, ...safeDraft.warnings, ...augmented.warnings)
+      warnings.push(
+        ...draft.warnings,
+        ...safeDraft.warnings,
+        ...augmented.warnings,
+      )
 
       if (augmented.objects.length === 0) {
         warnings.push(`Skipped ${dashboardTitle}: no usable study objects.`)

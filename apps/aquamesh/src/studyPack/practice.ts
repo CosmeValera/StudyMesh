@@ -237,7 +237,10 @@ const normalizeSpaces = (value: string): string =>
   value.replace(/\s+/g, ' ').trim()
 
 const normalizeForCompare = (value: string): string =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 
 const stripMarkdown = (value: string): string =>
   value
@@ -310,14 +313,18 @@ const isUsefulPracticeFact = (fact: string, title: string): boolean => {
   const normalizedTitle = normalizeForCompare(title)
 
   if (words.length < 8) {
-    return false
+    return /[=:]|\b(?:is|are|means|refers to|es|son|significa)\b/i.test(fact)
   }
 
   if (normalizedTitle && normalizedFact === normalizedTitle) {
     return false
   }
 
-  if (/^(introduction|theory|examples|practice|final review|next steps)\b/i.test(fact)) {
+  if (
+    /^(introduction|theory|examples|practice|final review|next steps)\b/i.test(
+      fact,
+    )
+  ) {
     return words.length >= 14
   }
 
@@ -334,13 +341,17 @@ const createQuiz = (
   const concept = extractConcept(fact, title)
   const otherFacts = facts.filter((candidate) => candidate !== fact)
   const useFactOptions = otherFacts.length >= 2
-  const options = useFactOptions
+  const baseOptions = useFactOptions
     ? [
         fact,
         otherFacts[index % otherFacts.length],
         otherFacts[(index + 1) % otherFacts.length],
       ]
     : ['Supported by the notes', 'Not supported by the notes']
+  const correctAnswer = baseOptions[0]
+  const targetIndex =
+    hashValue(`${packId}:${index}:${fact}`) % baseOptions.length
+  const options = reorderOptions(baseOptions, correctAnswer, targetIndex)
 
   return {
     id: `${packId}-practice-quiz-${index + 1}`,
@@ -350,11 +361,13 @@ const createQuiz = (
     tags: ['study-pack', 'practice'],
     quizMode: 'multipleChoice',
     question: useFactOptions
-      ? `Which statement is correct about ${concept}?`
+      ? concept === 'this lesson point'
+        ? 'Which statement is best supported by the lesson notes?'
+        : `Which statement best explains ${concept}?`
       : `According to the notes, is this statement supported: "${fact}"?`,
     options,
-    correctIndex: 0,
-    answer: options[0],
+    correctIndex: options.findIndex((option) => option === correctAnswer),
+    answer: correctAnswer,
     explanation: fact,
   }
 }
@@ -376,7 +389,7 @@ const createFlashcard = (
     question:
       concept === 'this lesson point'
         ? 'What is the key idea in this note?'
-        : `What should you remember about ${concept}?`,
+        : `Explain the main use or idea of ${concept}.`,
     answer: fact,
   }
 }

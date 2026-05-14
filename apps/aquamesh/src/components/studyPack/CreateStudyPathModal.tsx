@@ -102,6 +102,9 @@ const makePackId = (title: string, index: number) =>
   `${title}-${index + 1}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
   `study-path-${index + 1}`
 
+const makeStudyPathId = (title: string) =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-path'
+
 const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   open,
   onClose,
@@ -180,6 +183,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     }
 
     const effectiveFolder = folderName.trim() || draft.folderName || draft.title
+    const studyPathId = makeStudyPathId(draft.title || effectiveFolder)
+    const dashboardCount = draft.dashboards.length
+
     onCreatePath({
       folderName: effectiveFolder,
       dashboards: draft.dashboards.map((dashboard, index) => ({
@@ -200,6 +206,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             includeSourceWidget: true,
             includeSummaryChart: true,
             widgetIdPrefix: makePackId(dashboard.title || draft.title, index),
+            studyPath: {
+              pathId: studyPathId,
+              title: draft.title || effectiveFolder,
+              dashboardKey: `${studyPathId}-${index + 1}`,
+              dashboardName: dashboard.title || `${draft.title} ${index + 1}`,
+              dashboardIndex: index + 1,
+              dashboardCount,
+              folderName: effectiveFolder,
+            },
           },
         ),
       })),
@@ -273,7 +288,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 saving anything.
               </Alert>
               {isGenerating && (
-                <Paper elevation={0} sx={{ p: 2, border: 1, borderColor: 'primary.main' }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2, border: 1, borderColor: 'primary.main' }}
+                >
                   <Stack spacing={1}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <AutoAwesomeIcon color="primary" fontSize="small" />
@@ -303,9 +321,21 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     sx={{ p: 2, border: 1, borderColor: 'divider' }}
                   >
                     <Stack spacing={1}>
-                      <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
-                        <Chip label={`Dashboard ${index + 1}`} color="primary" size="small" />
-                        <Chip label={`${dashboard.objects.length} study items`} size="small" />
+                      <Stack
+                        direction="row"
+                        gap={1}
+                        flexWrap="wrap"
+                        alignItems="center"
+                      >
+                        <Chip
+                          label={`Dashboard ${index + 1}`}
+                          color="primary"
+                          size="small"
+                        />
+                        <Chip
+                          label={`${dashboard.objects.length} study items`}
+                          size="small"
+                        />
                       </Stack>
                       <Typography variant="subtitle1" fontWeight={800}>
                         {dashboard.title}
@@ -329,9 +359,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
-        {step === 'review' && <Button onClick={() => setStep('prompt')}>Back</Button>}
+        {step === 'review' && (
+          <Button onClick={() => setStep('prompt')}>Back</Button>
+        )}
         {step === 'prompt' ? (
-          <Button variant="contained" onClick={generatePath} disabled={isGenerating}>
+          <Button
+            variant="contained"
+            onClick={generatePath}
+            disabled={isGenerating}
+          >
             {isGenerating ? 'Generating...' : 'Generate Study Path'}
           </Button>
         ) : (

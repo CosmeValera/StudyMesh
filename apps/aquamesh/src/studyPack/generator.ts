@@ -8,6 +8,7 @@ import {
   StudyPackDashboardLayoutOptions,
   StudyPackGeneratorOptions,
   StudyPackSaveWidgetInput,
+  StudyPathDashboardContext,
   StudyPackWidgetGroupInput,
 } from './types'
 
@@ -57,7 +58,21 @@ const createLabel = (
 const objectToComponents = (
   object: StudyObject,
   widgetId: string,
+  studyPath?: StudyPathDashboardContext,
 ): ComponentData[] => {
+  const studyPathProps = studyPath
+    ? {
+        studyPathId: studyPath.pathId,
+        studyPathTitle: studyPath.title,
+        studyPathDashboardKey: studyPath.dashboardKey,
+        studyPathDashboardName: studyPath.dashboardName,
+        studyPathDashboardIndex: studyPath.dashboardIndex,
+        studyPathDashboardCount: studyPath.dashboardCount,
+        studyPathFolderName: studyPath.folderName,
+        studyPathItemId: object.id,
+      }
+    : {}
+
   switch (object.kind) {
     case 'markdown':
       return [
@@ -110,6 +125,7 @@ const objectToComponents = (
             hint: '',
             tag: object.title || '',
             selfGrade: true,
+            ...studyPathProps,
           },
         },
       ]
@@ -127,6 +143,7 @@ const objectToComponents = (
             answer: object.answer,
             explanation: object.explanation,
             shuffleOptions: false,
+            ...studyPathProps,
           },
         },
       ]
@@ -142,6 +159,7 @@ const objectToComponents = (
             hint: '',
             tag: object.title || 'Reveal answer',
             selfGrade: false,
+            ...studyPathProps,
           },
         },
       ]
@@ -324,6 +342,84 @@ const createSummaryChart = (
   }
 }
 
+const objectToSummaryText = (object: StudyObject): string => {
+  switch (object.kind) {
+    case 'markdown':
+      return object.markdown
+    case 'note':
+      return object.body
+    case 'term':
+      return `${object.term}: ${object.definition}`
+    case 'qa':
+      return `${object.question}: ${object.answer}`
+    case 'quiz':
+      return object.explanation || object.answer || object.question
+    case 'list':
+      return object.items.join(' ')
+    case 'sequence':
+      return object.steps.join(' ')
+    case 'comparison':
+      return `${object.columns.join(' vs ')} ${object.rows
+        .map((row) => row.join(' '))
+        .join(' ')}`
+    case 'table':
+      return `${object.headers.join(' ')} ${object.rows
+        .map((row) => row.join(' '))
+        .join(' ')}`
+    case 'code':
+      return object.caption || object.code
+    case 'reviewPrompt':
+      return object.prompt
+    case 'reveal':
+      return `${object.prompt}: ${object.hiddenText}`
+    case 'resource':
+      return object.label
+    default:
+      return ''
+  }
+}
+
+const summarizeText = (value: string): string => {
+  const normalized = value
+    .replace(/[#*_`>|-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (normalized.length <= 140) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, 137).trim()}...`
+}
+
+const createSummaryItems = (pack: StudyPack, rawSource = ''): string[] => {
+  const candidates = [
+    ...pack.objects.map(objectToSummaryText),
+    ...rawSource.split(/\r?\n/),
+  ]
+    .map(summarizeText)
+    .filter((item) => item.split(/\s+/).length >= 5)
+
+  return Array.from(new Set(candidates)).slice(0, 6)
+}
+
+const createStudyPathProgressBlock = (
+  studyPath: StudyPathDashboardContext,
+): ComponentData => ({
+  id: `${studyPath.dashboardKey}-progress`,
+  type: 'StudyPathProgressBlock',
+  props: {
+    __blockType: 'StudyPathProgressBlock',
+    studyPathId: studyPath.pathId,
+    studyPathTitle: studyPath.title,
+    studyPathDashboardKey: studyPath.dashboardKey,
+    studyPathDashboardName: studyPath.dashboardName,
+    studyPathDashboardIndex: studyPath.dashboardIndex,
+    studyPathDashboardCount: studyPath.dashboardCount,
+    studyPathFolderName: studyPath.folderName,
+  },
+})
+
 const parseCsvSourceRow = (line: string): string[] => {
   const cells: string[] = []
   let current = ''
@@ -391,7 +487,7 @@ const createWidgetRecord = (
       | 'maxObjectsPerWidget'
       | 'widgetIdPrefix'
     >
-  >,
+  > & { studyPath?: StudyPathDashboardContext },
   name?: string,
   includeSummaryChart = true,
 ): CustomWidget => {
@@ -399,7 +495,7 @@ const createWidgetRecord = (
     widgetIndex + 1
   }`
   const bodyComponents = objects.flatMap((object) =>
-    objectToComponents(object, widgetId),
+    objectToComponents(object, widgetId, options.studyPath),
   )
   const components: ComponentData[] = [
     createLabel(
@@ -441,7 +537,7 @@ const createRawSourceWidget = (
       | 'includeSummaryChart'
       | 'widgetIdPrefix'
     >
-  >,
+  > & { studyPath?: StudyPathDashboardContext },
 ): CustomWidget => {
   const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-source`
   const csvTable =
@@ -472,6 +568,9 @@ const createRawSourceWidget = (
     name: `${pack.title} Source`,
     components: [
       createLabel(`${widgetId}-title`, pack.title, 'h6'),
+      ...(options.studyPath
+        ? [createStudyPathProgressBlock(options.studyPath)]
+        : []),
       ...(options.includeSummaryChart
         ? [createSummaryChart(pack, widgetId, { source: 1 })]
         : []),
@@ -484,6 +583,49 @@ const createRawSourceWidget = (
     description: csvTable
       ? 'Original CSV source rendered as a table.'
       : 'Original study notes rendered as Markdown.',
+    version: '1.0',
+    author: options.author,
+  }
+}
+
+const createSourceSummaryWidget = (
+  pack: StudyPack,
+  sourceText: string,
+  options: Required<
+    Pick<
+      StudyPackGeneratorOptions,
+      'author' | 'category' | 'createdAt' | 'widgetIdPrefix'
+    >
+  >,
+): CustomWidget => {
+  const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-summary`
+  const items = createSummaryItems(pack, sourceText)
+
+  return {
+    id: widgetId,
+    name: `${pack.title} Summary`,
+    components: [
+      createLabel(`${widgetId}-title`, 'Summary', 'h6'),
+      {
+        id: `${widgetId}-summary-list`,
+        type: 'ListBlock',
+        props: {
+          __blockType: 'ListBlock',
+          title: 'Key points',
+          items:
+            items.length > 0
+              ? items.join('\n')
+              : 'Review the source notes for the main ideas.',
+          ordered: false,
+          interactiveChecklist: false,
+        },
+      },
+    ],
+    createdAt: options.createdAt,
+    updatedAt: options.createdAt,
+    category: options.category,
+    tags: ['study-pack', 'summary', pack.sourceFormat],
+    description: 'Generated summary of the Study Pack source.',
     version: '1.0',
     author: options.author,
   }
@@ -571,6 +713,7 @@ export const createStudyPackOrchestratorWidgets = (
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
     includeSummaryChart: options.includeSummaryChart ?? true,
+    studyPath: options.studyPath,
   }
   const sourceWidgets = normalizedOptions.includeSourceWidget
     ? [
@@ -579,6 +722,13 @@ export const createStudyPackOrchestratorWidgets = (
           category: normalizedOptions.category,
           createdAt: normalizedOptions.createdAt,
           includeSummaryChart: normalizedOptions.includeSummaryChart,
+          widgetIdPrefix: normalizedOptions.widgetIdPrefix,
+          studyPath: normalizedOptions.studyPath,
+        }),
+        createSourceSummaryWidget(pack, options.rawSource || '', {
+          author: normalizedOptions.author,
+          category: normalizedOptions.category,
+          createdAt: normalizedOptions.createdAt,
           widgetIdPrefix: normalizedOptions.widgetIdPrefix,
         }),
       ]
@@ -636,6 +786,7 @@ export const createStudyPackWidgetsFromGroups = (
     includeSummaryChart: options.includeSummaryChart ?? true,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
+    studyPath: options.studyPath,
   }
   const nonEmptyGroups = groups.filter((group) => group.objects.length > 0)
   const effectiveGroups =
@@ -758,9 +909,16 @@ const createTabbedDashboardLayout = (
 const createOrchestratorDashboardLayout = (
   widgets: CustomWidget[],
 ): DashboardLayout => {
-  const [sourceWidget, ...generatedWidgets] = widgets
+  const sourceWidgets = widgets.filter(
+    (widget) =>
+      widget.tags?.includes('source') || widget.tags?.includes('summary'),
+  )
+  const generatedWidgets = widgets.filter(
+    (widget) =>
+      !widget.tags?.includes('source') && !widget.tags?.includes('summary'),
+  )
 
-  if (!sourceWidget || generatedWidgets.length === 0) {
+  if (sourceWidgets.length === 0 || generatedWidgets.length === 0) {
     return createTabbedDashboardLayout(widgets)
   }
 
@@ -776,7 +934,7 @@ const createOrchestratorDashboardLayout = (
     type: 'row',
     weight: 100,
     children: [
-      createTabset([sourceWidget], 50, true),
+      createTabset(sourceWidgets, 50, true),
       {
         type: 'row',
         weight: 50,
@@ -793,8 +951,8 @@ export const createStudyPackDashboardLayout = (
   options.mode === 'orchestrator'
     ? createOrchestratorDashboardLayout(widgets)
     : options.mode === 'tabs'
-    ? createTabbedDashboardLayout(widgets)
-    : createSmartDashboardLayout(widgets)
+      ? createTabbedDashboardLayout(widgets)
+      : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],

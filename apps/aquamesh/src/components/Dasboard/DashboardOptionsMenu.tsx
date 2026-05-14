@@ -194,6 +194,17 @@ const DashboardOptionsMenu: React.FC = () => {
 
   const studyPackDashboards =
     visibleCustomDashboards.filter(isStudyPackDashboard)
+  const studyPackFolders = Object.entries(
+    studyPackDashboards.reduce<Record<string, SavedDashboard[]>>(
+      (folders, dashboard) => {
+        const folderName = normalizeFolderName(dashboard.folder)
+        folders[folderName] = folders[folderName] || []
+        folders[folderName].push(dashboard)
+        return folders
+      },
+      {},
+    ),
+  )
   const customDashboardFolders = Object.entries(dashboardsByFolder).filter(
     ([folderName, dashboards]) =>
       folderName.toLowerCase() !== 'study packs' &&
@@ -326,7 +337,7 @@ const DashboardOptionsMenu: React.FC = () => {
           },
         }}
       >
-        {studyPackDashboards.length > 0 && (
+        {studyPackFolders.length > 0 && (
           <>
             <Typography
               component="div"
@@ -360,69 +371,111 @@ const DashboardOptionsMenu: React.FC = () => {
               >
                 Study Packs
               </Box>
-              <Tooltip title="Show Study Packs in Library">
-                <IconButton
-                  size="small"
-                  aria-label="Show Study Packs in Library"
-                  onClick={(event) =>
-                    openSavedDashboardsForFolder(event, 'Study Packs')
-                  }
-                  sx={{
-                    color: studyPackHeaderColor,
-                    p: 0.5,
-                    '&:hover': {
-                      bgcolor: `${studyPackHeaderColor}1A`,
-                    },
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
             </Typography>
-            <Divider sx={{ borderColor: 'divider' }} />
-            {[...studyPackDashboards]
-              .reverse()
-              .slice(0, MAX_MENU_ITEMS_PER_FOLDER)
-              .map((dashboard) => (
-                <MenuItem
-                  key={dashboard.id}
-                  data-onboarding-id="topnav-saved-dashboard"
-                  data-dashboard-id={dashboard.id}
-                  onClick={() => loadCustomDashboard(dashboard)}
-                  sx={{
-                    p: 1.5,
-                    pl: 2.5,
-                    bgcolor: getFolderItemBackground(studyPackHeaderColor),
-                    '&:hover': {
-                      bgcolor: getFolderItemHoverBackground(
-                        studyPackHeaderColor,
-                      ),
-                    },
-                  }}
-                >
-                  {dashboard.name}
-                </MenuItem>
-              ))}
-            {studyPackDashboards.length > MAX_MENU_ITEMS_PER_FOLDER && (
-              <MenuItem
-                onClick={(event) =>
-                  openSavedDashboardsForFolder(event, 'Study Packs')
-                }
-                sx={{
-                  p: 1.5,
-                  pl: 2.5,
-                  fontWeight: 700,
-                  bgcolor: getFolderItemBackground(studyPackHeaderColor),
-                  '&:hover': {
-                    bgcolor: getFolderItemHoverBackground(
-                      studyPackHeaderColor,
-                    ),
-                  },
-                }}
-              >
-                ... Show all {studyPackDashboards.length} Study Packs
-              </MenuItem>
-            )}
+            {studyPackFolders.map(([folderName, dashboards]) => {
+              const folderColor = getFolderColor(folderName, dashboards)
+              const orderedDashboards = [...dashboards].reverse()
+              const isFolderExpanded =
+                expandedDashboardFolders.includes(folderName)
+              const visibleDashboards = isFolderExpanded
+                ? orderedDashboards
+                : orderedDashboards.slice(0, MAX_MENU_ITEMS_PER_FOLDER)
+
+              return (
+                <React.Fragment key={folderName}>
+                  <Typography
+                    component="div"
+                    sx={{
+                      px: 2,
+                      py: 0.6,
+                      fontWeight: 'bold',
+                      mt: 0.75,
+                      color: 'text.primary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      bgcolor: `${folderColor}24`,
+                      borderLeft: '4px solid',
+                      borderLeftColor: folderColor,
+                    }}
+                  >
+                    <AutoStoriesIcon
+                      fontSize="small"
+                      sx={{
+                        color: folderColor,
+                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))',
+                      }}
+                    />
+                    <Box
+                      component="span"
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {folderName}
+                    </Box>
+                    <Tooltip title={`Show ${folderName} in Library`}>
+                      <IconButton
+                        size="small"
+                        aria-label={`Show ${folderName} in Library`}
+                        onClick={(event) =>
+                          openSavedDashboardsForFolder(event, folderName)
+                        }
+                        sx={{
+                          color: folderColor,
+                          p: 0.5,
+                          '&:hover': {
+                            bgcolor: `${folderColor}22`,
+                          },
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Typography>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  {visibleDashboards.map((dashboard) => (
+                    <MenuItem
+                      key={dashboard.id}
+                      data-onboarding-id="topnav-saved-dashboard"
+                      data-dashboard-id={dashboard.id}
+                      onClick={() => loadCustomDashboard(dashboard)}
+                      sx={{
+                        p: 1.5,
+                        bgcolor: getFolderItemBackground(folderColor),
+                        '&:hover': {
+                          bgcolor: getFolderItemHoverBackground(folderColor),
+                        },
+                      }}
+                    >
+                      {dashboard.name}
+                    </MenuItem>
+                  ))}
+                  {!isFolderExpanded &&
+                    dashboards.length > MAX_MENU_ITEMS_PER_FOLDER && (
+                      <MenuItem
+                        onClick={(event) =>
+                          showAllDashboardsForFolder(event, folderName)
+                        }
+                        sx={{
+                          p: 1.5,
+                          fontWeight: 700,
+                          bgcolor: getFolderItemBackground(folderColor),
+                          '&:hover': {
+                            bgcolor: getFolderItemHoverBackground(folderColor),
+                          },
+                        }}
+                      >
+                        ... Show all {dashboards.length}
+                      </MenuItem>
+                    )}
+                </React.Fragment>
+              )
+            })}
           </>
         )}
 
@@ -451,16 +504,14 @@ const DashboardOptionsMenu: React.FC = () => {
               const nonStudyDashboards = dashboards.filter(
                 (dashboard) => !isStudyPackDashboard(dashboard),
               )
-              const orderedNonStudyDashboards = [...nonStudyDashboards].reverse()
+              const orderedNonStudyDashboards = [
+                ...nonStudyDashboards,
+              ].reverse()
               const isFolderExpanded =
                 expandedDashboardFolders.includes(folderName)
-              const visibleNonStudyDashboards =
-                isFolderExpanded
-                  ? orderedNonStudyDashboards
-                  : orderedNonStudyDashboards.slice(
-                      0,
-                      MAX_MENU_ITEMS_PER_FOLDER,
-                    )
+              const visibleNonStudyDashboards = isFolderExpanded
+                ? orderedNonStudyDashboards
+                : orderedNonStudyDashboards.slice(0, MAX_MENU_ITEMS_PER_FOLDER)
 
               return (
                 <React.Fragment key={folderName}>
@@ -520,39 +571,39 @@ const DashboardOptionsMenu: React.FC = () => {
                   </Typography>
                   <Divider sx={{ borderColor: 'divider' }} />
                   {visibleNonStudyDashboards.map((dashboard) => (
-                      <MenuItem
-                        key={dashboard.id}
-                        data-onboarding-id="topnav-saved-dashboard"
-                        data-dashboard-id={dashboard.id}
-                        onClick={() => loadCustomDashboard(dashboard)}
-                        sx={{
-                          p: 1.5,
-                          bgcolor: getFolderItemBackground(folderColor),
-                          '&:hover': {
-                            bgcolor: getFolderItemHoverBackground(folderColor),
-                          },
-                        }}
-                      >
-                        {dashboard.name}
-                      </MenuItem>
-                    ))}
-                  {!isFolderExpanded &&
-                    nonStudyDashboards.length > MAX_MENU_ITEMS_PER_FOLDER && (
                     <MenuItem
-                      onClick={(event) =>
-                        showAllDashboardsForFolder(event, folderName)
-                      }
+                      key={dashboard.id}
+                      data-onboarding-id="topnav-saved-dashboard"
+                      data-dashboard-id={dashboard.id}
+                      onClick={() => loadCustomDashboard(dashboard)}
                       sx={{
                         p: 1.5,
-                        fontWeight: 700,
                         bgcolor: getFolderItemBackground(folderColor),
                         '&:hover': {
                           bgcolor: getFolderItemHoverBackground(folderColor),
                         },
                       }}
                     >
-                      ... Show all {nonStudyDashboards.length}
+                      {dashboard.name}
                     </MenuItem>
+                  ))}
+                  {!isFolderExpanded &&
+                    nonStudyDashboards.length > MAX_MENU_ITEMS_PER_FOLDER && (
+                      <MenuItem
+                        onClick={(event) =>
+                          showAllDashboardsForFolder(event, folderName)
+                        }
+                        sx={{
+                          p: 1.5,
+                          fontWeight: 700,
+                          bgcolor: getFolderItemBackground(folderColor),
+                          '&:hover': {
+                            bgcolor: getFolderItemHoverBackground(folderColor),
+                          },
+                        }}
+                      >
+                        ... Show all {nonStudyDashboards.length}
+                      </MenuItem>
                     )}
                 </React.Fragment>
               )

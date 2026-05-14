@@ -51,6 +51,7 @@ import {
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import { OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT } from '../../studyPack/progress'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import './tabs.scss'
 
@@ -649,6 +650,18 @@ const Dashboards = () => {
     closeDashboardEditor()
   }
 
+  const openSavedDashboardFromEmptyState = (dashboard: SavedDashboard) => {
+    addDashboard({
+      name: dashboard.name,
+      layout: dashboard.layout,
+    })
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardId: dashboard.id,
+      dashboardName: dashboard.name,
+    })
+  }
+
   const closeDashboardEditor = () => {
     if (dashboardEditorIsDraft) {
       setDraftDashboard(null)
@@ -890,6 +903,35 @@ const Dashboards = () => {
       )
     }
   }, [])
+
+  useEffect(() => {
+    const handleOpenStudyPathReviewDashboard = (event: Event) => {
+      const customEvent = event as CustomEvent<{ dashboard?: SavedDashboard }>
+      const dashboard = customEvent.detail?.dashboard
+
+      if (!dashboard) {
+        return
+      }
+
+      loadDashboardOptions()
+      addDashboard({
+        name: dashboard.name,
+        layout: dashboard.layout,
+      })
+    }
+
+    window.addEventListener(
+      OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT,
+      handleOpenStudyPathReviewDashboard,
+    )
+
+    return () => {
+      window.removeEventListener(
+        OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT,
+        handleOpenStudyPathReviewDashboard,
+      )
+    }
+  }, [addDashboard])
 
   // Check if current dashboards have changes compared to saved dashboards
   useEffect(() => {

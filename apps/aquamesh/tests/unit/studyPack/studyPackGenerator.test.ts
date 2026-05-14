@@ -158,6 +158,7 @@ A: Back
     )
     expect(widgets.map((widget) => widget.name)).toEqual([
       `${pack.title} Source`,
+      `${pack.title} Summary`,
       `${pack.title} Quizzes`,
       `${pack.title} Misc`,
     ])
@@ -166,6 +167,10 @@ A: Back
     expect(layout.children?.[0].children?.[0]).toMatchObject({
       type: 'tab',
       name: `${pack.title} Source`,
+    })
+    expect(layout.children?.[0].children?.[1]).toMatchObject({
+      type: 'tab',
+      name: `${pack.title} Summary`,
     })
     expect(layout.children?.[0].weight).toBe(50)
     expect(layout.children?.[1].weight).toBe(50)
@@ -178,7 +183,7 @@ A: Back
       rawSource: 'Loose sentence only',
     })
 
-    expect(widgets).toHaveLength(1)
+    expect(widgets).toHaveLength(2)
     expect(JSON.stringify(widgets)).not.toContain('StudyNoteBlock')
   })
 
@@ -197,6 +202,7 @@ A: Back
     ])
     expect(widgets.map((widget) => widget.name)).toEqual([
       `${pack.title} Source`,
+      `${pack.title} Summary`,
       `${pack.title} Misc`,
     ])
     expect(JSON.stringify(widgets.slice(1))).toContain('DefinitionBlock')
@@ -229,6 +235,37 @@ A: Back
       }),
     })
     expect(JSON.stringify(widgets)).not.toContain('"Chart"')
+  })
+
+  it('adds Study Path progress metadata and a source summary tab', () => {
+    const pack = parseStudyPack(
+      `Quiz:: Which rule handles x^n? | Power rule | Chain rule | Product rule
+Q: When is the power rule used?
+A: When differentiating x raised to a constant power.`,
+      { title: 'Derivatives', sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      rawSource: 'The power rule differentiates x raised to a constant power.',
+      studyPath: {
+        pathId: 'derivatives-path',
+        title: 'Derivatives Path',
+        dashboardKey: 'derivatives-path-1',
+        dashboardName: '01 - Content 1',
+        dashboardIndex: 1,
+        dashboardCount: 7,
+        folderName: 'Derivatives Path',
+      },
+    })
+    const serialized = JSON.stringify(widgets)
+
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      'Derivatives Source',
+      'Derivatives Summary',
+      'Derivatives Misc',
+    ])
+    expect(serialized).toContain('StudyPathProgressBlock')
+    expect(serialized).toContain('studyPathItemId')
+    expect(serialized).toContain('derivatives-path-1')
   })
 
   it('can skip the source widget and use caller-provided widget groups', () => {
