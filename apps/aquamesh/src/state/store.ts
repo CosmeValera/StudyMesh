@@ -6,6 +6,27 @@ export interface StateDashboard {
   name: string
   layout?: DashboardLayout
   aquamesh?: string
+  kind?: 'dashboard' | 'studyPathContainer'
+  studyPath?: StudyPathContainerState
+}
+
+export interface StudyPathDashboardItem {
+  id?: string
+  name: string
+  layout: DashboardLayout
+  dashboardKey: string
+  dashboardIndex: number
+  dashboardCount: number
+  folderName: string
+}
+
+export interface StudyPathContainerState {
+  pathId: string
+  title: string
+  folderName: string
+  dashboards: StudyPathDashboardItem[]
+  selectedIndex: number
+  pinnedDashboardKeys?: string[]
 }
 
 export interface DashboardLayout {

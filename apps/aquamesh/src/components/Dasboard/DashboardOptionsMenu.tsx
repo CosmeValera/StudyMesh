@@ -26,15 +26,14 @@ import {
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import {
+  createStudyPathContainerState,
+  getDashboardCreatedTime,
+} from './studyPathContainer'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 const MAX_MENU_ITEMS_PER_FOLDER = 15
-
-const getDashboardCreatedTime = (dashboard: SavedDashboard): number => {
-  const timestamp = Date.parse(dashboard.createdAt || dashboard.updatedAt || '')
-  return Number.isNaN(timestamp) ? 0 : timestamp
-}
 
 // Define saved dashboard type
 interface SavedDashboard {
@@ -117,6 +116,7 @@ const DashboardOptionsMenu: React.FC = () => {
   const {
     addDashboard,
     addDashboards,
+    addStudyPathContainer,
     openDashboards,
     replaceDashboard,
     selectedDashboard,
@@ -283,6 +283,23 @@ const DashboardOptionsMenu: React.FC = () => {
         getDashboardCreatedTime(firstDashboard) -
         getDashboardCreatedTime(secondDashboard),
     )
+    const studyPath = createStudyPathContainerState(orderedDashboards)
+
+    if (studyPath) {
+      addStudyPathContainer(studyPath)
+
+      orderedDashboards.forEach((dashboard) => {
+        dispatchWorkspaceOnboardingEvent({
+          type: 'saved-dashboard-opened',
+          dashboardId: dashboard.id,
+          dashboardName: dashboard.name,
+        })
+      })
+
+      handleClose()
+      return
+    }
+
     addDashboards(
       orderedDashboards.map((dashboard) => ({
         name: dashboard.name,

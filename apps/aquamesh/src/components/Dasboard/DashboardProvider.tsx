@@ -5,7 +5,12 @@ import { nanoid } from 'nanoid'
 
 import { DEFAULT_DASHBOARD, DefaultDashboard } from './fixture'
 
-import { useStore, StateDashboard, DashboardLayout } from '../../state/store'
+import {
+  useStore,
+  StateDashboard,
+  DashboardLayout,
+  StudyPathContainerState,
+} from '../../state/store'
 
 import { Model } from 'flexlayout-react'
 
@@ -26,6 +31,11 @@ interface DashboardContextType {
     dashboards: DefaultDashboard[],
     options?: { replaceEmptySelected?: boolean },
   ) => string[]
+  addStudyPathContainer: (studyPath: StudyPathContainerState) => string
+  updateStudyPathContainer: (
+    dashboardId: string,
+    updater: (studyPath: StudyPathContainerState) => StudyPathContainerState,
+  ) => void
   replaceDashboard: (index: number, dashboard: DefaultDashboard) => string
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
@@ -218,6 +228,58 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     return dashboardsWithIds.map((dashboard) => dashboard.id)
   }
 
+  const addStudyPathContainer = (studyPath: StudyPathContainerState) => {
+    const id = nanoid()
+    const containerDashboard: StateDashboard = {
+      id,
+      name: studyPath.title || studyPath.folderName || 'Study Path',
+      kind: 'studyPathContainer',
+      studyPath: {
+        ...studyPath,
+        selectedIndex: Math.min(
+          Math.max(studyPath.selectedIndex || 0, 0),
+          Math.max(studyPath.dashboards.length - 1, 0),
+        ),
+      },
+    }
+    const newOpenDashboards = [...openDashboards]
+    const focusedDashboard = newOpenDashboards[selectedDashboard]
+    const shouldReplaceSelected = Boolean(
+      focusedDashboard && !hasDashboardContent(focusedDashboard.layout),
+    )
+
+    if (shouldReplaceSelected) {
+      newOpenDashboards[selectedDashboard] = containerDashboard
+      setDashboards(newOpenDashboards)
+      setSelectedDashboard(selectedDashboard)
+    } else {
+      setDashboards([...newOpenDashboards, containerDashboard])
+      setSelectedDashboard(newOpenDashboards.length)
+    }
+
+    return id
+  }
+
+  const updateStudyPathContainer = (
+    dashboardId: string,
+    updater: (studyPath: StudyPathContainerState) => StudyPathContainerState,
+  ) => {
+    const newOpenDashboards = openDashboards.map((dashboard) => {
+      if (dashboard.id !== dashboardId || !dashboard.studyPath) {
+        return dashboard
+      }
+
+      const nextStudyPath = updater(dashboard.studyPath)
+      return {
+        ...dashboard,
+        name: nextStudyPath.title || dashboard.name,
+        studyPath: nextStudyPath,
+      }
+    })
+
+    setDashboards(newOpenDashboards)
+  }
+
   const replaceDashboard = (index: number, dashboard: DefaultDashboard) => {
     const currentDashboard = openDashboards[index]
     const id = nanoid()
@@ -287,6 +349,8 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         reorderDashboard,
         addDashboard,
         addDashboards,
+        addStudyPathContainer,
+        updateStudyPathContainer,
         replaceDashboard,
         updateLayout,
         updateDashboardLayout,

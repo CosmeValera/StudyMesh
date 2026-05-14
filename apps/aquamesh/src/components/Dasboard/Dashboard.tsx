@@ -36,9 +36,10 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
-import { DashboardLayout } from '../../state/store'
+import { DashboardLayout, StudyPathDashboardItem } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
+import StudyPathWorkspaceView from './StudyPathWorkspaceView'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
@@ -463,6 +464,8 @@ const Dashboards = () => {
     closeDashboardsToRight,
     reorderDashboard,
     addDashboard,
+    addDashboards,
+    updateStudyPathContainer,
     replaceDashboard,
     updateLayout,
     updateDashboardLayout,
@@ -654,6 +657,22 @@ const Dashboards = () => {
       dashboardId: dashboard.id,
       dashboardName: dashboard.name,
     })
+  }
+
+  const openStudyPathLessonInWorkspace = (lesson: StudyPathDashboardItem) => {
+    addDashboard({
+      name: lesson.name,
+      layout: lesson.layout,
+    })
+  }
+
+  const openAllStudyPathLessons = (lessons: StudyPathDashboardItem[]) => {
+    addDashboards(
+      lessons.map((lesson) => ({
+        name: lesson.name,
+        layout: lesson.layout,
+      })),
+    )
   }
 
   const openSavedDashboardFromLibrary = (dashboard: SavedDashboard) => {
@@ -1561,7 +1580,10 @@ const Dashboards = () => {
           )}
         </TabList>
         {openDashboards.map((dashboard, index) => {
-          const isEmptyDashboard = !hasDashboardContent(dashboard.layout)
+          const isStudyPathContainer =
+            dashboard.kind === 'studyPathContainer' && dashboard.studyPath
+          const isEmptyDashboard =
+            !isStudyPathContainer && !hasDashboardContent(dashboard.layout)
           return (
             <TabPanel key={dashboard.id}>
               <Box
@@ -1573,7 +1595,20 @@ const Dashboards = () => {
                 }}
               >
                 <Box sx={{ position: 'relative', flex: '1' }}>
-                  {isEmptyDashboard ? (
+                  {isStudyPathContainer && dashboard.studyPath ? (
+                    <StudyPathWorkspaceView
+                      studyPath={dashboard.studyPath}
+                      onStudyPathChange={(studyPath) =>
+                        updateStudyPathContainer(dashboard.id, () => studyPath)
+                      }
+                      onOpenLesson={openStudyPathLessonInWorkspace}
+                      onOpenAll={() =>
+                        openAllStudyPathLessons(
+                          dashboard.studyPath?.dashboards || [],
+                        )
+                      }
+                    />
+                  ) : isEmptyDashboard ? (
                     <DashboardEmptyState
                       isAdmin={isAdmin}
                       hasDashboard

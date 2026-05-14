@@ -11,6 +11,7 @@ import {
 } from '../components/WidgetEditor/constants/starterWidgetTemplates'
 import { DashboardLayout } from '../state/store'
 import { normalizeFolderColor } from '../components/Dasboard/folderColors'
+import { createStudyPathContainerState } from '../components/Dasboard/studyPathContainer'
 import {
   createStudyPackDashboardLayout,
   StudyPackDashboardLayoutMode,
@@ -508,6 +509,7 @@ export const useWorkspaceActions = () => {
   const {
     addDashboard,
     addDashboards,
+    addStudyPathContainer,
     openDashboards,
     selectedDashboard,
     updateDashboardLayout,
@@ -663,18 +665,24 @@ export const useWorkspaceActions = () => {
       })
 
       if (openInWorkspace) {
-        addDashboards(
-          savedDashboards.map((dashboard) => ({
-            name: dashboard.name,
-            layout: dashboard.layout,
-          })),
-          { replaceEmptySelected: true },
-        )
+        const studyPath = createStudyPathContainerState(savedDashboards)
+
+        if (studyPath) {
+          addStudyPathContainer(studyPath)
+        } else {
+          addDashboards(
+            savedDashboards.map((dashboard) => ({
+              name: dashboard.name,
+              layout: dashboard.layout,
+            })),
+            { replaceEmptySelected: true },
+          )
+        }
       }
 
       return savedDashboards
     },
-    [addDashboards],
+    [addDashboards, addStudyPathContainer],
   )
 
   const openTemplateDashboard = useCallback(
