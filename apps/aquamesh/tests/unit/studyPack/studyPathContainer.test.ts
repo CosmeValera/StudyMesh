@@ -3,6 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { createStudyPathContainerState } from '../../../src/components/Dasboard/studyPathContainer'
 import { DashboardLayout } from '../../../src/state/store'
 
+const createStudyPathComponentProps = (index: number) => ({
+  studyPathId: 'study-path-algebra',
+  studyPathTitle: 'Algebra Study Path',
+  studyPathDashboardKey: `study-path-algebra-${index}`,
+  studyPathDashboardName: `Lesson ${index}`,
+  studyPathDashboardIndex: index,
+  studyPathDashboardCount: 3,
+  studyPathFolderName: 'Algebra',
+})
+
 const createStudyPathLayout = (index: number): DashboardLayout => ({
   type: 'row',
   children: [
@@ -15,13 +25,14 @@ const createStudyPathLayout = (index: number): DashboardLayout => ({
           component: 'CustomWidget',
           config: {
             customProps: {
-              studyPathId: 'study-path-algebra',
-              studyPathTitle: 'Algebra Study Path',
-              studyPathDashboardKey: `study-path-algebra-${index}`,
-              studyPathDashboardName: `Lesson ${index}`,
-              studyPathDashboardIndex: index,
-              studyPathDashboardCount: 3,
-              studyPathFolderName: 'Algebra',
+              widgetId: `widget-${index}`,
+              components: [
+                {
+                  id: `progress-${index}`,
+                  type: 'StudyProgress',
+                  props: createStudyPathComponentProps(index),
+                },
+              ],
             },
           },
         },

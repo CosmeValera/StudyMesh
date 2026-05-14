@@ -51,6 +51,38 @@ const readMetaFromCustomProps = (
   }
 }
 
+const readMetaFromComponent = (component: unknown): StudyPathMeta | null => {
+  if (!isRecord(component) || !isRecord(component.props)) {
+    return null
+  }
+
+  return readMetaFromCustomProps(component.props)
+}
+
+const readMetaFromCustomWidgetProps = (
+  customProps?: Record<string, unknown>,
+): StudyPathMeta | null => {
+  const directMeta = readMetaFromCustomProps(customProps)
+
+  if (directMeta) {
+    return directMeta
+  }
+
+  const components = customProps?.components
+  if (!Array.isArray(components)) {
+    return null
+  }
+
+  for (const component of components) {
+    const componentMeta = readMetaFromComponent(component)
+    if (componentMeta) {
+      return componentMeta
+    }
+  }
+
+  return null
+}
+
 export const getStudyPathMetaFromLayout = (
   layout?: DashboardLayout,
 ): StudyPathMeta | null => {
@@ -61,7 +93,7 @@ export const getStudyPathMetaFromLayout = (
   const customProps = isRecord(layout.config?.customProps)
     ? layout.config?.customProps
     : undefined
-  const meta = readMetaFromCustomProps(customProps)
+  const meta = readMetaFromCustomWidgetProps(customProps)
 
   if (meta) {
     return meta
