@@ -526,8 +526,11 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   const sortedDashboards = useMemo(() => {
     return [...filteredDashboards].sort((a, b) => {
       const result = compareDashboards(a, b, sortBy)
-      return result || normalizeFolderName(a.folder).localeCompare(
-        normalizeFolderName(b.folder),
+      return (
+        result ||
+        normalizeFolderName(a.folder).localeCompare(
+          normalizeFolderName(b.folder),
+        )
       )
     })
   }, [filteredDashboards, sortBy])
@@ -705,7 +708,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                   Library
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Study Packs and custom dashboards.
+                  Study Paths and custom dashboards.
                 </Typography>
               </Box>
             </Box>
@@ -734,7 +737,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="Search Study Packs..."
+                placeholder="Search Study Paths..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 variant="outlined"
@@ -908,8 +911,10 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               {sortedDashboards.length === 0
-                ? 'No Study Packs found'
-                : `Showing ${sortedDashboards.length} item${sortedDashboards.length !== 1 ? 's' : ''}`}
+                ? 'No Study Paths found'
+                : `Showing ${sortedDashboards.length} item${
+                    sortedDashboards.length !== 1 ? 's' : ''
+                  }`}
               {searchTerm && ` matching "${searchTerm}"`}
               {folderFilter && ` in "${folderFilter}"`}
               {!isAdmin && ' (only showing public library items)'}
@@ -938,19 +943,19 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
               />
               <Typography color="text.primary" variant="h6" gutterBottom>
                 {searchTerm
-                  ? 'No Matching Study Packs'
+                  ? 'No Matching Study Paths'
                   : folderFilter
-                    ? 'No Study Packs In Subject'
-                    : 'No Study Packs Available'}
+                  ? 'No Study Paths In Subject'
+                  : 'No Study Paths Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
                   : folderFilter
-                    ? 'Select a different subject or clear the filter'
-                    : !isAdmin
-                      ? 'No public Study Packs are currently available'
-                      : 'Create a Study Pack from notes to start your library'}
+                  ? 'Select a different subject or clear the filter'
+                  : !isAdmin
+                  ? 'No public Study Paths are currently available'
+                  : 'Create a Study Path from notes to start your library'}
               </Typography>
             </Paper>
           ) : (
@@ -1123,24 +1128,30 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                         ml: { xs: 0, sm: 2 },
                                       }}
                                     >
-                                      <Chip
-                                        size="small"
-                                        label={`${dashboard.componentsCount} blocks`}
-                                        sx={{
-                                          height: 20,
-                                          fontSize: '0.7rem',
-                                          bgcolor: 'rgba(0, 124, 102, 0.1)',
-                                          color: 'primary.dark',
-                                        }}
-                                      />
+                                      {!isStudyPackDashboard(dashboard) && (
+                                        <Chip
+                                          size="small"
+                                          label={`${dashboard.componentsCount} blocks`}
+                                          sx={{
+                                            height: 20,
+                                            fontSize: '0.7rem',
+                                            bgcolor: 'rgba(0, 124, 102, 0.1)',
+                                            color: 'primary.dark',
+                                          }}
+                                        />
+                                      )}
                                       <Chip
                                         size="small"
                                         label={dashboard.folder || 'Unsorted'}
                                         sx={{
-                                          ml: 1,
+                                          ml: isStudyPackDashboard(dashboard)
+                                            ? 0
+                                            : 1,
                                           height: 20,
                                           fontSize: '0.7rem',
-                                          bgcolor: `${normalizeFolderColor(dashboard.folderColor)}22`,
+                                          bgcolor: `${normalizeFolderColor(
+                                            dashboard.folderColor,
+                                          )}22`,
                                           color: normalizeFolderColor(
                                             dashboard.folderColor,
                                           ),
@@ -1242,7 +1253,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                           e,
                                         )
                                       }
-                                      title="Request new practice exercises from this Study Pack"
+                                      title="Request new practice exercises from this Study Path"
                                       sx={{
                                         borderColor: 'primary.main',
                                         color: 'primary.dark',
@@ -1263,7 +1274,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                           e,
                                         )
                                       }
-                                      title="Open this Study Pack for another practice session"
+                                      title="Open this Study Path for another practice session"
                                       sx={{
                                         color: 'primary.dark',
                                         textTransform: 'none',
@@ -1282,7 +1293,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                                           e,
                                         )
                                       }
-                                      title="Request a quiz from this Study Pack section"
+                                      title="Request a quiz from this Study Path lesson"
                                       sx={{
                                         color: 'primary.dark',
                                         textTransform: 'none',
@@ -1504,7 +1515,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       <DeleteConfirmationDialog
         open={deleteConfirmOpen}
         title="Delete from Library"
-        content="Are you sure you want to delete this Study Pack or workspace? Export first if you need a backup. This action cannot be undone."
+        content="Are you sure you want to delete this Study Path or workspace? Export first if you need a backup. This action cannot be undone."
         onConfirm={confirmDeleteDashboard}
         onCancel={cancelDeleteDashboard}
       />
@@ -1647,7 +1658,7 @@ const EditDashboardDialog: React.FC<EditDashboardDialogProps> = ({
         <Box component="form" sx={{ mt: 1 }}>
           <TextField
             fullWidth
-            label="Study Pack Name"
+            label="Study Path Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onFocus={(e) => {

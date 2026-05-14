@@ -45,6 +45,80 @@ const getProgressForLesson = (
     folderName: lesson.folderName || studyPath.folderName,
   })
 
+const sanitizeStudentWidgetName = (name?: string): string | undefined => {
+  if (!name) {
+    return name
+  }
+
+  if (/\bmisc\b/i.test(name)) {
+    return 'Extra practice'
+  }
+
+  return name.replace(/\s*\(?\d+\s+(study\s+)?objects?\)?/gi, '').trim() || name
+}
+
+const sanitizeStudentComponent = (component: unknown): unknown => {
+  if (typeof component !== 'object' || component === null) {
+    return component
+  }
+
+  const record = component as Record<string, unknown>
+  const props =
+    typeof record.props === 'object' && record.props !== null
+      ? ({ ...(record.props as Record<string, unknown>) } as Record<
+          string,
+          unknown
+        >)
+      : undefined
+
+  if (props) {
+    if (
+      typeof props.description === 'string' &&
+      /study objects?/i.test(props.description)
+    ) {
+      delete props.description
+    }
+
+    if (typeof props.title === 'string') {
+      props.title = sanitizeStudentWidgetName(props.title)
+    }
+  }
+
+  return props ? { ...record, props } : record
+}
+
+const sanitizeStudentLayout = (
+  layout?: DashboardLayout,
+): DashboardLayout | undefined => {
+  if (!layout) {
+    return layout
+  }
+
+  const customProps = layout.config?.customProps
+  const nextCustomProps = customProps
+    ? {
+        ...customProps,
+        components: Array.isArray(customProps.components)
+          ? customProps.components.map(sanitizeStudentComponent)
+          : customProps.components,
+      }
+    : undefined
+
+  return {
+    ...layout,
+    name: sanitizeStudentWidgetName(layout.name),
+    config: layout.config
+      ? {
+          ...layout.config,
+          customProps: nextCustomProps,
+        }
+      : layout.config,
+    children: layout.children?.map(
+      (child) => sanitizeStudentLayout(child) as DashboardLayout,
+    ),
+  }
+}
+
 const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   studyPath,
   onStudyPathChange,
@@ -73,6 +147,10 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   const currentProgress = currentLesson
     ? progressByKey[currentLesson.dashboardKey]
     : null
+  const studentLayout = useMemo(
+    () => sanitizeStudentLayout(currentLesson?.layout),
+    [currentLesson?.layout],
+  )
 
   const selectLesson = (index: number) => {
     onStudyPathChange({ ...studyPath, selectedIndex: index })
@@ -100,7 +178,9 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     onStudyPathChange({
       ...studyPath,
       pinnedDashboardKeys: isPinned
-        ? pinnedDashboardKeys.filter((key) => key !== currentLesson.dashboardKey)
+        ? pinnedDashboardKeys.filter(
+            (key) => key !== currentLesson.dashboardKey,
+          )
         : [...pinnedDashboardKeys, currentLesson.dashboardKey],
     })
   }
@@ -129,15 +209,14 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', lg: '340px minmax(0, 1fr)' },
-        height: 'calc(100dvh - 104px)',
-        minHeight: 620,
+        height: '100%',
+        minHeight: 0,
         overflow: 'hidden',
         background:
           'linear-gradient(135deg, rgba(0,124,102,0.12), rgba(25,118,210,0.08))',
         border: 1,
         borderColor: 'primary.main',
         borderRadius: { xs: 0, md: 2 },
-        m: { xs: 0, md: 1 },
       }}
     >
       <Paper
@@ -267,19 +346,19 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                       {String(index + 1).padStart(2, '0')}
                     </Box>
                     <Stack spacing={0.3} sx={{ minWidth: 0, flex: 1 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2" fontWeight={700} noWrap>
-                        {lesson.name}
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body2" fontWeight={700} noWrap>
+                          {lesson.name}
+                        </Typography>
+                        {pinned && <PushPinIcon sx={{ fontSize: 14 }} />}
+                        {progress?.completedAt && (
+                          <CheckCircleIcon sx={{ fontSize: 15 }} />
+                        )}
+                      </Stack>
+                      <Typography variant="caption" sx={{ opacity: 0.78 }}>
+                        Step {lesson.dashboardIndex}/{lesson.dashboardCount}
+                        {progress?.score ? ` · Score ${progress.score}%` : ''}
                       </Typography>
-                      {pinned && <PushPinIcon sx={{ fontSize: 14 }} />}
-                      {progress?.completedAt && (
-                        <CheckCircleIcon sx={{ fontSize: 15 }} />
-                      )}
-                    </Stack>
-                    <Typography variant="caption" sx={{ opacity: 0.78 }}>
-                      Step {lesson.dashboardIndex}/{lesson.dashboardCount}
-                      {progress?.score ? ` · Score ${progress.score}%` : ''}
-                    </Typography>
                     </Stack>
                   </Stack>
                 </Button>
@@ -323,7 +402,12 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
             justifyContent="space-between"
           >
             <Box>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                flexWrap="wrap"
+              >
                 <Chip
                   size="small"
                   color={currentProgress?.completedAt ? 'success' : 'primary'}
@@ -334,14 +418,18 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 )}
                 {typeof currentProgress?.score === 'number' &&
                   currentProgress.answered > 0 && (
-                    <Chip size="small" label={`Score ${currentProgress.score}%`} />
+                    <Chip
+                      size="small"
+                      label={`Score ${currentProgress.score}%`}
+                    />
                   )}
               </Stack>
               <Typography variant="h6" sx={{ mt: 0.75 }}>
                 {currentLesson.name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Embedded dashboard preview — use the sidebar to move through this Study Path without creating more workspace tabs.
+                Embedded dashboard preview — use the sidebar to move through
+                this Study Path without creating more workspace tabs.
               </Typography>
             </Box>
 
@@ -368,7 +456,10 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 </IconButton>
               </Tooltip>
               <Tooltip title={isPinned ? 'Unpin lesson' : 'Pin lesson'}>
-                <IconButton onClick={togglePinnedLesson} color={isPinned ? 'primary' : 'default'}>
+                <IconButton
+                  onClick={togglePinnedLesson}
+                  color={isPinned ? 'primary' : 'default'}
+                >
                   {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
                 </IconButton>
               </Tooltip>
@@ -390,7 +481,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           }}
         >
           <DashboardLayoutView
-            layout={currentLesson.layout}
+            layout={studentLayout}
             readOnly
             updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
           />
