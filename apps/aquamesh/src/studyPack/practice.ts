@@ -642,13 +642,6 @@ export const augmentStudyPackPracticeObjects = (
   }
 
   const addedCount = objects.length - startingCount
-  if (addedCount > 0) {
-    warnings.push(
-      `AquaMesh added ${addedCount} grounded practice block${
-        addedCount === 1 ? '' : 's'
-      } to match the selected Study Pack target.`,
-    )
-  }
 
   return {
     objects: objects.map(shuffleStudyObjectQuizOptions),

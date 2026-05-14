@@ -279,7 +279,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       expect.objectContaining({ sourceFormat: 'text' }),
       expect.objectContaining({
         includeSourceWidget: true,
-        includeSummaryChart: true,
+        includeSummaryChart: false,
         rawSource: 'Quiz:: What is derivative? | Rate of change',
         widgetGroups: [
           expect.objectContaining({

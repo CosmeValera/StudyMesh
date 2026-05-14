@@ -631,15 +631,24 @@ export const generateStudyPathWithAi = async ({
   folderName,
   generationAmount = 'medium',
 }: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
-  const stepNames = [
-    'Content 1',
-    'Content 2',
-    'Content 3',
-    'Content 4',
-    'Content 5',
-    'Summary',
-    'Exercises',
-  ]
+  const stepNames =
+    generationAmount === 'few'
+      ? ['Content 1', 'Content 2', 'Exercises']
+      : generationAmount === 'many'
+        ? [
+            'Content 1',
+            'Content 2',
+            'Content 3',
+            'Content 4',
+            'Content 5',
+            'Summary',
+            'Exercises',
+          ]
+        : ['Content 1', 'Content 2', 'Content 3', 'Summary', 'Exercises']
+  const contentDashboardCount = stepNames.filter((stepName) =>
+    stepName.startsWith('Content'),
+  ).length
+  const includesSummaryDashboard = stepNames.includes('Summary')
   const practiceProfile = createStudyPackPracticeProfile(generationAmount, [
     'summaries',
     'definitions',
@@ -664,9 +673,11 @@ Return exactly this structure:
 }
 
 Rules:
-- Create exactly 5 dashboards unless the topic is tiny. Use these ordered lessons: ${stepNames.join(' → ')}.
+- Choose a concise, topic-specific folderName for the Study Path, such as "French B1 Subjunctive" or "Calculus Derivatives". Do not use a generic folderName like "Study Path" unless the topic is truly unknown.
+- Use these ordered lessons exactly: ${stepNames.join(' -> ')}.
 - Each dashboard must be useful by itself and contain 6-12 objects.
-- Always return 7 dashboards total: 5 content dashboards, 1 summary dashboard, and 1 exercises dashboard.
+- Always return exactly ${stepNames.length} dashboards total.
+- This depth means ${contentDashboardCount} content dashboard${contentDashboardCount === 1 ? '' : 's'}${includesSummaryDashboard ? ', 1 summary dashboard,' : ''} and 1 exercises dashboard.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
 - Start each dashboard with a markdown object containing the full teaching explanation for that lesson. Use the "markdown" field, not "body".
@@ -681,8 +692,8 @@ Rules:
 - Keep content concise, beginner-friendly, and appropriate for the requested topic.
 - Aim for about ${practiceProfile.minTotal}-${practiceProfile.maxTotal} reviewable items across the whole path.
 
-Path title: ${title}
-Folder name: ${folderName}
+Path title fallback: ${title}
+Folder name fallback if you cannot infer a better one: ${folderName || 'Study Path'}
 User request/topic:
 ${prompt}`,
       },

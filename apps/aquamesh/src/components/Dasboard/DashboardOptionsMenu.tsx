@@ -31,6 +31,11 @@ import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 const MAX_MENU_ITEMS_PER_FOLDER = 15
 
+const getDashboardCreatedTime = (dashboard: SavedDashboard): number => {
+  const timestamp = Date.parse(dashboard.createdAt || dashboard.updatedAt || '')
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
 // Define saved dashboard type
 interface SavedDashboard {
   id: string
@@ -109,8 +114,13 @@ const DashboardOptionsMenu: React.FC = () => {
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
-  const { addDashboard, openDashboards, replaceDashboard, selectedDashboard } =
-    useDashboards()
+  const {
+    addDashboard,
+    addDashboards,
+    openDashboards,
+    replaceDashboard,
+    selectedDashboard,
+  } = useDashboards()
 
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
@@ -267,6 +277,31 @@ const DashboardOptionsMenu: React.FC = () => {
     })
   }
 
+  const loadDashboardFolder = (dashboards: SavedDashboard[]) => {
+    const orderedDashboards = [...dashboards].sort(
+      (firstDashboard, secondDashboard) =>
+        getDashboardCreatedTime(firstDashboard) -
+        getDashboardCreatedTime(secondDashboard),
+    )
+    addDashboards(
+      orderedDashboards.map((dashboard) => ({
+        name: dashboard.name,
+        layout: dashboard.layout,
+      })),
+      { replaceEmptySelected: true },
+    )
+
+    orderedDashboards.forEach((dashboard) => {
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-dashboard-opened',
+        dashboardId: dashboard.id,
+        dashboardName: dashboard.name,
+      })
+    })
+
+    handleClose()
+  }
+
   const openSavedDashboardsForFolder = (
     event: React.MouseEvent<HTMLElement>,
     folderName: string,
@@ -385,6 +420,15 @@ const DashboardOptionsMenu: React.FC = () => {
                 <React.Fragment key={folderName}>
                   <Typography
                     component="div"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => loadDashboardFolder(dashboards)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        loadDashboardFolder(dashboards)
+                      }
+                    }}
                     sx={{
                       px: 2,
                       py: 0.6,
@@ -397,6 +441,10 @@ const DashboardOptionsMenu: React.FC = () => {
                       bgcolor: `${folderColor}24`,
                       borderLeft: '4px solid',
                       borderLeftColor: folderColor,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: `${folderColor}30`,
+                      },
                     }}
                   >
                     <AutoStoriesIcon
@@ -517,6 +565,15 @@ const DashboardOptionsMenu: React.FC = () => {
                 <React.Fragment key={folderName}>
                   <Typography
                     component="div"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => loadDashboardFolder(nonStudyDashboards)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        loadDashboardFolder(nonStudyDashboards)
+                      }
+                    }}
                     sx={{
                       px: 2,
                       py: 0.6,
@@ -529,6 +586,10 @@ const DashboardOptionsMenu: React.FC = () => {
                       bgcolor: `${folderColor}24`,
                       borderLeft: '4px solid',
                       borderLeftColor: folderColor,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: `${folderColor}30`,
+                      },
                     }}
                   >
                     <DashboardIcon

@@ -350,7 +350,11 @@ const studyPathStepNames = [
 ]
 
 const getStudyPathStepIndex = (object: StudyObject, index: number): number => {
-  if (object.kind === 'quiz' || object.kind === 'qa' || object.kind === 'reveal') {
+  if (
+    object.kind === 'quiz' ||
+    object.kind === 'qa' ||
+    object.kind === 'reveal'
+  ) {
     return 3
   }
 
@@ -358,15 +362,26 @@ const getStudyPathStepIndex = (object: StudyObject, index: number): number => {
     return 4
   }
 
-  if (object.kind === 'comparison' || object.kind === 'sequence' || object.kind === 'table') {
+  if (
+    object.kind === 'comparison' ||
+    object.kind === 'sequence' ||
+    object.kind === 'table'
+  ) {
     return 2
   }
 
-  if (object.kind === 'term' || object.kind === 'note' || object.kind === 'markdown') {
+  if (
+    object.kind === 'term' ||
+    object.kind === 'note' ||
+    object.kind === 'markdown'
+  ) {
     return index < 2 ? 0 : 1
   }
 
-  return Math.min(index % studyPathStepNames.length, studyPathStepNames.length - 1)
+  return Math.min(
+    index % studyPathStepNames.length,
+    studyPathStepNames.length - 1,
+  )
 }
 
 const createStudyPathPreviewGroups = (
@@ -392,16 +407,26 @@ const createGeneratedSourceNotes = (
 ): string => {
   const sourceSections = objects
     .filter((object) =>
-      ['markdown', 'note', 'term', 'list', 'comparison', 'sequence', 'table', 'code'].includes(
-        object.kind,
-      ),
+      [
+        'markdown',
+        'note',
+        'term',
+        'list',
+        'comparison',
+        'sequence',
+        'table',
+        'code',
+      ].includes(object.kind),
     )
     .slice(0, 10)
-    .map((object) => `## ${getObjectTitle(object)}\n\n${getObjectPreview(object)}`)
+    .map(
+      (object) => `## ${getObjectTitle(object)}\n\n${getObjectPreview(object)}`,
+    )
     .join('\n\n')
 
   return `# ${title}\n\nGenerated from AI prompt: ${prompt.trim()}\n\n${
-    sourceSections || 'AquaMesh generated practice-first study material from this learning prompt.'
+    sourceSections ||
+    'AquaMesh generated practice-first study material from this learning prompt.'
   }`
 }
 
@@ -573,7 +598,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
   const [includeSourceWidget, setIncludeSourceWidget] = useState(true)
-  const [includeSourceChart, setIncludeSourceChart] = useState(true)
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('orchestrator')
   const [generationTargets, setGenerationTargets] = useState<string[]>([
@@ -633,7 +657,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setReviewItems([])
     setWidgetGroups([])
     setIncludeSourceWidget(true)
-    setIncludeSourceChart(true)
     setLayoutMode('orchestrator')
     setGenerationTargets([
       'quizzes',
@@ -701,7 +724,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setReviewItems(reviewableItems)
     setWidgetGroups(
       learningOutputMode === 'studyPath'
-        ? createStudyPathPreviewGroups(reviewableItems.map((item) => item.object))
+        ? createStudyPathPreviewGroups(
+            reviewableItems.map((item) => item.object),
+          )
         : createPreviewWidgetGroups(
             reviewableItems.map((item) => item.object),
             parsed.title,
@@ -1056,7 +1081,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
     const widgets = createStudyPackOrchestratorWidgets(pack, {
       includeSourceWidget,
-      includeSummaryChart: includeSourceChart,
+      includeSummaryChart: false,
       rawSource:
         studyTaskMode === 'aiPrompt'
           ? createGeneratedSourceNotes(pack.title, sourceText, objects)
@@ -1216,7 +1241,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     <Typography variant="subtitle2" fontWeight={800}>
                       {creationMode === 'ai' ? 'AI mode' : 'Basic mode'}
                     </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary">
                       {creationMode === 'ai'
                         ? studyTaskMode === 'aiPrompt'
                           ? 'Describe a learning goal like “Teach me French passé composé”; AquaMesh creates lesson notes, practice, flashcards, and review steps.'
@@ -1317,15 +1342,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       />
                     </Button>
                     <Typography variant="caption" color="text.secondary">
-                      Supports multiple .md, .txt, or .csv files. PDF parsing is a
-                      planned upgrade; paste exported PDF text for now.
+                      Supports multiple .md, .txt, or .csv files. PDF parsing is
+                      a planned upgrade; paste exported PDF text for now.
                     </Typography>
                   </>
                 )}
                 {studyTaskMode === 'aiPrompt' && (
                   <Typography variant="caption" color="text.secondary">
-                    AquaMesh will not create heavy PDF/image resources unless you
-                    explicitly ask for them. It will prefer text, quizzes,
+                    AquaMesh will not create heavy PDF/image resources unless
+                    you explicitly ask for them. It will prefer text, quizzes,
                     flashcards, tables, and review prompts.
                   </Typography>
                 )}
@@ -1517,9 +1542,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                         }
                         size="small"
                       />
-                      {includeSourceChart && (
-                        <Chip label={`${packTitle} Mix chart`} size="small" />
-                      )}
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
                       Source notes stay pinned to the left when source split
@@ -1546,18 +1568,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                             ? 'Create source table'
                             : 'Create source notes page'
                         }
-                      />
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={includeSourceChart}
-                            disabled={!includeSourceWidget}
-                            onChange={(event) =>
-                              setIncludeSourceChart(event.target.checked)
-                            }
-                          />
-                        }
-                        label={`Include ${packTitle || 'Study Pack'} Mix chart`}
                       />
                     </Stack>
                   </Stack>
@@ -1783,8 +1793,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             {isGeneratingAi
               ? 'Generating...'
               : sourceInputType === 'image' && !imageTextExtracted
-              ? 'Extract notes'
-              : 'Continue'}
+                ? 'Extract notes'
+                : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>

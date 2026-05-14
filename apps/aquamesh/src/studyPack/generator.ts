@@ -571,9 +571,6 @@ const createRawSourceWidget = (
       ...(options.studyPath
         ? [createStudyPathProgressBlock(options.studyPath)]
         : []),
-      ...(options.includeSummaryChart
-        ? [createSummaryChart(pack, widgetId, { source: 1 })]
-        : []),
       sourceComponent,
     ],
     createdAt: options.createdAt,

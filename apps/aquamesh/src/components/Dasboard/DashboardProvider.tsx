@@ -19,6 +19,10 @@ interface DashboardContextType {
   setSelectedDashboard: (index: number) => void
   removeDashboard: (id: string) => void
   addDashboard: (dashboard?: DefaultDashboard) => string
+  addDashboards: (
+    dashboards: DefaultDashboard[],
+    options?: { replaceEmptySelected?: boolean },
+  ) => string[]
   replaceDashboard: (index: number, dashboard: DefaultDashboard) => string
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
@@ -122,6 +126,58 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     return id
   }
 
+  const addDashboards = (
+    dashboards: DefaultDashboard[],
+    options: { replaceEmptySelected?: boolean } = {},
+  ) => {
+    if (dashboards.length === 0) {
+      return []
+    }
+
+    const dashboardsWithIds = dashboards.map((dashboard) =>
+      Object.assign({ id: nanoid() }, dashboard),
+    )
+    const newOpenDashboards = [...openDashboards]
+    const focusedDashboard = newOpenDashboards[selectedDashboard]
+    const shouldReplaceSelected = Boolean(
+      options.replaceEmptySelected &&
+        focusedDashboard &&
+        !hasDashboardContent(focusedDashboard.layout),
+    )
+    const replacedDashboardId = shouldReplaceSelected
+      ? focusedDashboard?.id
+      : undefined
+    let selectedDashboardIndex = newOpenDashboards.length
+
+    if (shouldReplaceSelected) {
+      const [firstDashboard, ...remainingDashboards] = dashboardsWithIds
+      newOpenDashboards[selectedDashboard] = firstDashboard
+      selectedDashboardIndex = selectedDashboard
+      newOpenDashboards.push(...remainingDashboards)
+      if (remainingDashboards.length > 0) {
+        selectedDashboardIndex = newOpenDashboards.length - 1
+      }
+    } else {
+      newOpenDashboards.push(...dashboardsWithIds)
+      selectedDashboardIndex = newOpenDashboards.length - 1
+    }
+
+    setDashboards(newOpenDashboards)
+    setSelectedDashboard(selectedDashboardIndex)
+    setEditingDashboardIds((currentIds) => {
+      const nextIds = replacedDashboardId
+        ? currentIds.filter((currentId) => currentId !== replacedDashboardId)
+        : currentIds
+      const emptyDashboardIds = dashboardsWithIds
+        .filter((dashboard) => !hasDashboardContent(dashboard.layout))
+        .map((dashboard) => dashboard.id)
+
+      return [...nextIds, ...emptyDashboardIds]
+    })
+
+    return dashboardsWithIds.map((dashboard) => dashboard.id)
+  }
+
   const replaceDashboard = (index: number, dashboard: DefaultDashboard) => {
     const currentDashboard = openDashboards[index]
     const id = nanoid()
@@ -187,6 +243,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         setSelectedDashboard,
         removeDashboard,
         addDashboard,
+        addDashboards,
         replaceDashboard,
         updateLayout,
         updateDashboardLayout,

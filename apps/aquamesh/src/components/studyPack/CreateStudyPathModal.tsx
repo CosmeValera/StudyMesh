@@ -3,11 +3,13 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   LinearProgress,
   MenuItem,
   Paper,
@@ -35,6 +37,7 @@ interface CreateStudyPathModalProps {
   onClose: () => void
   onCreatePath: (payload: {
     folderName: string
+    openInWorkspace?: boolean
     dashboards: Array<{
       name: string
       widgets: ReturnType<typeof createStudyPackOrchestratorWidgets>
@@ -49,9 +52,21 @@ const generationAmountOptions: Array<{
   value: GenerationAmount
   helper: string
 }> = [
-  { label: 'Compact', value: 'few', helper: 'Short path, fewer exercises' },
-  { label: 'Balanced', value: 'medium', helper: 'Best default' },
-  { label: 'Deep', value: 'many', helper: 'More practice per lesson' },
+  {
+    label: 'Compact',
+    value: 'few',
+    helper: '2 content dashboards + 1 exercises dashboard',
+  },
+  {
+    label: 'Balanced',
+    value: 'medium',
+    helper: '3 content dashboards + summary + exercises',
+  },
+  {
+    label: 'Extended',
+    value: 'many',
+    helper: '5 content dashboards + summary + exercises',
+  },
 ]
 
 const getObjectPreview = (object?: StudyObject) => {
@@ -111,22 +126,22 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onCreatePath,
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
-  const [pathTitle, setPathTitle] = useState('Study Path')
-  const [folderName, setFolderName] = useState('Study Path')
   const [prompt, setPrompt] = useState('')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('medium')
   const [draft, setDraft] = useState<AiStudyPathDraft | null>(null)
+  const [reviewFolderName, setReviewFolderName] = useState('')
+  const [openInWorkspace, setOpenInWorkspace] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState('')
 
   const reset = () => {
     setStep('prompt')
-    setPathTitle('Study Path')
-    setFolderName('Study Path')
     setPrompt('')
     setGenerationAmount('medium')
     setDraft(null)
+    setReviewFolderName('')
+    setOpenInWorkspace(true)
     setIsGenerating(false)
     setError('')
   }
@@ -157,14 +172,13 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       const nextDraft = await generateStudyPathWithAi({
         apiToken: credentials.apiToken,
         model: credentials.model,
-        title: pathTitle.trim() || 'Study Path',
-        folderName: folderName.trim() || pathTitle.trim() || 'Study Path',
+        title: 'Study Path',
+        folderName: '',
         prompt,
         generationAmount,
       })
       setDraft(nextDraft)
-      setPathTitle(nextDraft.title)
-      setFolderName(nextDraft.folderName)
+      setReviewFolderName(nextDraft.folderName || nextDraft.title || '')
       setStep('review')
     } catch (err) {
       setError(
@@ -182,12 +196,14 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       return
     }
 
-    const effectiveFolder = folderName.trim() || draft.folderName || draft.title
+    const effectiveFolder =
+      reviewFolderName.trim() || draft.folderName || draft.title || 'Study Path'
     const studyPathId = makeStudyPathId(draft.title || effectiveFolder)
     const dashboardCount = draft.dashboards.length
 
     onCreatePath({
       folderName: effectiveFolder,
+      openInWorkspace,
       dashboards: draft.dashboards.map((dashboard, index) => ({
         name: dashboard.title || `${draft.title} ${index + 1}`,
         folderName: effectiveFolder,
@@ -204,7 +220,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           {
             rawSource: dashboard.rawNotes || prompt,
             includeSourceWidget: true,
-            includeSummaryChart: true,
+            includeSummaryChart: false,
             widgetIdPrefix: makePackId(dashboard.title || draft.title, index),
             studyPath: {
               pathId: studyPathId,
@@ -240,24 +256,6 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           {error && <Alert severity="error">{error}</Alert>}
           {step === 'prompt' ? (
             <>
-              <TextField
-                label="Path title"
-                value={pathTitle}
-                onChange={(event) => {
-                  setPathTitle(event.target.value)
-                  if (!folderName.trim() || folderName === pathTitle) {
-                    setFolderName(event.target.value)
-                  }
-                }}
-                fullWidth
-              />
-              <TextField
-                label="Folder name"
-                value={folderName}
-                onChange={(event) => setFolderName(event.target.value)}
-                helperText="All generated Study Packs will be saved into this dashboard folder. You can edit it before creating them."
-                fullWidth
-              />
               <TextField
                 label="What should AquaMesh teach?"
                 value={prompt}
@@ -308,10 +306,21 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             <>
               <TextField
                 label="Folder name"
-                value={folderName}
-                onChange={(event) => setFolderName(event.target.value)}
-                helperText="Edit where the generated Study Packs will be saved."
+                value={reviewFolderName}
+                onChange={(event) => setReviewFolderName(event.target.value)}
+                helperText="Gemini selected this folder for the generated dashboards. You can change it before creating the path."
                 fullWidth
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={openInWorkspace}
+                    onChange={(event) =>
+                      setOpenInWorkspace(event.target.checked)
+                    }
+                  />
+                }
+                label="Open all dashboards in workspace after creating them"
               />
               <Stack spacing={1.5}>
                 {draft?.dashboards.map((dashboard, index) => (

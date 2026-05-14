@@ -507,6 +507,7 @@ export const useWorkspaceActions = () => {
   const { ref: layoutRef, addComponent } = useLayout()
   const {
     addDashboard,
+    addDashboards,
     openDashboards,
     selectedDashboard,
     updateDashboardLayout,
@@ -619,8 +620,10 @@ export const useWorkspaceActions = () => {
     ({
       dashboards,
       folderName = 'Study Packs',
+      openInWorkspace = true,
     }: {
       folderName?: string
+      openInWorkspace?: boolean
       dashboards: Array<{
         name: string
         widgets: Array<{
@@ -635,14 +638,43 @@ export const useWorkspaceActions = () => {
         layoutMode?: StudyPackDashboardLayoutMode
         folderName?: string
       }>
-    }) =>
-      dashboards.map((dashboard) =>
-        createStudyPackDashboard({
-          ...dashboard,
-          folderName: dashboard.folderName || folderName,
-        }),
-      ),
-    [createStudyPackDashboard],
+    }) => {
+      const savedDashboards = dashboards.map((dashboard) => {
+        const savedWidgets = dashboard.widgets.map((widget) =>
+          WidgetStorage.saveWidget({
+            name: widget.name,
+            components: widget.components,
+            category: widget.category || 'Study Pack',
+            tags: widget.tags || ['study-pack'],
+            description: widget.description || 'Generated from student notes.',
+            version: widget.version || '1.0',
+            author: widget.author || 'AquaMesh',
+          }),
+        )
+        const layout = createStudyPackDashboardLayout(savedWidgets, {
+          mode: dashboard.layoutMode || 'smart',
+        })
+
+        return saveStudyPackDashboard(
+          dashboard.name,
+          layout,
+          dashboard.folderName || folderName,
+        )
+      })
+
+      if (openInWorkspace) {
+        addDashboards(
+          savedDashboards.map((dashboard) => ({
+            name: dashboard.name,
+            layout: dashboard.layout,
+          })),
+          { replaceEmptySelected: true },
+        )
+      }
+
+      return savedDashboards
+    },
+    [addDashboards],
   )
 
   const openTemplateDashboard = useCallback(

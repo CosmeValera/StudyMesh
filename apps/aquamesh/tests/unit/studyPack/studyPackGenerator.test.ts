@@ -135,17 +135,8 @@ A: Back
     })
     expect(widgets[0].components.map((component) => component.type)).toEqual([
       'Label',
-      'Chart',
       'MarkdownBlock',
     ])
-    expect(widgets[0].components[1]).toMatchObject({
-      type: 'Chart',
-      props: expect.objectContaining({
-        title: `${pack.title} Mix`,
-        chartType: 'pie',
-        data: expect.stringContaining('"source"'),
-      }),
-    })
     expect(widgets[0].components).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
