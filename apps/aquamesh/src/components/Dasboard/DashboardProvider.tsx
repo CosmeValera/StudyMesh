@@ -18,6 +18,8 @@ interface DashboardContextType {
   selectedDashboard: number
   setSelectedDashboard: (index: number) => void
   removeDashboard: (id: string) => void
+  closeAllDashboards: () => void
+  closeDashboardsToRight: (index: number) => void
   addDashboard: (dashboard?: DefaultDashboard) => string
   addDashboards: (
     dashboards: DefaultDashboard[],
@@ -111,6 +113,28 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     }
   }
 
+  const closeAllDashboards = () => {
+    const emptyDashboard = createEmptyDashboard()
+    setDashboards([emptyDashboard])
+    setSelectedDashboard(0)
+    setEditingDashboardIds([emptyDashboard.id])
+  }
+
+  const closeDashboardsToRight = (index: number) => {
+    if (index < 0 || index >= openDashboards.length - 1) {
+      return
+    }
+
+    const dashboards = openDashboards.slice(0, index + 1)
+    setDashboards(dashboards)
+    setSelectedDashboard(Math.min(selectedDashboard, dashboards.length - 1))
+    setEditingDashboardIds((currentIds) =>
+      currentIds.filter((currentId) =>
+        dashboards.some((dashboard) => dashboard.id === currentId),
+      ),
+    )
+  }
+
   const addDashboard = (dashboard = DEFAULT_DASHBOARD) => {
     const id = nanoid()
     const newDashboard = openDashboards.concat(Object.assign({ id }, dashboard))
@@ -154,12 +178,8 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
       newOpenDashboards[selectedDashboard] = firstDashboard
       selectedDashboardIndex = selectedDashboard
       newOpenDashboards.push(...remainingDashboards)
-      if (remainingDashboards.length > 0) {
-        selectedDashboardIndex = newOpenDashboards.length - 1
-      }
     } else {
       newOpenDashboards.push(...dashboardsWithIds)
-      selectedDashboardIndex = newOpenDashboards.length - 1
     }
 
     setDashboards(newOpenDashboards)
@@ -242,6 +262,8 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
         selectedDashboard,
         setSelectedDashboard,
         removeDashboard,
+        closeAllDashboards,
+        closeDashboardsToRight,
         addDashboard,
         addDashboards,
         replaceDashboard,

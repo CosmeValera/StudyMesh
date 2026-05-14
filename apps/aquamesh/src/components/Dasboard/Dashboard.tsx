@@ -459,6 +459,8 @@ const Dashboards = () => {
     selectedDashboard,
     setSelectedDashboard,
     removeDashboard,
+    closeAllDashboards,
+    closeDashboardsToRight,
     addDashboard,
     replaceDashboard,
     updateLayout,
@@ -477,6 +479,11 @@ const Dashboards = () => {
   const [isPublic, setIsPublic] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [currentTabIndex, setCurrentTabIndex] = useState<number | null>(null)
+  const [dashboardTabMenu, setDashboardTabMenu] = useState<{
+    mouseX: number
+    mouseY: number
+    tabIndex: number
+  } | null>(null)
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({})
   const [isAdmin, setIsAdmin] = useState(false)
   const [dashboardOptions, setDashboardOptions] = useState<SavedDashboard[]>([])
@@ -1330,6 +1337,36 @@ const Dashboards = () => {
     closeDashboardEditor()
   }
 
+  const closeDashboardTabMenu = () => {
+    setDashboardTabMenu(null)
+  }
+
+  const openDashboardTabMenu = (event: React.MouseEvent, tabIndex: number) => {
+    event.preventDefault()
+    setSelectedDashboard(tabIndex)
+    setDashboardTabMenu(
+      dashboardTabMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+            tabIndex,
+          }
+        : null,
+    )
+  }
+
+  const closeAllDashboardTabs = () => {
+    closeAllDashboards()
+    closeDashboardTabMenu()
+  }
+
+  const closeDashboardTabsToRight = () => {
+    if (dashboardTabMenu) {
+      closeDashboardsToRight(dashboardTabMenu.tabIndex)
+    }
+    closeDashboardTabMenu()
+  }
+
   return (
     <Box>
       <Tabs
@@ -1345,7 +1382,10 @@ const Dashboards = () => {
               !hasDashboardContent(dashboard.layout)
 
             return (
-              <Tab key={dashboard.id}>
+              <Tab
+                key={dashboard.id}
+                onContextMenu={(event) => openDashboardTabMenu(event, index)}
+              >
                 <TooltipStyled
                   title={dashboard.name}
                   placement="bottom"
@@ -1496,6 +1536,33 @@ const Dashboards = () => {
           )
         })}
       </Tabs>
+
+      <Menu
+        open={dashboardTabMenu !== null}
+        onClose={closeDashboardTabMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          dashboardTabMenu !== null
+            ? {
+                top: dashboardTabMenu.mouseY,
+                left: dashboardTabMenu.mouseX,
+              }
+            : undefined
+        }
+      >
+        <MenuItem onClick={closeAllDashboardTabs}>
+          Close all dashboards
+        </MenuItem>
+        <MenuItem
+          onClick={closeDashboardTabsToRight}
+          disabled={
+            !dashboardTabMenu ||
+            dashboardTabMenu.tabIndex >= openDashboards.length - 1
+          }
+        >
+          Close dashboards to the right
+        </MenuItem>
+      </Menu>
 
       {openDashboards.length === 0 && (
         <DashboardEmptyState
