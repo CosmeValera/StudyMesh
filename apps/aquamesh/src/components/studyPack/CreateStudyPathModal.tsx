@@ -25,6 +25,7 @@ import {
   StudyPackDashboardLayoutMode,
 } from '../../studyPack'
 import {
+  AiGenerationDebugTrace,
   AiStudyPathDraft,
   generateStudyPathWithAi,
   resolveStudyPackAiCredentials,
@@ -117,6 +118,35 @@ const makePackId = (title: string, index: number) =>
   `${title}-${index + 1}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
   `study-path-${index + 1}`
 
+const formatDebugValue = (value: unknown): string =>
+  typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+
+const combinedDebugTrace = (
+  draft: AiStudyPathDraft | null,
+): AiGenerationDebugTrace | null => {
+  if (!draft) {
+    return null
+  }
+
+  const traces = draft.dashboards
+    .map((dashboard) => dashboard.debugTrace)
+    .filter((trace): trace is AiGenerationDebugTrace => Boolean(trace))
+  if (traces.length === 0) {
+    return null
+  }
+
+  return {
+    rawAiResponse: traces
+      .map((trace) => trace.rawAiResponse)
+      .join('\n\n---\n\n'),
+    validatedContract: traces[0].validatedContract,
+    droppedOrRepairedItems: traces.flatMap(
+      (trace) => trace.droppedOrRepairedItems,
+    ),
+    finalObjects: traces.flatMap((trace) => trace.finalObjects),
+  }
+}
+
 const makeStudyPathId = (title: string) =>
   title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-path'
 
@@ -134,6 +164,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [openInWorkspace, setOpenInWorkspace] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState('')
+  const debugTrace = combinedDebugTrace(draft)
 
   const reset = () => {
     setStep('prompt')
@@ -213,9 +244,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             id: makePackId(dashboard.title || draft.title, index),
             title: dashboard.title || `${draft.title} ${index + 1}`,
             sourceFormat: dashboard.sourceFormat || 'text',
-            rawSource: dashboard.rawNotes || prompt,
             objects: dashboard.objects,
             warnings: dashboard.warnings || [],
+            sourceSummary: dashboard.sourceSummary,
           },
           {
             rawSource: dashboard.rawNotes || prompt,
@@ -361,6 +392,60 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
               </Stack>
               {draft?.warnings.length ? (
                 <Alert severity="warning">{draft.warnings.join(' ')}</Alert>
+              ) : null}
+              {debugTrace ? (
+                <Paper
+                  component="details"
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.default',
+                  }}
+                >
+                  <Typography component="summary" variant="subtitle2">
+                    AI generation debug
+                  </Typography>
+                  <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                    {[
+                      ['Raw AI response', debugTrace.rawAiResponse],
+                      [
+                        'Validated strict contract',
+                        debugTrace.validatedContract,
+                      ],
+                      [
+                        'Dropped or repaired items',
+                        debugTrace.droppedOrRepairedItems,
+                      ],
+                      ['Final StudyObject mapping', debugTrace.finalObjects],
+                    ].map(([label, value]) => (
+                      <Box key={String(label)}>
+                        <Typography variant="caption" fontWeight={700}>
+                          {String(label)}
+                        </Typography>
+                        <Box
+                          component="pre"
+                          sx={{
+                            m: 0,
+                            mt: 0.5,
+                            p: 1,
+                            maxHeight: 180,
+                            overflow: 'auto',
+                            bgcolor: 'background.paper',
+                            border: 1,
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                            fontSize: 12,
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          {formatDebugValue(value)}
+                        </Box>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Paper>
               ) : null}
             </>
           )}

@@ -1,10 +1,6 @@
 import { StudyPackSourceFormat } from '../types'
-import { StudyObject } from '../types'
-import {
-  augmentStudyPackPracticeObjects,
-  createStudyPackPracticeProfile,
-  getEffectiveGenerationTargets,
-} from '../practice'
+import { conceptSummaryItem, extractLearningConcepts } from '../concepts'
+import { createStudyPackPracticeProfile, getEffectiveGenerationTargets } from '../practice'
 import { normalizeAiStudyPackDraft, AiStudyPackDraft } from './normalizer'
 
 interface GeminiPart {
@@ -85,36 +81,6 @@ export interface GenerateStudyPathWithAiOptions {
   generationAmount?: 'few' | 'medium' | 'many'
 }
 
-const asksForHeavyResource = (text: string): boolean =>
-  /\b(pdf|image|images|picture|pictures|diagram|diagrams|visual|visuals|photo|photos|screenshot|screenshots)\b/i.test(
-    text,
-  )
-
-const removeUnrequestedHeavyResources = (
-  objects: StudyObject[],
-  rawNotes: string,
-): { objects: StudyObject[]; warnings: string[] } => {
-  if (asksForHeavyResource(rawNotes)) {
-    return { objects, warnings: [] }
-  }
-
-  const filtered = objects.filter(
-    (object) =>
-      object.kind !== 'resource' ||
-      (object.resourceType !== 'pdf' && object.resourceType !== 'image'),
-  )
-
-  return {
-    objects: filtered,
-    warnings:
-      filtered.length === objects.length
-        ? []
-        : [
-            'Skipped AI-generated PDF/image resources because the source did not explicitly ask for heavy media.',
-          ],
-  }
-}
-
 const hasUsefulLessonNotes = (value: string): boolean =>
   value.trim().split(/\s+/).filter(Boolean).length >= 80
 
@@ -164,10 +130,14 @@ const formatLessonNotesForReading = (
     summary ? `## Goal\n${summary}` : '',
     overview.length > 0 ? `## Overview\n${overview.join(' ')}` : '',
     keyConcepts.length > 0
-      ? `## Key points\n${keyConcepts.map((sentence) => `- ${sentence}`).join('\n')}`
+      ? `## Key points\n${keyConcepts
+          .map((sentence) => `- ${sentence}`)
+          .join('\n')}`
       : '',
     examples.length > 0
-      ? `## Examples and usage\n${examples.map((sentence) => `- ${sentence}`).join('\n')}`
+      ? `## Examples and usage\n${examples
+          .map((sentence) => `- ${sentence}`)
+          .join('\n')}`
       : '',
     tips.length > 0
       ? `## Remember\n${tips.map((sentence) => `- ${sentence}`).join('\n')}`
@@ -178,7 +148,7 @@ const formatLessonNotesForReading = (
     .join('\n\n')
 }
 
-const studyObjectToLessonNote = (object: StudyObject): string => {
+const studyObjectToLessonNote = (object: AiStudyPackDraft['objects'][number]): string => {
   switch (object.kind) {
     case 'markdown':
       return object.markdown
@@ -221,7 +191,7 @@ const buildStudyPathLessonNotes = (
   title: string,
   summary: string,
   rawNotes: string,
-  objects: StudyObject[],
+  objects: AiStudyPackDraft['objects'],
 ): string => {
   if (hasUsefulLessonNotes(rawNotes)) {
     return formatLessonNotesForReading(title, summary, rawNotes)
@@ -245,6 +215,85 @@ export interface ExtractRawNotesWithAiOptions {
   image: File
 }
 
+const textArraySchema = { type: 'ARRAY', items: { type: 'STRING' } }
+
+const dashboardContractProperties = {
+  sourceSummary: {
+    type: 'OBJECT',
+    properties: {
+      title: { type: 'STRING' },
+      bullets: textArraySchema,
+    },
+    required: ['title', 'bullets'],
+  },
+  conceptRecap: {
+    type: 'OBJECT',
+    properties: {
+      title: { type: 'STRING' },
+      sections: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING' },
+            bullets: textArraySchema,
+            example: { type: 'STRING' },
+          },
+          required: ['title', 'bullets', 'example'],
+        },
+      },
+    },
+    required: ['title', 'sections'],
+  },
+  practice: {
+    type: 'OBJECT',
+    properties: {
+      shortAnswer: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            question: { type: 'STRING' },
+            expectedAnswer: { type: 'STRING' },
+            explanation: { type: 'STRING' },
+          },
+          required: ['question', 'expectedAnswer', 'explanation'],
+        },
+      },
+      multipleChoice: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            question: { type: 'STRING' },
+            options: textArraySchema,
+            correctOptionIndex: { type: 'NUMBER' },
+            explanation: { type: 'STRING' },
+          },
+          required: [
+            'question',
+            'options',
+            'correctOptionIndex',
+            'explanation',
+          ],
+        },
+      },
+    },
+    required: ['shortAnswer', 'multipleChoice'],
+  },
+  flashcards: {
+    type: 'ARRAY',
+    items: {
+      type: 'OBJECT',
+      properties: {
+        front: { type: 'STRING' },
+        back: { type: 'STRING' },
+      },
+      required: ['front', 'back'],
+    },
+  },
+}
+
 const objectSchema = {
   type: 'OBJECT',
   properties: {
@@ -260,62 +309,14 @@ const objectSchema = {
         'quick-syntax',
       ],
     },
-    objects: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          kind: {
-            type: 'STRING',
-            enum: [
-              'markdown',
-              'note',
-              'term',
-              'qa',
-              'quiz',
-              'reveal',
-              'comparison',
-              'sequence',
-              'reviewPrompt',
-              'code',
-              'list',
-              'table',
-            ],
-          },
-          title: { type: 'STRING' },
-          tags: { type: 'ARRAY', items: { type: 'STRING' } },
-          markdown: { type: 'STRING' },
-          body: { type: 'STRING' },
-          term: { type: 'STRING' },
-          definition: { type: 'STRING' },
-          question: { type: 'STRING' },
-          answer: { type: 'STRING' },
-          quizMode: { type: 'STRING', enum: ['multipleChoice', 'shortAnswer'] },
-          options: { type: 'ARRAY', items: { type: 'STRING' } },
-          correctIndex: { type: 'NUMBER' },
-          explanation: { type: 'STRING' },
-          prompt: { type: 'STRING' },
-          hiddenText: { type: 'STRING' },
-          columns: { type: 'ARRAY', items: { type: 'STRING' } },
-          rows: {
-            type: 'ARRAY',
-            items: { type: 'ARRAY', items: { type: 'STRING' } },
-          },
-          steps: { type: 'ARRAY', items: { type: 'STRING' } },
-          ordered: { type: 'BOOLEAN' },
-          interactiveChecklist: { type: 'BOOLEAN' },
-          checklist: { type: 'BOOLEAN' },
-          reason: { type: 'STRING' },
-          code: { type: 'STRING' },
-          language: { type: 'STRING' },
-          caption: { type: 'STRING' },
-          items: { type: 'ARRAY', items: { type: 'STRING' } },
-          headers: { type: 'ARRAY', items: { type: 'STRING' } },
-        },
-      },
-    },
+    ...dashboardContractProperties,
   },
-  required: ['objects'],
+  required: [
+    'sourceSummary',
+    'conceptRecap',
+    'practice',
+    'flashcards',
+  ],
 }
 
 const studyPathSchema = {
@@ -331,9 +332,16 @@ const studyPathSchema = {
           title: { type: 'STRING' },
           summary: { type: 'STRING' },
           rawNotes: { type: 'STRING' },
-          objects: objectSchema.properties.objects,
+          ...dashboardContractProperties,
         },
-        required: ['title', 'summary', 'objects'],
+        required: [
+          'title',
+          'summary',
+          'sourceSummary',
+          'conceptRecap',
+          'practice',
+          'flashcards',
+        ],
       },
     },
   },
@@ -515,15 +523,38 @@ Return exactly one JSON object with this shape:
 {
   "title": "Short study pack title",
   "sourceFormat": "text",
-  "objects": [
-    { "kind": "markdown", "title": "Explanation", "markdown": "..." },
-    { "kind": "quiz", "question": "...", "quizMode": "multipleChoice", "options": ["...", "...", "..."], "correctIndex": 0, "answer": "...", "explanation": "..." }
+  "sourceSummary": { "title": "Source summary", "bullets": ["..."] },
+  "conceptRecap": {
+    "title": "Concept recap",
+    "sections": [
+      { "title": "Specific concept", "bullets": ["..."], "example": "..." }
+    ]
+  },
+  "practice": {
+    "shortAnswer": [
+      { "question": "...", "expectedAnswer": "...", "explanation": "..." }
+    ],
+    "multipleChoice": [
+      { "question": "...", "options": ["...", "...", "..."], "correctOptionIndex": 0, "explanation": "..." }
+    ]
+  },
+  "flashcards": [
+    { "front": "...", "back": "..." }
   ]
 }
 
 Do not wrap the JSON in markdown fences. Do not add commentary outside JSON.
 
 Rules:
+- Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
+- Do not output "objects", "kind", "quizMode", internal block names, widget names, or any AquaMesh renderer fields. AquaMesh decides widget types.
+- Fill only sourceSummary, conceptRecap, practice.shortAnswer, practice.multipleChoice, and flashcards.
+- Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
+- Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
+- Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
+- Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?"
+- Quizzes must test application, usage, contrast, formation, exceptions, or common mistakes with a concrete expected answer. Do not ask "Which statement best explains X?", "Which statement matches the notes?", "What does X help you understand or do?", "What is the core idea behind X?", or questions about what the notes say.
+- For language-learning Study Packs, generate grammar/application questions from accepted concepts only: complete a form, choose the trigger expression, choose indicative vs subjunctive, or fix a common mistake.
 - ${
     promptMode
       ? 'Use accurate general knowledge to teach the requested topic; do not pretend the prompt is source notes.'
@@ -531,10 +562,10 @@ Rules:
   }
 - ${sourceInstruction}
 - ${pathInstruction}
-- In AI Tutor mode, include at least one markdown explanation object as the first object. Use the "markdown" field for markdown objects, not "body".
+- In AI Tutor mode, teach the topic through sourceSummary and conceptRecap before practice.
 - Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
-- Prefer useful learning widgets from the selected target types: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, code notes, tables, and review prompts.
-- For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
+- Prefer useful learning material from the selected target types, but never output widget kinds.
+- For multiple-choice questions, include 3-4 meaningful options and correctOptionIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - ${
     promptMode
@@ -560,7 +591,8 @@ ${rawNotes}`
 
 The previous response failed JSON formatting. Retry with a simpler response:
 - Return plain JSON only.
-- Use only: markdown, qa, quiz, term, list, reviewPrompt.
+- Return syntactically valid JSON with all commas and braces in place.
+- Use only the strict Study Pack fields: sourceSummary, conceptRecap, practice, flashcards.
 - Do not use markdown code fences.
 - Do not include comments, trailing commas, undefined, NaN, or extra text.`,
       },
@@ -604,20 +636,13 @@ The previous response failed JSON formatting. Retry with a simpler response:
     }
   }
 
-  const draft = normalizeAiStudyPackDraft(parsed, packId)
-  const safeDraft = removeUnrequestedHeavyResources(draft.objects, rawNotes)
-  const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
-    packId,
-    title: draft.title || title,
+  const draft = normalizeAiStudyPackDraft(parsed, packId, {
     rawNotes,
-    generationTargets,
-    generationAmount,
+    rawAiResponse: text,
   })
 
   return {
     ...draft,
-    objects: augmented.objects,
-    warnings: [...draft.warnings, ...safeDraft.warnings, ...augmented.warnings],
     title: draft.title || title,
     sourceFormat: draft.sourceFormat || ('text' as StudyPackSourceFormat),
   }
@@ -635,16 +660,16 @@ export const generateStudyPathWithAi = async ({
     generationAmount === 'few'
       ? ['Content 1', 'Content 2', 'Exercises']
       : generationAmount === 'many'
-        ? [
-            'Content 1',
-            'Content 2',
-            'Content 3',
-            'Content 4',
-            'Content 5',
-            'Summary',
-            'Exercises',
-          ]
-        : ['Content 1', 'Content 2', 'Content 3', 'Summary', 'Exercises']
+      ? [
+          'Content 1',
+          'Content 2',
+          'Content 3',
+          'Content 4',
+          'Content 5',
+          'Summary',
+          'Exercises',
+        ]
+      : ['Content 1', 'Content 2', 'Content 3', 'Summary', 'Exercises']
   const contentDashboardCount = stepNames.filter((stepName) =>
     stepName.startsWith('Content'),
   ).length
@@ -656,52 +681,100 @@ export const generateStudyPathWithAi = async ({
     'quizzes',
     'exercises',
   ])
-  const text = await callGemini(
-    apiToken,
-    model,
-    [
-      {
-        text: `Create a Study Path JSON object. A Study Path is NOT one dashboard. It is a folder containing multiple ordered dashboards/study packs.
+  const promptText = `Create a Study Path JSON object. A Study Path is NOT one dashboard. It is a folder containing multiple ordered dashboards/study packs.
 
 Return exactly this structure:
 {
   "title": "Path title",
   "folderName": "Folder name for all dashboards",
   "dashboards": [
-    { "title": "01 - Content 1", "summary": "One sentence preview", "rawNotes": "Complete lesson notes for this dashboard", "objects": [...] }
+    {
+      "title": "01 - Content 1",
+      "summary": "One sentence preview",
+      "rawNotes": "Complete lesson notes for this dashboard",
+      "sourceSummary": { "title": "Source summary", "bullets": ["..."] },
+      "conceptRecap": { "title": "Concept recap", "sections": [{ "title": "Specific concept", "bullets": ["..."], "example": "..." }] },
+      "practice": { "shortAnswer": [{ "question": "...", "expectedAnswer": "...", "explanation": "..." }], "multipleChoice": [{ "question": "...", "options": ["...", "...", "..."], "correctOptionIndex": 0, "explanation": "..." }] },
+      "flashcards": [{ "front": "...", "back": "..." }]
+    }
   ]
 }
 
 Rules:
+- Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
 - Choose a concise, topic-specific folderName for the Study Path, such as "French B1 Subjunctive" or "Calculus Derivatives". Do not use a generic folderName like "Study Path" unless the topic is truly unknown.
 - Use these ordered lessons exactly: ${stepNames.join(' -> ')}.
 - Each dashboard must be useful by itself and contain 6-12 objects.
 - Always return exactly ${stepNames.length} dashboards total.
-- This depth means ${contentDashboardCount} content dashboard${contentDashboardCount === 1 ? '' : 's'}${includesSummaryDashboard ? ', 1 summary dashboard,' : ''} and 1 exercises dashboard.
+- This depth means ${contentDashboardCount} content dashboard${
+    contentDashboardCount === 1 ? '' : 's'
+  }${
+    includesSummaryDashboard ? ', 1 summary dashboard,' : ''
+  } and 1 exercises dashboard.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
-- Start each dashboard with a markdown object containing the full teaching explanation for that lesson. Use the "markdown" field, not "body".
-- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?" or "Which statement matches the notes about <dashboard title>?".
+- For every dashboard, fill only sourceSummary, conceptRecap, practice.shortAnswer, practice.multipleChoice, and flashcards.
+- Do not output "objects", "kind", "quizMode", internal block names, widget names, or any AquaMesh renderer fields. AquaMesh decides widget types.
+- Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
+- Generate summaries, flashcards, and quizzes from structured concepts, not from first sentences, headings, copied examples, or instructions.
+- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?", "Which statement matches the notes about <dashboard title>?", "What does X help you understand or do?", or "What is the core idea behind X?".
 - Practice questions must test concepts and uses, not copied headings or answer options made obvious by the dashboard title.
-- Flashcards should ask useful conceptual prompts such as "When is the subjunctive used?" instead of "What should you remember about <copied line>?".
-- Include practice in later dashboards: quizzes, flashcards as "qa", review prompts, lists, sequences, code, or tables when relevant.
+- Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
+- Flashcards should ask useful rule-specific prompts such as "How do you form the present subjunctive for most verbs?" instead of "What should you remember about <copied line>?".
+- Include practice in later dashboards through practice.shortAnswer, practice.multipleChoice, and flashcards.
+- If a Summary dashboard is included, make it a global recap of the preceding content dashboards.
+- The final Exercises dashboard must generate real mixed practice from the preceding content dashboards, not from its own instructions.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
 - Do not create PDFs/images/resources unless the user explicitly asks for heavy media.
-- For multiple-choice quizzes, include 3-4 options, correctIndex, answer, and explanation.
+- For multiple-choice questions, include 3-4 meaningful options, correctOptionIndex, and explanation.
 - Keep content concise, beginner-friendly, and appropriate for the requested topic.
-- Aim for about ${practiceProfile.minTotal}-${practiceProfile.maxTotal} reviewable items across the whole path.
+- Aim for about ${practiceProfile.minTotal}-${
+    practiceProfile.maxTotal
+  } reviewable items across the whole path.
 
 Path title fallback: ${title}
-Folder name fallback if you cannot infer a better one: ${folderName || 'Study Path'}
+Folder name fallback if you cannot infer a better one: ${
+    folderName || 'Study Path'
+  }
 User request/topic:
-${prompt}`,
-      },
-    ],
-    studyPathSchema,
-  )
+${prompt}`
+  const fallbackPrompt = `${promptText}
 
-  const parsed = parseGeminiJson(text)
+The previous response failed JSON formatting. Retry with a simpler response:
+- Return plain JSON only.
+- Return syntactically valid JSON with all commas and braces in place.
+- Use only the strict Study Path fields: sourceSummary, conceptRecap, practice, flashcards.
+- Do not use markdown code fences.
+- Do not include comments, trailing commas, undefined, NaN, or extra text.`
+
+  let text: string
+  try {
+    text = await callGemini(
+      apiToken,
+      model,
+      [{ text: promptText }],
+      studyPathSchema,
+    )
+  } catch (error) {
+    if (!isGeminiOutputFormatError(error)) {
+      throw error
+    }
+
+    text = await callGemini(apiToken, model, [{ text: fallbackPrompt }])
+  }
+
+  let parsed: unknown
+  try {
+    parsed = parseGeminiJson(text)
+  } catch {
+    try {
+      text = await callGemini(apiToken, model, [{ text: fallbackPrompt }])
+      parsed = parseGeminiJson(text)
+    } catch {
+      throw new Error(GEMINI_OUTPUT_FORMAT_MESSAGE)
+    }
+  }
   const record =
     parsed && typeof parsed === 'object'
       ? (parsed as Record<string, unknown>)
@@ -718,7 +791,10 @@ ${prompt}`,
             return existing
           }
 
-          const titlePrefix = `${String(index + 1).padStart(2, '0')} - ${stepName}`
+          const titlePrefix = `${String(index + 1).padStart(
+            2,
+            '0',
+          )} - ${stepName}`
           const rawNotes =
             stepName === 'Summary'
               ? `# ${titlePrefix}
@@ -728,11 +804,11 @@ ${prompt}`,
 - Connect the main concepts from the path.
 - Identify weak areas before exercises.`
               : stepName === 'Exercises'
-                ? `# ${titlePrefix}
+              ? `# ${titlePrefix}
 
 ## Practice
 Use this dashboard to answer mixed exercises from the Study Path.`
-                : `# ${titlePrefix}
+              : `# ${titlePrefix}
 
 ## Goal
 Study this section of ${title}.
@@ -744,16 +820,48 @@ ${prompt}`
             title: titlePrefix,
             summary: `Generated ${stepName.toLowerCase()} dashboard.`,
             rawNotes,
-            objects: [
-              {
-                kind: 'markdown',
-                title: titlePrefix,
-                markdown: rawNotes,
-              },
-            ],
+            sourceSummary: {
+              title: `${titlePrefix} summary`,
+              bullets: [`Study this section of ${title}.`],
+            },
+            conceptRecap: {
+              title: `${titlePrefix} concept recap`,
+              sections: [
+                {
+                  title: stepName,
+                  bullets: [prompt],
+                  example: '',
+                },
+              ],
+            },
+            practice: {
+              shortAnswer: [],
+              multipleChoice: [],
+            },
+            flashcards: [],
           }
         })
   const warnings: string[] = []
+  const accumulatedContentNotes: string[] = []
+  const buildGlobalNotes = (
+    dashboardTitle: string,
+    mode: 'summary' | 'exercises',
+  ) => {
+    const source = accumulatedContentNotes.join('\n\n')
+    const concepts = extractLearningConcepts(source, title)
+    const conceptList = concepts.map(conceptSummaryItem).slice(0, 12)
+
+    return [
+      `# ${dashboardTitle}`,
+      mode === 'summary' ? '## Global recap' : '## Mixed practice source',
+      conceptList.length > 0
+        ? conceptList.map((item) => `- ${item}`).join('\n')
+        : source,
+    ]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join('\n\n')
+  }
   const dashboards = normalizedRawDashboards
     .map((item, index): AiStudyPathDashboardDraft | null => {
       const input =
@@ -778,48 +886,50 @@ ${prompt}`
           sourceFormat: 'text',
         },
         packId,
+        {
+          rawNotes: typeof input.rawNotes === 'string' ? input.rawNotes : '',
+          rawAiResponse: JSON.stringify(input, null, 2),
+        },
       )
-      const safeDraft = removeUnrequestedHeavyResources(draft.objects, prompt)
-      const lessonNotes = buildStudyPathLessonNotes(
+      const stepName = stepNames[index] || ''
+      const isSummaryDashboard = stepName === 'Summary'
+      const isExercisesDashboard = stepName === 'Exercises'
+      const generatedLessonNotes = buildStudyPathLessonNotes(
         dashboardTitle,
         dashboardSummary,
         typeof input.rawNotes === 'string' ? input.rawNotes : '',
-        safeDraft.objects,
+        draft.objects,
       )
-      const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
-        packId,
-        title: dashboardTitle,
-        rawNotes: lessonNotes,
-        generationTargets: [
-          'summaries',
-          'definitions',
-          'flashcards',
-          'quizzes',
-          'exercises',
-        ],
-        generationAmount,
-      })
+      const lessonNotes =
+        isSummaryDashboard || isExercisesDashboard
+          ? buildGlobalNotes(
+              dashboardTitle,
+              isSummaryDashboard ? 'summary' : 'exercises',
+            )
+          : generatedLessonNotes
 
-      warnings.push(
-        ...draft.warnings,
-        ...safeDraft.warnings,
-        ...augmented.warnings,
-      )
+      warnings.push(...draft.warnings)
 
-      if (augmented.objects.length === 0) {
+      if (draft.objects.length === 0) {
         warnings.push(`Skipped ${dashboardTitle}: no usable study objects.`)
         return null
       }
 
-      return {
+      const dashboard = {
         ...draft,
         title: dashboardTitle,
         summary: dashboardSummary,
         rawNotes: lessonNotes,
-        objects: augmented.objects,
+        objects: draft.objects,
         warnings: [],
         sourceFormat: 'text' as StudyPackSourceFormat,
       }
+
+      if (!isSummaryDashboard && !isExercisesDashboard) {
+        accumulatedContentNotes.push(lessonNotes)
+      }
+
+      return dashboard
     })
     .filter((dashboard): dashboard is AiStudyPathDashboardDraft =>
       Boolean(dashboard),

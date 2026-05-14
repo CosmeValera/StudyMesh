@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
   generateStudyPackWithAi,
+  generateStudyPathWithAi,
   normalizeAiStudyPackDraft,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
@@ -73,55 +74,98 @@ describe('study pack AI settings', () => {
 })
 
 describe('study pack AI normalizer', () => {
-  it('keeps grounded supported study objects and drops invalid objects', () => {
+  it('maps a strict AI contract and drops invalid nested items', () => {
     const draft = normalizeAiStudyPackDraft(
       {
         title: 'Cell Biology',
-        objects: [
-          {
-            kind: 'qa',
-            title: 'Cell theory',
-            question: 'What do cells contain?',
-            answer: 'DNA',
-          },
-          {
-            kind: 'quiz',
-            question: 'Where does photosynthesis happen?',
-            answer: 'Chloroplasts',
-            options: ['Mitochondria', 'Chloroplasts', 'Nucleus'],
-            correctIndex: 1,
-          },
-          {
-            kind: 'quiz',
-            question: 'Which molecule carries genetic information?',
-            options: ['DNA', 'Glucose', 'Water'],
-            correctIndex: 0,
-          },
-          {
-            kind: 'unsupported',
-            question: 'Skip me',
-          },
-        ],
+        sourceSummary: {
+          title: 'Cell summary',
+          bullets: ['Cells carry DNA', 'Cells carry DNA'],
+        },
+        conceptRecap: {
+          title: 'Concept recap',
+          sections: [
+            {
+              title: 'Cell structure',
+              bullets: ['Cells store genetic information in DNA.'],
+              example: 'A skin cell contains DNA.',
+            },
+          ],
+        },
+        practice: {
+          shortAnswer: [
+            {
+              question: 'How would you identify the molecule that stores inherited traits?',
+              expectedAnswer: 'Look for DNA.',
+              explanation: 'DNA carries genetic information.',
+            },
+          ],
+          multipleChoice: [
+            {
+              question: 'Which structure stores inherited information in a cell?',
+              options: ['DNA', 'Glucose', 'Water', 'DNA'],
+              correctOptionIndex: 0,
+              explanation: 'DNA carries genetic information.',
+            },
+            {
+              question: 'What does DNA help you understand?',
+              options: ['DNA', 'Glucose', 'Water'],
+              correctOptionIndex: 0,
+              explanation: 'Generic prompt should be dropped.',
+            },
+          ],
+        },
+        flashcards: [{ front: 'What stores inherited traits?', back: 'DNA' }],
       },
       'cell-biology',
     )
 
-    expect(draft.objects).toHaveLength(3)
+    expect(draft.sourceSummary).toEqual({
+      title: 'Cell summary',
+      bullets: ['Cells carry DNA'],
+    })
+    expect(draft.objects).toHaveLength(4)
     expect(draft.objects[0]).toMatchObject({
-      kind: 'qa',
-      question: 'What do cells contain?',
-      answer: 'DNA',
+      kind: 'list',
+      title: 'Cell structure',
     })
     expect(draft.objects[1]).toMatchObject({
       kind: 'quiz',
-      quizMode: 'multipleChoice',
-      correctIndex: 1,
+      quizMode: 'shortAnswer',
     })
     expect(draft.objects[2]).toMatchObject({
       kind: 'quiz',
+      quizMode: 'multipleChoice',
+      answer: 'DNA',
+      options: ['DNA', 'Glucose', 'Water'],
+    })
+    expect(draft.objects[3]).toMatchObject({
+      kind: 'qa',
+      question: 'What stores inherited traits?',
       answer: 'DNA',
     })
-    expect(draft.warnings).toEqual(['Skipped item 4: unsupported kind.'])
+    expect(draft.debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('removed duplicate options'),
+        expect.stringContaining('Dropped multipleChoice 2'),
+      ]),
+    )
+  })
+
+  it('rejects loose AI objects instead of guessing kinds', () => {
+    const draft = normalizeAiStudyPackDraft(
+      {
+        title: 'Loose',
+        objects: [{ kind: 'flashcard', front: 'A', back: 'B' }],
+      },
+      'loose',
+    )
+
+    expect(draft.objects).toEqual([])
+    expect(draft.warnings).toEqual([
+      'AI response did not match the strict Study Pack schema.',
+    ])
+    expect(draft.debugTrace?.validatedContract).toBeNull()
   })
 })
 
@@ -142,11 +186,52 @@ describe('Gemini study pack client', () => {
                   text: JSON.stringify({
                     title: 'Derivatives',
                     sourceFormat: 'text',
-                    objects: [
+                    sourceSummary: {
+                      title: 'Derivative summary',
+                      bullets: ['A derivative measures instantaneous rate of change.'],
+                    },
+                    conceptRecap: {
+                      title: 'Concept recap',
+                      sections: [
+                        {
+                          title: 'Derivative',
+                          bullets: [
+                            'Use derivatives to reason about instantaneous rates of change.',
+                          ],
+                          example: 'Velocity is the derivative of position.',
+                        },
+                      ],
+                    },
+                    practice: {
+                      shortAnswer: [
+                        {
+                          question:
+                            'How would you use a derivative to compare two changing quantities?',
+                          expectedAnswer:
+                            'Compare their instantaneous rates of change.',
+                          explanation:
+                            'A derivative describes instantaneous rate of change.',
+                        },
+                      ],
+                      multipleChoice: [
+                        {
+                          question:
+                            'Which situation is best modeled by a derivative?',
+                          options: [
+                            'Instantaneous speed',
+                            'A fixed label',
+                            'A category name',
+                          ],
+                          correctOptionIndex: 0,
+                          explanation:
+                            'Instantaneous speed is a rate of change.',
+                        },
+                      ],
+                    },
+                    flashcards: [
                       {
-                        kind: 'term',
-                        term: 'Derivative',
-                        definition: 'Instantaneous rate of change',
+                        front: 'What does a derivative measure?',
+                        back: 'Instantaneous rate of change.',
                       },
                     ],
                   }),
@@ -181,31 +266,244 @@ describe('Gemini study pack client', () => {
     ).toMatchObject({
       responseMimeType: 'application/json',
     })
+    expect(draft.sourceSummary?.bullets).toEqual([
+      'A derivative measures instantaneous rate of change.',
+    ])
     expect(draft.objects[0]).toMatchObject({
-      kind: 'term',
-      term: 'Derivative',
+      kind: 'list',
+      title: 'Derivative',
     })
-    expect(
-      draft.objects.filter((object) => object.kind === 'quiz'),
-    ).toHaveLength(6)
+    expect(draft.objects.filter((object) => object.kind === 'quiz')).toEqual([
+      expect.objectContaining({ quizMode: 'shortAnswer' }),
+      expect.objectContaining({ quizMode: 'multipleChoice' }),
+    ])
     expect(draft.objects.filter((object) => object.kind === 'qa')).toHaveLength(
-      3,
+      1,
     )
-    expect(draft.objects.length).toBeGreaterThanOrEqual(8)
     expect(
-      new Set(
-        draft.objects
-          .filter((object) => object.kind === 'quiz')
-          .map((object) => object.correctIndex),
-      ).size,
-    ).toBeGreaterThan(1)
+      draft.objects
+        .filter((object) => object.kind === 'quiz')
+        .map((object) => object.question)
+        .join(' '),
+    ).not.toContain('Which statement best explains')
     expect(fetchMock.mock.calls[0][1].body).toContain(
       'Quizzes should be 50-60% of the pack',
     )
     expect(fetchMock.mock.calls[0][1].body).toContain(
       'do not always put the correct answer first',
     )
+    expect(fetchMock.mock.calls[0][1].body).toContain('"sourceSummary"')
+    expect(fetchMock.mock.calls[0][1].body).toContain('strict valid JSON')
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'Which statement best explains X?',
+    )
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'Do not output \\"objects\\"',
+    )
+    expect(draft.debugTrace?.rawAiResponse).toContain('Derivative summary')
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('retries Study Path generation when Gemini returns malformed JSON with strict dashboards', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: '{"dashboards": [' }] } }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: 'French Past Tense',
+                      folderName: 'French Past Tense',
+                      dashboards: [
+                        {
+                          title: '01 - Content 1',
+                          summary: 'Past tense basics',
+                          rawNotes:
+                            'The passe compose is a French past tense used for completed actions. It is formed with avoir or etre plus a past participle.',
+                          sourceSummary: {
+                            title: 'Past tense basics',
+                            bullets: [
+                              'The passe compose is used for completed actions.',
+                            ],
+                          },
+                          conceptRecap: {
+                            title: 'Passe compose recap',
+                            sections: [
+                              {
+                                title: 'Passe compose formation',
+                                bullets: [
+                                  'Form it with avoir or etre plus a past participle.',
+                                ],
+                                example: 'J ai parle.',
+                              },
+                            ],
+                          },
+                          practice: {
+                            shortAnswer: [
+                              {
+                                question:
+                                  'How would you form a completed-action sentence with passe compose?',
+                                expectedAnswer:
+                                  'Use avoir or etre plus the past participle.',
+                                explanation:
+                                  'The auxiliary plus past participle forms the tense.',
+                              },
+                            ],
+                            multipleChoice: [],
+                          },
+                          flashcards: [
+                            {
+                              front: 'What does passe compose express?',
+                              back: 'Completed past actions.',
+                            },
+                          ],
+                          objects: [
+                            {
+                              kind: 'markdown',
+                              title: 'Passé composé',
+                              markdown:
+                                'The passe compose is a French past tense used for completed actions.',
+                            },
+                          ],
+                        },
+                        {
+                          title: '02 - Content 2',
+                          summary: 'Auxiliary choice',
+                          rawNotes:
+                            'Use etre with movement verbs and reflexive verbs. A common mistake is choosing avoir for those verbs.',
+                          sourceSummary: {
+                            title: 'Auxiliary choice',
+                            bullets: [
+                              'Use etre with movement and reflexive verbs.',
+                            ],
+                          },
+                          conceptRecap: {
+                            title: 'Auxiliary recap',
+                            sections: [
+                              {
+                                title: 'Etre verbs',
+                                bullets: [
+                                  'Movement and reflexive verbs use etre.',
+                                ],
+                                example: 'Elle est allee.',
+                              },
+                            ],
+                          },
+                          practice: {
+                            shortAnswer: [],
+                            multipleChoice: [
+                              {
+                                question:
+                                  'Which auxiliary should you choose for a reflexive verb?',
+                                options: ['etre', 'avoir', 'faire'],
+                                correctOptionIndex: 0,
+                                explanation:
+                                  'Reflexive verbs use etre in passe compose.',
+                              },
+                            ],
+                          },
+                          flashcards: [],
+                          concepts: [
+                            {
+                              concept: 'Auxiliary choice',
+                              definition:
+                                'French compound tenses choose an auxiliary based on verb type.',
+                              usageRule:
+                                'Use etre with movement verbs and reflexive verbs.',
+                            },
+                          ],
+                          objects: [
+                            {
+                              kind: 'markdown',
+                              title: 'Auxiliary choice',
+                              markdown:
+                                'Use etre with movement verbs and reflexive verbs.',
+                            },
+                          ],
+                        },
+                        {
+                          title: '03 - Exercises',
+                          summary: 'Mixed practice',
+                          rawNotes:
+                            'Use this dashboard to answer mixed exercises from the Study Path.',
+                          sourceSummary: {
+                            title: 'Mixed practice',
+                            bullets: ['Practice passe compose choices.'],
+                          },
+                          conceptRecap: {
+                            title: 'Mixed recap',
+                            sections: [
+                              {
+                                title: 'Auxiliary and participle',
+                                bullets: [
+                                  'Choose the auxiliary before applying the participle.',
+                                ],
+                                example: 'Nous sommes partis.',
+                              },
+                            ],
+                          },
+                          practice: {
+                            shortAnswer: [
+                              {
+                                question:
+                                  'Correct the sentence by choosing the right auxiliary: Je me ___ leve.',
+                                expectedAnswer: 'suis',
+                                explanation:
+                                  'Reflexive verbs use etre, so je me suis leve.',
+                              },
+                            ],
+                            multipleChoice: [],
+                          },
+                          flashcards: [],
+                          concepts: [],
+                          objects: [
+                            {
+                              kind: 'quiz',
+                              question:
+                                'What do the notes say about exercises?',
+                              quizMode: 'shortAnswer',
+                              answer: 'Practice',
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'French Past Tense',
+      prompt: 'Teach me passe compose',
+      folderName: '',
+      generationAmount: 'few',
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1][1].body).toContain(
+      'Return syntactically valid JSON',
+    )
+    expect(draft.dashboards[2].rawNotes).toContain('Mixed practice source')
+    expect(JSON.stringify(draft.dashboards[2].objects)).not.toContain(
+      'What do the notes say about exercises?',
+    )
   })
 
   it('stops Gemini requests after the hard timeout', async () => {

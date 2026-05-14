@@ -16,6 +16,14 @@ export {
   shuffleStudyObjectQuizOptions,
   shuffleStudyQuizOptions,
 } from './practice'
+export {
+  conceptSummaryItem,
+  extractLearningConcepts,
+  isBadConceptCandidate,
+  isLowQualityStudyObject,
+  normalizeLearningConcepts,
+} from './concepts'
+export type { LearningConcept } from './concepts'
 export type {
   GeneratedStudyPack,
   StudyCodeObject,

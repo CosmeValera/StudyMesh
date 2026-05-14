@@ -139,6 +139,10 @@ export interface StudyPack {
   sourceFormat: StudyPackSourceFormat
   objects: StudyObject[]
   warnings: string[]
+  sourceSummary?: {
+    title: string
+    bullets: string[]
+  }
 }
 
 export interface StudyPackParseOptions {

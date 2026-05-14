@@ -21,4 +21,9 @@ export type {
   GenerateStudyPathWithAiOptions,
 } from './gemini'
 export { normalizeAiStudyPackDraft } from './normalizer'
-export type { AiStudyPackDraft } from './normalizer'
+export type {
+  AiGenerationDebugTrace,
+  AiSourceSummary,
+  AiStudyPackDraft,
+  StrictAiDashboardContract,
+} from './normalizer'

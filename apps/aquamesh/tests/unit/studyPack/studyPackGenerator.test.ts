@@ -1,13 +1,143 @@
 import { describe, expect, it } from 'vitest'
 import {
+  augmentStudyPackPracticeObjects,
   createStudyPackDashboardLayout,
   createStudyPackOrchestratorWidgets,
   createStudyPackWidgets,
   createStudyPackWidgetsFromGroups,
+  extractLearningConcepts,
+  isBadConceptCandidate,
   parseStudyPack,
 } from '../../../src/studyPack'
 
 describe('study pack generator', () => {
+  it('extracts concept-first practice and blocks weak candidates', () => {
+    const source = `Goal
+Example
+The passe compose is a French past tense used for completed actions.
+It is formed with avoir or etre plus a past participle.
+Use etre with movement verbs and reflexive verbs.
+Common mistake: students often choose avoir for a movement verb that needs etre.`
+
+    const concepts = extractLearningConcepts(source, 'French Past Tense')
+    const augmented = augmentStudyPackPracticeObjects([], {
+      packId: 'french-past',
+      title: 'French Past Tense',
+      rawNotes: source,
+      generationTargets: ['quizzes', 'flashcards', 'summaries'],
+      generationAmount: 'few',
+    })
+    const serialized = JSON.stringify(augmented.objects)
+
+    expect(isBadConceptCandidate('Goal')).toBe(true)
+    expect(isBadConceptCandidate('Avoir')).toBe(true)
+    expect(concepts.map((concept) => concept.concept)).not.toEqual(
+      expect.arrayContaining(['Goal', 'Example', 'Avoir']),
+    )
+    expect(serialized).not.toContain('Which statement best explains')
+    expect(serialized).not.toContain('According to the notes')
+    expect(serialized).not.toContain('What does')
+    expect(serialized).not.toContain('core idea behind')
+    expect(augmented.objects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'quiz',
+          question: expect.stringMatching(/form|rule|mistake|choose/i),
+        }),
+        expect.objectContaining({
+          kind: 'qa',
+          question: expect.stringMatching(/form|know|mistake|use/i),
+        }),
+      ]),
+    )
+  })
+
+  it('rejects subjonctif fragments and creates concrete rule practice', () => {
+    const source = `# Le subjonctif present
+
+Au niveau B1
+Il est souvent introduit par des expressions de volonte.
+du subjonctif présent est relativement régulière pour la
+Avoir
+Être
+But
+Cause
+Conjonctions de But
+
+La formation du subjonctif présent utilise le radical de la troisième personne du pluriel du présent et les terminaisons -e, -es, -e, -ions, -iez, -ent.
+Il faut que introduit le subjonctif pour exprimer une nécessité.
+On emploie l'indicatif pour un fait certain, mais le subjonctif pour un doute ou une volonté.
+Erreur fréquente: utiliser l'indicatif après il faut que au lieu du subjonctif.`
+    const concepts = extractLearningConcepts(source, 'Le subjonctif present')
+    const augmented = augmentStudyPackPracticeObjects([], {
+      packId: 'subjonctif',
+      title: 'Le subjonctif present',
+      rawNotes: source,
+      generationTargets: ['quizzes', 'flashcards', 'summaries'],
+      generationAmount: 'medium',
+    })
+    const names = concepts.map((concept) => concept.concept)
+    const serialized = JSON.stringify(augmented.objects)
+
+    expect(isBadConceptCandidate('Au niveau B1')).toBe(true)
+    expect(isBadConceptCandidate('Il est souvent introduit...')).toBe(true)
+    expect(
+      isBadConceptCandidate(
+        'du subjonctif présent est relativement régulière pour la',
+      ),
+    ).toBe(true)
+    expect(isBadConceptCandidate('Avoir')).toBe(true)
+    expect(isBadConceptCandidate('Être')).toBe(true)
+    expect(isBadConceptCandidate('But')).toBe(true)
+    expect(isBadConceptCandidate('Cause')).toBe(true)
+    expect(isBadConceptCandidate('Conjonctions de But')).toBe(true)
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'subjonctif formation rule',
+        'Subjonctif trigger: Il faut que',
+        'subjonctif vs indicative',
+        'subjonctif common mistake',
+      ]),
+    )
+    expect(serialized).not.toContain('Au niveau B1')
+    expect(serialized).not.toContain(
+      'du subjonctif présent est relativement régulière pour la',
+    )
+    expect(serialized).not.toContain('What does')
+    expect(serialized).not.toContain('core idea behind')
+    expect(augmented.objects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'quiz',
+          question: expect.stringMatching(/form|requires|choose|mistake/i),
+        }),
+        expect.objectContaining({
+          kind: 'qa',
+          question: expect.stringMatching(/form|use|decide|mistake/i),
+        }),
+        expect.objectContaining({
+          kind: 'list',
+          items: expect.arrayContaining([
+            'Formation rules',
+            'Triggers and uses',
+            'Contrasts',
+            'Common mistakes',
+          ]),
+        }),
+      ]),
+    )
+    expect(
+      augmented.objects.filter((object) => object.kind === 'quiz'),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'quiz',
+          quizMode: expect.stringMatching(/multipleChoice|shortAnswer/),
+        }),
+      ]),
+    )
+  })
+
   it('creates widgets with study-native blocks and dashboard CustomWidget tabs', () => {
     const pack = parseStudyPack(
       `# Derivatives
@@ -150,8 +280,7 @@ A: Back
     expect(widgets.map((widget) => widget.name)).toEqual([
       `${pack.title} Source`,
       `${pack.title} Summary`,
-      `${pack.title} Quizzes`,
-      `${pack.title} Misc`,
+      `${pack.title} Review`,
     ])
     expect(JSON.stringify(widgets.slice(1))).not.toContain('"Chart"')
     expect(JSON.stringify(widgets.slice(1))).not.toContain('StudyNoteBlock')
@@ -165,7 +294,7 @@ A: Back
     })
     expect(layout.children?.[0].weight).toBe(50)
     expect(layout.children?.[1].weight).toBe(50)
-    expect(layout.children?.[1].children).toHaveLength(2)
+    expect(layout.children?.[1].children).toHaveLength(1)
   })
 
   it('does not create generated widgets when only study notes are detected', () => {
@@ -228,7 +357,7 @@ A: Back
     expect(JSON.stringify(widgets)).not.toContain('"Chart"')
   })
 
-  it('adds Study Path progress metadata and a source summary tab', () => {
+  it('adds Study Path progress metadata with a source summary tab', () => {
     const pack = parseStudyPack(
       `Quiz:: Which rule handles x^n? | Power rule | Chain rule | Product rule
 Q: When is the power rule used?
@@ -252,11 +381,13 @@ A: When differentiating x raised to a constant power.`,
     expect(widgets.map((widget) => widget.name)).toEqual([
       'Derivatives Source',
       'Derivatives Summary',
-      'Derivatives Misc',
+      'Derivatives Quizzes',
+      'Derivatives Review',
     ])
     expect(serialized).toContain('StudyPathProgressBlock')
     expect(serialized).toContain('studyPathItemId')
     expect(serialized).toContain('derivatives-path-1')
+    expect(serialized).toContain('Derivatives Summary')
   })
 
   it('can skip the source widget and use caller-provided widget groups', () => {

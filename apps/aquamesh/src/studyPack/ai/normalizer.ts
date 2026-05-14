@@ -1,243 +1,392 @@
-import { StudyObject, StudyObjectKind, StudyPackSourceFormat } from '../types'
+import { z } from 'zod'
+import { StudyObject, StudyPackSourceFormat } from '../types'
 
-type AiStudyObjectInput = Record<string, unknown>
+const normalizeSpaces = (value: string): string =>
+  value.replace(/\s+/g, ' ').trim()
+
+const asTitle = (value: string, fallback: string): string =>
+  normalizeSpaces(value) || fallback
+
+const normalizeKey = (value: string): string =>
+  normalizeSpaces(
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9]+/g, ' '),
+  )
+
+const sentenceFragments = (value: string): string[] =>
+  normalizeSpaces(value)
+    .split(/(?<=[.!?])\s+|\r?\n+/)
+    .map(normalizeSpaces)
+    .filter((fragment) => fragment.split(/\s+/).length >= 5)
+
+const genericQuestionPattern =
+  /what does .+ help you understand|core idea behind|which statement best explains|what do the notes say|according to the notes|which statement matches/i
+
+const isCopiedFromSource = (question: string, rawNotes = ''): boolean => {
+  const key = normalizeKey(question)
+  if (!key || !rawNotes.trim()) {
+    return false
+  }
+
+  return sentenceFragments(rawNotes).some((fragment) => {
+    const fragmentKey = normalizeKey(fragment)
+    return (
+      key.length >= 32 &&
+      (fragmentKey.includes(key) || key.includes(fragmentKey))
+    )
+  })
+}
+
+const isUsefulQuestion = (question: string, rawNotes = ''): boolean =>
+  question.split(/\s+/).filter(Boolean).length >= 4 &&
+  !genericQuestionPattern.test(question) &&
+  !isCopiedFromSource(question, rawNotes)
+
+const stringValue = z
+  .string()
+  .transform((value) => normalizeSpaces(value))
+  .pipe(z.string().min(1))
+
+const sourceSummarySchema = z.object({
+  title: stringValue,
+  bullets: z.array(stringValue).default([]),
+})
+
+const conceptSectionSchema = z.object({
+  title: stringValue,
+  bullets: z.array(stringValue).default([]),
+  example: z.string().transform((value) => normalizeSpaces(value)).default(''),
+})
+
+const conceptRecapSchema = z.object({
+  title: stringValue,
+  sections: z.array(conceptSectionSchema).default([]),
+})
+
+const shortAnswerSchema = z.object({
+  question: stringValue,
+  expectedAnswer: stringValue,
+  explanation: stringValue,
+})
+
+const multipleChoiceSchema = z.object({
+  question: stringValue,
+  options: z.array(stringValue),
+  correctOptionIndex: z.number().int(),
+  explanation: stringValue,
+})
+
+const flashcardSchema = z.object({
+  front: stringValue,
+  back: stringValue,
+})
+
+const strictDashboardSchema = z.object({
+  sourceSummary: sourceSummarySchema,
+  conceptRecap: conceptRecapSchema,
+  practice: z.object({
+    shortAnswer: z.array(shortAnswerSchema).default([]),
+    multipleChoice: z.array(multipleChoiceSchema).default([]),
+  }),
+  flashcards: z.array(flashcardSchema).default([]),
+})
+
+export type StrictAiDashboardContract = z.infer<typeof strictDashboardSchema>
+
+export interface AiSourceSummary {
+  title: string
+  bullets: string[]
+}
+
+export interface AiGenerationDebugTrace {
+  rawAiResponse: string
+  validatedContract: StrictAiDashboardContract | null
+  droppedOrRepairedItems: string[]
+  finalObjects: StudyObject[]
+}
 
 export interface AiStudyPackDraft {
   title?: string
   sourceFormat?: StudyPackSourceFormat
   rawNotes?: string
+  sourceSummary?: AiSourceSummary
+  strictContract?: StrictAiDashboardContract
   objects: StudyObject[]
   warnings: string[]
+  debugTrace?: AiGenerationDebugTrace
 }
 
-const validKinds: StudyObjectKind[] = [
-  'markdown',
-  'note',
-  'term',
-  'qa',
-  'quiz',
-  'reveal',
-  'comparison',
-  'sequence',
-  'reviewPrompt',
-  'code',
-  'list',
-  'table',
-  'resource',
-]
-
-const asString = (value: unknown): string =>
-  typeof value === 'string' ? value.trim() : ''
-
-const asStringArray = (value: unknown): string[] =>
-  Array.isArray(value)
-    ? value.map((item) => asString(item)).filter(Boolean)
-    : typeof value === 'string'
-    ? value
-        .split('\n')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : []
-
-const asRows = (value: unknown): string[][] =>
-  Array.isArray(value)
-    ? value
-        .map((row) =>
-          Array.isArray(row)
-            ? row.map((cell) => String(cell).trim())
-            : [String(row).trim()],
-        )
-        .filter((row) => row.some(Boolean))
-    : []
-
-const asBoolean = (value: unknown, fallback: boolean): boolean =>
-  typeof value === 'boolean' ? value : fallback
+export interface NormalizeAiStudyPackDraftOptions {
+  rawNotes?: string
+  rawAiResponse?: string
+}
 
 const createBase = (
-  input: AiStudyObjectInput,
-  kind: StudyObjectKind,
-  index: number,
   packId: string,
+  suffix: string,
+  index: number,
+  title: string,
 ) => ({
-  id: asString(input.id) || `${packId}-${kind}-${index + 1}`,
-  kind,
-  title: asString(input.title) || undefined,
-  sourceLine: Number(input.sourceLine) || index + 1,
-  tags: asStringArray(input.tags),
+  id: `${packId}-${suffix}-${index + 1}`,
+  title,
+  sourceLine: index + 1,
+  tags: ['study-pack', 'ai-generated'],
 })
+
+const dedupe = (values: string[]): string[] => {
+  const seen = new Set<string>()
+
+  return values.filter((value) => {
+    const key = normalizeKey(value)
+    if (!key || seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
+const normalizeMultipleChoice = (
+  item: z.infer<typeof multipleChoiceSchema>,
+  index: number,
+  rawNotes: string,
+  events: string[],
+): z.infer<typeof multipleChoiceSchema> | null => {
+  if (!isUsefulQuestion(item.question, rawNotes)) {
+    events.push(`Dropped multipleChoice ${index + 1}: weak or copied question.`)
+    return null
+  }
+
+  const options = dedupe(item.options)
+  if (options.length !== item.options.length) {
+    events.push(`Repaired multipleChoice ${index + 1}: removed duplicate options.`)
+  }
+
+  if (options.length < 3 || options.length > 4) {
+    events.push(
+      `Dropped multipleChoice ${index + 1}: expected 3-4 unique options.`,
+    )
+    return null
+  }
+
+  const originalCorrect = item.options[item.correctOptionIndex]
+  const correctOptionIndex = options.findIndex(
+    (option) => normalizeKey(option) === normalizeKey(originalCorrect || ''),
+  )
+  if (correctOptionIndex < 0) {
+    events.push(
+      `Dropped multipleChoice ${index + 1}: correct option was missing after repair.`,
+    )
+    return null
+  }
+
+  return { ...item, options, correctOptionIndex }
+}
+
+const normalizeStrictContract = (
+  contract: StrictAiDashboardContract,
+  rawNotes: string,
+): { contract: StrictAiDashboardContract; events: string[] } => {
+  const events: string[] = []
+  const sourceSummary = {
+    ...contract.sourceSummary,
+    bullets: dedupe(contract.sourceSummary.bullets).slice(0, 8),
+  }
+  if (sourceSummary.bullets.length !== contract.sourceSummary.bullets.length) {
+    events.push('Repaired sourceSummary: removed empty or duplicate bullets.')
+  }
+
+  const conceptSections = contract.conceptRecap.sections
+    .map((section, index) => {
+      const bullets = dedupe(section.bullets).slice(0, 8)
+      if (bullets.length === 0 && !section.example) {
+        events.push(`Dropped conceptRecap section ${index + 1}: no usable content.`)
+        return null
+      }
+
+      if (bullets.length !== section.bullets.length) {
+        events.push(
+          `Repaired conceptRecap section ${index + 1}: removed duplicate bullets.`,
+        )
+      }
+
+      return { ...section, bullets }
+    })
+    .filter((section): section is z.infer<typeof conceptSectionSchema> =>
+      Boolean(section),
+    )
+
+  const shortAnswer = contract.practice.shortAnswer.filter((item, index) => {
+    if (!isUsefulQuestion(item.question, rawNotes)) {
+      events.push(`Dropped shortAnswer ${index + 1}: weak or copied question.`)
+      return false
+    }
+
+    return true
+  })
+  const multipleChoice = contract.practice.multipleChoice
+    .map((item, index) =>
+      normalizeMultipleChoice(item, index, rawNotes, events),
+    )
+    .filter(
+      (item): item is z.infer<typeof multipleChoiceSchema> => Boolean(item),
+    )
+  const flashcards = contract.flashcards.filter((item, index) => {
+    if (
+      genericQuestionPattern.test(item.front) ||
+      normalizeKey(item.front) === normalizeKey(item.back)
+    ) {
+      events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
+      return false
+    }
+
+    return true
+  })
+
+  return {
+    contract: {
+      sourceSummary,
+      conceptRecap: {
+        ...contract.conceptRecap,
+        sections: conceptSections,
+      },
+      practice: { shortAnswer, multipleChoice },
+      flashcards,
+    },
+    events,
+  }
+}
+
+export const mapStrictContractToStudyObjects = (
+  contract: StrictAiDashboardContract,
+  packId: string,
+): StudyObject[] => {
+  const recapObjects: StudyObject[] = contract.conceptRecap.sections.map(
+    (section, index) => ({
+      ...createBase(packId, 'concept-recap', index, section.title),
+      kind: 'list' as const,
+      items: [
+        ...section.bullets,
+        ...(section.example ? [`Example: ${section.example}`] : []),
+      ],
+      ordered: false,
+      checklist: false,
+    }),
+  )
+  const shortAnswerObjects: StudyObject[] = contract.practice.shortAnswer.map(
+    (item, index) => ({
+      ...createBase(packId, 'short-answer', index, `Practice ${index + 1}`),
+      kind: 'quiz' as const,
+      quizMode: 'shortAnswer' as const,
+      question: item.question,
+      options: [],
+      correctIndex: 0,
+      answer: item.expectedAnswer,
+      explanation: item.explanation,
+    }),
+  )
+  const multipleChoiceObjects: StudyObject[] =
+    contract.practice.multipleChoice.map((item, index) => ({
+      ...createBase(
+        packId,
+        'multiple-choice',
+        index,
+        `Multiple choice ${index + 1}`,
+      ),
+      kind: 'quiz' as const,
+      quizMode: 'multipleChoice' as const,
+      question: item.question,
+      options: item.options,
+      correctIndex: item.correctOptionIndex,
+      answer: item.options[item.correctOptionIndex],
+      explanation: item.explanation,
+    }))
+  const flashcardObjects: StudyObject[] = contract.flashcards.map(
+    (item, index) => ({
+      ...createBase(packId, 'flashcard', index, `Flashcard ${index + 1}`),
+      kind: 'qa' as const,
+      question: item.front,
+      answer: item.back,
+    }),
+  )
+
+  return [
+    ...recapObjects,
+    ...shortAnswerObjects,
+    ...multipleChoiceObjects,
+    ...flashcardObjects,
+  ]
+}
 
 export const normalizeAiStudyPackDraft = (
   value: unknown,
   packId: string,
+  options: NormalizeAiStudyPackDraftOptions = {},
 ): AiStudyPackDraft => {
   const warnings: string[] = []
   const record =
     value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
-  const inputObjects = Array.isArray(record.objects) ? record.objects : []
-  const objects = inputObjects
-    .map((item, index): StudyObject | null => {
-      const input =
-        item && typeof item === 'object' ? (item as AiStudyObjectInput) : {}
-      const kind = asString(input.kind) as StudyObjectKind
-      if (!validKinds.includes(kind)) {
-        warnings.push(`Skipped item ${index + 1}: unsupported kind.`)
-        return null
-      }
+  const title =
+    typeof record.title === 'string' ? normalizeSpaces(record.title) : undefined
+  const sourceFormat =
+    typeof record.sourceFormat === 'string'
+      ? (record.sourceFormat as StudyPackSourceFormat)
+      : undefined
+  const rawNotes =
+    typeof record.rawNotes === 'string' ? normalizeSpaces(record.rawNotes) : ''
+  const rawAiResponse = options.rawAiResponse || JSON.stringify(value, null, 2)
+  const parsed = strictDashboardSchema.safeParse(record)
 
-      const base = createBase(input, kind, index, packId)
+  if (!parsed.success) {
+    const events = parsed.error.issues.map(
+      (issue) =>
+        `Invalid strict contract at ${issue.path.join('.') || 'root'}: ${
+          issue.message
+        }`,
+    )
+    warnings.push('AI response did not match the strict Study Pack schema.')
 
-      if (kind === 'markdown') {
-        const markdown = asString(input.markdown)
-        return markdown ? { ...base, kind, markdown } : null
-      }
+    return {
+      title,
+      sourceFormat,
+      rawNotes,
+      objects: [],
+      warnings,
+      debugTrace: {
+        rawAiResponse,
+        validatedContract: null,
+        droppedOrRepairedItems: events,
+        finalObjects: [],
+      },
+    }
+  }
 
-      if (kind === 'note') {
-        const body = asString(input.body)
-        return body ? { ...base, kind, body } : null
-      }
-
-      if (kind === 'term') {
-        const term = asString(input.term)
-        const definition = asString(input.definition)
-        return term && definition ? { ...base, kind, term, definition } : null
-      }
-
-      if (kind === 'qa') {
-        const question = asString(input.question)
-        const answer = asString(input.answer)
-        return question && answer ? { ...base, kind, question, answer } : null
-      }
-
-      if (kind === 'quiz') {
-        const question = asString(input.question)
-        const options = asStringArray(input.options)
-        const correctIndex = Math.max(
-          0,
-          Math.min(options.length - 1, Number(input.correctIndex) || 0),
-        )
-        const answer = asString(input.answer) || options[correctIndex] || ''
-        return question && answer
-          ? {
-              ...base,
-              kind,
-              quizMode:
-                input.quizMode === 'multipleChoice' || options.length >= 2
-                  ? 'multipleChoice'
-                  : 'shortAnswer',
-              question,
-              options,
-              correctIndex,
-              answer,
-              explanation: asString(input.explanation),
-            }
-          : null
-      }
-
-      if (kind === 'reveal') {
-        const prompt = asString(input.prompt)
-        const hiddenText = asString(input.hiddenText)
-        return prompt && hiddenText
-          ? { ...base, kind, prompt, hiddenText }
-          : null
-      }
-
-      if (kind === 'comparison') {
-        const columns = asStringArray(input.columns)
-        const rows = asRows(input.rows)
-        return columns.length > 0 && rows.length > 0
-          ? { ...base, kind, columns, rows }
-          : null
-      }
-
-      if (kind === 'sequence') {
-        const steps = asStringArray(input.steps)
-        return steps.length > 0
-          ? {
-              ...base,
-              kind,
-              steps,
-              ordered: asBoolean(input.ordered, true),
-              interactiveChecklist: asBoolean(
-                input.interactiveChecklist,
-                false,
-              ),
-            }
-          : null
-      }
-
-      if (kind === 'reviewPrompt') {
-        const prompt = asString(input.prompt)
-        return prompt
-          ? {
-              ...base,
-              kind,
-              prompt,
-              reason: asString(input.reason),
-              status: 'needsReview',
-            }
-          : null
-      }
-
-      if (kind === 'code') {
-        const code = asString(input.code)
-        return code
-          ? {
-              ...base,
-              kind,
-              code,
-              language: asString(input.language) || 'text',
-              caption: asString(input.caption),
-            }
-          : null
-      }
-
-      if (kind === 'list') {
-        const items = asStringArray(input.items)
-        return items.length > 0
-          ? {
-              ...base,
-              kind,
-              items,
-              ordered: asBoolean(input.ordered, false),
-              checklist: asBoolean(input.checklist, false),
-            }
-          : null
-      }
-
-      if (kind === 'table') {
-        const headers = asStringArray(input.headers)
-        const rows = asRows(input.rows)
-        return headers.length > 0 && rows.length > 0
-          ? { ...base, kind, headers, rows }
-          : null
-      }
-
-      if (kind === 'resource') {
-        const url = asString(input.url)
-        const label = asString(input.label)
-        return url && label
-          ? {
-              ...base,
-              kind,
-              url,
-              label,
-              resourceType:
-                input.resourceType === 'image' || input.resourceType === 'pdf'
-                  ? input.resourceType
-                  : 'link',
-            }
-          : null
-      }
-
-      return null
-    })
-    .filter((object): object is StudyObject => Boolean(object))
+  const { contract, events } = normalizeStrictContract(
+    parsed.data,
+    options.rawNotes || rawNotes,
+  )
+  const objects = mapStrictContractToStudyObjects(contract, packId)
 
   return {
-    title: asString(record.title) || undefined,
-    sourceFormat: asString(record.sourceFormat) as StudyPackSourceFormat,
-    rawNotes: asString(record.rawNotes) || undefined,
+    title,
+    sourceFormat,
+    rawNotes,
+    sourceSummary: {
+      title: asTitle(contract.sourceSummary.title, 'Source summary'),
+      bullets: contract.sourceSummary.bullets,
+    },
+    strictContract: contract,
     objects,
     warnings,
+    debugTrace: {
+      rawAiResponse,
+      validatedContract: contract,
+      droppedOrRepairedItems: events,
+      finalObjects: objects,
+    },
   }
 }

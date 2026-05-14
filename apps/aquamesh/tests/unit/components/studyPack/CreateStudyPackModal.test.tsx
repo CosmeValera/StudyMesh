@@ -143,6 +143,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     vi.mocked(generateStudyPackWithAi).mockResolvedValue({
       title: 'AI Study Pack',
       sourceFormat: 'text',
+      concepts: [],
       objects: [
         {
           id: 'ai-quiz-1',

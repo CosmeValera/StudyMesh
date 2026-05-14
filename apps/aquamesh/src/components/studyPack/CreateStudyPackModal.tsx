@@ -39,6 +39,8 @@ import {
 } from '../../studyPack'
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import {
+  AiGenerationDebugTrace,
+  AiSourceSummary,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
   resolveStudyPackAiCredentials,
@@ -430,6 +432,9 @@ const createGeneratedSourceNotes = (
   }`
 }
 
+const formatDebugValue = (value: unknown): string =>
+  typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
     return null
@@ -597,6 +602,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [packTitle, setPackTitle] = useState('Study Pack')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
+  const [aiSourceSummary, setAiSourceSummary] =
+    useState<AiSourceSummary | null>(null)
+  const [aiDebugTrace, setAiDebugTrace] =
+    useState<AiGenerationDebugTrace | null>(null)
   const [includeSourceWidget, setIncludeSourceWidget] = useState(true)
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('orchestrator')
@@ -656,6 +665,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setPackTitle('Study Pack')
     setReviewItems([])
     setWidgetGroups([])
+    setAiSourceSummary(null)
+    setAiDebugTrace(null)
     setIncludeSourceWidget(true)
     setLayoutMode('orchestrator')
     setGenerationTargets([
@@ -722,6 +733,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setPackTitle(parsed.title)
     setSourceFormat(parsed.sourceFormat)
     setReviewItems(reviewableItems)
+    setAiSourceSummary(null)
+    setAiDebugTrace(null)
     setWidgetGroups(
       learningOutputMode === 'studyPath'
         ? createStudyPathPreviewGroups(
@@ -781,6 +794,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setPackTitle(nextTitle)
       setSourceFormat(draft.sourceFormat || 'text')
       setReviewItems(reviewableItems)
+      setAiSourceSummary(draft.sourceSummary || null)
+      setAiDebugTrace(draft.debugTrace || null)
       setWidgetGroups(
         learningOutputMode === 'studyPath'
           ? createStudyPathPreviewGroups(
@@ -1078,6 +1093,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       sourceFormat,
       objects,
       warnings: [],
+      sourceSummary: aiSourceSummary || undefined,
     }
     const widgets = createStudyPackOrchestratorWidgets(pack, {
       includeSourceWidget,
@@ -1776,6 +1792,60 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 </Stack>
               </Paper>
             </Stack>
+            {aiDebugTrace && (
+              <Paper
+                component="details"
+                elevation={0}
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  bgcolor: 'background.default',
+                }}
+              >
+                <Typography component="summary" variant="subtitle2">
+                  AI generation debug
+                </Typography>
+                <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                  {[
+                    ['Raw AI response', aiDebugTrace.rawAiResponse],
+                    [
+                      'Validated strict contract',
+                      aiDebugTrace.validatedContract,
+                    ],
+                    [
+                      'Dropped or repaired items',
+                      aiDebugTrace.droppedOrRepairedItems,
+                    ],
+                    ['Final StudyObject mapping', aiDebugTrace.finalObjects],
+                  ].map(([label, value]) => (
+                    <Box key={String(label)}>
+                      <Typography variant="caption" fontWeight={700}>
+                        {String(label)}
+                      </Typography>
+                      <Box
+                        component="pre"
+                        sx={{
+                          m: 0,
+                          mt: 0.5,
+                          p: 1,
+                          maxHeight: 180,
+                          overflow: 'auto',
+                          bgcolor: 'background.paper',
+                          border: 1,
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          fontSize: 12,
+                          whiteSpace: 'pre-wrap',
+                        }}
+                      >
+                        {formatDebugValue(value)}
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+              </Paper>
+            )}
           </Stack>
         )}
       </DialogContent>
