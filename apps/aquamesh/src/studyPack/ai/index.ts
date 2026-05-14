@@ -8,10 +8,17 @@ export {
   saveStudyPackAiSettings,
 } from './settings'
 export type { StudyPackAiSettings } from './settings'
-export { extractRawNotesWithAi, generateStudyPackWithAi } from './gemini'
+export {
+  extractRawNotesWithAi,
+  generateStudyPackWithAi,
+  generateStudyPathWithAi,
+} from './gemini'
 export type {
+  AiStudyPathDashboardDraft,
+  AiStudyPathDraft,
   ExtractRawNotesWithAiOptions,
   GenerateStudyPackWithAiOptions,
+  GenerateStudyPathWithAiOptions,
 } from './gemini'
 export { normalizeAiStudyPackDraft } from './normalizer'
 export type { AiStudyPackDraft } from './normalizer'
