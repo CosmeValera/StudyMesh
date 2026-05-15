@@ -138,14 +138,16 @@ describe('study pack AI normalizer', () => {
         practice: {
           shortAnswer: [
             {
-              question: 'How would you identify the molecule that stores inherited traits?',
+              question:
+                'How would you identify the molecule that stores inherited traits?',
               expectedAnswer: 'Look for DNA.',
               explanation: 'DNA carries genetic information.',
             },
           ],
           multipleChoice: [
             {
-              question: 'Which structure stores inherited information in a cell?',
+              question:
+                'Which structure stores inherited information in a cell?',
               options: ['DNA', 'Glucose', 'Water', 'DNA'],
               correctOptionIndex: 0,
               explanation: 'DNA carries genetic information.',
@@ -340,7 +342,10 @@ describe('Gemini study pack client', () => {
                     dashboards: Array.from(
                       { length: dashboardCount },
                       (_value, index) =>
-                        makeStrictPathDashboard(index + 1, `Lesson ${index + 1}`),
+                        makeStrictPathDashboard(
+                          index + 1,
+                          `Lesson ${index + 1}`,
+                        ),
                     ),
                   }),
                 },
@@ -354,6 +359,124 @@ describe('Gemini study pack client', () => {
 
     return fetchMock
   }
+
+  const mockSparseStudyPathResponse = (dashboardCount: number) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    title: 'Sparse Study Path',
+                    folderName: 'Sparse Study Path',
+                    dashboards: Array.from(
+                      { length: dashboardCount },
+                      (_value, index) => ({
+                        title: `${String(index + 1).padStart(2, '0')} - Sparse ${index + 1}`,
+                        summary: `Sparse dashboard ${index + 1}`,
+                        rawNotes: `Sparse notes ${index + 1} explain one usable idea with enough context for a Study Path dashboard.`,
+                        sourceSummary: {
+                          title: `Sparse summary ${index + 1}`,
+                          bullets: [
+                            `Sparse source summary bullet ${index + 1}.`,
+                          ],
+                        },
+                      }),
+                    ),
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    return fetchMock
+  }
+
+  const makeRichPathDashboard = (index: number, label: string) => ({
+    title: `${String(index).padStart(2, '0')} - ${label}`,
+    summary: `${label} preview`,
+    rawNotes: `${label} teaches a specific rule with clear examples, contrasts, and common mistakes. Students should apply the rule in new contexts and explain why the answer works.`,
+    sourceSummary: {
+      title: `${label} source summary`,
+      bullets: [
+        `${label} introduces a concrete learning rule.`,
+        `${label} shows how the rule changes in context.`,
+        `${label} highlights a common mistake to avoid.`,
+      ],
+    },
+    conceptRecap: {
+      title: `${label} concept recap`,
+      sections: [
+        {
+          title: `${label} rule`,
+          bullets: [`Use ${label.toLowerCase()} when the context requires it.`],
+          example: `${label} example one.`,
+        },
+        {
+          title: `${label} contrast`,
+          bullets: [`Compare ${label.toLowerCase()} with a near miss.`],
+          example: `${label} example two.`,
+        },
+      ],
+    },
+    practice: {
+      shortAnswer: [
+        {
+          question: `How would you apply ${label.toLowerCase()} in a new context?`,
+          expectedAnswer: `Use the ${label.toLowerCase()} rule and explain the trigger.`,
+          explanation: `${label} short-answer practice checks transfer.`,
+        },
+        {
+          question: `What common mistake should you avoid with ${label.toLowerCase()}?`,
+          expectedAnswer: `Do not apply the rule when the trigger is absent.`,
+          explanation: `${label} mistake practice checks contrast.`,
+        },
+      ],
+      multipleChoice: [
+        {
+          question: `Which option correctly applies ${label.toLowerCase()}?`,
+          options: [
+            `${label} correct application`,
+            `${label} copied heading`,
+            `${label} unrelated fact`,
+          ],
+          correctOptionIndex: 0,
+          explanation: `${label} correct application uses the rule.`,
+        },
+        {
+          question: `Which option avoids the common ${label.toLowerCase()} mistake?`,
+          options: [
+            `${label} overgeneralized answer`,
+            `${label} careful contrast`,
+            `${label} unrelated answer`,
+          ],
+          correctOptionIndex: 1,
+          explanation: `${label} careful contrast avoids the mistake.`,
+        },
+      ],
+    },
+    flashcards: [
+      {
+        front: `What is the main ${label.toLowerCase()} rule?`,
+        back: `Apply ${label.toLowerCase()} only when the trigger is present.`,
+      },
+      {
+        front: `What contrast matters for ${label.toLowerCase()}?`,
+        back: `Check whether the similar case lacks the trigger.`,
+      },
+      {
+        front: `What mistake should ${label.toLowerCase()} practice prevent?`,
+        back: `Avoid copying headings instead of applying the rule.`,
+      },
+    ],
+  })
 
   it('requests structured JSON and normalizes generated study objects', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -369,7 +492,9 @@ describe('Gemini study pack client', () => {
                     sourceFormat: 'text',
                     sourceSummary: {
                       title: 'Derivative summary',
-                      bullets: ['A derivative measures instantaneous rate of change.'],
+                      bullets: [
+                        'A derivative measures instantaneous rate of change.',
+                      ],
                     },
                     conceptRecap: {
                       title: 'Concept recap',
@@ -684,9 +809,9 @@ describe('Gemini study pack client', () => {
     expect(fetchMock.mock.calls[0][1].body).toContain(
       '1: normal, 2: normal, 3: exercises',
     )
-    expect(draft.dashboards.map((dashboard) => dashboard.dashboardRole)).toEqual(
-      ['normal', 'normal', 'exercises'],
-    )
+    expect(
+      draft.dashboards.map((dashboard) => dashboard.dashboardRole),
+    ).toEqual(['normal', 'normal', 'exercises'])
     expect(draft.dashboards[2].rawNotes).toContain('Mixed practice source')
     expect(JSON.stringify(draft.dashboards[2].objects)).not.toContain(
       'What do the notes say about exercises?',
@@ -694,6 +819,205 @@ describe('Gemini study pack client', () => {
     expect(draft.dashboards[2].objects).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ kind: 'list' })]),
     )
+  })
+
+  it('keeps a Study Path dashboard with only rawNotes and sourceSummary', async () => {
+    mockSparseStudyPathResponse(3)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'Sparse Study Path',
+      prompt: 'Teach sparse material',
+      folderName: '',
+      generationAmount: 'few',
+    })
+
+    expect(draft.dashboards).toHaveLength(3)
+    expect(draft.dashboards[0]).toMatchObject({
+      title: '01 - Sparse 1',
+      dashboardRole: 'normal',
+    })
+    expect(draft.dashboards[0].objects).toEqual([
+      expect.objectContaining({
+        kind: 'list',
+        items: ['Sparse source summary bullet 1.'],
+      }),
+    ])
+    expect(draft.dashboards[0].debugTrace?.finalObjects).toEqual(
+      draft.dashboards[0].objects,
+    )
+  })
+
+  it('repairs source-summary-only normal Study Path dashboards before fallback', async () => {
+    const sparseDashboards = Array.from({ length: 5 }, (_value, index) => ({
+      title: `${String(index + 1).padStart(2, '0')} - Sparse ${index + 1}`,
+      summary: `Sparse dashboard ${index + 1}`,
+      rawNotes: `Sparse notes ${index + 1} explain a rich rule with examples and mistakes that can support practice and flashcards.`,
+      sourceSummary: {
+        title: `Sparse summary ${index + 1}`,
+        bullets: [`Sparse source summary bullet ${index + 1}.`],
+      },
+    }))
+    const repairedDashboards = Array.from({ length: 5 }, (_value, index) =>
+      makeRichPathDashboard(index + 1, `Lesson ${index + 1}`),
+    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: 'Repaired Path',
+                      folderName: 'Repaired Path',
+                      dashboards: sparseDashboards,
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: 'Repaired Path',
+                      folderName: 'Repaired Path',
+                      dashboards: repairedDashboards,
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'Sparse Study Path',
+      prompt: 'Teach sparse material',
+      folderName: '',
+      generationAmount: 'medium',
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'sourceSummary, conceptRecap, practice, and flashcards are mandatory',
+    )
+    expect(fetchMock.mock.calls[1][1].body).toContain('Original JSON')
+    expect(fetchMock.mock.calls[1][1].body).toContain(
+      'Preserve the exact dashboard count, order, titles, summaries, and rawNotes',
+    )
+    expect(draft.dashboards).toHaveLength(5)
+    expect(
+      draft.dashboards.slice(0, 3).map((dashboard) => dashboard.objects.length),
+    ).toEqual([9, 9, 9])
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        'AI provided sourceSummary only before repair.',
+        'AI missing normal-dashboard practice/flashcards before repair.',
+        'Repair retry used for incomplete normal dashboard.',
+      ]),
+    )
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('Fallback used')]),
+    )
+  })
+
+  it.each([
+    ['few' as const, 3],
+    ['medium' as const, 5],
+    ['many' as const, 7],
+  ])(
+    'preserves %s Study Path dashboard count with sparse usable dashboards',
+    async (generationAmount, expectedCount) => {
+      mockSparseStudyPathResponse(expectedCount)
+
+      const draft = await generateStudyPathWithAi({
+        apiToken: 'test-token',
+        model: 'gemini-test',
+        title: 'Sparse Study Path',
+        prompt: 'Teach sparse material',
+        folderName: '',
+        generationAmount,
+      })
+
+      expect(draft.dashboards).toHaveLength(expectedCount)
+      expect(draft.dashboards.map((dashboard) => dashboard.title)).toEqual(
+        Array.from(
+          { length: expectedCount },
+          (_value, index) =>
+            `${String(index + 1).padStart(2, '0')} - Sparse ${index + 1}`,
+        ),
+      )
+      expect(
+        draft.dashboards.every((dashboard) => dashboard.objects.length > 0),
+      ).toBe(true)
+    },
+  )
+
+  it('drops only completely unusable Study Path dashboard entries', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    title: 'Sparse Study Path',
+                    folderName: 'Sparse Study Path',
+                    dashboards: [
+                      {},
+                      {
+                        title: '02 - Usable',
+                        summary: 'Usable sparse dashboard',
+                        rawNotes:
+                          'Usable notes explain one idea well enough to preserve the dashboard.',
+                        sourceSummary: {
+                          title: 'Usable summary',
+                          bullets: ['Keep this dashboard.'],
+                        },
+                      },
+                      {},
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'Sparse Study Path',
+      prompt: 'Teach sparse material',
+      folderName: '',
+      generationAmount: 'few',
+    })
+
+    expect(draft.dashboards).toHaveLength(1)
+    expect(draft.dashboards[0].title).toBe('02 - Usable')
   })
 
   it('filters balanced Study Path final mappings by dashboard role', async () => {
@@ -711,17 +1035,25 @@ describe('Gemini study pack client', () => {
     const exercises = draft.dashboards[4]
 
     expect(summary.dashboardRole).toBe('summary')
-    expect(summary.objects.filter((object) => object.kind === 'quiz')).toHaveLength(0)
-    expect(summary.objects.filter((object) => object.kind === 'qa')).toHaveLength(0)
-    expect(summary.debugTrace?.finalObjects).toEqual(summary.objects)
     expect(
-      JSON.stringify(summary.debugTrace?.rawDashboardInput),
-    ).toContain('Use the lesson 4 rule.')
+      summary.objects.filter((object) => object.kind === 'quiz'),
+    ).toHaveLength(0)
+    expect(
+      summary.objects.filter((object) => object.kind === 'qa'),
+    ).toHaveLength(0)
+    expect(summary.debugTrace?.finalObjects).toEqual(summary.objects)
+    expect(JSON.stringify(summary.debugTrace?.rawDashboardInput)).toContain(
+      'Use the lesson 4 rule.',
+    )
     expect(
       JSON.stringify(summary.debugTrace?.roleSanitizedInput),
     ).not.toContain('Use the lesson 4 rule.')
-    expect(summary.debugTrace?.validatedContract?.practice.shortAnswer).toHaveLength(0)
-    expect(summary.debugTrace?.roleFilteredContract?.practice.shortAnswer).toHaveLength(0)
+    expect(
+      summary.debugTrace?.validatedContract?.practice.shortAnswer,
+    ).toHaveLength(0)
+    expect(
+      summary.debugTrace?.roleFilteredContract?.practice.shortAnswer,
+    ).toHaveLength(0)
 
     expect(exercises.dashboardRole).toBe('exercises')
     expect(
@@ -730,14 +1062,18 @@ describe('Gemini study pack client', () => {
       ),
     ).toHaveLength(0)
     expect(exercises.debugTrace?.finalObjects).toEqual(exercises.objects)
-    expect(
-      JSON.stringify(exercises.debugTrace?.rawDashboardInput),
-    ).toContain('conceptRecap')
+    expect(JSON.stringify(exercises.debugTrace?.rawDashboardInput)).toContain(
+      'conceptRecap',
+    )
     expect(
       JSON.stringify(exercises.debugTrace?.roleSanitizedInput),
     ).not.toContain('concept recap')
-    expect(exercises.debugTrace?.validatedContract?.conceptRecap.sections).toHaveLength(0)
-    expect(exercises.debugTrace?.roleFilteredContract?.conceptRecap.sections).toHaveLength(0)
+    expect(
+      exercises.debugTrace?.validatedContract?.conceptRecap.sections,
+    ).toHaveLength(0)
+    expect(
+      exercises.debugTrace?.roleFilteredContract?.conceptRecap.sections,
+    ).toHaveLength(0)
   })
 
   it('filters extended Study Path summary and exercises final mappings', async () => {
