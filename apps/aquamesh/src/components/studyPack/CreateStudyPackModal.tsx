@@ -43,7 +43,9 @@ import {
   AiSourceSummary,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
+  readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
+  StudyPackAiProvider,
 } from '../../studyPack/ai'
 
 type ReviewType =
@@ -57,7 +59,6 @@ type ReviewType =
   | 'reviewPrompt'
   | 'ignore'
 type SourceInputType = 'text' | 'image'
-type StudyPackCreationMode = 'basic' | 'ai'
 type GenerationAmount = 'few' | 'medium' | 'many'
 type StudyTaskMode = 'importNotes' | 'aiPrompt'
 type LearningOutputMode = 'studyPack' | 'studyPath'
@@ -90,14 +91,6 @@ const sourceOptions: Array<{
 }> = [
   { label: 'Text notes / files', value: 'text' },
   { label: 'Image', value: 'image' },
-]
-
-const creationModeOptions: Array<{
-  label: string
-  value: StudyPackCreationMode
-}> = [
-  { label: 'AI', value: 'ai' },
-  { label: 'Basic fallback', value: 'basic' },
 ]
 
 const studyTaskModeOptions: Array<{
@@ -153,6 +146,31 @@ const generationAmountOptions: Array<{
   { label: 'Medium', value: 'medium', helper: '11 target, 8 minimum' },
   { label: 'Many', value: 'many', helper: '18 target, 14 minimum' },
 ]
+
+const providerLabels: Record<StudyPackAiProvider, string> = {
+  basic: 'Basic fallback',
+  local: 'Google Local AI',
+  gemini: 'Own Gemini API token',
+  hosted: 'Hosted AI tokens',
+}
+
+const getProviderWorkDescription = (
+  provider: StudyPackAiProvider,
+): string => {
+  if (provider === 'local') {
+    return 'AquaMesh is asking Chrome Local AI for a small structured response. The local model can take a few minutes, especially the first time.'
+  }
+
+  if (provider === 'gemini') {
+    return 'AquaMesh is sending your notes to Gemini with your API token, waiting for a structured response, then converting it into editable study materials.'
+  }
+
+  if (provider === 'hosted') {
+    return 'Hosted AI is not configured yet.'
+  }
+
+  return 'AquaMesh is using local parsing and grounded practice generation without AI API calls.'
+}
 
 const supportedImageExtensions = [
   'bmp',
@@ -581,7 +599,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCreatePack,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
-  const [creationMode, setCreationMode] = useState<StudyPackCreationMode>('ai')
+  const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [studyTaskMode, setStudyTaskMode] =
     useState<StudyTaskMode>('importNotes')
   const [learningOutputMode, setLearningOutputMode] =
@@ -635,6 +653,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   )
 
   useEffect(() => {
+    if (open) {
+      setAiProvider(readStudyPackAiSettings().provider || 'basic')
+    }
+  }, [open])
+
+  useEffect(() => {
     if (!imageFile) {
       setImagePreviewUrl('')
       return undefined
@@ -648,7 +672,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
   const reset = () => {
     setStep('source')
-    setCreationMode('ai')
     setStudyTaskMode('importNotes')
     setLearningOutputMode('studyPack')
     setSourceInputType('text')
@@ -752,30 +775,52 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
   const parseSourceWithAi = async () => {
     const credentials = resolveStudyPackAiCredentials()
-    if (!credentials.apiToken) {
-      setError(
-        'AI mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
-      )
+    if (aiProvider === 'hosted') {
+      setError('Hosted AI is not configured yet.')
+      return
+    }
+
+    if (aiProvider === 'gemini' && !credentials.apiToken) {
+      setError('Own Gemini API token mode needs a configured API key.')
       return
     }
 
     setIsGeneratingAi(true)
-    setOcrStatus('Generating study materials with AI')
-    setAiProgressLabel('Connecting to Gemini')
+    setOcrStatus('Generating study materials')
+    setAiProgressLabel(
+      aiProvider === 'local'
+        ? 'Starting Google Local AI'
+        : aiProvider === 'gemini'
+          ? 'Connecting to Gemini'
+          : 'Preparing generation',
+    )
     setError('')
 
     try {
       window.setTimeout(() => {
         setAiProgressLabel((current) =>
-          current ? 'Reading notes and planning study sections' : current,
+          current
+            ? aiProvider === 'local'
+              ? 'Asking Chrome Local AI for a compact outline'
+              : aiProvider === 'gemini'
+                ? 'Reading notes and planning study sections'
+                : 'Parsing notes locally'
+            : current,
         )
       }, 700)
       window.setTimeout(() => {
         setAiProgressLabel((current) =>
-          current ? 'Creating quizzes, flashcards, and study blocks' : current,
+          current
+            ? aiProvider === 'local'
+              ? 'Creating compact local study objects'
+              : aiProvider === 'gemini'
+                ? 'Creating quizzes, flashcards, and study blocks with Gemini'
+                : 'Creating quizzes, flashcards, and study blocks'
+            : current,
         )
       }, 1800)
       const draft = await generateStudyPackWithAi({
+        provider: aiProvider,
         apiToken: credentials.apiToken,
         model: credentials.model,
         title: packTitle.trim() || 'Study Pack',
@@ -788,6 +833,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         promptMode: studyTaskMode === 'aiPrompt',
         studyPathMode: learningOutputMode === 'studyPath',
+        onProgress: (progress) => {
+          setAiProgressLabel(`Downloading local model ${progress}%`)
+        },
       })
       const nextTitle = draft.title || packTitle
       setAiProgressLabel('Preparing review screen')
@@ -846,25 +894,28 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
 
     const credentials = resolveStudyPackAiCredentials()
-    if (creationMode === 'ai' && !credentials.apiToken) {
-      setError(
-        'AI mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
-      )
+    if (aiProvider === 'hosted') {
+      setError('Hosted AI is not configured yet.')
+      return
+    }
+
+    if (aiProvider === 'gemini' && !credentials.apiToken) {
+      setError('Own Gemini API token mode needs a configured API key.')
       return
     }
 
     setIsExtractingImage(true)
     setOcrProgress(0)
     setOcrStatus(
-      creationMode === 'ai' ? 'Preparing AI extraction' : 'Preparing OCR',
+      aiProvider === 'gemini' ? 'Preparing AI extraction' : 'Preparing OCR',
     )
     setAiProgressLabel(
-      creationMode === 'ai' ? 'Connecting to Gemini vision' : '',
+      aiProvider === 'gemini' ? 'Connecting to Gemini vision' : '',
     )
     setError('')
 
     try {
-      if (creationMode === 'ai') {
+      if (aiProvider === 'gemini') {
         window.setTimeout(() => {
           setAiProgressLabel((current) =>
             current ? 'Reading image and correcting text' : current,
@@ -872,7 +923,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         }, 700)
       }
       const text =
-        creationMode === 'ai'
+        aiProvider === 'gemini'
           ? await extractRawNotesWithAi({
               apiToken: credentials.apiToken,
               model: credentials.model,
@@ -894,11 +945,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setImageTextExtracted(true)
       setOcrProgress(100)
       setOcrStatus(
-        creationMode === 'ai' ? 'AI extraction complete' : 'OCR complete',
+        aiProvider === 'gemini' ? 'AI extraction complete' : 'OCR complete',
       )
     } catch {
       setError(
-        creationMode === 'ai'
+        aiProvider === 'gemini'
           ? 'Could not extract notes with AI. Check your Gemini API key or use Basic mode.'
           : 'Could not extract notes from this image.',
       )
@@ -924,7 +975,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    if (creationMode === 'ai' || studyTaskMode === 'aiPrompt') {
+    if (aiProvider !== 'basic') {
       await parseSourceWithAi()
       return
     }
@@ -1191,28 +1242,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               />
               <TextField
                 select
-                label="Mode"
-                value={creationMode}
-                onChange={(event) =>
-                  setCreationMode(event.target.value as StudyPackCreationMode)
-                }
-                sx={{ minWidth: { md: 170 } }}
-              >
-                {creationModeOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
                 label="Study task"
                 value={studyTaskMode}
                 onChange={(event) => {
                   const value = event.target.value as StudyTaskMode
                   setStudyTaskMode(value)
                   if (value === 'aiPrompt') {
-                    setCreationMode('ai')
                     setSourceInputType('text')
                   }
                 }}
@@ -1248,7 +1283,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               sx={{
                 p: 2,
                 border: 1,
-                borderColor: creationMode === 'ai' ? 'primary.main' : 'divider',
+                borderColor: aiProvider !== 'basic' ? 'primary.main' : 'divider',
                 bgcolor: 'background.paper',
               }}
             >
@@ -1261,21 +1296,33 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     ? 'Study Path output organizes the pack as an ordered learning journey instead of one mixed dashboard.'
                     : 'Single Study Pack output keeps everything in one compact workspace.'}
                 </Alert>
+                {aiProvider === 'local' && (
+                  <Alert severity="warning">
+                    Local AI is experimental and works best with smaller
+                    outputs. For larger Study Paths, use Own Gemini API token or
+                    Hosted AI.
+                  </Alert>
+                )}
+                {aiProvider === 'hosted' && (
+                  <Alert severity="warning">
+                    Hosted AI is not configured yet.
+                  </Alert>
+                )}
                 <Stack direction="row" spacing={1} alignItems="center">
                   <AutoAwesomeIcon
-                    color={creationMode === 'ai' ? 'primary' : 'action'}
+                    color={aiProvider !== 'basic' ? 'primary' : 'action'}
                     fontSize="small"
                   />
                   <Box>
                     <Typography variant="subtitle2" fontWeight={800}>
-                      {creationMode === 'ai' ? 'AI mode' : 'Basic mode'}
+                      {providerLabels[aiProvider]}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {creationMode === 'ai'
+                      {aiProvider !== 'basic'
                         ? studyTaskMode === 'aiPrompt'
                           ? 'Describe a learning goal like “Teach me French passé composé”; AquaMesh creates lesson notes, practice, flashcards, and review steps.'
                           : 'Default path for Study Packs. AquaMesh can read notes and generate summaries, flashcards, quizzes, and practice prompts from grounded source material.'
-                        : 'Offline fallback for Study Packs. AquaMesh uses local parsing and grounded practice generation from the notes you provide.'}
+                        : 'No AI API calls. AquaMesh uses local parsing and grounded practice generation from the notes you provide.'}
                     </Typography>
                   </Box>
                 </Stack>
@@ -1388,7 +1435,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               <>
                 <Alert severity="info">
                   <b>
-                    {creationMode === 'ai'
+                    {aiProvider === 'gemini'
                       ? 'AI image reading can handle harder text, handwriting, and messy photos better than Basic OCR, but extracted notes still need review.'
                       : 'Text extraction works best with screenshots, slides, or exported PDFs. OCR may fail or return inaccurate text for handwritten or messy images.'}
                   </b>
@@ -1457,7 +1504,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       <Typography variant="body2" color="text.secondary">
                         {aiProgressLabel || ocrStatus || 'Extracting notes'}
                       </Typography>
-                      {creationMode !== 'ai' && (
+                      {aiProvider !== 'gemini' && (
                         <Typography variant="body2" color="text.secondary">
                           {ocrProgress}%
                         </Typography>
@@ -1465,7 +1512,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     </Stack>
                     <LinearProgress
                       variant={
-                        creationMode !== 'ai' && ocrProgress > 0
+                        aiProvider !== 'gemini' && ocrProgress > 0
                           ? 'determinate'
                           : 'indeterminate'
                       }
@@ -1511,9 +1558,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     </Typography>
                   </Stack>
                   <Typography variant="body2" color="text.secondary">
-                    AquaMesh is sending your notes to Gemini, waiting for a
-                    structured response, then converting it into editable study
-                    materials.
+                    {getProviderWorkDescription(aiProvider)}
                   </Typography>
                   <LinearProgress />
                 </Stack>

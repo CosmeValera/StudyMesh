@@ -1,0 +1,136 @@
+import { parseStudyPack } from '../parser'
+import { augmentStudyPackPracticeObjects } from '../practice'
+import { AiStudyPackDraft } from './normalizer'
+import {
+  generateStudyPackWithAi as generateStudyPackWithGemini,
+  generateStudyPathWithAi as generateStudyPathWithGemini,
+  GenerateStudyPackWithAiOptions,
+  GenerateStudyPathWithAiOptions,
+  AiStudyPathDraft,
+} from './gemini'
+import {
+  generateStudyPackWithLocalAi,
+  generateStudyPathWithBasicFallback,
+  generateStudyPathWithLocalAi,
+} from './localGeneration'
+import {
+  readStudyPackAiSettings,
+  resolveStudyPackAiCredentials,
+  StudyPackAiProvider,
+} from './settings'
+
+type ProviderOptions = {
+  provider?: StudyPackAiProvider
+  onProgress?: (percent: number) => void
+}
+
+const HOSTED_NOT_CONFIGURED_MESSAGE = 'Hosted AI is not configured yet.'
+
+const resolveProvider = (
+  explicitProvider: StudyPackAiProvider | undefined,
+  apiToken: string,
+): StudyPackAiProvider => {
+  if (explicitProvider) {
+    return explicitProvider
+  }
+
+  if (apiToken.trim()) {
+    return 'gemini'
+  }
+
+  return readStudyPackAiSettings().provider || 'basic'
+}
+
+export const generateStudyPackWithAi = async (
+  options: GenerateStudyPackWithAiOptions & ProviderOptions,
+): Promise<AiStudyPackDraft> => {
+  const provider = resolveProvider(options.provider, options.apiToken)
+
+  if (provider === 'basic') {
+    const parsed = parseStudyPack(options.rawNotes, {
+      title: options.title,
+      defaultTags: ['study-pack'],
+    })
+    const augmented = augmentStudyPackPracticeObjects(parsed.objects, {
+      packId: parsed.id,
+      title: parsed.title,
+      rawNotes: options.rawNotes,
+      generationTargets: options.generationTargets,
+      generationAmount: options.generationAmount,
+    })
+
+    return {
+      title: parsed.title,
+      sourceFormat: parsed.sourceFormat,
+      rawNotes: options.rawNotes,
+      objects: augmented.objects,
+      warnings: [...parsed.warnings, ...augmented.warnings],
+    }
+  }
+
+  if (provider === 'local') {
+    return generateStudyPackWithLocalAi(options, {
+      onProgress: options.onProgress,
+    })
+  }
+
+  if (provider === 'hosted') {
+    throw new Error(HOSTED_NOT_CONFIGURED_MESSAGE)
+  }
+
+  const credentials = options.apiToken
+    ? {
+        apiToken: options.apiToken,
+        model: options.model,
+      }
+    : resolveStudyPackAiCredentials()
+  if (!credentials.apiToken) {
+    throw new Error(
+      'Own Gemini API token mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
+    )
+  }
+
+  return generateStudyPackWithGemini({
+    ...options,
+    apiToken: credentials.apiToken,
+    model: credentials.model,
+  })
+}
+
+export const generateStudyPathWithAi = async (
+  options: GenerateStudyPathWithAiOptions & ProviderOptions,
+): Promise<AiStudyPathDraft> => {
+  const provider = resolveProvider(options.provider, options.apiToken)
+
+  if (provider === 'basic') {
+    return generateStudyPathWithBasicFallback(options)
+  }
+
+  if (provider === 'local') {
+    return generateStudyPathWithLocalAi(options, {
+      onProgress: options.onProgress,
+    })
+  }
+
+  if (provider === 'hosted') {
+    throw new Error(HOSTED_NOT_CONFIGURED_MESSAGE)
+  }
+
+  const credentials = options.apiToken
+    ? {
+        apiToken: options.apiToken,
+        model: options.model,
+      }
+    : resolveStudyPackAiCredentials()
+  if (!credentials.apiToken) {
+    throw new Error(
+      'Own Gemini API token mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
+    )
+  }
+
+  return generateStudyPathWithGemini({
+    ...options,
+    apiToken: credentials.apiToken,
+    model: credentials.model,
+  })
+}

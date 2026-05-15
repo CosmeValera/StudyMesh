@@ -80,6 +80,15 @@ export interface GenerateStudyPackWithAiOptions {
   studyPathMode?: boolean
 }
 
+export type StudyPathGenerationAmount =
+  | 'superSmall'
+  | 'compact'
+  | 'average'
+  | 'deep'
+  | 'few'
+  | 'medium'
+  | 'many'
+
 export interface AiStudyPathDashboardDraft extends AiStudyPackDraft {
   summary: string
   dashboardRole: StudyPathDashboardRole
@@ -98,15 +107,37 @@ export interface GenerateStudyPathWithAiOptions {
   title: string
   prompt: string
   folderName: string
-  generationAmount?: 'few' | 'medium' | 'many'
+  generationAmount?: StudyPathGenerationAmount
+}
+
+export const normalizeStudyPathGenerationAmount = (
+  generationAmount: StudyPathGenerationAmount = 'average',
+): 'superSmall' | 'compact' | 'average' | 'deep' => {
+  if (generationAmount === 'few') {
+    return 'compact'
+  }
+
+  if (generationAmount === 'medium') {
+    return 'average'
+  }
+
+  if (generationAmount === 'many') {
+    return 'deep'
+  }
+
+  return generationAmount
 }
 
 export const getStudyPathDashboardRoles = (
-  generationAmount: 'few' | 'medium' | 'many' = 'medium',
-): StudyPathDashboardRole[] =>
-  generationAmount === 'few'
-    ? ['normal', 'normal', 'exercises']
-    : generationAmount === 'many'
+  generationAmount: StudyPathGenerationAmount = 'average',
+): StudyPathDashboardRole[] => {
+  const normalized = normalizeStudyPathGenerationAmount(generationAmount)
+
+  return normalized === 'superSmall'
+    ? ['normal', 'exercises']
+    : normalized === 'compact'
+      ? ['normal', 'normal', 'exercises']
+      : normalized === 'deep'
       ? [
           'normal',
           'normal',
@@ -117,9 +148,10 @@ export const getStudyPathDashboardRoles = (
           'exercises',
         ]
       : ['normal', 'normal', 'normal', 'summary', 'exercises']
+}
 
 const getStudyPathStepNames = (
-  generationAmount: 'few' | 'medium' | 'many' = 'medium',
+  generationAmount: StudyPathGenerationAmount = 'average',
 ): string[] =>
   getStudyPathDashboardRoles(generationAmount).map((role, index) => {
     if (role === 'summary') {
@@ -745,21 +777,41 @@ const getStudyPathVisibleObjectsForRole = (
 
 const getStudyPathVisiblePracticeTarget = (
   dashboardRole: StudyPathDashboardRole,
-  generationAmount: 'few' | 'medium' | 'many',
+  generationAmount: StudyPathGenerationAmount,
 ): number => {
+  const normalized = normalizeStudyPathGenerationAmount(generationAmount)
+
   if (dashboardRole === 'normal') {
-    return 7
+    return normalized === 'superSmall' ||
+      (normalized === 'compact' && generationAmount !== 'few')
+      ? 5
+      : 7
   }
 
   if (dashboardRole === 'exercises') {
-    return generationAmount === 'few'
+    return normalized === 'superSmall' || normalized === 'compact'
       ? 10
-      : generationAmount === 'many'
+      : normalized === 'deep'
         ? 18
         : 14
   }
 
   return 0
+}
+
+const studyPathAmountToPracticeAmount = (
+  generationAmount: StudyPathGenerationAmount,
+): 'few' | 'medium' | 'many' => {
+  const normalized = normalizeStudyPathGenerationAmount(generationAmount)
+  if (normalized === 'superSmall' || normalized === 'compact') {
+    return 'few'
+  }
+
+  if (normalized === 'deep') {
+    return 'many'
+  }
+
+  return 'medium'
 }
 
 const parseGeminiJson = (text: string): unknown => {
@@ -1076,7 +1128,8 @@ export const generateStudyPathWithAi = async ({
     stepName.startsWith('Content'),
   ).length
   const includesSummaryDashboard = stepNames.includes('Summary')
-  const practiceProfile = createStudyPackPracticeProfile(generationAmount, [
+  const practiceAmount = studyPathAmountToPracticeAmount(generationAmount)
+  const practiceProfile = createStudyPackPracticeProfile(practiceAmount, [
     'summaries',
     'definitions',
     'flashcards',
@@ -1447,7 +1500,7 @@ ${prompt}`
                     textFromRawNotes(input.rawNotes)
                   : textFromRawNotes(input.rawNotes),
               generationTargets: ['quizzes', 'flashcards'],
-              generationAmount,
+              generationAmount: practiceAmount,
               visiblePracticeTarget,
               visiblePracticeOnly: true,
             })

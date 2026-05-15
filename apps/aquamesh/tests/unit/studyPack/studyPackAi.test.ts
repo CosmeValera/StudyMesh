@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
-  generateStudyPackWithAi,
-  generateStudyPathWithAi,
+  generateStudyPackWithGemini as generateStudyPackWithAi,
+  generateStudyPathWithGemini as generateStudyPathWithAi,
   getStudyPathDashboardRoles,
   normalizeAiStudyPackDraft,
+  normalizeLocalAiStudyPackDraft,
+  parseLocalAiJson,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   saveStudyPackAiSettings,
   STUDY_PACK_AI_SETTINGS_KEY,
+  testLocalLanguageModel,
 } from '../../../src/studyPack/ai'
 
 describe('study pack AI settings', () => {
@@ -36,6 +39,7 @@ describe('study pack AI settings', () => {
 
   it('uses default model and no token when settings are empty', () => {
     expect(readStudyPackAiSettings()).toEqual({
+      provider: 'basic',
       apiToken: '',
       model: DEFAULT_STUDY_PACK_AI_MODEL,
     })
@@ -53,6 +57,7 @@ describe('study pack AI settings', () => {
 
     expect(storage[STUDY_PACK_AI_SETTINGS_KEY]).toContain('settings-token')
     expect(resolveStudyPackAiCredentials()).toEqual({
+      provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
       tokenSource: 'settings',
@@ -67,6 +72,7 @@ describe('study pack AI settings', () => {
     })
 
     expect(resolveStudyPackAiCredentials()).toEqual({
+      provider: 'gemini',
       apiToken: 'env-token',
       model: 'gemini-test',
       tokenSource: 'env',
@@ -246,6 +252,66 @@ describe('study pack AI normalizer', () => {
     expect(draft.debugTrace?.droppedOrRepairedItems).toContain(
       'Dropped conceptRecap: exercises dashboards are practice-only.',
     )
+  })
+})
+
+describe('local AI helpers', () => {
+  it('repairs loose local AI objects without changing Gemini strict behavior', () => {
+    const parsed = parseLocalAiJson(`\`\`\`json
+{"title":"Local","objects":[
+  {"kind":"markdown","title":"Intro","content":"# Intro"},
+  {"kind":"list","title":"Steps","content":"First\\nSecond"},
+  {"kind":"reviewPrompt","title":"Review this later"},
+  {"kind":"term","title":"Mitosis","answer":"Cell division"},
+  {"kind":"qa","question":"What divides?","answer":"Cells"},
+  {"kind":"quiz","question":"Which is correct?","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":1,"explanation":"B works"}
+]}
+\`\`\``)
+
+    const draft = normalizeLocalAiStudyPackDraft(parsed, 'local')
+
+    expect(draft.objects.map((object) => object.kind)).toEqual([
+      'markdown',
+      'list',
+      'reviewPrompt',
+      'term',
+      'qa',
+      'quiz',
+    ])
+    expect(draft.debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Repaired markdown'),
+        expect.stringContaining('Repaired list'),
+        expect.stringContaining('Repaired reviewPrompt'),
+      ]),
+    )
+  })
+
+  it('tests local AI with a tiny hello prompt and destroys the session', async () => {
+    const destroy = vi.fn()
+    const prompt = vi.fn().mockResolvedValue('hello')
+    const create = vi.fn().mockResolvedValue({ prompt, destroy })
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create,
+    })
+
+    await expect(testLocalLanguageModel()).resolves.toMatchObject({
+      supported: true,
+      availability: 'available',
+      result: 'hello',
+    })
+    expect(prompt).toHaveBeenCalledWith('Return exactly one word: hello')
+    expect(destroy).toHaveBeenCalled()
+  })
+
+  it('returns not supported when LanguageModel is absent', async () => {
+    vi.stubGlobal('LanguageModel', undefined)
+
+    await expect(testLocalLanguageModel()).resolves.toMatchObject({
+      supported: false,
+      availability: 'unavailable',
+    })
   })
 })
 

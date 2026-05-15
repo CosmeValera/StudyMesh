@@ -9,7 +9,10 @@ import {
   within,
 } from '@testing-library/react'
 import CreateStudyPathModal from '../../../../src/components/studyPack/CreateStudyPathModal'
-import { resolveStudyPackAiCredentials } from '../../../../src/studyPack/ai'
+import {
+  readStudyPackAiSettings,
+  resolveStudyPackAiCredentials,
+} from '../../../../src/studyPack/ai'
 
 vi.mock('../../../../src/studyPack/ai', async () => {
   const actual = await vi.importActual<
@@ -18,7 +21,13 @@ vi.mock('../../../../src/studyPack/ai', async () => {
 
   return {
     ...actual,
+    readStudyPackAiSettings: vi.fn(() => ({
+      provider: 'gemini',
+      apiToken: 'test-token',
+      model: 'gemini-test',
+    })),
     resolveStudyPackAiCredentials: vi.fn(() => ({
+      provider: 'gemini',
       apiToken: 'test-token',
       model: 'gemini-test',
       tokenSource: 'settings',
@@ -106,7 +115,7 @@ const mockGeminiDashboards = (dashboardCount: number) => {
   )
 }
 
-const generatePath = async (amount?: 'Compact' | 'Extended') => {
+const generatePath = async (amount?: 'Compact' | 'Deep') => {
   render(<CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />)
 
   if (amount) {
@@ -128,7 +137,13 @@ const generatePath = async (amount?: 'Compact' | 'Extended') => {
 describe('CreateStudyPathModal role enforcement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'gemini',
+      apiToken: 'test-token',
+      model: 'gemini-test',
+    })
     vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'gemini',
       apiToken: 'test-token',
       model: 'gemini-test',
       tokenSource: 'settings',
@@ -243,7 +258,7 @@ describe('CreateStudyPathModal role enforcement', () => {
 
   it('previews extended paths with summary and exercises final dashboards filtered', async () => {
     mockGeminiDashboards(7)
-    await generatePath('Extended')
+    await generatePath('Deep')
 
     await waitFor(() => {
       expect(screen.getByText('06 - Lesson 6')).toBeInTheDocument()

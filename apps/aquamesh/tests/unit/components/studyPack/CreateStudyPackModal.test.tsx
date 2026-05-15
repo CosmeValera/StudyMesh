@@ -12,6 +12,7 @@ import { extractRawNotesFromImage } from '../../../../src/studyPack/imageOcr'
 import {
   extractRawNotesWithAi,
   generateStudyPackWithAi,
+  readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
 } from '../../../../src/studyPack/ai'
 
@@ -22,7 +23,13 @@ vi.mock('../../../../src/studyPack/imageOcr', () => ({
 vi.mock('../../../../src/studyPack/ai', () => ({
   extractRawNotesWithAi: vi.fn(),
   generateStudyPackWithAi: vi.fn(),
+  readStudyPackAiSettings: vi.fn(() => ({
+    provider: 'basic',
+    apiToken: '',
+    model: 'gemini-test',
+  })),
   resolveStudyPackAiCredentials: vi.fn(() => ({
+    provider: 'basic',
     apiToken: '',
     model: 'gemini-test',
     tokenSource: 'none',
@@ -135,7 +142,13 @@ vi.mock('../../../../src/studyPack', async () => {
 describe('CreateStudyPackModal orchestrator pipeline', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'basic',
+      apiToken: '',
+      model: 'gemini-test',
+    })
     vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'basic',
       apiToken: '',
       model: 'gemini-test',
       tokenSource: 'none',
@@ -182,8 +195,11 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
   }
 
   const selectBasicMode = () => {
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: /mode/i }))
-    fireEvent.click(screen.getByRole('option', { name: /basic fallback/i }))
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'basic',
+      apiToken: '',
+      model: 'gemini-test',
+    })
   }
 
   const getImageFileInput = () =>
@@ -201,7 +217,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     ).toHaveTextContent('Text')
 
     selectBasicMode()
-    expect(screen.getByText('Basic mode')).toBeInTheDocument()
+    expect(screen.getByText('Basic fallback')).toBeInTheDocument()
     expect(screen.getByText('Practice')).toBeInTheDocument()
     expect(screen.getByText('Support')).toBeInTheDocument()
     expect(screen.getByText('Structured')).toBeInTheDocument()
@@ -349,6 +365,11 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
   })
 
   it('requires an API key before AI mode generates widgets', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'gemini',
+      apiToken: '',
+      model: 'gemini-test',
+    })
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
@@ -357,17 +378,23 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     expect(
-      await screen.findByText(/configured provider key/i),
+      await screen.findByText(/configured API key/i),
     ).toBeInTheDocument()
     expect(generateStudyPackWithAi).not.toHaveBeenCalled()
     expect(parseStudyPack).not.toHaveBeenCalled()
   })
 
   it('uses AI mode to generate reviewable widgets from raw text notes', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'gemini',
+      apiToken: 'settings-token',
+      model: 'gemini-test',
+    })
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
     vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
       tokenSource: 'settings',
@@ -430,10 +457,16 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
   })
 
   it('uses Gemini image extraction in AI mode instead of local OCR', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'gemini',
+      apiToken: 'settings-token',
+      model: 'gemini-test',
+    })
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
     vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
       tokenSource: 'settings',

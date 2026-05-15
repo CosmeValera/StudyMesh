@@ -8,11 +8,10 @@ export {
   saveStudyPackAiSettings,
 } from './settings'
 export type { StudyPackAiSettings } from './settings'
+export type { StudyPackAiProvider } from './settings'
 export {
-  extractRawNotesWithAi,
-  generateStudyPackWithAi,
-  generateStudyPathWithAi,
   getStudyPathDashboardRoles,
+  normalizeStudyPathGenerationAmount,
 } from './gemini'
 export type {
   AiStudyPathDashboardDraft,
@@ -20,7 +19,14 @@ export type {
   ExtractRawNotesWithAiOptions,
   GenerateStudyPackWithAiOptions,
   GenerateStudyPathWithAiOptions,
+  StudyPathGenerationAmount,
 } from './gemini'
+export { extractRawNotesWithAi } from './gemini'
+export {
+  generateStudyPackWithAi as generateStudyPackWithGemini,
+  generateStudyPathWithAi as generateStudyPathWithGemini,
+} from './gemini'
+export { generateStudyPackWithAi, generateStudyPathWithAi } from './provider'
 export {
   assertRoleObjectsAreClean,
   filterStudyObjectsForDashboardRole,
@@ -33,3 +39,10 @@ export type {
   AiStudyPackDraft,
   StrictAiDashboardContract,
 } from './normalizer'
+export {
+  callLocalLanguageModel,
+  getLocalLanguageModelAvailability,
+  isLocalLanguageModelSupported,
+  testLocalLanguageModel,
+} from './localLanguageModel'
+export { normalizeLocalAiStudyPackDraft, parseLocalAiJson } from './localGeneration'

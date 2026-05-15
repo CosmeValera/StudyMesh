@@ -30,10 +30,13 @@ import {
   assertRoleObjectsAreClean,
   filterStudyObjectsForDashboardRole,
   generateStudyPathWithAi,
+  readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
+  StudyPackAiProvider,
+  StudyPathGenerationAmount,
 } from '../../studyPack/ai'
 
-type GenerationAmount = 'few' | 'medium' | 'many'
+type GenerationAmount = StudyPathGenerationAmount
 
 interface CreateStudyPathModalProps {
   open: boolean
@@ -56,21 +59,51 @@ const generationAmountOptions: Array<{
   helper: string
 }> = [
   {
-    label: 'Compact',
-    value: 'few',
-    helper: '2 content dashboards + 1 exercises dashboard',
+    label: 'Super small',
+    value: 'superSmall',
+    helper: '1 lesson dashboard + exercises',
   },
   {
-    label: 'Balanced',
-    value: 'medium',
+    label: 'Compact',
+    value: 'compact',
+    helper: '2 content dashboards + exercises',
+  },
+  {
+    label: 'Average',
+    value: 'average',
     helper: '3 content dashboards + summary + exercises',
   },
   {
-    label: 'Extended',
-    value: 'many',
+    label: 'Deep',
+    value: 'deep',
     helper: '5 content dashboards + summary + exercises',
   },
 ]
+
+const providerLabels: Record<StudyPackAiProvider, string> = {
+  basic: 'Basic fallback',
+  local: 'Google Local AI',
+  gemini: 'Own Gemini API token',
+  hosted: 'Hosted AI tokens',
+}
+
+const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
+  provider === 'local'
+    ? 'Generating compact dashboards with Google Local AI...'
+    : provider === 'gemini'
+      ? 'Generating ordered dashboards with Gemini...'
+      : provider === 'basic'
+        ? 'Generating ordered dashboards with Basic fallback...'
+        : 'Checking hosted AI configuration...'
+
+const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
+  provider === 'local'
+    ? 'AquaMesh is asking Chrome Local AI for compact Study Path JSON. The local model can take a few minutes, especially the first time.'
+    : provider === 'gemini'
+      ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
+      : provider === 'basic'
+        ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
+        : 'Hosted AI is not configured yet.'
 
 const getObjectPreview = (object?: StudyObject) => {
   if (!object) {
@@ -185,8 +218,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
   const [prompt, setPrompt] = useState('')
+  const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
-    useState<GenerationAmount>('medium')
+    useState<GenerationAmount>('average')
   const [draft, setDraft] = useState<AiStudyPathDraft | null>(null)
   const [reviewFolderName, setReviewFolderName] = useState('')
   const [openInWorkspace, setOpenInWorkspace] = useState(true)
@@ -194,10 +228,20 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [error, setError] = useState('')
   const debugTrace = combinedDebugTrace(draft)
 
+  React.useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const provider = readStudyPackAiSettings().provider || 'basic'
+    setAiProvider(provider)
+    setGenerationAmount(provider === 'local' ? 'compact' : 'average')
+  }, [open])
+
   const reset = () => {
     setStep('prompt')
     setPrompt('')
-    setGenerationAmount('medium')
+    setGenerationAmount(aiProvider === 'local' ? 'compact' : 'average')
     setDraft(null)
     setReviewFolderName('')
     setOpenInWorkspace(true)
@@ -217,10 +261,13 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     }
 
     const credentials = resolveStudyPackAiCredentials()
-    if (!credentials.apiToken) {
-      setError(
-        'Study Path needs AI. Add your Gemini API key in Settings first.',
-      )
+    if (aiProvider === 'hosted') {
+      setError('Hosted AI is not configured yet.')
+      return
+    }
+
+    if (aiProvider === 'gemini' && !credentials.apiToken) {
+      setError('Own Gemini API token mode needs a configured API key.')
       return
     }
 
@@ -229,12 +276,14 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
     try {
       const nextDraft = await generateStudyPathWithAi({
+        provider: aiProvider,
         apiToken: credentials.apiToken,
         model: credentials.model,
         title: 'Study Path',
         folderName: '',
         prompt,
         generationAmount,
+        onProgress: () => undefined,
       })
       const sanitizedDashboards = nextDraft.dashboards.map((dashboard) => {
         const events = [...(dashboard.debugTrace?.droppedOrRepairedItems || [])]
@@ -368,10 +417,27 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 ))}
               </TextField>
               <Alert severity="info">
-                Study Path asks Gemini for an array of dashboards, not one large
-                Study Pack. The next screen previews each dashboard before
-                saving anything.
+                Study Path uses the AI provider selected in Settings. The next
+                screen previews each dashboard before saving anything.
               </Alert>
+              {aiProvider === 'local' && (
+                <Alert
+                  severity={
+                    generationAmount === 'average' || generationAmount === 'deep'
+                      ? 'warning'
+                      : 'info'
+                  }
+                >
+                  Local AI is experimental and works best with Super small or
+                  Compact generation. Average or Deep may be slow, malformed, or
+                  fail.
+                </Alert>
+              )}
+              {aiProvider === 'hosted' && (
+                <Alert severity="warning">
+                  Hosted AI is not configured yet.
+                </Alert>
+              )}
               {isGenerating && (
                 <Paper
                   elevation={0}
@@ -381,9 +447,12 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     <Stack direction="row" spacing={1} alignItems="center">
                       <AutoAwesomeIcon color="primary" fontSize="small" />
                       <Typography variant="subtitle2" fontWeight={800}>
-                        Generating ordered dashboards…
+                        {getProviderPathProgressLabel(aiProvider)}
                       </Typography>
                     </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      {providerLabels[aiProvider]}: {getProviderPathDescription(aiProvider)}
+                    </Typography>
                     <LinearProgress />
                   </Stack>
                 </Paper>
@@ -395,7 +464,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 label="Folder name"
                 value={reviewFolderName}
                 onChange={(event) => setReviewFolderName(event.target.value)}
-                helperText="Gemini selected this folder for the generated dashboards. You can change it before creating the path."
+                helperText="The selected provider chose this folder for the generated dashboards. You can change it before creating the path."
                 fullWidth
               />
               <FormControlLabel

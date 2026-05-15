@@ -15,6 +15,7 @@ import {
   TextField,
   MenuItem,
   Alert,
+  LinearProgress,
 } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -37,9 +38,11 @@ import AccentColorPicker from '../../../../theme/AccentColorPicker'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
+  StudyPackAiProvider,
   getEnvGeminiApiKey,
   readStudyPackAiSettings,
   saveStudyPackAiSettings,
+  testLocalLanguageModel,
 } from '../../../../studyPack/ai'
 
 const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
@@ -154,8 +157,15 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 }) => {
   const showEditorSettings = scope === 'editor'
   const showGlobalSettings = scope === 'global'
+  const [aiProvider, setAiProvider] =
+    React.useState<StudyPackAiProvider>('basic')
   const [aiApiToken, setAiApiToken] = React.useState('')
   const [aiModel, setAiModel] = React.useState(DEFAULT_STUDY_PACK_AI_MODEL)
+  const [localAiStatus, setLocalAiStatus] = React.useState('')
+  const [localAiProgress, setLocalAiProgress] = React.useState<number | null>(
+    null,
+  )
+  const [isTestingLocalAi, setIsTestingLocalAi] = React.useState(false)
   const [libraryTransferStatus, setLibraryTransferStatus] = React.useState('')
   const hasEnvToken = Boolean(getEnvGeminiApiKey())
 
@@ -165,8 +175,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
 
     const settings = readStudyPackAiSettings()
+    setAiProvider(settings.provider || 'basic')
     setAiApiToken(settings.apiToken)
     setAiModel(settings.model)
+    setLocalAiStatus('')
+    setLocalAiProgress(null)
   }, [open, showGlobalSettings])
 
   // Create safe handlers for all possibly undefined callbacks
@@ -214,6 +227,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   const handleSaveAiSettings = () => {
     saveStudyPackAiSettings({
+      provider: aiProvider,
       apiToken: aiApiToken,
       model: aiModel,
     })
@@ -222,9 +236,47 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const handleClearAiToken = () => {
     setAiApiToken('')
     saveStudyPackAiSettings({
+      provider: aiProvider,
       apiToken: '',
       model: aiModel,
     })
+  }
+
+  const handleTestLocalAi = async () => {
+    setIsTestingLocalAi(true)
+    setLocalAiStatus('Checking Google Local AI...')
+    setLocalAiProgress(null)
+
+    try {
+      const result = await testLocalLanguageModel((progress) => {
+        setLocalAiProgress(progress)
+        setLocalAiStatus(`Downloading local model ${progress}%`)
+      })
+
+      if (!result.supported) {
+        setLocalAiStatus(
+          'Google Local AI is not supported in this browser. Use Google Chrome with the built-in AI model enabled.',
+        )
+      } else if (result.availability === 'unavailable') {
+        setLocalAiStatus(
+          'Google Local AI is unavailable. The browser may need Chrome, model access, or a downloaded local model.',
+        )
+      } else {
+        setLocalAiStatus(
+          `Google Local AI ${result.availability}: ${
+            result.result || 'No prompt result returned.'
+          }`,
+        )
+      }
+    } catch (error) {
+      setLocalAiStatus(
+        error instanceof Error
+          ? error.message
+          : 'Google Local AI test failed.',
+      )
+    } finally {
+      setIsTestingLocalAi(false)
+    }
   }
 
   const handleExportLibrary = () => {
@@ -369,54 +421,98 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </Typography>
                   <TextField
                     select
-                    label="Provider"
-                    value="gemini"
-                    fullWidth
-                    size="small"
-                    sx={{ mb: 1.5 }}
-                    helperText="Gemini is active today. Additional providers need adapter work before they can run."
-                  >
-                    <MenuItem value="gemini">Gemini (active)</MenuItem>
-                    <MenuItem value="openai" disabled>
-                      OpenAI (planned)
-                    </MenuItem>
-                    <MenuItem value="anthropic" disabled>
-                      Anthropic (planned)
-                    </MenuItem>
-                    <MenuItem value="deepseek" disabled>
-                      DeepSeek (planned)
-                    </MenuItem>
-                  </TextField>
-                  <TextField
-                    label="API key"
-                    type="password"
-                    value={aiApiToken}
-                    onChange={(event) => setAiApiToken(event.target.value)}
-                    fullWidth
-                    size="small"
-                    placeholder={
-                      hasEnvToken
-                        ? 'Using .env key unless you enter one here'
-                        : 'Paste your provider API key'
+                    label="AI provider"
+                    value={aiProvider}
+                    onChange={(event) =>
+                      setAiProvider(event.target.value as StudyPackAiProvider)
                     }
-                    sx={{ mb: 1.5 }}
-                  />
-                  <TextField
-                    label="Model"
-                    value={aiModel}
-                    onChange={(event) => setAiModel(event.target.value)}
                     fullWidth
                     size="small"
                     sx={{ mb: 1.5 }}
-                  />
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      gap: 1,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                    }}
+                    helperText="This provider is used by Create Study Pack and Create Study Path."
                   >
+                    <MenuItem value="basic">Basic fallback</MenuItem>
+                    <MenuItem value="local">
+                      Google Local AI (experimental)
+                    </MenuItem>
+                    <MenuItem value="gemini">Own Gemini API token</MenuItem>
+                    <MenuItem value="hosted">Hosted AI tokens</MenuItem>
+                  </TextField>
+                  {aiProvider === 'local' && (
+                    <Alert severity="warning" sx={{ mb: 1.5 }}>
+                      Local AI is experimental and works best with Super small
+                      or Compact generation. For larger Study Paths, use Own
+                      Gemini API token or Hosted AI.
+                    </Alert>
+                  )}
+                  {aiProvider === 'hosted' && (
+                    <Alert severity="warning" sx={{ mb: 1.5 }}>
+                      Hosted AI is not configured yet.
+                    </Alert>
+                  )}
+                  {aiProvider === 'local' && (
+                    <Box sx={{ mb: 1.5 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={handleTestLocalAi}
+                        disabled={isTestingLocalAi}
+                      >
+                        {isTestingLocalAi
+                          ? 'Testing local AI...'
+                          : 'Check Google Local AI'}
+                      </Button>
+                      {localAiProgress !== null && (
+                        <LinearProgress
+                          variant="determinate"
+                          value={localAiProgress}
+                          sx={{ mt: 1 }}
+                        />
+                      )}
+                      {localAiStatus && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 1 }}
+                        >
+                          {localAiStatus}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                  {aiProvider === 'gemini' && (
+                    <>
+                      <TextField
+                        label="API key"
+                        type="password"
+                        value={aiApiToken}
+                        onChange={(event) => setAiApiToken(event.target.value)}
+                        fullWidth
+                        size="small"
+                        placeholder={
+                          hasEnvToken
+                            ? 'Using .env key unless you enter one here'
+                            : 'Paste your Gemini API key'
+                        }
+                        sx={{ mb: 1.5 }}
+                      />
+                      <TextField
+                        label="Model"
+                        value={aiModel}
+                        onChange={(event) => setAiModel(event.target.value)}
+                        fullWidth
+                        size="small"
+                        sx={{ mb: 1.5 }}
+                      />
+                    </>
+                  )}
+                  {aiProvider !== 'gemini' && (
+                    <Alert severity="info" sx={{ mb: 1.5 }}>
+                      Gemini API key and model are kept for Own Gemini API token
+                      mode.
+                    </Alert>
+                  )}
+                  {aiProvider === 'gemini' && (
                     <Chip
                       size="small"
                       label={
@@ -429,12 +525,24 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       color={
                         aiApiToken.trim() || hasEnvToken ? 'primary' : 'default'
                       }
+                      sx={{ mb: 1.5 }}
                     />
+                  )}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Chip size="small" label={`Mode: ${aiProvider}`} />
                     <Box sx={{ flexGrow: 1 }} />
                     <Button
                       variant="outlined"
                       size="small"
                       onClick={handleClearAiToken}
+                      disabled={aiProvider !== 'gemini'}
                     >
                       Clear key
                     </Button>
