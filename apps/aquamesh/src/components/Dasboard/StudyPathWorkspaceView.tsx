@@ -334,7 +334,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               >
                 <AutoStoriesIcon />
               </Box>
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Stack
                   direction="row"
                   spacing={1}
@@ -366,6 +366,22 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 </Typography>
               </Box>
             </Stack>
+
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ChevronLeftIcon />}
+              onClick={toggleNavigatorCollapsed}
+              fullWidth
+              sx={{
+                justifyContent: 'center',
+                bgcolor: 'background.paper',
+                textTransform: 'none',
+                fontWeight: 800,
+              }}
+            >
+              Collapse navigator
+            </Button>
 
             <Paper
               variant="outlined"
