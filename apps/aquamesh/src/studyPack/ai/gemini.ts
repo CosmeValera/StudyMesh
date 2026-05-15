@@ -676,6 +676,32 @@ const buildFallbackObjectsForDashboardRole = ({
   ]
 }
 
+const getStudyPathVisibleObjectsForRole = (
+  objects: StudyObject[],
+  dashboardRole: StudyPathDashboardRole,
+  events: string[],
+): StudyObject[] => {
+  if (dashboardRole !== 'normal') {
+    return objects
+  }
+
+  const visibleObjects = objects.filter(
+    (object) =>
+      object.kind === 'quiz' ||
+      object.kind === 'qa' ||
+      object.kind === 'reveal',
+  )
+  const suppressedCount = objects.length - visibleObjects.length
+
+  if (suppressedCount > 0) {
+    events.push(
+      `Intentionally suppressed ${suppressedCount} conceptRecap/list-style normal-dashboard object${suppressedCount === 1 ? '' : 's'} from visible widgets; theory remains in source notes and source summary.`,
+    )
+  }
+
+  return visibleObjects
+}
+
 const parseGeminiJson = (text: string): unknown => {
   try {
     return JSON.parse(text)
@@ -1023,7 +1049,7 @@ Rules:
 - AquaMesh will assign these dashboard roles by position: ${describeStudyPathRoles(
     dashboardRoles,
   )}.
-- Each dashboard must be useful by itself and contain 6-12 objects.
+- Each normal dashboard must be useful by itself and contain roughly 6-9 visible study items after AquaMesh adds the lesson/source widgets.
 - Always return exactly ${stepNames.length} dashboards total.
 - This depth means ${contentDashboardCount} content dashboard${
     contentDashboardCount === 1 ? '' : 's'
@@ -1034,8 +1060,9 @@ Rules:
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
 - For normal dashboards, sourceSummary, conceptRecap, practice, and flashcards are mandatory and must be non-empty.
 - Each normal dashboard must include sourceSummary with 3-5 bullets, conceptRecap with 2-4 sections, practice.shortAnswer with 1-2 questions, practice.multipleChoice with 1-2 questions, and flashcards with 3-5 cards.
+- Normal dashboard conceptRecap is used internally to structure the lesson. AquaMesh will not render conceptRecap/list-style objects as separate visible widgets on normal dashboards; visible generated study widgets should come from practice.shortAnswer, practice.multipleChoice, and flashcards.
 - Summary dashboards should focus on sourceSummary with 3-5 bullets and conceptRecap with 2-4 recap sections. If you include practice or flashcards, AquaMesh will delete them.
-- Exercises dashboards should focus on practice and flashcards. Include 2-4 short-answer questions, 2-4 multiple-choice questions, and 3-5 flashcards. If you include conceptRecap or sourceSummary, AquaMesh will delete visible recap/summary content.
+- Exercises dashboards should focus on mixed practice and flashcards from all previous normal dashboards. Include 4-6 short-answer questions, 4-6 multiple-choice questions, and 4-6 flashcards for medium paths, targeting roughly 12-16 visible study items. If you include conceptRecap or sourceSummary, AquaMesh will delete visible recap/summary content.
 - Do not output "objects", "kind", "quizMode", internal block names, widget names, or any AquaMesh renderer fields. AquaMesh decides widget types.
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from structured concepts, not from first sentences, headings, copied examples, or instructions.
@@ -1304,9 +1331,14 @@ ${prompt}`
         dashboardRole,
         finalEvents,
       )
+      const visibleRoleObjects = getStudyPathVisibleObjectsForRole(
+        roleFilteredObjects,
+        dashboardRole,
+        finalEvents,
+      )
       const finalObjects =
-        roleFilteredObjects.length > 0
-          ? roleFilteredObjects
+        visibleRoleObjects.length > 0
+          ? visibleRoleObjects
           : buildFallbackObjectsForDashboardRole({
               packId,
               dashboardTitle,
@@ -1315,7 +1347,7 @@ ${prompt}`
               sourceSummary: draft.sourceSummary,
               accumulatedContentNotes,
             })
-      if (roleFilteredObjects.length === 0 && finalObjects.length > 0) {
+      if (visibleRoleObjects.length === 0 && finalObjects.length > 0) {
         finalEvents.push(
           `Fallback used: created ${dashboardRole} object because role filtering left no visible study objects.`,
         )

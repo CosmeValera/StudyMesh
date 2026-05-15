@@ -926,12 +926,21 @@ describe('Gemini study pack client', () => {
     expect(draft.dashboards).toHaveLength(5)
     expect(
       draft.dashboards.slice(0, 3).map((dashboard) => dashboard.objects.length),
-    ).toEqual([9, 9, 9])
+    ).toEqual([7, 7, 7])
+    expect(
+      draft.dashboards
+        .slice(0, 3)
+        .flatMap((dashboard) => dashboard.objects)
+        .every((object) => object.kind === 'quiz' || object.kind === 'qa'),
+    ).toBe(true)
     expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toEqual(
       expect.arrayContaining([
         'AI provided sourceSummary only before repair.',
         'AI missing normal-dashboard practice/flashcards before repair.',
         'Repair retry used for incomplete normal dashboard.',
+        expect.stringContaining(
+          'Intentionally suppressed 2 conceptRecap/list-style normal-dashboard objects',
+        ),
       ]),
     )
     expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).not.toEqual(
@@ -1033,6 +1042,23 @@ describe('Gemini study pack client', () => {
     })
     const summary = draft.dashboards[3]
     const exercises = draft.dashboards[4]
+
+    expect(
+      draft.dashboards
+        .slice(0, 3)
+        .flatMap((dashboard) => dashboard.objects)
+        .every((object) => object.kind === 'quiz' || object.kind === 'qa'),
+    ).toBe(true)
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          'Intentionally suppressed 1 conceptRecap/list-style normal-dashboard object',
+        ),
+      ]),
+    )
+    expect(draft.dashboards[0].debugTrace?.finalObjects).toEqual(
+      draft.dashboards[0].objects,
+    )
 
     expect(summary.dashboardRole).toBe('summary')
     expect(
