@@ -71,6 +71,13 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
   }
 
+  const isReplaceableEmptyDashboard = (dashboard?: StateDashboard): boolean =>
+    Boolean(
+      dashboard &&
+        dashboard.kind !== 'studyPathContainer' &&
+        !hasDashboardContent(dashboard.layout),
+    )
+
   const setDashboardEditing = (id: string, isEditing: boolean) => {
     setEditingDashboardIds((currentIds) => {
       if (isEditing) {
@@ -195,8 +202,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     const focusedDashboard = newOpenDashboards[selectedDashboard]
     const shouldReplaceSelected = Boolean(
       options.replaceEmptySelected &&
-        focusedDashboard &&
-        !hasDashboardContent(focusedDashboard.layout),
+        isReplaceableEmptyDashboard(focusedDashboard),
     )
     const replacedDashboardId = shouldReplaceSelected
       ? focusedDashboard?.id
@@ -244,9 +250,7 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     }
     const newOpenDashboards = [...openDashboards]
     const focusedDashboard = newOpenDashboards[selectedDashboard]
-    const shouldReplaceSelected = Boolean(
-      focusedDashboard && !hasDashboardContent(focusedDashboard.layout),
-    )
+    const shouldReplaceSelected = isReplaceableEmptyDashboard(focusedDashboard)
 
     if (shouldReplaceSelected) {
       newOpenDashboards[selectedDashboard] = containerDashboard

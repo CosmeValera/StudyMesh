@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import Dashboards from '../../../../src/components/Dasboard/Dashboard'
 import * as DashboardProviderModule from '../../../../src/components/Dasboard/DashboardProvider'
 import * as WorkspaceActionsModule from '../../../../src/customHooks/useWorkspaceActions'
@@ -17,6 +17,7 @@ vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   OPEN_DASHBOARD_EDITOR_EVENT: 'aquamesh-open-dashboard-editor',
   OPEN_WIDGET_EDITOR_EVENT: 'aquamesh-open-widget-editor',
   OPEN_STUDY_PACK_EVENT: 'aquamesh-open-study-pack',
+  STARTER_STUDY_PATH_FOLDER_NAME: 'AquaMesh Starter Study Path',
   ensureStarterDashboards: vi.fn(),
   useWorkspaceActions: vi.fn(),
 }))
@@ -58,6 +59,48 @@ const openCreateDashboardMock = vi.fn()
 const openOperationsExampleMock = vi.fn()
 const openWidgetMenuMock = vi.fn()
 
+const createStarterStudyPathDashboard = (index: number) => ({
+  id: `starter-lesson-${index}`,
+  name: `AquaMesh Starter ${index}`,
+  folder: 'AquaMesh Starter Study Path',
+  layout: {
+    type: 'row',
+    children: [
+      {
+        type: 'tabset',
+        children: [
+          {
+            type: 'tab',
+            name: `AquaMesh Starter ${index}`,
+            component: 'CustomWidget',
+            config: {
+              customProps: {
+                components: [
+                  {
+                    id: `starter-progress-${index}`,
+                    type: 'StudyPathProgressBlock',
+                    props: {
+                      studyPathId: 'aquamesh-starter-study-path',
+                      studyPathTitle: 'AquaMesh Starter Study Path',
+                      studyPathDashboardKey: `starter-${index}`,
+                      studyPathDashboardName: `AquaMesh Starter ${index}`,
+                      studyPathDashboardIndex: index,
+                      studyPathDashboardCount: 2,
+                      studyPathFolderName: 'AquaMesh Starter Study Path',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    ],
+  },
+  createdAt: `2026-05-15T10:0${index}:00.000Z`,
+  updatedAt: `2026-05-15T10:0${index}:00.000Z`,
+})
+
 const mockPhoneViewport = () => {
   vi.mocked(window.matchMedia).mockImplementation((query) => ({
     matches: query.includes('max-width'),
@@ -89,6 +132,12 @@ const mockDashboardProvider = (
     setSelectedDashboard: vi.fn(),
     removeDashboard: vi.fn(),
     addDashboard: vi.fn(),
+    addDashboards: vi.fn(),
+    addStudyPathContainer: vi.fn(),
+    updateStudyPathContainer: vi.fn(),
+    closeAllDashboards: vi.fn(),
+    closeDashboardsToRight: vi.fn(),
+    reorderDashboard: vi.fn(),
     replaceDashboard: vi.fn(),
     updateLayout: vi.fn(),
     updateDashboardLayout: vi.fn(),
@@ -184,6 +233,50 @@ describe('Dashboards', () => {
     expect(navigateMock).not.toHaveBeenCalled()
   })
 
+  it('opens the default starter Study Path on first empty workspace load', async () => {
+    const addStudyPathContainer = vi.fn()
+    const starterDashboards = [
+      createStarterStudyPathDashboard(1),
+      createStarterStudyPathDashboard(2),
+    ]
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(starterDashboards)
+      }
+
+      return null
+    })
+
+    mockDashboardProvider({ addStudyPathContainer })
+
+    render(<Dashboards />)
+
+    await waitFor(() => expect(addStudyPathContainer).toHaveBeenCalled())
+    expect(addStudyPathContainer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathId: 'aquamesh-starter-study-path',
+        title: 'AquaMesh Starter Study Path',
+        dashboards: expect.arrayContaining([
+          expect.objectContaining({ name: 'AquaMesh Starter 1' }),
+          expect.objectContaining({ name: 'AquaMesh Starter 2' }),
+        ]),
+      }),
+    )
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'aquamesh-default-study-path-opened-v1',
+      'true',
+    )
+  })
+
   it('keeps Create Dashboard builder actions reachable on phones', () => {
     mockPhoneViewport()
     mockDashboardProvider({
@@ -205,6 +298,117 @@ describe('Dashboards', () => {
     expect(
       screen.getByRole('button', { name: /close dashboard editor/i }),
     ).toBeInTheDocument()
+  })
+
+  it('adds generated Study Path review dashboards to the open Course navigator', () => {
+    const addDashboard = vi.fn()
+    const setSelectedDashboard = vi.fn()
+    const updateStudyPathContainer = vi.fn()
+    const reviewLayout = {
+      type: 'row',
+      children: [
+        {
+          type: 'tabset',
+          children: [
+            {
+              type: 'tab',
+              name: 'Review missed exercises',
+              component: 'CustomWidget',
+              config: {
+                customProps: {
+                  studyPathId: 'french-b1',
+                  studyPathTitle: 'French B1',
+                  studyPathDashboardKey: 'study-path-review-french-b1',
+                  studyPathDashboardName: 'Review missed exercises',
+                  studyPathDashboardIndex: 6,
+                  studyPathDashboardCount: 6,
+                  studyPathFolderName: 'French B1',
+                },
+              },
+            },
+          ],
+        },
+      ],
+    }
+
+    mockDashboardProvider({
+      addDashboard,
+      setSelectedDashboard,
+      updateStudyPathContainer,
+      openDashboards: [
+        {
+          id: 'study-path-tab',
+          name: 'French B1',
+          kind: 'studyPathContainer',
+          studyPath: {
+            pathId: 'french-b1',
+            title: 'French B1',
+            folderName: 'French B1',
+            selectedIndex: 4,
+            dashboards: [1, 2, 3, 4, 5].map((index) => ({
+              id: `lesson-${index}`,
+              name: `Lesson ${index}`,
+              layout: { type: 'row', children: [] },
+              dashboardKey: `french-b1-${index}`,
+              dashboardIndex: index,
+              dashboardCount: 5,
+              folderName: 'French B1',
+            })),
+          },
+        },
+      ],
+      selectedDashboard: 0,
+    })
+
+    render(<Dashboards />)
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('aquamesh-open-study-path-review-dashboard', {
+          detail: {
+            dashboard: {
+              id: 'study-path-review-french-b1',
+              name: 'French B1 - Review missed exercises',
+              layout: reviewLayout,
+              createdAt: '2026-05-15T00:00:00.000Z',
+              updatedAt: '2026-05-15T00:00:00.000Z',
+            },
+          },
+        }),
+      )
+    })
+
+    expect(addDashboard).not.toHaveBeenCalled()
+    expect(setSelectedDashboard).toHaveBeenCalledWith(0)
+    expect(updateStudyPathContainer).toHaveBeenCalledWith(
+      'study-path-tab',
+      expect.any(Function),
+    )
+
+    const updater = updateStudyPathContainer.mock.calls[0][1]
+    const updatedStudyPath = updater({
+      pathId: 'french-b1',
+      title: 'French B1',
+      folderName: 'French B1',
+      selectedIndex: 4,
+      dashboards: [1, 2, 3, 4, 5].map((index) => ({
+        id: `lesson-${index}`,
+        name: `Lesson ${index}`,
+        layout: { type: 'row', children: [] },
+        dashboardKey: `french-b1-${index}`,
+        dashboardIndex: index,
+        dashboardCount: 5,
+        folderName: 'French B1',
+      })),
+    })
+
+    expect(updatedStudyPath.selectedIndex).toBe(5)
+    expect(updatedStudyPath.dashboards).toHaveLength(6)
+    expect(updatedStudyPath.dashboards[5]).toMatchObject({
+      dashboardKey: 'study-path-review-french-b1',
+      name: 'French B1 - Review missed exercises',
+      dashboardIndex: 6,
+    })
   })
 
   it('disables Update in Create Dashboard when the saved dashboard has no changes', () => {
