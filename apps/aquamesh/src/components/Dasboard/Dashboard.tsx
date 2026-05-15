@@ -659,13 +659,6 @@ const Dashboards = () => {
     })
   }
 
-  const openStudyPathLessonInWorkspace = (lesson: StudyPathDashboardItem) => {
-    addDashboard({
-      name: lesson.name,
-      layout: lesson.layout,
-    })
-  }
-
   const openAllStudyPathLessons = (lessons: StudyPathDashboardItem[]) => {
     addDashboards(
       lessons.map((lesson) => ({
@@ -1608,7 +1601,6 @@ const Dashboards = () => {
                       onStudyPathChange={(studyPath) =>
                         updateStudyPathContainer(dashboard.id, () => studyPath)
                       }
-                      onOpenLesson={openStudyPathLessonInWorkspace}
                       onOpenAll={() =>
                         openAllStudyPathLessons(
                           dashboard.studyPath?.dashboards || [],

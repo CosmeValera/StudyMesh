@@ -13,11 +13,9 @@ import {
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
-import LaunchIcon from '@mui/icons-material/Launch'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import PushPinIcon from '@mui/icons-material/PushPin'
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import DashboardLayoutView from '../Layout/Layout'
 import {
   DashboardLayout,
@@ -34,7 +32,6 @@ const NAVIGATOR_COLLAPSED_WIDTH = 72
 interface StudyPathWorkspaceViewProps {
   studyPath: StudyPathContainerState
   onStudyPathChange: (studyPath: StudyPathContainerState) => void
-  onOpenLesson: (dashboard: StudyPathDashboardItem) => void
   onOpenAll: () => void
 }
 
@@ -129,7 +126,6 @@ const sanitizeStudentLayout = (
 const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   studyPath,
   onStudyPathChange,
-  onOpenLesson,
   onOpenAll,
 }) => {
   const [navigatorCollapsed, setNavigatorCollapsed] = useState(false)
@@ -152,9 +148,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   const completedCount = Object.values(progressByKey).filter(
     (progress) => progress.completedAt,
   ).length
-  const currentProgress = currentLesson
-    ? progressByKey[currentLesson.dashboardKey]
-    : null
   const studentLayout = useMemo(
     () => sanitizeStudentLayout(currentLesson?.layout),
     [currentLesson?.layout],
@@ -199,22 +192,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     })
   }
 
-  const togglePinnedLesson = () => {
-    if (!currentLesson) {
-      return
-    }
-
-    const isPinned = pinnedDashboardKeys.includes(currentLesson.dashboardKey)
-    onStudyPathChange({
-      ...studyPath,
-      pinnedDashboardKeys: isPinned
-        ? pinnedDashboardKeys.filter(
-            (key) => key !== currentLesson.dashboardKey,
-          )
-        : [...pinnedDashboardKeys, currentLesson.dashboardKey],
-    })
-  }
-
   const toggleNavigatorCollapsed = () => {
     setNavigatorCollapsed((currentState) => !currentState)
   }
@@ -230,7 +207,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     )
   }
 
-  const isPinned = pinnedDashboardKeys.includes(currentLesson.dashboardKey)
   const canGoPrevious = selectedIndex > 0
   const canGoNext = selectedIndex < studyPath.dashboards.length - 1
   const completionPercent =
@@ -576,88 +552,8 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           overflow: 'hidden',
           position: 'relative',
           p: { xs: 1, md: 1.5 },
-          gap: 1.5,
         }}
       >
-        <Paper
-          elevation={1}
-          sx={{
-            px: 2.25,
-            py: 1.5,
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: 2,
-            backgroundColor: 'background.paper',
-          }}
-        >
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1.5}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            justifyContent="space-between"
-          >
-            <Box>
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                flexWrap="wrap"
-              >
-                <Chip
-                  size="small"
-                  color={currentProgress?.completedAt ? 'success' : 'primary'}
-                  label={`Step ${currentLesson.dashboardIndex}/${currentLesson.dashboardCount}`}
-                />
-                {currentProgress?.completedAt && (
-                  <Chip size="small" color="success" label="Completed" />
-                )}
-                {typeof currentProgress?.score === 'number' &&
-                  currentProgress.answered > 0 && (
-                    <Chip
-                      size="small"
-                      label={`Score ${currentProgress.score}%`}
-                    />
-                  )}
-              </Stack>
-              <Typography variant="h6" sx={{ mt: 0.75 }}>
-                {currentLesson.name}
-              </Typography>
-            </Box>
-
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button
-                size="small"
-                variant="outlined"
-                disabled={!canGoPrevious}
-                onClick={() => selectLesson(selectedIndex - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                size="small"
-                variant="contained"
-                disabled={!canGoNext}
-                onClick={() => selectLesson(selectedIndex + 1)}
-              >
-                Next lesson
-              </Button>
-              <Tooltip title="Open lesson in new workspace tab">
-                <IconButton onClick={() => onOpenLesson(currentLesson)}>
-                  <LaunchIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={isPinned ? 'Unpin lesson' : 'Pin lesson'}>
-                <IconButton
-                  onClick={togglePinnedLesson}
-                  color={isPinned ? 'primary' : 'default'}
-                >
-                  {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          </Stack>
-        </Paper>
-
         <Paper
           elevation={0}
           sx={{
