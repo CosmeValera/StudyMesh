@@ -554,26 +554,14 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           p: { xs: 1, md: 1.5 },
         }}
       >
-        <Paper
-          elevation={0}
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            p: 1,
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: 2,
-            backgroundColor: 'background.paper',
-            overflow: 'hidden',
-          }}
-        >
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <DashboardLayoutView
             key={`${currentLesson.dashboardKey}-${navigatorWidth}`}
             layout={studentLayout}
             readOnly
             updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
           />
-        </Paper>
+        </Box>
       </Box>
     </Box>
   )
