@@ -838,12 +838,12 @@ describe('Gemini study pack client', () => {
       title: '01 - Sparse 1',
       dashboardRole: 'normal',
     })
-    expect(draft.dashboards[0].objects).toEqual([
-      expect.objectContaining({
-        kind: 'list',
-        items: ['Sparse source summary bullet 1.'],
-      }),
-    ])
+    expect(draft.dashboards[0].objects).toHaveLength(7)
+    expect(
+      draft.dashboards[0].objects.every(
+        (object) => object.kind === 'quiz' || object.kind === 'qa',
+      ),
+    ).toBe(true)
     expect(draft.dashboards[0].debugTrace?.finalObjects).toEqual(
       draft.dashboards[0].objects,
     )

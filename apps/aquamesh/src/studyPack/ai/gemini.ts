@@ -3,10 +3,17 @@ import {
   StudyPackSourceFormat,
   StudyPathDashboardRole,
 } from '../types'
-import { conceptSummaryItem, extractLearningConcepts } from '../concepts'
 import {
+  conceptExplanation,
+  conceptRecapGroups,
+  conceptSummaryItem,
+  extractLearningConcepts,
+} from '../concepts'
+import {
+  augmentStudyPackPracticeObjects,
   createStudyPackPracticeProfile,
   getEffectiveGenerationTargets,
+  isVisiblePracticeStudyObject,
 } from '../practice'
 import {
   assertRoleObjectsAreClean,
@@ -596,6 +603,40 @@ const sourceSummaryBullets = (
     .filter(Boolean)
     .slice(0, 5) || []
 
+const normalizeSummaryText = (value: string): string =>
+  value.replace(/\s+/g, ' ').trim()
+
+const stripRepeatedSummaryPrefix = (value: string): string => {
+  const normalized = normalizeSummaryText(value)
+  const repeated = normalized.match(/^([^:]{3,60}):\s+\1\b\s*/i)
+
+  if (!repeated) {
+    return normalized
+  }
+
+  const prefix = `${repeated[1]}:`
+  return normalizeSummaryText(normalized.slice(prefix.length))
+}
+
+const isLowQualitySummaryLine = (value: string): boolean => {
+  const normalized = normalizeSummaryText(value)
+
+  return (
+    normalized.length < 18 ||
+    /^([^:]{2,40}):\s+\1\b/i.test(normalized) ||
+    /^(?:there|these|this|it|they|mastering these):/i.test(normalized) ||
+    /^[A-Z][a-z]+:\s+(?:These|This|There|It)\b/.test(normalized)
+  )
+}
+
+const formatSummaryHeading = (value: string): string => {
+  const normalized = normalizeSummaryText(value.replace(/:.*$/, ''))
+  const words = normalized.split(/\s+/).filter(Boolean).slice(0, 7)
+  const heading = words.join(' ')
+
+  return heading || 'Key concept'
+}
+
 const createFallbackBase = (packId: string, suffix: string, title: string) => ({
   id: `${packId}-fallback-${suffix}`,
   title,
@@ -700,6 +741,25 @@ const getStudyPathVisibleObjectsForRole = (
   }
 
   return visibleObjects
+}
+
+const getStudyPathVisiblePracticeTarget = (
+  dashboardRole: StudyPathDashboardRole,
+  generationAmount: 'few' | 'medium' | 'many',
+): number => {
+  if (dashboardRole === 'normal') {
+    return 7
+  }
+
+  if (dashboardRole === 'exercises') {
+    return generationAmount === 'few'
+      ? 10
+      : generationAmount === 'many'
+        ? 18
+        : 14
+  }
+
+  return 0
 }
 
 const parseGeminiJson = (text: string): unknown => {
@@ -1251,7 +1311,43 @@ ${prompt}`
   ) => {
     const source = accumulatedContentNotes.join('\n\n')
     const concepts = extractLearningConcepts(source, title)
-    const conceptList = concepts.map(conceptSummaryItem).slice(0, 12)
+    const conceptGroups = conceptRecapGroups(concepts).slice(0, 5)
+
+    if (mode === 'summary' && conceptGroups.length > 0) {
+      return [
+        `# ${dashboardTitle}`,
+        'Use this recap to connect the major ideas from the Study Path before moving into mixed practice.',
+        ...conceptGroups.map((group) => {
+          const items = group.items
+            .map(stripRepeatedSummaryPrefix)
+            .filter((item) => !isLowQualitySummaryLine(item))
+            .slice(0, 4)
+
+          if (items.length === 0) {
+            return ''
+          }
+
+          return [
+            `## ${formatSummaryHeading(group.label)}`,
+            ...items.map((item) => `- ${item}`),
+          ].join('\n')
+        }),
+      ]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join('\n\n')
+    }
+
+    const conceptList = concepts
+      .map((concept) =>
+        stripRepeatedSummaryPrefix(
+          `${formatSummaryHeading(concept.concept)}: ${conceptExplanation(
+            concept,
+          )}`,
+        ),
+      )
+      .filter((item) => !isLowQualitySummaryLine(item))
+      .slice(0, 12)
 
     return [
       `# ${dashboardTitle}`,
@@ -1336,20 +1432,57 @@ ${prompt}`
         dashboardRole,
         finalEvents,
       )
-      const finalObjects =
-        visibleRoleObjects.length > 0
-          ? visibleRoleObjects
-          : buildFallbackObjectsForDashboardRole({
+      const visiblePracticeTarget = getStudyPathVisiblePracticeTarget(
+        dashboardRole,
+        generationAmount,
+      )
+      const filledVisibleObjects =
+        visiblePracticeTarget > 0
+          ? augmentStudyPackPracticeObjects(visibleRoleObjects, {
               packId,
-              dashboardTitle,
-              dashboardRole,
-              rawNotes: input.rawNotes,
-              sourceSummary: draft.sourceSummary,
-              accumulatedContentNotes,
+              title: dashboardTitle,
+              rawNotes:
+                dashboardRole === 'exercises'
+                  ? accumulatedContentNotes.join('\n\n') ||
+                    textFromRawNotes(input.rawNotes)
+                  : textFromRawNotes(input.rawNotes),
+              generationTargets: ['quizzes', 'flashcards'],
+              generationAmount,
+              visiblePracticeTarget,
+              visiblePracticeOnly: true,
             })
+          : null
+      if (
+        filledVisibleObjects &&
+        filledVisibleObjects.visiblePracticeAddedCount > 0
+      ) {
+        finalEvents.push(
+          `Visible practice fill added ${filledVisibleObjects.visiblePracticeAddedCount} quiz/flashcard object${filledVisibleObjects.visiblePracticeAddedCount === 1 ? '' : 's'} to reach ${filledVisibleObjects.visiblePracticeCount}/${visiblePracticeTarget} visible practice items.`,
+        )
+      }
+      const finalObjects =
+        filledVisibleObjects && filledVisibleObjects.objects.length > 0
+          ? filledVisibleObjects.objects
+          : visibleRoleObjects.length > 0
+            ? visibleRoleObjects
+            : dashboardRole === 'summary'
+              ? []
+              : buildFallbackObjectsForDashboardRole({
+                  packId,
+                  dashboardTitle,
+                  dashboardRole,
+                  rawNotes: input.rawNotes,
+                  sourceSummary: draft.sourceSummary,
+                  accumulatedContentNotes,
+                })
       if (visibleRoleObjects.length === 0 && finalObjects.length > 0) {
         finalEvents.push(
           `Fallback used: created ${dashboardRole} object because role filtering left no visible study objects.`,
+        )
+      }
+      if (dashboardRole === 'summary') {
+        finalEvents.push(
+          'Promoted global recap into the source Markdown widget and suppressed redundant summary/list widgets.',
         )
       }
       assertRoleObjectsAreClean(finalObjects, dashboardRole, dashboardTitle)

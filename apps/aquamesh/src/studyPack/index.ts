@@ -13,6 +13,7 @@ export {
   createStudyPackPracticeProfile,
   getEffectiveGenerationTargets,
   isReviewableStudyObject,
+  isVisiblePracticeStudyObject,
   shuffleStudyObjectQuizOptions,
   shuffleStudyQuizOptions,
 } from './practice'

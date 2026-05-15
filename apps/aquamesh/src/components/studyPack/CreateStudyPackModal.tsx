@@ -728,6 +728,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       rawNotes: sourceText,
       generationTargets,
       generationAmount,
+      visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
     })
     const reviewableItems = toReviewItems(augmented.objects)
     setPackTitle(parsed.title)
@@ -790,7 +791,18 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       })
       const nextTitle = draft.title || packTitle
       setAiProgressLabel('Preparing review screen')
-      const reviewableItems = toReviewItems(draft.objects)
+      const augmented = augmentStudyPackPracticeObjects(draft.objects, {
+        packId: getPackId(nextTitle),
+        title: nextTitle,
+        rawNotes:
+          studyTaskMode === 'aiPrompt'
+            ? createGeneratedSourceNotes(nextTitle, sourceText, draft.objects)
+            : sourceText,
+        generationTargets,
+        generationAmount,
+        visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
+      })
+      const reviewableItems = toReviewItems(augmented.objects)
       setPackTitle(nextTitle)
       setSourceFormat(draft.sourceFormat || 'text')
       setReviewItems(reviewableItems)
@@ -808,6 +820,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       )
       setError(
         draft.warnings[0] ||
+          augmented.warnings[0] ||
           (reviewableItems.length === 0
             ? 'AI did not create any reviewable study materials from these notes.'
             : ''),

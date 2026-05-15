@@ -32,11 +32,15 @@ export interface AugmentStudyPackPracticeOptions {
   rawNotes: string
   generationTargets?: string[]
   generationAmount?: StudyPackGenerationAmount
+  visiblePracticeTarget?: number
+  visiblePracticeOnly?: boolean
 }
 
 export interface AugmentStudyPackPracticeResult {
   objects: StudyObject[]
   addedCount: number
+  visiblePracticeCount: number
+  visiblePracticeAddedCount: number
   warnings: string[]
   profile: StudyPackPracticeProfile
 }
@@ -134,6 +138,9 @@ export const createStudyPackPracticeProfile = (
 
 export const isReviewableStudyObject = (object: StudyObject): boolean =>
   reviewableKinds.has(object.kind)
+
+export const isVisiblePracticeStudyObject = (object: StudyObject): boolean =>
+  object.kind === 'quiz' || object.kind === 'qa' || object.kind === 'reveal'
 
 const objectMatchesTargets = (
   object: StudyObject,
@@ -615,6 +622,9 @@ const countKind = (objects: StudyObject[], kind: StudyObjectKind) =>
 const countSupport = (objects: StudyObject[]) =>
   objects.filter((object) => supportKinds.has(object.kind)).length
 
+const countVisiblePractice = (objects: StudyObject[]) =>
+  objects.filter(isVisiblePracticeStudyObject).length
+
 const hasObjectId = (objects: StudyObject[], id: string): boolean =>
   objects.some((object) => object.id === id)
 
@@ -622,6 +632,60 @@ const pushUnique = (objects: StudyObject[], object: StudyObject): void => {
   if (!hasObjectId(objects, object.id)) {
     objects.push(object)
   }
+}
+
+const pushNextQuiz = ({
+  objects,
+  concepts,
+  packId,
+  nextConcept,
+  nextFact,
+  facts,
+  title,
+}: {
+  objects: StudyObject[]
+  concepts: LearningConcept[]
+  packId: string
+  nextConcept: () => LearningConcept
+  nextFact: () => string
+  facts: string[]
+  title: string
+}): void => {
+  pushUnique(
+    objects,
+    concepts.length > 0
+      ? createConceptQuiz(packId, countKind(objects, 'quiz'), nextConcept())
+      : createQuiz(
+          packId,
+          countKind(objects, 'quiz'),
+          nextFact(),
+          facts,
+          title,
+        ),
+  )
+}
+
+const pushNextFlashcard = ({
+  objects,
+  concepts,
+  packId,
+  nextConcept,
+  nextFact,
+  title,
+}: {
+  objects: StudyObject[]
+  concepts: LearningConcept[]
+  packId: string
+  nextConcept: () => LearningConcept
+  nextFact: () => string
+  title: string
+}): void => {
+  pushUnique(
+    objects,
+    concepts.length > 0
+      ? createConceptFlashcard(packId, countKind(objects, 'qa'), nextConcept())
+      : createFlashcard(packId, countKind(objects, 'qa'), nextFact(), title),
+  )
 }
 
 export const augmentStudyPackPracticeObjects = (
@@ -648,10 +712,20 @@ export const augmentStudyPackPracticeObjects = (
   const warnings: string[] = []
 
   if (facts.length === 0) {
-    return { objects, addedCount: 0, warnings, profile }
+    return {
+      objects,
+      addedCount: 0,
+      visiblePracticeCount: countVisiblePractice(objects),
+      visiblePracticeAddedCount: 0,
+      warnings,
+      profile,
+    }
   }
 
   const startingCount = objects.length
+  const startingVisiblePracticeCount = countVisiblePractice(objects)
+  const visiblePracticeTarget =
+    options.visiblePracticeTarget || Number.POSITIVE_INFINITY
   let cursor = 0
   const nextFact = () => {
     const fact = facts[cursor % facts.length]
@@ -667,66 +741,56 @@ export const augmentStudyPackPracticeObjects = (
   if (profile.enforceQuizzes) {
     while (
       countKind(objects, 'quiz') < profile.targetQuizzes &&
-      countReviewable(objects) < profile.maxTotal
+      countReviewable(objects) < profile.maxTotal &&
+      countVisiblePractice(objects) < visiblePracticeTarget
     ) {
-      pushUnique(
+      pushNextQuiz({
         objects,
-        concepts.length > 0
-          ? createConceptQuiz(packId, countKind(objects, 'quiz'), nextConcept())
-          : createQuiz(
-              packId,
-              countKind(objects, 'quiz'),
-              nextFact(),
-              facts,
-              options.title,
-            ),
-      )
+        concepts,
+        packId,
+        nextConcept,
+        nextFact,
+        facts,
+        title: options.title,
+      })
     }
   }
 
   if (profile.enforceFlashcards) {
     while (
       countKind(objects, 'qa') < profile.targetFlashcards &&
-      countReviewable(objects) < profile.maxTotal
+      countReviewable(objects) < profile.maxTotal &&
+      countVisiblePractice(objects) < visiblePracticeTarget
     ) {
-      pushUnique(
+      pushNextFlashcard({
         objects,
-        concepts.length > 0
-          ? createConceptFlashcard(
-              packId,
-              countKind(objects, 'qa'),
-              nextConcept(),
-            )
-          : createFlashcard(
-              packId,
-              countKind(objects, 'qa'),
-              nextFact(),
-              options.title,
-            ),
-      )
+        concepts,
+        packId,
+        nextConcept,
+        nextFact,
+        title: options.title,
+      })
     }
   }
 
   while (
     countReviewable(objects) < profile.targetTotal &&
-    countReviewable(objects) < profile.maxTotal
+    countReviewable(objects) < profile.maxTotal &&
+    countVisiblePractice(objects) < visiblePracticeTarget
   ) {
     if (
       profile.enforceQuizzes &&
       countKind(objects, 'quiz') < profile.minQuizzes
     ) {
-      pushUnique(
+      pushNextQuiz({
         objects,
-        concepts.length > 0
-          ? createConceptQuiz(packId, countKind(objects, 'quiz'), nextConcept())
-          : createQuiz(
-              packId,
-              countKind(objects, 'quiz'),
-              nextFact(),
-              facts,
-              options.title,
-            ),
-      )
+        concepts,
+        packId,
+        nextConcept,
+        nextFact,
+        facts,
+        title: options.title,
+      })
       continue
     }
 
@@ -734,21 +798,14 @@ export const augmentStudyPackPracticeObjects = (
       profile.enforceFlashcards &&
       countKind(objects, 'qa') < profile.minFlashcards
     ) {
-      pushUnique(
+      pushNextFlashcard({
         objects,
-        concepts.length > 0
-          ? createConceptFlashcard(
-              packId,
-              countKind(objects, 'qa'),
-              nextConcept(),
-            )
-          : createFlashcard(
-              packId,
-              countKind(objects, 'qa'),
-              nextFact(),
-              options.title,
-            ),
-      )
+        concepts,
+        packId,
+        nextConcept,
+        nextFact,
+        title: options.title,
+      })
       continue
     }
 
@@ -780,11 +837,60 @@ export const augmentStudyPackPracticeObjects = (
     )
   }
 
-  const addedCount = objects.length - startingCount
+  if (
+    options.visiblePracticeTarget &&
+    options.visiblePracticeTarget > countVisiblePractice(objects) &&
+    (profile.enforceQuizzes || profile.enforceFlashcards)
+  ) {
+    while (countVisiblePractice(objects) < options.visiblePracticeTarget) {
+      const quizCount = countKind(objects, 'quiz')
+      const flashcardCount =
+        countKind(objects, 'qa') + countKind(objects, 'reveal')
+      const shouldAddQuiz =
+        profile.enforceQuizzes &&
+        (!profile.enforceFlashcards || quizCount <= flashcardCount)
+
+      if (shouldAddQuiz) {
+        pushNextQuiz({
+          objects,
+          concepts,
+          packId,
+          nextConcept,
+          nextFact,
+          facts,
+          title: options.title,
+        })
+        continue
+      }
+
+      if (profile.enforceFlashcards) {
+        pushNextFlashcard({
+          objects,
+          concepts,
+          packId,
+          nextConcept,
+          nextFact,
+          title: options.title,
+        })
+        continue
+      }
+
+      break
+    }
+  }
+
+  const finalObjects = options.visiblePracticeOnly
+    ? objects.filter(isVisiblePracticeStudyObject)
+    : objects
+  const addedCount = finalObjects.length - startingCount
+  const visiblePracticeCount = countVisiblePractice(finalObjects)
 
   return {
-    objects: objects.map(shuffleStudyObjectQuizOptions),
+    objects: finalObjects.map(shuffleStudyObjectQuizOptions),
     addedCount,
+    visiblePracticeCount,
+    visiblePracticeAddedCount:
+      visiblePracticeCount - startingVisiblePracticeCount,
     warnings,
     profile,
   }

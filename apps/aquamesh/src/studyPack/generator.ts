@@ -674,16 +674,16 @@ const objectAllowedForDashboardRole = (
 
   if (role === 'exercises') {
     return (
-      object.kind === 'quiz' ||
-      object.kind === 'qa' ||
-      object.kind === 'reveal'
+      object.kind === 'quiz' || object.kind === 'qa' || object.kind === 'reveal'
     )
   }
 
   return true
 }
 
-const orderObjectsForGeneratedWidget = (objects: StudyObject[]): StudyObject[] =>
+const orderObjectsForGeneratedWidget = (
+  objects: StudyObject[],
+): StudyObject[] =>
   [...objects].sort((left, right) => {
     if (left.kind === 'quiz' && right.kind === 'quiz') {
       if (left.quizMode === right.quizMode) {
@@ -786,6 +786,8 @@ export const createStudyPackOrchestratorWidgets = (
     includeSummaryChart: options.includeSummaryChart ?? true,
     studyPath: options.studyPath,
   }
+  const dashboardRole =
+    normalizedOptions.studyPath?.dashboardRole || pack.dashboardRole || 'normal'
   const sourceWidgets = normalizedOptions.includeSourceWidget
     ? [
         createRawSourceWidget(pack, options.rawSource || '', {
@@ -796,8 +798,7 @@ export const createStudyPackOrchestratorWidgets = (
           widgetIdPrefix: normalizedOptions.widgetIdPrefix,
           studyPath: normalizedOptions.studyPath,
         }),
-        ...(normalizedOptions.studyPath?.dashboardRole === 'exercises' ||
-        pack.dashboardRole === 'exercises'
+        ...(dashboardRole === 'exercises' || dashboardRole === 'summary'
           ? []
           : [
               createSourceSummaryWidget(pack, options.rawSource || '', {
@@ -810,8 +811,13 @@ export const createStudyPackOrchestratorWidgets = (
       ]
     : []
   const generatedGroups =
-    options.widgetGroups ||
-    createStudyPackSmartWidgetGroups(pack, normalizedOptions.groupingThreshold)
+    dashboardRole === 'summary'
+      ? []
+      : options.widgetGroups ||
+        createStudyPackSmartWidgetGroups(
+          pack,
+          normalizedOptions.groupingThreshold,
+        )
 
   if (generatedGroups.length === 0) {
     return sourceWidgets
@@ -1027,8 +1033,8 @@ export const createStudyPackDashboardLayout = (
   options.mode === 'orchestrator'
     ? createOrchestratorDashboardLayout(widgets)
     : options.mode === 'tabs'
-    ? createTabbedDashboardLayout(widgets)
-    : createSmartDashboardLayout(widgets)
+      ? createTabbedDashboardLayout(widgets)
+      : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],

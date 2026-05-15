@@ -58,7 +58,11 @@ const makeDashboard = (index: number) => {
       multipleChoice: [
         {
           question: `Which option applies ${label.toLowerCase()} in a new context?`,
-          options: [`${label} correct`, `${label} distractor A`, `${label} distractor B`],
+          options: [
+            `${label} correct`,
+            `${label} distractor A`,
+            `${label} distractor B`,
+          ],
           correctOptionIndex: 0,
           explanation: `${label} multiple-choice explanation.`,
         },
@@ -87,10 +91,10 @@ const mockGeminiDashboards = (dashboardCount: number) => {
                   text: JSON.stringify({
                     title: 'French Subjunctive Path',
                     folderName: 'French Subjunctive Path',
-                    dashboards: Array.from({ length: dashboardCount }, (
-                      _value,
-                      index,
-                    ) => makeDashboard(index + 1)),
+                    dashboards: Array.from(
+                      { length: dashboardCount },
+                      (_value, index) => makeDashboard(index + 1),
+                    ),
                   }),
                 },
               ],
@@ -103,17 +107,13 @@ const mockGeminiDashboards = (dashboardCount: number) => {
 }
 
 const generatePath = async (amount?: 'Compact' | 'Extended') => {
-  render(
-    <CreateStudyPathModal
-      open
-      onClose={vi.fn()}
-      onCreatePath={vi.fn()}
-    />,
-  )
+  render(<CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />)
 
   if (amount) {
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /path depth/i }))
-    fireEvent.click(screen.getByRole('option', { name: new RegExp(amount, 'i') }))
+    fireEvent.click(
+      screen.getByRole('option', { name: new RegExp(amount, 'i') }),
+    )
   }
 
   fireEvent.change(
@@ -122,9 +122,7 @@ const generatePath = async (amount?: 'Compact' | 'Extended') => {
       target: { value: 'Teach French subjunctive' },
     },
   )
-  fireEvent.click(
-    screen.getByRole('button', { name: /generate study path/i }),
-  )
+  fireEvent.click(screen.getByRole('button', { name: /generate study path/i }))
 }
 
 describe('CreateStudyPathModal role enforcement', () => {
@@ -169,7 +167,9 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(within(summaryCard).getByText('summary')).toBeInTheDocument()
     expect(within(summaryCard).getByText('1 study items')).toBeInTheDocument()
     expect(within(exercisesCard).getByText('exercises')).toBeInTheDocument()
-    expect(within(exercisesCard).getByText('3 study items')).toBeInTheDocument()
+    expect(
+      within(exercisesCard).getByText('14 study items'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('AI generation debug'))
     const rawDashboardInput = screen.getByTestId(
@@ -199,7 +199,9 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(finalMapping).toHaveTextContent('study-path-5-multiple-choice')
     expect(finalMapping).toHaveTextContent('study-path-5-flashcard')
 
-    fireEvent.click(screen.getByRole('button', { name: /^create 5 dashboards$/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /^create 5 dashboards$/i }),
+    )
 
     expect(onCreatePath).toHaveBeenCalledTimes(1)
     const payload = onCreatePath.mock.calls[0][0]
@@ -224,7 +226,9 @@ describe('CreateStudyPathModal role enforcement', () => {
 
     const exercisesCard = screen.getByTestId('study-path-dashboard-3')
     expect(within(exercisesCard).getByText('exercises')).toBeInTheDocument()
-    expect(within(exercisesCard).getByText('3 study items')).toBeInTheDocument()
+    expect(
+      within(exercisesCard).getByText('10 study items'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('AI generation debug'))
     const finalMapping = screen.getByTestId(
@@ -252,7 +256,9 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(within(summaryCard).getByText('summary')).toBeInTheDocument()
     expect(within(summaryCard).getByText('1 study items')).toBeInTheDocument()
     expect(within(exercisesCard).getByText('exercises')).toBeInTheDocument()
-    expect(within(exercisesCard).getByText('3 study items')).toBeInTheDocument()
+    expect(
+      within(exercisesCard).getByText('18 study items'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('AI generation debug'))
     const finalMapping = screen.getByTestId(

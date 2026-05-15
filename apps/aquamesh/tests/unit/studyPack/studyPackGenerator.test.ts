@@ -52,6 +52,61 @@ Common mistake: students often choose avoir for a movement verb that needs etre.
     )
   })
 
+  it('fills visible practice targets without counting hidden support objects', () => {
+    const source = `The present subjunctive uses the ils stem with -e, -es, -e, -ions, -iez, and -ent endings.
+Il faut que triggers the subjunctive because it expresses necessity.
+Students often overuse the subjunctive after expressions of certainty.
+Use the indicative when the speaker presents the action as factual.
+Common mistake: choosing the infinitive after que instead of a conjugated subjunctive form.`
+    const augmented = augmentStudyPackPracticeObjects(
+      [
+        {
+          id: 'support-list',
+          kind: 'list',
+          title: 'Internal recap',
+          sourceLine: 1,
+          tags: [],
+          items: ['This list should not consume a visible practice slot.'],
+          ordered: false,
+          checklist: false,
+        },
+        {
+          id: 'support-review',
+          kind: 'reviewPrompt',
+          title: 'Internal review',
+          sourceLine: 2,
+          tags: [],
+          prompt: 'Review this later.',
+          reason: 'Support-only content.',
+          status: 'needsReview',
+        },
+      ],
+      {
+        packId: 'visible-practice',
+        title: 'Visible Practice',
+        rawNotes: source,
+        generationTargets: ['quizzes', 'flashcards', 'summaries'],
+        generationAmount: 'few',
+        visiblePracticeTarget: 7,
+      },
+    )
+    const visibleObjects = augmented.objects.filter(
+      (object) =>
+        object.kind === 'quiz' ||
+        object.kind === 'qa' ||
+        object.kind === 'reveal',
+    )
+
+    expect(visibleObjects).toHaveLength(7)
+    expect(augmented.visiblePracticeCount).toBe(7)
+    expect(
+      Math.abs(
+        visibleObjects.filter((object) => object.kind === 'quiz').length -
+          visibleObjects.filter((object) => object.kind === 'qa').length,
+      ),
+    ).toBeLessThanOrEqual(1)
+  })
+
   it('rejects subjonctif fragments and creates concrete rule practice', () => {
     const source = `# Le subjonctif present
 
@@ -418,11 +473,10 @@ A: The mixed rules.`,
 
     expect(widgets.map((widget) => widget.name)).toEqual([
       'French Summary Source',
-      'French Summary Summary',
-      'French Summary Review',
     ])
     expect(serialized).not.toContain('QuizBlock')
     expect(serialized).not.toContain('FlashcardBlock')
+    expect(serialized).not.toContain('French Summary Summary')
   })
 
   it('renders exercises Study Path dashboards as practice-only without a visible summary tab', () => {
