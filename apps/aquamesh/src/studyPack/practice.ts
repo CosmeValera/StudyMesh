@@ -1,3 +1,13 @@
+import {
+  createApplicationQuestion,
+  createFlashcardPrompt,
+  conceptExplanation,
+  conceptRecapGroups,
+  conceptSummaryItem,
+  extractLearningConcepts,
+  isLowQualityStudyObject,
+  LearningConcept,
+} from './concepts'
 import { StudyObject, StudyObjectKind, StudyQuizObject } from './types'
 
 export type StudyPackGenerationAmount = 'few' | 'medium' | 'many'
@@ -277,6 +287,9 @@ const splitIntoFacts = (rawNotes: string): string[] => {
   })
 }
 
+const conceptToFact = (concept: LearningConcept): string =>
+  conceptSummaryItem(concept)
+
 const extractConcept = (fact: string, title: string): string => {
   const quotedConcept = fact.match(/["'“‘]([^"'”’]{2,60})["'”’]/)?.[1]
   const definitionMatch = fact.match(
@@ -335,42 +348,115 @@ const createQuiz = (
   packId: string,
   index: number,
   fact: string,
-  facts: string[],
+  _facts: string[],
   title: string,
 ): StudyObject => {
   const concept = extractConcept(fact, title)
-  const otherFacts = facts.filter((candidate) => candidate !== fact)
-  const useFactOptions = otherFacts.length >= 2
-  const baseOptions = useFactOptions
-    ? [
-        fact,
-        otherFacts[index % otherFacts.length],
-        otherFacts[(index + 1) % otherFacts.length],
-      ]
-    : ['Supported by the notes', 'Not supported by the notes']
-  const correctAnswer = baseOptions[0]
-  const targetIndex =
-    hashValue(`${packId}:${index}:${fact}`) % baseOptions.length
-  const options = reorderOptions(baseOptions, correctAnswer, targetIndex)
 
   return {
     id: `${packId}-practice-quiz-${index + 1}`,
     kind: 'quiz',
-    title: `${concept} quiz`,
+    title: `${concept} practice`,
     sourceLine: index + 1,
     tags: ['study-pack', 'practice'],
-    quizMode: 'multipleChoice',
-    question: useFactOptions
-      ? concept === 'this lesson point'
-        ? 'Which statement is best supported by the lesson notes?'
-        : `Which statement best explains ${concept}?`
-      : `According to the notes, is this statement supported: "${fact}"?`,
-    options,
-    correctIndex: options.findIndex((option) => option === correctAnswer),
-    answer: correctAnswer,
+    quizMode: 'shortAnswer',
+    question:
+      concept === 'this lesson point'
+        ? 'How would you apply this lesson point in a new example?'
+        : `How would you apply ${concept} in a new example?`,
+    options: [],
+    correctIndex: 0,
+    answer: fact,
     explanation: fact,
   }
 }
+
+const createConceptQuiz = (
+  packId: string,
+  index: number,
+  concept: LearningConcept,
+): StudyObject => {
+  const question = createApplicationQuestion(concept, index)
+
+  return {
+    id: `${packId}-practice-quiz-${index + 1}`,
+    kind: 'quiz',
+    title: `${concept.concept} practice`,
+    sourceLine: concept.sourceLine,
+    tags: ['study-pack', 'practice', 'concept-first'],
+    ...question,
+  }
+}
+
+const createConceptFlashcard = (
+  packId: string,
+  index: number,
+  concept: LearningConcept,
+): StudyObject => ({
+  id: `${packId}-practice-flashcard-${index + 1}`,
+  kind: 'qa',
+  title: `${concept.concept} flashcard`,
+  sourceLine: concept.sourceLine,
+  tags: ['study-pack', 'practice', 'concept-first'],
+  question: createFlashcardPrompt(concept),
+  answer: conceptExplanation(concept),
+})
+
+const createConceptDefinition = (
+  packId: string,
+  index: number,
+  concept: LearningConcept,
+): StudyObject => ({
+  id: `${packId}-practice-definition-${index + 1}`,
+  kind: 'term',
+  title: `${concept.concept} definition`,
+  sourceLine: concept.sourceLine,
+  tags: ['study-pack', 'practice', 'concept-first'],
+  term: concept.concept,
+  definition: conceptExplanation(concept),
+})
+
+const createConceptSummaryList = (
+  packId: string,
+  index: number,
+  concepts: LearningConcept[],
+  title: string,
+): StudyObject => {
+  const groups = conceptRecapGroups(concepts)
+  const items =
+    groups.length > 0
+      ? groups.flatMap((group) => [
+          group.label,
+          ...group.items.map((item) => `- ${item}`),
+        ])
+      : concepts.slice(index, index + 5).map(conceptSummaryItem)
+
+  return {
+    id: `${packId}-practice-summary-${index + 1}`,
+    kind: 'list',
+    title: `${title || 'Study Pack'} concept recap`,
+    sourceLine: concepts[index]?.sourceLine || index + 1,
+    tags: ['study-pack', 'practice', 'concept-first'],
+    items,
+    ordered: false,
+    checklist: false,
+  }
+}
+
+const createConceptReviewPrompt = (
+  packId: string,
+  index: number,
+  concept: LearningConcept,
+): StudyObject => ({
+  id: `${packId}-practice-review-${index + 1}`,
+  kind: 'reviewPrompt',
+  title: `${concept.concept} review`,
+  sourceLine: concept.sourceLine,
+  tags: ['study-pack', 'practice', 'concept-first'],
+  prompt: `Apply ${concept.concept} to a fresh example and explain the rule you used.`,
+  reason: conceptExplanation(concept),
+  status: 'needsReview',
+})
 
 const createFlashcard = (
   packId: string,
@@ -501,6 +587,25 @@ const createSupportObject = (
   return createSupportPrompt(packId, index, fact, title)
 }
 
+const createConceptSupportObject = (
+  target: string,
+  packId: string,
+  index: number,
+  concept: LearningConcept,
+  concepts: LearningConcept[],
+  title: string,
+): StudyObject => {
+  if (target === 'definitions') {
+    return createConceptDefinition(packId, index, concept)
+  }
+
+  if (target === 'summaries' || target === 'lists') {
+    return createConceptSummaryList(packId, index, concepts, title)
+  }
+
+  return createConceptReviewPrompt(packId, index, concept)
+}
+
 const countReviewable = (objects: StudyObject[]) =>
   objects.filter(isReviewableStudyObject).length
 
@@ -532,10 +637,14 @@ export const augmentStudyPackPracticeObjects = (
   const supportTargets = getSupportTargets(targets)
   const objects = inputObjects
     .filter((object) => objectMatchesTargets(object, targets))
+    .filter((object) => !isLowQualityStudyObject(object, options.title))
     .map(shuffleStudyObjectQuizOptions)
-  const facts = splitIntoFacts(options.rawNotes).filter((fact) =>
-    isUsefulPracticeFact(fact, options.title),
-  )
+  const concepts = extractLearningConcepts(options.rawNotes, options.title)
+  const facts = (
+    concepts.length > 0
+      ? concepts.map(conceptToFact)
+      : splitIntoFacts(options.rawNotes)
+  ).filter((fact) => isUsefulPracticeFact(fact, options.title))
   const warnings: string[] = []
 
   if (facts.length === 0) {
@@ -549,6 +658,11 @@ export const augmentStudyPackPracticeObjects = (
     cursor += 1
     return fact
   }
+  const nextConcept = () => {
+    const concept = concepts[cursor % concepts.length]
+    cursor += 1
+    return concept
+  }
 
   if (profile.enforceQuizzes) {
     while (
@@ -557,13 +671,15 @@ export const augmentStudyPackPracticeObjects = (
     ) {
       pushUnique(
         objects,
-        createQuiz(
-          packId,
-          countKind(objects, 'quiz'),
-          nextFact(),
-          facts,
-          options.title,
-        ),
+        concepts.length > 0
+          ? createConceptQuiz(packId, countKind(objects, 'quiz'), nextConcept())
+          : createQuiz(
+              packId,
+              countKind(objects, 'quiz'),
+              nextFact(),
+              facts,
+              options.title,
+            ),
       )
     }
   }
@@ -575,12 +691,18 @@ export const augmentStudyPackPracticeObjects = (
     ) {
       pushUnique(
         objects,
-        createFlashcard(
-          packId,
-          countKind(objects, 'qa'),
-          nextFact(),
-          options.title,
-        ),
+        concepts.length > 0
+          ? createConceptFlashcard(
+              packId,
+              countKind(objects, 'qa'),
+              nextConcept(),
+            )
+          : createFlashcard(
+              packId,
+              countKind(objects, 'qa'),
+              nextFact(),
+              options.title,
+            ),
       )
     }
   }
@@ -595,13 +717,15 @@ export const augmentStudyPackPracticeObjects = (
     ) {
       pushUnique(
         objects,
-        createQuiz(
-          packId,
-          countKind(objects, 'quiz'),
-          nextFact(),
-          facts,
-          options.title,
-        ),
+        concepts.length > 0
+          ? createConceptQuiz(packId, countKind(objects, 'quiz'), nextConcept())
+          : createQuiz(
+              packId,
+              countKind(objects, 'quiz'),
+              nextFact(),
+              facts,
+              options.title,
+            ),
       )
       continue
     }
@@ -612,12 +736,18 @@ export const augmentStudyPackPracticeObjects = (
     ) {
       pushUnique(
         objects,
-        createFlashcard(
-          packId,
-          countKind(objects, 'qa'),
-          nextFact(),
-          options.title,
-        ),
+        concepts.length > 0
+          ? createConceptFlashcard(
+              packId,
+              countKind(objects, 'qa'),
+              nextConcept(),
+            )
+          : createFlashcard(
+              packId,
+              countKind(objects, 'qa'),
+              nextFact(),
+              options.title,
+            ),
       )
       continue
     }
@@ -630,14 +760,23 @@ export const augmentStudyPackPracticeObjects = (
     const target = supportTargets[supportIndex % supportTargets.length]
     pushUnique(
       objects,
-      createSupportObject(
-        target,
-        packId,
-        supportIndex,
-        nextFact(),
-        facts,
-        options.title,
-      ),
+      concepts.length > 0
+        ? createConceptSupportObject(
+            target,
+            packId,
+            supportIndex,
+            nextConcept(),
+            concepts,
+            options.title,
+          )
+        : createSupportObject(
+            target,
+            packId,
+            supportIndex,
+            nextFact(),
+            facts,
+            options.title,
+          ),
     )
   }
 

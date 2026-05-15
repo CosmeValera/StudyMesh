@@ -12,6 +12,7 @@ export {
   extractRawNotesWithAi,
   generateStudyPackWithAi,
   generateStudyPathWithAi,
+  getStudyPathDashboardRoles,
 } from './gemini'
 export type {
   AiStudyPathDashboardDraft,
@@ -20,5 +21,15 @@ export type {
   GenerateStudyPackWithAiOptions,
   GenerateStudyPathWithAiOptions,
 } from './gemini'
-export { normalizeAiStudyPackDraft } from './normalizer'
-export type { AiStudyPackDraft } from './normalizer'
+export {
+  assertRoleObjectsAreClean,
+  filterStudyObjectsForDashboardRole,
+  normalizeAiStudyPackDraft,
+  studyObjectAllowedForDashboardRole,
+} from './normalizer'
+export type {
+  AiGenerationDebugTrace,
+  AiSourceSummary,
+  AiStudyPackDraft,
+  StrictAiDashboardContract,
+} from './normalizer'

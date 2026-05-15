@@ -1,11 +1,19 @@
-import { StudyPackSourceFormat } from '../types'
-import { StudyObject } from '../types'
 import {
-  augmentStudyPackPracticeObjects,
+  StudyObject,
+  StudyPackSourceFormat,
+  StudyPathDashboardRole,
+} from '../types'
+import { conceptSummaryItem, extractLearningConcepts } from '../concepts'
+import {
   createStudyPackPracticeProfile,
   getEffectiveGenerationTargets,
 } from '../practice'
-import { normalizeAiStudyPackDraft, AiStudyPackDraft } from './normalizer'
+import {
+  assertRoleObjectsAreClean,
+  filterStudyObjectsForDashboardRole,
+  normalizeAiStudyPackDraft,
+  AiStudyPackDraft,
+} from './normalizer'
 
 interface GeminiPart {
   text?: string
@@ -67,6 +75,7 @@ export interface GenerateStudyPackWithAiOptions {
 
 export interface AiStudyPathDashboardDraft extends AiStudyPackDraft {
   summary: string
+  dashboardRole: StudyPathDashboardRole
 }
 
 export interface AiStudyPathDraft {
@@ -85,35 +94,40 @@ export interface GenerateStudyPathWithAiOptions {
   generationAmount?: 'few' | 'medium' | 'many'
 }
 
-const asksForHeavyResource = (text: string): boolean =>
-  /\b(pdf|image|images|picture|pictures|diagram|diagrams|visual|visuals|photo|photos|screenshot|screenshots)\b/i.test(
-    text,
-  )
+export const getStudyPathDashboardRoles = (
+  generationAmount: 'few' | 'medium' | 'many' = 'medium',
+): StudyPathDashboardRole[] =>
+  generationAmount === 'few'
+    ? ['normal', 'normal', 'exercises']
+    : generationAmount === 'many'
+      ? [
+          'normal',
+          'normal',
+          'normal',
+          'normal',
+          'normal',
+          'summary',
+          'exercises',
+        ]
+      : ['normal', 'normal', 'normal', 'summary', 'exercises']
 
-const removeUnrequestedHeavyResources = (
-  objects: StudyObject[],
-  rawNotes: string,
-): { objects: StudyObject[]; warnings: string[] } => {
-  if (asksForHeavyResource(rawNotes)) {
-    return { objects, warnings: [] }
-  }
+const getStudyPathStepNames = (
+  generationAmount: 'few' | 'medium' | 'many' = 'medium',
+): string[] =>
+  getStudyPathDashboardRoles(generationAmount).map((role, index) => {
+    if (role === 'summary') {
+      return 'Summary'
+    }
 
-  const filtered = objects.filter(
-    (object) =>
-      object.kind !== 'resource' ||
-      (object.resourceType !== 'pdf' && object.resourceType !== 'image'),
-  )
+    if (role === 'exercises') {
+      return 'Exercises'
+    }
 
-  return {
-    objects: filtered,
-    warnings:
-      filtered.length === objects.length
-        ? []
-        : [
-            'Skipped AI-generated PDF/image resources because the source did not explicitly ask for heavy media.',
-          ],
-  }
-}
+    return `Content ${index + 1}`
+  })
+
+const describeStudyPathRoles = (roles: StudyPathDashboardRole[]): string =>
+  roles.map((role, index) => `${index + 1}: ${role}`).join(', ')
 
 const hasUsefulLessonNotes = (value: string): boolean =>
   value.trim().split(/\s+/).filter(Boolean).length >= 80
@@ -164,10 +178,14 @@ const formatLessonNotesForReading = (
     summary ? `## Goal\n${summary}` : '',
     overview.length > 0 ? `## Overview\n${overview.join(' ')}` : '',
     keyConcepts.length > 0
-      ? `## Key points\n${keyConcepts.map((sentence) => `- ${sentence}`).join('\n')}`
+      ? `## Key points\n${keyConcepts
+          .map((sentence) => `- ${sentence}`)
+          .join('\n')}`
       : '',
     examples.length > 0
-      ? `## Examples and usage\n${examples.map((sentence) => `- ${sentence}`).join('\n')}`
+      ? `## Examples and usage\n${examples
+          .map((sentence) => `- ${sentence}`)
+          .join('\n')}`
       : '',
     tips.length > 0
       ? `## Remember\n${tips.map((sentence) => `- ${sentence}`).join('\n')}`
@@ -178,7 +196,9 @@ const formatLessonNotesForReading = (
     .join('\n\n')
 }
 
-const studyObjectToLessonNote = (object: StudyObject): string => {
+const studyObjectToLessonNote = (
+  object: AiStudyPackDraft['objects'][number],
+): string => {
   switch (object.kind) {
     case 'markdown':
       return object.markdown
@@ -221,7 +241,7 @@ const buildStudyPathLessonNotes = (
   title: string,
   summary: string,
   rawNotes: string,
-  objects: StudyObject[],
+  objects: AiStudyPackDraft['objects'],
 ): string => {
   if (hasUsefulLessonNotes(rawNotes)) {
     return formatLessonNotesForReading(title, summary, rawNotes)
@@ -245,6 +265,85 @@ export interface ExtractRawNotesWithAiOptions {
   image: File
 }
 
+const textArraySchema = { type: 'ARRAY', items: { type: 'STRING' } }
+
+const dashboardContractProperties = {
+  sourceSummary: {
+    type: 'OBJECT',
+    properties: {
+      title: { type: 'STRING' },
+      bullets: textArraySchema,
+    },
+    required: ['title', 'bullets'],
+  },
+  conceptRecap: {
+    type: 'OBJECT',
+    properties: {
+      title: { type: 'STRING' },
+      sections: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            title: { type: 'STRING' },
+            bullets: textArraySchema,
+            example: { type: 'STRING' },
+          },
+          required: ['title', 'bullets', 'example'],
+        },
+      },
+    },
+    required: ['title', 'sections'],
+  },
+  practice: {
+    type: 'OBJECT',
+    properties: {
+      shortAnswer: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            question: { type: 'STRING' },
+            expectedAnswer: { type: 'STRING' },
+            explanation: { type: 'STRING' },
+          },
+          required: ['question', 'expectedAnswer', 'explanation'],
+        },
+      },
+      multipleChoice: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            question: { type: 'STRING' },
+            options: textArraySchema,
+            correctOptionIndex: { type: 'NUMBER' },
+            explanation: { type: 'STRING' },
+          },
+          required: [
+            'question',
+            'options',
+            'correctOptionIndex',
+            'explanation',
+          ],
+        },
+      },
+    },
+    required: ['shortAnswer', 'multipleChoice'],
+  },
+  flashcards: {
+    type: 'ARRAY',
+    items: {
+      type: 'OBJECT',
+      properties: {
+        front: { type: 'STRING' },
+        back: { type: 'STRING' },
+      },
+      required: ['front', 'back'],
+    },
+  },
+}
+
 const objectSchema = {
   type: 'OBJECT',
   properties: {
@@ -260,62 +359,9 @@ const objectSchema = {
         'quick-syntax',
       ],
     },
-    objects: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          kind: {
-            type: 'STRING',
-            enum: [
-              'markdown',
-              'note',
-              'term',
-              'qa',
-              'quiz',
-              'reveal',
-              'comparison',
-              'sequence',
-              'reviewPrompt',
-              'code',
-              'list',
-              'table',
-            ],
-          },
-          title: { type: 'STRING' },
-          tags: { type: 'ARRAY', items: { type: 'STRING' } },
-          markdown: { type: 'STRING' },
-          body: { type: 'STRING' },
-          term: { type: 'STRING' },
-          definition: { type: 'STRING' },
-          question: { type: 'STRING' },
-          answer: { type: 'STRING' },
-          quizMode: { type: 'STRING', enum: ['multipleChoice', 'shortAnswer'] },
-          options: { type: 'ARRAY', items: { type: 'STRING' } },
-          correctIndex: { type: 'NUMBER' },
-          explanation: { type: 'STRING' },
-          prompt: { type: 'STRING' },
-          hiddenText: { type: 'STRING' },
-          columns: { type: 'ARRAY', items: { type: 'STRING' } },
-          rows: {
-            type: 'ARRAY',
-            items: { type: 'ARRAY', items: { type: 'STRING' } },
-          },
-          steps: { type: 'ARRAY', items: { type: 'STRING' } },
-          ordered: { type: 'BOOLEAN' },
-          interactiveChecklist: { type: 'BOOLEAN' },
-          checklist: { type: 'BOOLEAN' },
-          reason: { type: 'STRING' },
-          code: { type: 'STRING' },
-          language: { type: 'STRING' },
-          caption: { type: 'STRING' },
-          items: { type: 'ARRAY', items: { type: 'STRING' } },
-          headers: { type: 'ARRAY', items: { type: 'STRING' } },
-        },
-      },
-    },
+    ...dashboardContractProperties,
   },
-  required: ['objects'],
+  required: ['sourceSummary', 'conceptRecap', 'practice', 'flashcards'],
 }
 
 const studyPathSchema = {
@@ -331,13 +377,303 @@ const studyPathSchema = {
           title: { type: 'STRING' },
           summary: { type: 'STRING' },
           rawNotes: { type: 'STRING' },
-          objects: objectSchema.properties.objects,
+          ...dashboardContractProperties,
         },
-        required: ['title', 'summary', 'objects'],
+        required: [
+          'title',
+          'summary',
+          'rawNotes',
+          'sourceSummary',
+          'conceptRecap',
+          'practice',
+          'flashcards',
+        ],
       },
     },
   },
   required: ['title', 'folderName', 'dashboards'],
+}
+
+const emptyPractice = () => ({
+  shortAnswer: [],
+  multipleChoice: [],
+})
+
+const emptyFlashcards: Array<{ front: string; back: string }> = []
+
+const getSourceSummaryOrDefault = (
+  input: Record<string, unknown>,
+  dashboardTitle: string,
+  dashboardRole: StudyPathDashboardRole,
+) =>
+  input.sourceSummary && typeof input.sourceSummary === 'object'
+    ? input.sourceSummary
+    : {
+        title:
+          dashboardRole === 'exercises'
+            ? `${dashboardTitle} instructions`
+            : `${dashboardTitle} source summary`,
+        bullets: [
+          dashboardRole === 'exercises'
+            ? 'Use this dashboard for mixed practice.'
+            : `Review the key ideas for ${dashboardTitle}.`,
+        ],
+      }
+
+const getConceptRecapOrDefault = (
+  input: Record<string, unknown>,
+  dashboardTitle: string,
+  dashboardRole: StudyPathDashboardRole,
+) => {
+  if (input.conceptRecap && typeof input.conceptRecap === 'object') {
+    return input.conceptRecap
+  }
+
+  if (dashboardRole === 'summary') {
+    return {
+      title: `${dashboardTitle} synthesis`,
+      sections: [
+        {
+          title: 'Path synthesis',
+          bullets: ['Connect the main ideas from the previous dashboards.'],
+          example: '',
+        },
+      ],
+    }
+  }
+
+  return {
+    title: `${dashboardTitle} concept recap`,
+    sections: [],
+  }
+}
+
+const getPracticeOrDefault = (input: Record<string, unknown>) =>
+  input.practice && typeof input.practice === 'object'
+    ? input.practice
+    : emptyPractice()
+
+const getFlashcardsOrDefault = (input: Record<string, unknown>) =>
+  Array.isArray(input.flashcards) ? input.flashcards : emptyFlashcards
+
+const sanitizeDashboardInputForRole = (
+  input: Record<string, unknown>,
+  dashboardRole: StudyPathDashboardRole,
+  dashboardTitle: string,
+) => {
+  const base = {
+    ...input,
+    title: dashboardTitle,
+    sourceFormat: 'text',
+  }
+
+  if (dashboardRole === 'summary') {
+    return {
+      ...base,
+      sourceSummary: getSourceSummaryOrDefault(
+        input,
+        dashboardTitle,
+        dashboardRole,
+      ),
+      conceptRecap: getConceptRecapOrDefault(
+        input,
+        dashboardTitle,
+        dashboardRole,
+      ),
+      practice: emptyPractice(),
+      flashcards: [],
+    }
+  }
+
+  if (dashboardRole === 'exercises') {
+    return {
+      ...base,
+      sourceSummary: getSourceSummaryOrDefault(
+        {},
+        dashboardTitle,
+        dashboardRole,
+      ),
+      conceptRecap: {
+        title: `${dashboardTitle} practice-only recap`,
+        sections: [],
+      },
+      practice: getPracticeOrDefault(input),
+      flashcards: getFlashcardsOrDefault(input),
+    }
+  }
+
+  return {
+    ...base,
+    sourceSummary: getSourceSummaryOrDefault(
+      input,
+      dashboardTitle,
+      dashboardRole,
+    ),
+    conceptRecap: getConceptRecapOrDefault(
+      input,
+      dashboardTitle,
+      dashboardRole,
+    ),
+    practice: getPracticeOrDefault(input),
+    flashcards: getFlashcardsOrDefault(input),
+  }
+}
+
+const hasUsableStudyPathDashboardInput = (
+  input: Record<string, unknown>,
+): boolean => {
+  if (typeof input.title === 'string' && input.title.trim()) {
+    return true
+  }
+
+  if (typeof input.rawNotes === 'string' && input.rawNotes.trim()) {
+    return true
+  }
+
+  return [
+    input.sourceSummary,
+    input.conceptRecap,
+    input.practice,
+    input.flashcards,
+  ].some((value) => {
+    if (Array.isArray(value)) {
+      return value.length > 0
+    }
+
+    return Boolean(value && typeof value === 'object')
+  })
+}
+
+const getArrayLength = (value: unknown): number =>
+  Array.isArray(value) ? value.length : 0
+
+const getObjectRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+
+const getConceptRecapSectionCount = (
+  input: Record<string, unknown>,
+): number => {
+  const conceptRecap = getObjectRecord(input.conceptRecap)
+  return getArrayLength(conceptRecap.sections)
+}
+
+const getPracticeQuestionCount = (input: Record<string, unknown>): number => {
+  const practice = getObjectRecord(input.practice)
+  return (
+    getArrayLength(practice.shortAnswer) +
+    getArrayLength(practice.multipleChoice)
+  )
+}
+
+const getFlashcardCount = (input: Record<string, unknown>): number =>
+  getArrayLength(input.flashcards)
+
+const sourceSummaryOnlyForNormalDashboard = (
+  input: Record<string, unknown>,
+): boolean =>
+  Boolean(input.sourceSummary) &&
+  getConceptRecapSectionCount(input) === 0 &&
+  getPracticeQuestionCount(input) === 0 &&
+  getFlashcardCount(input) === 0
+
+const normalDashboardNeedsRepair = (
+  input: Record<string, unknown>,
+  dashboardRole: StudyPathDashboardRole,
+): boolean =>
+  dashboardRole === 'normal' &&
+  getConceptRecapSectionCount(input) === 0 &&
+  getPracticeQuestionCount(input) === 0 &&
+  getFlashcardCount(input) === 0
+
+const textFromRawNotes = (rawNotes: unknown): string =>
+  typeof rawNotes === 'string' ? rawNotes.replace(/\s+/g, ' ').trim() : ''
+
+const sourceSummaryBullets = (
+  sourceSummary: AiStudyPackDraft['sourceSummary'],
+): string[] =>
+  sourceSummary?.bullets
+    .map((bullet) => bullet.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 5) || []
+
+const createFallbackBase = (packId: string, suffix: string, title: string) => ({
+  id: `${packId}-fallback-${suffix}`,
+  title,
+  sourceLine: 1,
+  tags: ['study-path', 'fallback'],
+})
+
+const buildFallbackObjectsForDashboardRole = ({
+  packId,
+  dashboardTitle,
+  dashboardRole,
+  rawNotes,
+  sourceSummary,
+  accumulatedContentNotes,
+}: {
+  packId: string
+  dashboardTitle: string
+  dashboardRole: StudyPathDashboardRole
+  rawNotes: unknown
+  sourceSummary: AiStudyPackDraft['sourceSummary']
+  accumulatedContentNotes: string[]
+}): StudyObject[] => {
+  const bullets = sourceSummaryBullets(sourceSummary)
+  const noteText = textFromRawNotes(rawNotes)
+  const fallbackText =
+    bullets.join('\n') ||
+    noteText.slice(0, 700) ||
+    accumulatedContentNotes
+      .join('\n\n')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 700)
+
+  if (dashboardRole === 'exercises') {
+    const practiceSource =
+      accumulatedContentNotes.join('\n\n').replace(/\s+/g, ' ').trim() ||
+      noteText ||
+      bullets.join(' ')
+    const concepts = extractLearningConcepts(practiceSource, dashboardTitle)
+      .map(conceptSummaryItem)
+      .slice(0, 2)
+    const prompts =
+      concepts.length > 0
+        ? concepts.map((concept) => `How would you apply ${concept}?`)
+        : practiceSource
+          ? ['What is one key idea from the previous Study Path material?']
+          : []
+
+    return prompts.map((question, index) => ({
+      ...createFallbackBase(
+        packId,
+        `exercise-${index + 1}`,
+        `Practice ${index + 1}`,
+      ),
+      kind: 'quiz' as const,
+      quizMode: 'shortAnswer' as const,
+      question,
+      options: [],
+      correctIndex: 0,
+      answer: 'Use the Study Path notes to answer in your own words.',
+      explanation:
+        'Generated as a minimal fallback from the Study Path source.',
+    }))
+  }
+
+  if (!fallbackText) {
+    return []
+  }
+
+  return [
+    {
+      ...createFallbackBase(packId, 'summary', `${dashboardTitle} summary`),
+      kind: 'list' as const,
+      items: bullets.length > 0 ? bullets : [fallbackText],
+      ordered: false,
+      checklist: false,
+    },
+  ]
 }
 
 const parseGeminiJson = (text: string): unknown => {
@@ -515,15 +851,38 @@ Return exactly one JSON object with this shape:
 {
   "title": "Short study pack title",
   "sourceFormat": "text",
-  "objects": [
-    { "kind": "markdown", "title": "Explanation", "markdown": "..." },
-    { "kind": "quiz", "question": "...", "quizMode": "multipleChoice", "options": ["...", "...", "..."], "correctIndex": 0, "answer": "...", "explanation": "..." }
+  "sourceSummary": { "title": "Source summary", "bullets": ["..."] },
+  "conceptRecap": {
+    "title": "Concept recap",
+    "sections": [
+      { "title": "Specific concept", "bullets": ["..."], "example": "..." }
+    ]
+  },
+  "practice": {
+    "shortAnswer": [
+      { "question": "...", "expectedAnswer": "...", "explanation": "..." }
+    ],
+    "multipleChoice": [
+      { "question": "...", "options": ["...", "...", "..."], "correctOptionIndex": 0, "explanation": "..." }
+    ]
+  },
+  "flashcards": [
+    { "front": "...", "back": "..." }
   ]
 }
 
 Do not wrap the JSON in markdown fences. Do not add commentary outside JSON.
 
 Rules:
+- Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
+- Do not output "objects", "kind", "quizMode", internal block names, widget names, or any AquaMesh renderer fields. AquaMesh decides widget types.
+- Fill only sourceSummary, conceptRecap, practice.shortAnswer, practice.multipleChoice, and flashcards.
+- Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
+- Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
+- Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
+- Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?"
+- Quizzes must test application, usage, contrast, formation, exceptions, or common mistakes with a concrete expected answer. Do not ask "Which statement best explains X?", "Which statement matches the notes?", "What does X help you understand or do?", "What is the core idea behind X?", or questions about what the notes say.
+- For language-learning Study Packs, generate grammar/application questions from accepted concepts only: complete a form, choose the trigger expression, choose indicative vs subjunctive, or fix a common mistake.
 - ${
     promptMode
       ? 'Use accurate general knowledge to teach the requested topic; do not pretend the prompt is source notes.'
@@ -531,10 +890,10 @@ Rules:
   }
 - ${sourceInstruction}
 - ${pathInstruction}
-- In AI Tutor mode, include at least one markdown explanation object as the first object. Use the "markdown" field for markdown objects, not "body".
+- In AI Tutor mode, teach the topic through sourceSummary and conceptRecap before practice.
 - Generate exercises even from short notes. A single wiki paragraph should still produce multiple grounded quizzes and flashcards.
-- Prefer useful learning widgets from the selected target types: quizzes, flashcards as "qa", term definitions, lists, comparisons, sequences, code notes, tables, and review prompts.
-- For multiple-choice quizzes, include 3-4 options and correctIndex. Vary the correct answer position across questions; do not always put the correct answer first.
+- Prefer useful learning material from the selected target types, but never output widget kinds.
+- For multiple-choice questions, include 3-4 meaningful options and correctOptionIndex. Vary the correct answer position across questions; do not always put the correct answer first.
 - Prefer multiple-choice quizzes. Use short-answer quizzes only when a grounded multiple-choice question would be misleading.
 - ${
     promptMode
@@ -560,7 +919,8 @@ ${rawNotes}`
 
 The previous response failed JSON formatting. Retry with a simpler response:
 - Return plain JSON only.
-- Use only: markdown, qa, quiz, term, list, reviewPrompt.
+- Return syntactically valid JSON with all commas and braces in place.
+- Use only the strict Study Pack fields: sourceSummary, conceptRecap, practice, flashcards.
 - Do not use markdown code fences.
 - Do not include comments, trailing commas, undefined, NaN, or extra text.`,
       },
@@ -604,20 +964,13 @@ The previous response failed JSON formatting. Retry with a simpler response:
     }
   }
 
-  const draft = normalizeAiStudyPackDraft(parsed, packId)
-  const safeDraft = removeUnrequestedHeavyResources(draft.objects, rawNotes)
-  const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
-    packId,
-    title: draft.title || title,
+  const draft = normalizeAiStudyPackDraft(parsed, packId, {
     rawNotes,
-    generationTargets,
-    generationAmount,
+    rawAiResponse: text,
   })
 
   return {
     ...draft,
-    objects: augmented.objects,
-    warnings: [...draft.warnings, ...safeDraft.warnings, ...augmented.warnings],
     title: draft.title || title,
     sourceFormat: draft.sourceFormat || ('text' as StudyPackSourceFormat),
   }
@@ -631,20 +984,8 @@ export const generateStudyPathWithAi = async ({
   folderName,
   generationAmount = 'medium',
 }: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
-  const stepNames =
-    generationAmount === 'few'
-      ? ['Content 1', 'Content 2', 'Exercises']
-      : generationAmount === 'many'
-        ? [
-            'Content 1',
-            'Content 2',
-            'Content 3',
-            'Content 4',
-            'Content 5',
-            'Summary',
-            'Exercises',
-          ]
-        : ['Content 1', 'Content 2', 'Content 3', 'Summary', 'Exercises']
+  const dashboardRoles = getStudyPathDashboardRoles(generationAmount)
+  const stepNames = getStudyPathStepNames(generationAmount)
   const contentDashboardCount = stepNames.filter((stepName) =>
     stepName.startsWith('Content'),
   ).length
@@ -656,59 +997,162 @@ export const generateStudyPathWithAi = async ({
     'quizzes',
     'exercises',
   ])
-  const text = await callGemini(
-    apiToken,
-    model,
-    [
-      {
-        text: `Create a Study Path JSON object. A Study Path is NOT one dashboard. It is a folder containing multiple ordered dashboards/study packs.
+  const promptText = `Create a Study Path JSON object. A Study Path is NOT one dashboard. It is a folder containing multiple ordered dashboards/study packs.
 
 Return exactly this structure:
 {
   "title": "Path title",
   "folderName": "Folder name for all dashboards",
   "dashboards": [
-    { "title": "01 - Content 1", "summary": "One sentence preview", "rawNotes": "Complete lesson notes for this dashboard", "objects": [...] }
+    {
+      "title": "01 - Content 1",
+      "summary": "One sentence preview",
+      "rawNotes": "Complete lesson notes for this dashboard",
+      "sourceSummary": { "title": "Source summary", "bullets": ["..."] },
+      "conceptRecap": { "title": "Concept recap", "sections": [{ "title": "Specific concept", "bullets": ["..."], "example": "..." }] },
+      "practice": { "shortAnswer": [{ "question": "...", "expectedAnswer": "...", "explanation": "..." }], "multipleChoice": [{ "question": "...", "options": ["...", "...", "..."], "correctOptionIndex": 0, "explanation": "..." }] },
+      "flashcards": [{ "front": "...", "back": "..." }]
+    }
   ]
 }
 
 Rules:
+- Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
 - Choose a concise, topic-specific folderName for the Study Path, such as "French B1 Subjunctive" or "Calculus Derivatives". Do not use a generic folderName like "Study Path" unless the topic is truly unknown.
 - Use these ordered lessons exactly: ${stepNames.join(' -> ')}.
+- AquaMesh will assign these dashboard roles by position: ${describeStudyPathRoles(
+    dashboardRoles,
+  )}.
 - Each dashboard must be useful by itself and contain 6-12 objects.
 - Always return exactly ${stepNames.length} dashboards total.
-- This depth means ${contentDashboardCount} content dashboard${contentDashboardCount === 1 ? '' : 's'}${includesSummaryDashboard ? ', 1 summary dashboard,' : ''} and 1 exercises dashboard.
+- This depth means ${contentDashboardCount} content dashboard${
+    contentDashboardCount === 1 ? '' : 's'
+  }${
+    includesSummaryDashboard ? ', 1 summary dashboard,' : ''
+  } and 1 exercises dashboard.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
-- Start each dashboard with a markdown object containing the full teaching explanation for that lesson. Use the "markdown" field, not "body".
-- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?" or "Which statement matches the notes about <dashboard title>?".
+- For normal dashboards, sourceSummary, conceptRecap, practice, and flashcards are mandatory and must be non-empty.
+- Each normal dashboard must include sourceSummary with 3-5 bullets, conceptRecap with 2-4 sections, practice.shortAnswer with 1-2 questions, practice.multipleChoice with 1-2 questions, and flashcards with 3-5 cards.
+- Summary dashboards should focus on sourceSummary with 3-5 bullets and conceptRecap with 2-4 recap sections. If you include practice or flashcards, AquaMesh will delete them.
+- Exercises dashboards should focus on practice and flashcards. Include 2-4 short-answer questions, 2-4 multiple-choice questions, and 3-5 flashcards. If you include conceptRecap or sourceSummary, AquaMesh will delete visible recap/summary content.
+- Do not output "objects", "kind", "quizMode", internal block names, widget names, or any AquaMesh renderer fields. AquaMesh decides widget types.
+- Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
+- Generate summaries, flashcards, and quizzes from structured concepts, not from first sentences, headings, copied examples, or instructions.
+- Practice questions must be specific to the lesson content. Never create generic questions like "What do the notes say about <dashboard title>?", "Which statement matches the notes about <dashboard title>?", "What does X help you understand or do?", or "What is the core idea behind X?".
 - Practice questions must test concepts and uses, not copied headings or answer options made obvious by the dashboard title.
-- Flashcards should ask useful conceptual prompts such as "When is the subjunctive used?" instead of "What should you remember about <copied line>?".
-- Include practice in later dashboards: quizzes, flashcards as "qa", review prompts, lists, sequences, code, or tables when relevant.
+- Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
+- Flashcards should ask useful rule-specific prompts such as "How do you form the present subjunctive for most verbs?" instead of "What should you remember about <copied line>?".
+- Include practice in later dashboards through practice.shortAnswer, practice.multipleChoice, and flashcards.
+- If a Summary dashboard is included, make it a global recap of the preceding normal dashboards.
+- The final Exercises dashboard must generate real mixed practice from the preceding content dashboards, not from its own instructions.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
 - Do not create PDFs/images/resources unless the user explicitly asks for heavy media.
-- For multiple-choice quizzes, include 3-4 options, correctIndex, answer, and explanation.
+- For multiple-choice questions, include 3-4 meaningful options, correctOptionIndex, and explanation.
 - Keep content concise, beginner-friendly, and appropriate for the requested topic.
-- Aim for about ${practiceProfile.minTotal}-${practiceProfile.maxTotal} reviewable items across the whole path.
+- Aim for about ${practiceProfile.minTotal}-${
+    practiceProfile.maxTotal
+  } reviewable items across the whole path.
 
 Path title fallback: ${title}
-Folder name fallback if you cannot infer a better one: ${folderName || 'Study Path'}
+Folder name fallback if you cannot infer a better one: ${
+    folderName || 'Study Path'
+  }
 User request/topic:
-${prompt}`,
-      },
-    ],
-    studyPathSchema,
-  )
+${prompt}`
+  const fallbackPrompt = `${promptText}
 
-  const parsed = parseGeminiJson(text)
-  const record =
+The previous response failed JSON formatting. Retry with a simpler response:
+- Return plain JSON only.
+- Return syntactically valid JSON with all commas and braces in place.
+- Use only the Study Path fields: title, summary, rawNotes, sourceSummary, conceptRecap, practice, flashcards.
+- Do not use markdown code fences.
+- Do not include comments, trailing commas, undefined, NaN, or extra text.`
+  const createRepairPrompt = (originalJson: string) => `${promptText}
+
+The previous response was valid JSON, but one or more normal dashboards were incomplete.
+Repair the JSON instead of simplifying it:
+- Preserve the exact dashboard count, order, titles, summaries, and rawNotes.
+- For normal dashboards, sourceSummary, conceptRecap, practice, and flashcards are mandatory and must be non-empty.
+- Fill missing normal-dashboard conceptRecap/practice/flashcards from that dashboard's rawNotes.
+- Each normal dashboard must have sourceSummary with 3-5 bullets, conceptRecap with 2-4 sections, practice.shortAnswer with 1-2 questions, practice.multipleChoice with 1-2 questions, and flashcards with 3-5 cards.
+- Summary dashboards should focus on sourceSummary and conceptRecap.
+- Exercises dashboards should focus on practice and flashcards.
+- Return plain JSON only.
+
+Original JSON:
+${originalJson}`
+
+  let text: string
+  try {
+    text = await callGemini(
+      apiToken,
+      model,
+      [{ text: promptText }],
+      studyPathSchema,
+    )
+  } catch (error) {
+    if (!isGeminiOutputFormatError(error)) {
+      throw error
+    }
+
+    text = await callGemini(apiToken, model, [{ text: fallbackPrompt }])
+  }
+
+  let parsed: unknown
+  try {
+    parsed = parseGeminiJson(text)
+  } catch {
+    try {
+      text = await callGemini(apiToken, model, [{ text: fallbackPrompt }])
+      parsed = parseGeminiJson(text)
+    } catch {
+      throw new Error(GEMINI_OUTPUT_FORMAT_MESSAGE)
+    }
+  }
+  let record =
     parsed && typeof parsed === 'object'
       ? (parsed as Record<string, unknown>)
       : {}
-  const rawDashboards = Array.isArray(record.dashboards)
-    ? record.dashboards
-    : []
+  let rawDashboards = Array.isArray(record.dashboards) ? record.dashboards : []
+  const incompleteNormalDashboardIndexes = new Set(
+    rawDashboards
+      .map((item, index) => {
+        const input =
+          item && typeof item === 'object'
+            ? (item as Record<string, unknown>)
+            : {}
+        return normalDashboardNeedsRepair(
+          input,
+          dashboardRoles[index] || 'normal',
+        )
+          ? index
+          : null
+      })
+      .filter((index): index is number => index !== null),
+  )
+  let repairRetryUsed = false
+  if (incompleteNormalDashboardIndexes.size > 0) {
+    try {
+      const repairText = await callGemini(
+        apiToken,
+        model,
+        [{ text: createRepairPrompt(text) }],
+        studyPathSchema,
+      )
+      parsed = parseGeminiJson(repairText)
+      record =
+        parsed && typeof parsed === 'object'
+          ? (parsed as Record<string, unknown>)
+          : {}
+      rawDashboards = Array.isArray(record.dashboards) ? record.dashboards : []
+      text = repairText
+      repairRetryUsed = true
+    } catch {
+      repairRetryUsed = false
+    }
+  }
   const normalizedRawDashboards =
     rawDashboards.length >= stepNames.length
       ? rawDashboards.slice(0, stepNames.length)
@@ -718,16 +1162,20 @@ ${prompt}`,
             return existing
           }
 
-          const titlePrefix = `${String(index + 1).padStart(2, '0')} - ${stepName}`
+          const titlePrefix = `${String(index + 1).padStart(
+            2,
+            '0',
+          )} - ${stepName}`
+          const dashboardRole = dashboardRoles[index]
           const rawNotes =
-            stepName === 'Summary'
+            dashboardRole === 'summary'
               ? `# ${titlePrefix}
 
 ## Key points
 - Review the five previous content dashboards.
 - Connect the main concepts from the path.
 - Identify weak areas before exercises.`
-              : stepName === 'Exercises'
+              : dashboardRole === 'exercises'
                 ? `# ${titlePrefix}
 
 ## Practice
@@ -744,22 +1192,64 @@ ${prompt}`
             title: titlePrefix,
             summary: `Generated ${stepName.toLowerCase()} dashboard.`,
             rawNotes,
-            objects: [
-              {
-                kind: 'markdown',
-                title: titlePrefix,
-                markdown: rawNotes,
-              },
-            ],
+            sourceSummary: {
+              title: `${titlePrefix} summary`,
+              bullets: [`Study this section of ${title}.`],
+            },
+            conceptRecap: {
+              title: `${titlePrefix} concept recap`,
+              sections:
+                dashboardRole === 'exercises'
+                  ? []
+                  : [
+                      {
+                        title: stepName,
+                        bullets: [prompt],
+                        example: '',
+                      },
+                    ],
+            },
+            practice: {
+              shortAnswer: [],
+              multipleChoice: [],
+            },
+            flashcards: [],
           }
         })
   const warnings: string[] = []
+  const accumulatedContentNotes: string[] = []
+  const buildGlobalNotes = (
+    dashboardTitle: string,
+    mode: 'summary' | 'exercises',
+  ) => {
+    const source = accumulatedContentNotes.join('\n\n')
+    const concepts = extractLearningConcepts(source, title)
+    const conceptList = concepts.map(conceptSummaryItem).slice(0, 12)
+
+    return [
+      `# ${dashboardTitle}`,
+      mode === 'summary' ? '## Global recap' : '## Mixed practice source',
+      conceptList.length > 0
+        ? conceptList.map((item) => `- ${item}`).join('\n')
+        : source,
+    ]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join('\n\n')
+  }
   const dashboards = normalizedRawDashboards
     .map((item, index): AiStudyPathDashboardDraft | null => {
       const input =
         item && typeof item === 'object'
           ? (item as Record<string, unknown>)
           : {}
+      if (!hasUsableStudyPathDashboardInput(input)) {
+        warnings.push(
+          `Skipped Study Path dashboard ${index + 1}: no usable generated content.`,
+        )
+        return null
+      }
+
       const dashboardTitle =
         typeof input.title === 'string' && input.title.trim()
           ? input.title.trim()
@@ -771,55 +1261,110 @@ ${prompt}`
       const packId = `${title}-${index + 1}`
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-      const draft = normalizeAiStudyPackDraft(
-        {
-          ...input,
-          title: dashboardTitle,
-          sourceFormat: 'text',
-        },
-        packId,
+      const dashboardRole = dashboardRoles[index] || 'normal'
+      const rawDashboardInput = {
+        ...input,
+        title: dashboardTitle,
+        summary: dashboardSummary,
+      }
+      const roleSanitizedInput = sanitizeDashboardInputForRole(
+        rawDashboardInput,
+        dashboardRole,
+        dashboardTitle,
       )
-      const safeDraft = removeUnrequestedHeavyResources(draft.objects, prompt)
-      const lessonNotes = buildStudyPathLessonNotes(
+      const draft = normalizeAiStudyPackDraft(roleSanitizedInput, packId, {
+        rawNotes: typeof input.rawNotes === 'string' ? input.rawNotes : '',
+        rawAiResponse: text,
+        dashboardRole,
+      })
+      const finalEvents = [...(draft.debugTrace?.droppedOrRepairedItems || [])]
+      if (
+        dashboardRole === 'normal' &&
+        incompleteNormalDashboardIndexes.has(index)
+      ) {
+        finalEvents.push(
+          'AI provided sourceSummary only before repair.',
+          'AI missing normal-dashboard practice/flashcards before repair.',
+        )
+        if (repairRetryUsed) {
+          finalEvents.push('Repair retry used for incomplete normal dashboard.')
+        }
+      }
+      if (
+        dashboardRole === 'normal' &&
+        sourceSummaryOnlyForNormalDashboard(rawDashboardInput)
+      ) {
+        finalEvents.push('AI provided sourceSummary only after repair.')
+      }
+      if (normalDashboardNeedsRepair(rawDashboardInput, dashboardRole)) {
+        finalEvents.push('AI missing normal-dashboard practice/flashcards.')
+      }
+      const roleFilteredObjects = filterStudyObjectsForDashboardRole(
+        draft.objects,
+        dashboardRole,
+        finalEvents,
+      )
+      const finalObjects =
+        roleFilteredObjects.length > 0
+          ? roleFilteredObjects
+          : buildFallbackObjectsForDashboardRole({
+              packId,
+              dashboardTitle,
+              dashboardRole,
+              rawNotes: input.rawNotes,
+              sourceSummary: draft.sourceSummary,
+              accumulatedContentNotes,
+            })
+      if (roleFilteredObjects.length === 0 && finalObjects.length > 0) {
+        finalEvents.push(
+          `Fallback used: created ${dashboardRole} object because role filtering left no visible study objects.`,
+        )
+      }
+      assertRoleObjectsAreClean(finalObjects, dashboardRole, dashboardTitle)
+      const debugTrace = draft.debugTrace
+        ? {
+            ...draft.debugTrace,
+            rawDashboardInput,
+            roleSanitizedInput,
+            droppedOrRepairedItems: finalEvents,
+            finalObjects,
+          }
+        : draft.debugTrace
+      const isSummaryDashboard = dashboardRole === 'summary'
+      const isExercisesDashboard = dashboardRole === 'exercises'
+      const generatedLessonNotes = buildStudyPathLessonNotes(
         dashboardTitle,
         dashboardSummary,
         typeof input.rawNotes === 'string' ? input.rawNotes : '',
-        safeDraft.objects,
+        finalObjects,
       )
-      const augmented = augmentStudyPackPracticeObjects(safeDraft.objects, {
-        packId,
-        title: dashboardTitle,
-        rawNotes: lessonNotes,
-        generationTargets: [
-          'summaries',
-          'definitions',
-          'flashcards',
-          'quizzes',
-          'exercises',
-        ],
-        generationAmount,
-      })
+      const lessonNotes =
+        isSummaryDashboard || isExercisesDashboard
+          ? buildGlobalNotes(
+              dashboardTitle,
+              isSummaryDashboard ? 'summary' : 'exercises',
+            )
+          : generatedLessonNotes
 
-      warnings.push(
-        ...draft.warnings,
-        ...safeDraft.warnings,
-        ...augmented.warnings,
-      )
+      warnings.push(...draft.warnings)
 
-      if (augmented.objects.length === 0) {
-        warnings.push(`Skipped ${dashboardTitle}: no usable study objects.`)
-        return null
-      }
-
-      return {
+      const dashboard = {
         ...draft,
         title: dashboardTitle,
         summary: dashboardSummary,
         rawNotes: lessonNotes,
-        objects: augmented.objects,
+        dashboardRole,
+        objects: finalObjects,
         warnings: [],
+        debugTrace,
         sourceFormat: 'text' as StudyPackSourceFormat,
       }
+
+      if (!isSummaryDashboard && !isExercisesDashboard) {
+        accumulatedContentNotes.push(lessonNotes)
+      }
+
+      return dashboard
     })
     .filter((dashboard): dashboard is AiStudyPathDashboardDraft =>
       Boolean(dashboard),

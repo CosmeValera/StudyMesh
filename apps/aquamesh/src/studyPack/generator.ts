@@ -2,6 +2,11 @@ import { CustomWidget } from '../components/WidgetEditor/WidgetStorage'
 import { ComponentData } from '../components/WidgetEditor/types/types'
 import { DashboardLayout } from '../state/store'
 import {
+  conceptSummaryItem,
+  extractLearningConcepts,
+  isLowQualityStudyObject,
+} from './concepts'
+import {
   GeneratedStudyPack,
   StudyObject,
   StudyPack,
@@ -393,6 +398,18 @@ const summarizeText = (value: string): string => {
 }
 
 const createSummaryItems = (pack: StudyPack, rawSource = ''): string[] => {
+  if (pack.sourceSummary?.bullets.length) {
+    return pack.sourceSummary.bullets
+  }
+
+  const conceptItems = extractLearningConcepts(rawSource, pack.title).map(
+    conceptSummaryItem,
+  )
+
+  if (conceptItems.length > 0) {
+    return conceptItems.slice(0, 6)
+  }
+
   const candidates = [
     ...pack.objects.map(objectToSummaryText),
     ...rawSource.split(/\r?\n/),
@@ -595,7 +612,9 @@ const createSourceSummaryWidget = (
     >
   >,
 ): CustomWidget => {
-  const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(pack.id)}-summary`
+  const widgetId = `${options.widgetIdPrefix}-${sanitizeIdPart(
+    pack.id,
+  )}-summary`
   const items = createSummaryItems(pack, sourceText)
 
   return {
@@ -608,7 +627,7 @@ const createSourceSummaryWidget = (
         type: 'ListBlock',
         props: {
           __blockType: 'ListBlock',
-          title: 'Key points',
+          title: pack.sourceSummary?.title || 'Key points',
           items:
             items.length > 0
               ? items.join('\n')
@@ -640,6 +659,43 @@ const getGeneratedObjectBucket = (object: StudyObject): string => {
   return object.kind
 }
 
+const objectAllowedForDashboardRole = (
+  object: StudyObject,
+  role = 'normal',
+): boolean => {
+  if (role === 'summary') {
+    return (
+      object.kind !== 'quiz' &&
+      object.kind !== 'qa' &&
+      object.kind !== 'reveal' &&
+      object.kind !== 'reviewPrompt'
+    )
+  }
+
+  if (role === 'exercises') {
+    return (
+      object.kind === 'quiz' ||
+      object.kind === 'qa' ||
+      object.kind === 'reveal'
+    )
+  }
+
+  return true
+}
+
+const orderObjectsForGeneratedWidget = (objects: StudyObject[]): StudyObject[] =>
+  [...objects].sort((left, right) => {
+    if (left.kind === 'quiz' && right.kind === 'quiz') {
+      if (left.quizMode === right.quizMode) {
+        return left.sourceLine - right.sourceLine
+      }
+
+      return left.quizMode === 'shortAnswer' ? -1 : 1
+    }
+
+    return left.sourceLine - right.sourceLine
+  })
+
 const formatBucketName = (bucket: string): string => {
   const names: Record<string, string> = {
     code: 'Code',
@@ -661,9 +717,26 @@ export const createStudyPackSmartWidgetGroups = (
   pack: StudyPack,
   groupingThreshold: number,
 ): StudyPackWidgetGroupInput[] => {
-  const interestingObjects = pack.objects.filter(
-    (object) => object.kind !== 'note' && object.kind !== 'markdown',
-  )
+  const seen = new Set<string>()
+  const dashboardRole = pack.dashboardRole || 'normal'
+  const interestingObjects = pack.objects.filter((object) => {
+    if (
+      object.kind === 'note' ||
+      object.kind === 'markdown' ||
+      !objectAllowedForDashboardRole(object, dashboardRole) ||
+      isLowQualityStudyObject(object, pack.title)
+    ) {
+      return false
+    }
+
+    const key = `${object.kind}:${objectToSummaryText(object).toLowerCase()}`
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
   const buckets = interestingObjects.reduce<Record<string, StudyObject[]>>(
     (groups, object) => {
       const bucket = getGeneratedObjectBucket(object)
@@ -676,20 +749,21 @@ export const createStudyPackSmartWidgetGroups = (
   const miscObjects: StudyObject[] = []
 
   Object.entries(buckets).forEach(([bucket, objects]) => {
-    if (objects.length >= groupingThreshold) {
+    if (bucket === 'quiz' || objects.length >= groupingThreshold) {
       groups.push({
         name: `${pack.title} ${formatBucketName(bucket)}`,
-        objects,
+        objects: orderObjectsForGeneratedWidget(objects),
       })
       return
     }
 
-    miscObjects.push(...objects)
+    miscObjects.push(...orderObjectsForGeneratedWidget(objects))
   })
 
   if (miscObjects.length > 0) {
     groups.push({
-      name: `${pack.title} Misc`,
+      name:
+        miscObjects.length >= 2 ? `${pack.title} Misc` : `${pack.title} Review`,
       objects: miscObjects,
     })
   }
@@ -722,12 +796,17 @@ export const createStudyPackOrchestratorWidgets = (
           widgetIdPrefix: normalizedOptions.widgetIdPrefix,
           studyPath: normalizedOptions.studyPath,
         }),
-        createSourceSummaryWidget(pack, options.rawSource || '', {
-          author: normalizedOptions.author,
-          category: normalizedOptions.category,
-          createdAt: normalizedOptions.createdAt,
-          widgetIdPrefix: normalizedOptions.widgetIdPrefix,
-        }),
+        ...(normalizedOptions.studyPath?.dashboardRole === 'exercises' ||
+        pack.dashboardRole === 'exercises'
+          ? []
+          : [
+              createSourceSummaryWidget(pack, options.rawSource || '', {
+                author: normalizedOptions.author,
+                category: normalizedOptions.category,
+                createdAt: normalizedOptions.createdAt,
+                widgetIdPrefix: normalizedOptions.widgetIdPrefix,
+              }),
+            ]),
       ]
     : []
   const generatedGroups =
@@ -948,8 +1027,8 @@ export const createStudyPackDashboardLayout = (
   options.mode === 'orchestrator'
     ? createOrchestratorDashboardLayout(widgets)
     : options.mode === 'tabs'
-      ? createTabbedDashboardLayout(widgets)
-      : createSmartDashboardLayout(widgets)
+    ? createTabbedDashboardLayout(widgets)
+    : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],
