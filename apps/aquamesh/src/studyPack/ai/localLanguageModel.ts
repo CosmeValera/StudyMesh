@@ -7,8 +7,23 @@ type LocalLanguageModelAvailability =
   | 'unavailable'
 
 interface LocalLanguageModelSession {
-  prompt: (prompt: string) => Promise<string>
+  prompt: (prompt: string | LocalLanguageModelPromptMessage[]) => Promise<string>
   destroy?: () => void
+}
+
+type LocalLanguageModelExpectedInput =
+  | { type: 'text'; languages: LocalLanguage[] }
+  | { type: 'image' }
+
+interface LocalLanguageModelPromptMessage {
+  role: 'user'
+  content: Array<
+    | { type: 'text'; value: string }
+    | {
+        type: 'image'
+        value: Blob | HTMLCanvasElement | ImageBitmap | ImageData
+      }
+  >
 }
 
 interface LocalLanguageModelMonitor extends EventTarget {
@@ -21,11 +36,12 @@ interface LocalLanguageModelMonitor extends EventTarget {
 interface LocalLanguageModelFactory {
   availability: (options?: {
     languages?: LocalLanguage[]
+    expectedInputs?: LocalLanguageModelExpectedInput[]
   }) => Promise<LocalLanguageModelAvailability>
   create: (
     options?: {
       outputLanguage?: LocalLanguage
-      expectedInputs?: Array<{ type: 'text'; languages: LocalLanguage[] }>
+      expectedInputs?: LocalLanguageModelExpectedInput[]
     },
     downloadOptions?: {
       monitor?: (monitor: LocalLanguageModelMonitor) => void
@@ -70,6 +86,7 @@ export const isLocalLanguageModelSupported = (): boolean =>
 
 export const getLocalLanguageModelAvailability = async (
   language: LocalLanguage = 'en',
+  expectedInputs?: LocalLanguageModelExpectedInput[],
 ): Promise<LocalLanguageModelAvailability> => {
   const languageModel = getLanguageModel()
   if (!languageModel) {
@@ -77,7 +94,10 @@ export const getLocalLanguageModelAvailability = async (
   }
 
   try {
-    return await languageModel.availability({ languages: [language] })
+    return await languageModel.availability({
+      languages: [language],
+      ...(expectedInputs ? { expectedInputs } : {}),
+    })
   } catch {
     return 'unavailable'
   }
@@ -106,11 +126,12 @@ const withTimeout = async <T>(
 }
 
 export const callLocalLanguageModel = async (
-  prompt: string,
+  prompt: string | LocalLanguageModelPromptMessage[],
   options: {
     outputLanguage?: LocalLanguage
     timeoutMs?: number
     onProgress?: (percent: number) => void
+    expectedInputs?: LocalLanguageModelExpectedInput[]
   } = {},
 ): Promise<string> => {
   const languageModel = getLanguageModel()
@@ -121,7 +142,13 @@ export const callLocalLanguageModel = async (
   }
 
   const outputLanguage = options.outputLanguage || 'en'
-  const availability = await getLocalLanguageModelAvailability(outputLanguage)
+  const expectedInputs = options.expectedInputs || [
+    { type: 'text' as const, languages: [outputLanguage] },
+  ]
+  const availability = await getLocalLanguageModelAvailability(
+    outputLanguage,
+    expectedInputs,
+  )
   if (availability === 'unavailable') {
     throw new Error(
       'Google Local AI is unavailable in this browser. Use Google Chrome with the local model enabled and downloaded.',
@@ -133,7 +160,7 @@ export const callLocalLanguageModel = async (
     session = await languageModel.create(
       {
         outputLanguage,
-        expectedInputs: [{ type: 'text', languages: [outputLanguage] }],
+        expectedInputs,
       },
       {
         monitor: (monitor) => {
@@ -162,6 +189,59 @@ export const callLocalLanguageModel = async (
   } finally {
     session?.destroy?.()
   }
+}
+
+export const getLocalLanguageModelImageAvailability = async (
+  language: LocalLanguage = 'en',
+): Promise<LocalLanguageModelAvailability> =>
+  getLocalLanguageModelAvailability(language, [
+    { type: 'text', languages: [language] },
+    { type: 'image' },
+  ])
+
+export const extractNotesFromImageWithLocalLanguageModel = async (
+  image: Blob,
+  options: {
+    outputLanguage?: LocalLanguage
+    timeoutMs?: number
+    onProgress?: (percent: number) => void
+  } = {},
+): Promise<string> => {
+  const outputLanguage = options.outputLanguage || 'en'
+  const availability = await getLocalLanguageModelImageAvailability(outputLanguage)
+  if (availability === 'unavailable') {
+    throw new Error(
+      'Google Local AI image input is unavailable in this browser or model.',
+    )
+  }
+
+  return callLocalLanguageModel(
+    [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            value:
+              'Extract clean study notes from this image. Return concise Markdown only.',
+          },
+          {
+            type: 'image',
+            value: image,
+          },
+        ],
+      },
+    ],
+    {
+      outputLanguage,
+      timeoutMs: options.timeoutMs || LOCAL_AI_TIMEOUT_MS,
+      onProgress: options.onProgress,
+      expectedInputs: [
+        { type: 'text', languages: [outputLanguage] },
+        { type: 'image' },
+      ],
+    },
+  )
 }
 
 export const testLocalLanguageModel = async (

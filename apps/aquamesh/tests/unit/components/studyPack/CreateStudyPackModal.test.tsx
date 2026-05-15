@@ -11,6 +11,7 @@ import {
 import { extractRawNotesFromImage } from '../../../../src/studyPack/imageOcr'
 import {
   extractRawNotesWithAi,
+  extractNotesFromImageWithLocalLanguageModel,
   generateStudyPackWithAi,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
@@ -22,6 +23,7 @@ vi.mock('../../../../src/studyPack/imageOcr', () => ({
 
 vi.mock('../../../../src/studyPack/ai', () => ({
   extractRawNotesWithAi: vi.fn(),
+  extractNotesFromImageWithLocalLanguageModel: vi.fn(),
   generateStudyPackWithAi: vi.fn(),
   readStudyPackAiSettings: vi.fn(() => ({
     provider: 'basic',
@@ -175,6 +177,9 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     })
     vi.mocked(extractRawNotesWithAi).mockResolvedValue(
       'AI extracted handwritten notes',
+    )
+    vi.mocked(extractNotesFromImageWithLocalLanguageModel).mockRejectedValue(
+      new Error('Local image unavailable'),
     )
     vi.mocked(extractRawNotesFromImage).mockResolvedValue(
       'Quiz:: What is OCR? | Image text extraction',

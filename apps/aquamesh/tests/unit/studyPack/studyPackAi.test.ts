@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
+  extractNotesFromImageWithLocalLanguageModel,
   generateStudyPackWithGemini as generateStudyPackWithAi,
   generateStudyPathWithGemini as generateStudyPathWithAi,
   getStudyPathDashboardRoles,
@@ -312,6 +313,37 @@ describe('local AI helpers', () => {
       supported: false,
       availability: 'unavailable',
     })
+  })
+
+  it('passes image modality when extracting image notes locally', async () => {
+    const destroy = vi.fn()
+    const prompt = vi.fn().mockResolvedValue('clean notes')
+    const availability = vi.fn().mockResolvedValue('available')
+    const create = vi.fn().mockResolvedValue({ prompt, destroy })
+    const image = new Blob(['image'], { type: 'image/png' })
+    vi.stubGlobal('LanguageModel', { availability, create })
+
+    await expect(
+      extractNotesFromImageWithLocalLanguageModel(image),
+    ).resolves.toBe('clean notes')
+    expect(availability).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedInputs: [
+          { type: 'text', languages: ['en'] },
+          { type: 'image' },
+        ],
+      }),
+    )
+    expect(prompt).toHaveBeenCalledWith([
+      {
+        role: 'user',
+        content: [
+          expect.objectContaining({ type: 'text' }),
+          { type: 'image', value: image },
+        ],
+      },
+    ])
+    expect(destroy).toHaveBeenCalled()
   })
 })
 

@@ -41,6 +41,7 @@ import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import {
   AiGenerationDebugTrace,
   AiSourceSummary,
+  extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
   readStudyPackAiSettings,
@@ -907,7 +908,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setIsExtractingImage(true)
     setOcrProgress(0)
     setOcrStatus(
-      aiProvider === 'gemini' ? 'Preparing AI extraction' : 'Preparing OCR',
+      aiProvider === 'gemini'
+        ? 'Preparing AI extraction'
+        : aiProvider === 'local'
+          ? 'Checking Local AI image support'
+          : 'Preparing OCR',
     )
     setAiProgressLabel(
       aiProvider === 'gemini' ? 'Connecting to Gemini vision' : '',
@@ -922,17 +927,36 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           )
         }, 700)
       }
-      const text =
-        aiProvider === 'gemini'
-          ? await extractRawNotesWithAi({
-              apiToken: credentials.apiToken,
-              model: credentials.model,
-              image: imageFile,
-            })
-          : await extractRawNotesFromImage(imageFile, (progress) => {
-              setOcrProgress(Math.round(progress.progress * 100))
-              setOcrStatus(progress.status)
-            })
+      let text = ''
+      if (aiProvider === 'gemini') {
+        text = await extractRawNotesWithAi({
+          apiToken: credentials.apiToken,
+          model: credentials.model,
+          image: imageFile,
+        })
+      } else if (aiProvider === 'local') {
+        try {
+          setOcrStatus('Extracting notes with Google Local AI')
+          text = await extractNotesFromImageWithLocalLanguageModel(imageFile, {
+            timeoutMs: 5 * 60 * 1000,
+            onProgress: (progress) => {
+              setOcrProgress(progress)
+              setOcrStatus(`Downloading local model ${progress}%`)
+            },
+          })
+        } catch {
+          setOcrStatus('Local AI image input unavailable; using OCR')
+          text = await extractRawNotesFromImage(imageFile, (progress) => {
+            setOcrProgress(Math.round(progress.progress * 100))
+            setOcrStatus(progress.status)
+          })
+        }
+      } else {
+        text = await extractRawNotesFromImage(imageFile, (progress) => {
+          setOcrProgress(Math.round(progress.progress * 100))
+          setOcrStatus(progress.status)
+        })
+      }
 
       if (!text.trim()) {
         setSourceText('')
@@ -945,7 +969,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setImageTextExtracted(true)
       setOcrProgress(100)
       setOcrStatus(
-        aiProvider === 'gemini' ? 'AI extraction complete' : 'OCR complete',
+        aiProvider === 'gemini'
+          ? 'AI extraction complete'
+          : aiProvider === 'local'
+            ? 'Image extraction complete'
+            : 'OCR complete',
       )
     } catch {
       setError(
@@ -1436,7 +1464,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 <Alert severity="info">
                   <b>
                     {aiProvider === 'gemini'
-                      ? 'AI image reading can handle harder text, handwriting, and messy photos better than Basic OCR, but extracted notes still need review.'
+                      ? 'Gemini image reading can handle harder text, handwriting, and messy photos better than Basic OCR, but extracted notes still need review.'
+                      : aiProvider === 'local'
+                        ? 'Local AI image reading is extra experimental. AquaMesh will try Chrome image input first and fall back to OCR if this browser or model does not support it.'
                       : 'Text extraction works best with screenshots, slides, or exported PDFs. OCR may fail or return inaccurate text for handwritten or messy images.'}
                   </b>
                 </Alert>

@@ -41,6 +41,8 @@ export type {
 } from './normalizer'
 export {
   callLocalLanguageModel,
+  extractNotesFromImageWithLocalLanguageModel,
+  getLocalLanguageModelImageAvailability,
   getLocalLanguageModelAvailability,
   isLocalLanguageModelSupported,
   testLocalLanguageModel,

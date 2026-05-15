@@ -255,24 +255,25 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
       if (!result.supported) {
         setLocalAiStatus(
-          'Google Local AI is not supported in this browser. Use Google Chrome with the built-in AI model enabled.',
+          '❌ Google Local AI is not supported in this browser. Use Google Chrome with the built-in AI model enabled.',
         )
       } else if (result.availability === 'unavailable') {
         setLocalAiStatus(
-          'Google Local AI is unavailable. The browser may need Chrome, model access, or a downloaded local model.',
+          '❌ Google Local AI is unavailable. The browser may need Chrome, model access, or a downloaded local model.',
         )
       } else {
+        const promptResult = result.result?.trim()
         setLocalAiStatus(
-          `Google Local AI ${result.availability}: ${
-            result.result || 'No prompt result returned.'
-          }`,
+          promptResult
+            ? `✅ Google Local AI ${result.availability}: ${promptResult}`
+            : `❌ Google Local AI ${result.availability}: No prompt result returned.`,
         )
       }
     } catch (error) {
       setLocalAiStatus(
         error instanceof Error
-          ? error.message
-          : 'Google Local AI test failed.',
+          ? `❌ ${error.message}`
+          : '❌ Google Local AI test failed.',
       )
     } finally {
       setIsTestingLocalAi(false)
