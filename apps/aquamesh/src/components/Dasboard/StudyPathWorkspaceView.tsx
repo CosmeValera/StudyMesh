@@ -28,6 +28,8 @@ import { getStudyPathDashboardProgress } from '../../studyPack/progress'
 
 const STUDY_PATH_NAV_COLLAPSED_STORAGE_KEY =
   'aquamesh-study-path-navigator-collapsed-v1'
+const NAVIGATOR_EXPANDED_WIDTH = 340
+const NAVIGATOR_COLLAPSED_WIDTH = 72
 
 interface StudyPathWorkspaceViewProps {
   studyPath: StudyPathContainerState
@@ -235,22 +237,27 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     studyPath.dashboards.length > 0
       ? Math.round((completedCount / studyPath.dashboards.length) * 100)
       : 0
+  const navigatorWidth = navigatorCollapsed
+    ? NAVIGATOR_COLLAPSED_WIDTH
+    : NAVIGATOR_EXPANDED_WIDTH
 
   return (
     <Box
       sx={{
-        display: 'grid',
-        gridTemplateColumns: {
-          xs: '1fr',
-          lg: navigatorCollapsed
-            ? '72px minmax(0, 1fr)'
-            : '340px minmax(0, 1fr)',
+        display: 'flex',
+        flexDirection: { xs: 'column', lg: 'row' },
+        alignItems: 'stretch',
+        width: '100%',
+        maxWidth: '100%',
+        '& > .study-path-navigator': {
+          width: { xs: '100%', lg: navigatorWidth },
+          flex: { xs: '0 0 auto', lg: `0 0 ${navigatorWidth}px` },
+          maxWidth: { xs: '100%', lg: navigatorWidth },
         },
-        gridTemplateRows: {
-          xs: navigatorCollapsed
-            ? 'auto minmax(0, 1fr)'
-            : 'minmax(260px, auto) minmax(0, 1fr)',
-          lg: '1fr',
+        '& > .study-path-content': {
+          width: { xs: '100%', lg: `calc(100% - ${navigatorWidth}px)` },
+          flex: { xs: '1 1 auto', lg: '1 1 auto' },
+          maxWidth: { xs: '100%', lg: `calc(100% - ${navigatorWidth}px)` },
         },
         height: '100%',
         minHeight: 0,
@@ -263,13 +270,13 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
       }}
     >
       <Paper
+        className="study-path-navigator"
         square
         elevation={0}
         sx={{
           borderRight: { lg: 1 },
           borderBottom: { xs: 1, lg: 0 },
           borderColor: 'divider',
-          p: 2.25,
           background:
             'linear-gradient(180deg, rgba(0,124,102,0.18), rgba(0,16,38,0.02)), var(--background-paper)',
           overflowY: navigatorCollapsed ? 'hidden' : 'auto',
@@ -490,6 +497,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
       </Paper>
 
       <Box
+        className="study-path-content"
         sx={{
           minWidth: 0,
           display: 'flex',
@@ -596,6 +604,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           }}
         >
           <DashboardLayoutView
+            key={`${currentLesson.dashboardKey}-${navigatorWidth}`}
             layout={studentLayout}
             readOnly
             updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
