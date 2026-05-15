@@ -1594,7 +1594,14 @@ const Dashboards = () => {
                   backgroundColor: 'background.default',
                 }}
               >
-                <Box sx={{ position: 'relative', flex: '1' }}>
+                <Box
+                  sx={{
+                    position: 'relative',
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: isStudyPathContainer ? 'hidden' : 'visible',
+                  }}
+                >
                   {isStudyPathContainer && dashboard.studyPath ? (
                     <StudyPathWorkspaceView
                       studyPath={dashboard.studyPath}

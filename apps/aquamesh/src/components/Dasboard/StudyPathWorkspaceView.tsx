@@ -265,8 +265,10 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           minHeight: 0,
         },
         height: '100%',
+        maxHeight: '100%',
         minHeight: 0,
         overflow: 'hidden',
+        boxSizing: 'border-box',
         background:
           'linear-gradient(135deg, rgba(0,124,102,0.12), rgba(25,118,210,0.08))',
         border: 1,
@@ -284,7 +286,9 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           borderColor: 'divider',
           background:
             'linear-gradient(180deg, rgba(0,124,102,0.18), rgba(0,16,38,0.02)), var(--background-paper)',
-          overflowY: navigatorCollapsed ? 'hidden' : 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           position: 'relative',
           zIndex: 2,
           p: navigatorCollapsed ? 1 : 2.25,
@@ -336,9 +340,48 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               label={`${selectedIndex + 1}/${studyPath.dashboards.length}`}
               sx={{ mt: 'auto' }}
             />
+            <Stack spacing={1} alignItems="center">
+              <Tooltip title="Previous lesson">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Previous lesson"
+                    disabled={!canGoPrevious}
+                    onClick={() => selectLesson(selectedIndex - 1)}
+                    sx={{
+                      bgcolor: 'background.paper',
+                      border: 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <ChevronLeftIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Next lesson">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Next lesson"
+                    disabled={!canGoNext}
+                    onClick={() => selectLesson(selectedIndex + 1)}
+                    sx={{
+                      bgcolor: 'background.paper',
+                      border: 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <ChevronRightIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
           </Stack>
         ) : (
-          <Stack spacing={2.25}>
+          <Stack
+            spacing={2.25}
+            sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}
+          >
             <Stack direction="row" spacing={1.25} alignItems="flex-start">
               <Box
                 sx={{
@@ -430,71 +473,85 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               Lessons
             </Typography>
 
-            <Stack spacing={1.1}>
-              {studyPath.dashboards.map((lesson, index) => {
-                const progress = progressByKey[lesson.dashboardKey]
-                const active = index === selectedIndex
-                const pinned = pinnedDashboardKeys.includes(lesson.dashboardKey)
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5 }}>
+              <Stack spacing={1.1}>
+                {studyPath.dashboards.map((lesson, index) => {
+                  const progress = progressByKey[lesson.dashboardKey]
+                  const active = index === selectedIndex
+                  const pinned = pinnedDashboardKeys.includes(
+                    lesson.dashboardKey,
+                  )
 
-                return (
-                  <Button
-                    key={lesson.dashboardKey}
-                    onClick={() => selectLesson(index)}
-                    variant={active ? 'contained' : 'text'}
-                    color={active ? 'primary' : 'inherit'}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      alignItems: 'stretch',
-                      borderRadius: 2.5,
-                      py: 1.15,
-                      px: 1.25,
-                      border: 1,
-                      borderColor: active ? 'primary.main' : 'divider',
-                      bgcolor: active ? 'primary.main' : 'background.paper',
-                      boxShadow: active ? 2 : 0,
-                      '&:hover': {
-                        bgcolor: active ? 'primary.dark' : 'action.hover',
-                      },
-                    }}
-                  >
-                    <Stack direction="row" spacing={1.2} sx={{ width: '100%' }}>
-                      <Box
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          flex: '0 0 auto',
-                          fontWeight: 900,
-                          bgcolor: active
-                            ? 'rgba(255,255,255,0.22)'
-                            : 'action.hover',
-                        }}
+                  return (
+                    <Button
+                      key={lesson.dashboardKey}
+                      onClick={() => selectLesson(index)}
+                      variant={active ? 'contained' : 'text'}
+                      color={active ? 'primary' : 'inherit'}
+                      sx={{
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        alignItems: 'stretch',
+                        borderRadius: 2.5,
+                        py: 1.15,
+                        px: 1.25,
+                        border: 1,
+                        borderColor: active ? 'primary.main' : 'divider',
+                        bgcolor: active ? 'primary.main' : 'background.paper',
+                        boxShadow: active ? 2 : 0,
+                        '&:hover': {
+                          bgcolor: active ? 'primary.dark' : 'action.hover',
+                        },
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={1.2}
+                        sx={{ width: '100%' }}
                       >
-                        {String(index + 1).padStart(2, '0')}
-                      </Box>
-                      <Stack spacing={0.3} sx={{ minWidth: 0, flex: 1 }}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="body2" fontWeight={700} noWrap>
-                            {lesson.name}
+                        <Box
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flex: '0 0 auto',
+                            fontWeight: 900,
+                            bgcolor: active
+                              ? 'rgba(255,255,255,0.22)'
+                              : 'action.hover',
+                          }}
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </Box>
+                        <Stack spacing={0.3} sx={{ minWidth: 0, flex: 1 }}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                          >
+                            <Typography variant="body2" fontWeight={700} noWrap>
+                              {lesson.name}
+                            </Typography>
+                            {pinned && <PushPinIcon sx={{ fontSize: 14 }} />}
+                            {progress?.completedAt && (
+                              <CheckCircleIcon sx={{ fontSize: 15 }} />
+                            )}
+                          </Stack>
+                          <Typography variant="caption" sx={{ opacity: 0.78 }}>
+                            Step {lesson.dashboardIndex}/{lesson.dashboardCount}
+                            {progress?.score
+                              ? ` · Score ${progress.score}%`
+                              : ''}
                           </Typography>
-                          {pinned && <PushPinIcon sx={{ fontSize: 14 }} />}
-                          {progress?.completedAt && (
-                            <CheckCircleIcon sx={{ fontSize: 15 }} />
-                          )}
                         </Stack>
-                        <Typography variant="caption" sx={{ opacity: 0.78 }}>
-                          Step {lesson.dashboardIndex}/{lesson.dashboardCount}
-                          {progress?.score ? ` · Score ${progress.score}%` : ''}
-                        </Typography>
                       </Stack>
-                    </Stack>
-                  </Button>
-                )
-              })}
-            </Stack>
+                    </Button>
+                  )
+                })}
+              </Stack>
+            </Box>
 
             <Divider />
 
@@ -564,10 +621,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               </Stack>
               <Typography variant="h6" sx={{ mt: 0.75 }}>
                 {currentLesson.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Embedded dashboard preview — use the sidebar to move through
-                this Study Path without creating more workspace tabs.
               </Typography>
             </Box>
 
