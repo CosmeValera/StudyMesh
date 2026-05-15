@@ -45,6 +45,7 @@ export type {
   StudyPackSourceFormat,
   StudyPackWidgetGroupInput,
   StudyPackWidgetRecord,
+  StudyPathDashboardRole,
   StudyQAObject,
   StudyQuizObject,
   StudyRevealObject,

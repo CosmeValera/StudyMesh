@@ -247,6 +247,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             objects: dashboard.objects,
             warnings: dashboard.warnings || [],
             sourceSummary: dashboard.sourceSummary,
+            dashboardRole: dashboard.dashboardRole,
           },
           {
             rawSource: dashboard.rawNotes || prompt,
@@ -261,6 +262,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
               dashboardIndex: index + 1,
               dashboardCount,
               folderName: effectiveFolder,
+              dashboardRole: dashboard.dashboardRole,
             },
           },
         ),
@@ -376,6 +378,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           label={`${dashboard.objects.length} study items`}
                           size="small"
                         />
+                        <Chip label={dashboard.dashboardRole} size="small" />
                       </Stack>
                       <Typography variant="subtitle1" fontWeight={800}>
                         {dashboard.title}

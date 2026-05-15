@@ -1,4 +1,4 @@
-import { StudyPackSourceFormat } from '../types'
+import { StudyPackSourceFormat, StudyPathDashboardRole } from '../types'
 import { conceptSummaryItem, extractLearningConcepts } from '../concepts'
 import { createStudyPackPracticeProfile, getEffectiveGenerationTargets } from '../practice'
 import { normalizeAiStudyPackDraft, AiStudyPackDraft } from './normalizer'
@@ -63,6 +63,7 @@ export interface GenerateStudyPackWithAiOptions {
 
 export interface AiStudyPathDashboardDraft extends AiStudyPackDraft {
   summary: string
+  dashboardRole: StudyPathDashboardRole
 }
 
 export interface AiStudyPathDraft {
@@ -80,6 +81,45 @@ export interface GenerateStudyPathWithAiOptions {
   folderName: string
   generationAmount?: 'few' | 'medium' | 'many'
 }
+
+export const getStudyPathDashboardRoles = (
+  generationAmount: 'few' | 'medium' | 'many' = 'medium',
+): StudyPathDashboardRole[] =>
+  generationAmount === 'few'
+    ? ['normal', 'normal', 'exercises']
+    : generationAmount === 'many'
+    ? [
+        'normal',
+        'normal',
+        'normal',
+        'normal',
+        'normal',
+        'summary',
+        'exercises',
+      ]
+    : ['normal', 'normal', 'normal', 'summary', 'exercises']
+
+const getStudyPathStepNames = (
+  generationAmount: 'few' | 'medium' | 'many' = 'medium',
+): string[] =>
+  getStudyPathDashboardRoles(generationAmount).map((role, index) => {
+    if (role === 'summary') {
+      return 'Summary'
+    }
+
+    if (role === 'exercises') {
+      return 'Exercises'
+    }
+
+    return `Content ${index + 1}`
+  })
+
+const describeStudyPathRoles = (
+  roles: StudyPathDashboardRole[],
+): string =>
+  roles
+    .map((role, index) => `${index + 1}: ${role}`)
+    .join(', ')
 
 const hasUsefulLessonNotes = (value: string): boolean =>
   value.trim().split(/\s+/).filter(Boolean).length >= 80
@@ -656,20 +696,8 @@ export const generateStudyPathWithAi = async ({
   folderName,
   generationAmount = 'medium',
 }: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
-  const stepNames =
-    generationAmount === 'few'
-      ? ['Content 1', 'Content 2', 'Exercises']
-      : generationAmount === 'many'
-      ? [
-          'Content 1',
-          'Content 2',
-          'Content 3',
-          'Content 4',
-          'Content 5',
-          'Summary',
-          'Exercises',
-        ]
-      : ['Content 1', 'Content 2', 'Content 3', 'Summary', 'Exercises']
+  const dashboardRoles = getStudyPathDashboardRoles(generationAmount)
+  const stepNames = getStudyPathStepNames(generationAmount)
   const contentDashboardCount = stepNames.filter((stepName) =>
     stepName.startsWith('Content'),
   ).length
@@ -704,6 +732,9 @@ Rules:
 - Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
 - Choose a concise, topic-specific folderName for the Study Path, such as "French B1 Subjunctive" or "Calculus Derivatives". Do not use a generic folderName like "Study Path" unless the topic is truly unknown.
 - Use these ordered lessons exactly: ${stepNames.join(' -> ')}.
+- AquaMesh will assign these dashboard roles by position: ${describeStudyPathRoles(
+    dashboardRoles,
+  )}.
 - Each dashboard must be useful by itself and contain 6-12 objects.
 - Always return exactly ${stepNames.length} dashboards total.
 - This depth means ${contentDashboardCount} content dashboard${
@@ -714,6 +745,10 @@ Rules:
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
 - For every dashboard, fill only sourceSummary, conceptRecap, practice.shortAnswer, practice.multipleChoice, and flashcards.
+- Role rules are strict:
+  - normal dashboards teach one topic; include sourceSummary, conceptRecap, some practice, and some flashcards.
+  - summary dashboards synthesize previous normal dashboards; include sourceSummary and conceptRecap only, and leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.
+  - exercises dashboards are active practice only; include practice and flashcards, and leave conceptRecap.sections empty. sourceSummary can be a tiny instruction summary only.
 - Do not output "objects", "kind", "quizMode", internal block names, widget names, or any AquaMesh renderer fields. AquaMesh decides widget types.
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from structured concepts, not from first sentences, headings, copied examples, or instructions.
@@ -722,8 +757,8 @@ Rules:
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
 - Flashcards should ask useful rule-specific prompts such as "How do you form the present subjunctive for most verbs?" instead of "What should you remember about <copied line>?".
 - Include practice in later dashboards through practice.shortAnswer, practice.multipleChoice, and flashcards.
-- If a Summary dashboard is included, make it a global recap of the preceding content dashboards.
-- The final Exercises dashboard must generate real mixed practice from the preceding content dashboards, not from its own instructions.
+- If a Summary dashboard is included, make it a global recap of the preceding normal dashboards and do not add quizzes, exercises, or flashcards.
+- The final Exercises dashboard must generate real mixed practice from the preceding content dashboards, not from its own instructions. Do not add visible recap or explanation sections to the exercises dashboard.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
 - Do not create PDFs/images/resources unless the user explicitly asks for heavy media.
@@ -795,15 +830,16 @@ The previous response failed JSON formatting. Retry with a simpler response:
             2,
             '0',
           )} - ${stepName}`
+          const dashboardRole = dashboardRoles[index]
           const rawNotes =
-            stepName === 'Summary'
+            dashboardRole === 'summary'
               ? `# ${titlePrefix}
 
 ## Key points
 - Review the five previous content dashboards.
 - Connect the main concepts from the path.
 - Identify weak areas before exercises.`
-              : stepName === 'Exercises'
+              : dashboardRole === 'exercises'
               ? `# ${titlePrefix}
 
 ## Practice
@@ -826,13 +862,16 @@ ${prompt}`
             },
             conceptRecap: {
               title: `${titlePrefix} concept recap`,
-              sections: [
-                {
-                  title: stepName,
-                  bullets: [prompt],
-                  example: '',
-                },
-              ],
+              sections:
+                dashboardRole === 'exercises'
+                  ? []
+                  : [
+                      {
+                        title: stepName,
+                        bullets: [prompt],
+                        example: '',
+                      },
+                    ],
             },
             practice: {
               shortAnswer: [],
@@ -879,6 +918,7 @@ ${prompt}`
       const packId = `${title}-${index + 1}`
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
+      const dashboardRole = dashboardRoles[index] || 'normal'
       const draft = normalizeAiStudyPackDraft(
         {
           ...input,
@@ -889,11 +929,11 @@ ${prompt}`
         {
           rawNotes: typeof input.rawNotes === 'string' ? input.rawNotes : '',
           rawAiResponse: JSON.stringify(input, null, 2),
+          dashboardRole,
         },
       )
-      const stepName = stepNames[index] || ''
-      const isSummaryDashboard = stepName === 'Summary'
-      const isExercisesDashboard = stepName === 'Exercises'
+      const isSummaryDashboard = dashboardRole === 'summary'
+      const isExercisesDashboard = dashboardRole === 'exercises'
       const generatedLessonNotes = buildStudyPathLessonNotes(
         dashboardTitle,
         dashboardSummary,
@@ -920,6 +960,7 @@ ${prompt}`
         title: dashboardTitle,
         summary: dashboardSummary,
         rawNotes: lessonNotes,
+        dashboardRole,
         objects: draft.objects,
         warnings: [],
         sourceFormat: 'text' as StudyPackSourceFormat,

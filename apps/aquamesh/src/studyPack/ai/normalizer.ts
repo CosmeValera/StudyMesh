@@ -1,5 +1,9 @@
 import { z } from 'zod'
-import { StudyObject, StudyPackSourceFormat } from '../types'
+import {
+  StudyObject,
+  StudyPackSourceFormat,
+  StudyPathDashboardRole,
+} from '../types'
 
 const normalizeSpaces = (value: string): string =>
   value.replace(/\s+/g, ' ').trim()
@@ -112,6 +116,7 @@ export interface AiStudyPackDraft {
   title?: string
   sourceFormat?: StudyPackSourceFormat
   rawNotes?: string
+  dashboardRole?: StudyPathDashboardRole
   sourceSummary?: AiSourceSummary
   strictContract?: StrictAiDashboardContract
   objects: StudyObject[]
@@ -122,6 +127,7 @@ export interface AiStudyPackDraft {
 export interface NormalizeAiStudyPackDraftOptions {
   rawNotes?: string
   rawAiResponse?: string
+  dashboardRole?: StudyPathDashboardRole
 }
 
 const createBase = (
@@ -190,6 +196,7 @@ const normalizeMultipleChoice = (
 const normalizeStrictContract = (
   contract: StrictAiDashboardContract,
   rawNotes: string,
+  dashboardRole: StudyPathDashboardRole = 'normal',
 ): { contract: StrictAiDashboardContract; events: string[] } => {
   const events: string[] = []
   const sourceSummary = {
@@ -200,52 +207,91 @@ const normalizeStrictContract = (
     events.push('Repaired sourceSummary: removed empty or duplicate bullets.')
   }
 
-  const conceptSections = contract.conceptRecap.sections
-    .map((section, index) => {
-      const bullets = dedupe(section.bullets).slice(0, 8)
-      if (bullets.length === 0 && !section.example) {
-        events.push(`Dropped conceptRecap section ${index + 1}: no usable content.`)
-        return null
-      }
+  const conceptSections =
+    dashboardRole === 'exercises'
+      ? []
+      : contract.conceptRecap.sections
+          .map((section, index) => {
+            const bullets = dedupe(section.bullets).slice(0, 8)
+            if (bullets.length === 0 && !section.example) {
+              events.push(
+                `Dropped conceptRecap section ${
+                  index + 1
+                }: no usable content.`,
+              )
+              return null
+            }
 
-      if (bullets.length !== section.bullets.length) {
-        events.push(
-          `Repaired conceptRecap section ${index + 1}: removed duplicate bullets.`,
-        )
-      }
+            if (bullets.length !== section.bullets.length) {
+              events.push(
+                `Repaired conceptRecap section ${
+                  index + 1
+                }: removed duplicate bullets.`,
+              )
+            }
 
-      return { ...section, bullets }
-    })
-    .filter((section): section is z.infer<typeof conceptSectionSchema> =>
-      Boolean(section),
+            return { ...section, bullets }
+          })
+          .filter((section): section is z.infer<typeof conceptSectionSchema> =>
+            Boolean(section),
+          )
+  if (
+    dashboardRole === 'exercises' &&
+    contract.conceptRecap.sections.length > 0
+  ) {
+    events.push(
+      'Dropped conceptRecap: exercises dashboards are practice-only.',
     )
+  }
 
-  const shortAnswer = contract.practice.shortAnswer.filter((item, index) => {
-    if (!isUsefulQuestion(item.question, rawNotes)) {
-      events.push(`Dropped shortAnswer ${index + 1}: weak or copied question.`)
-      return false
-    }
+  const shortAnswer =
+    dashboardRole === 'summary'
+      ? []
+      : contract.practice.shortAnswer.filter((item, index) => {
+          if (!isUsefulQuestion(item.question, rawNotes)) {
+            events.push(
+              `Dropped shortAnswer ${index + 1}: weak or copied question.`,
+            )
+            return false
+          }
 
-    return true
-  })
-  const multipleChoice = contract.practice.multipleChoice
-    .map((item, index) =>
-      normalizeMultipleChoice(item, index, rawNotes, events),
-    )
-    .filter(
-      (item): item is z.infer<typeof multipleChoiceSchema> => Boolean(item),
-    )
-  const flashcards = contract.flashcards.filter((item, index) => {
-    if (
-      genericQuestionPattern.test(item.front) ||
-      normalizeKey(item.front) === normalizeKey(item.back)
-    ) {
-      events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
-      return false
-    }
+          return true
+        })
+  const multipleChoice =
+    dashboardRole === 'summary'
+      ? []
+      : contract.practice.multipleChoice
+          .map((item, index) =>
+            normalizeMultipleChoice(item, index, rawNotes, events),
+          )
+          .filter(
+            (item): item is z.infer<typeof multipleChoiceSchema> =>
+              Boolean(item),
+          )
+  if (
+    dashboardRole === 'summary' &&
+    (contract.practice.shortAnswer.length > 0 ||
+      contract.practice.multipleChoice.length > 0)
+  ) {
+    events.push('Dropped practice: summary dashboards are recap-only.')
+  }
+  const flashcards =
+    dashboardRole === 'summary'
+      ? []
+      : contract.flashcards.filter((item, index) => {
+          if (
+            genericQuestionPattern.test(item.front) ||
+            normalizeKey(item.front) === normalizeKey(item.back)
+          ) {
+            events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
+            return false
+          }
 
-    return true
-  })
+          return true
+        })
+  if (dashboardRole === 'summary' && contract.flashcards.length > 0) {
+    events.push('Dropped flashcards: summary dashboards are recap-only.')
+  }
 
   return {
     contract: {
@@ -354,6 +400,7 @@ export const normalizeAiStudyPackDraft = (
       title,
       sourceFormat,
       rawNotes,
+      dashboardRole: options.dashboardRole,
       objects: [],
       warnings,
       debugTrace: {
@@ -368,6 +415,7 @@ export const normalizeAiStudyPackDraft = (
   const { contract, events } = normalizeStrictContract(
     parsed.data,
     options.rawNotes || rawNotes,
+    options.dashboardRole,
   )
   const objects = mapStrictContractToStudyObjects(contract, packId)
 
@@ -375,6 +423,7 @@ export const normalizeAiStudyPackDraft = (
     title,
     sourceFormat,
     rawNotes,
+    dashboardRole: options.dashboardRole,
     sourceSummary: {
       title: asTitle(contract.sourceSummary.title, 'Source summary'),
       bullets: contract.sourceSummary.bullets,

@@ -659,6 +659,30 @@ const getGeneratedObjectBucket = (object: StudyObject): string => {
   return object.kind
 }
 
+const objectAllowedForDashboardRole = (
+  object: StudyObject,
+  role = 'normal',
+): boolean => {
+  if (role === 'summary') {
+    return (
+      object.kind !== 'quiz' &&
+      object.kind !== 'qa' &&
+      object.kind !== 'reveal' &&
+      object.kind !== 'reviewPrompt'
+    )
+  }
+
+  if (role === 'exercises') {
+    return (
+      object.kind === 'quiz' ||
+      object.kind === 'qa' ||
+      object.kind === 'reveal'
+    )
+  }
+
+  return true
+}
+
 const orderObjectsForGeneratedWidget = (objects: StudyObject[]): StudyObject[] =>
   [...objects].sort((left, right) => {
     if (left.kind === 'quiz' && right.kind === 'quiz') {
@@ -694,10 +718,12 @@ export const createStudyPackSmartWidgetGroups = (
   groupingThreshold: number,
 ): StudyPackWidgetGroupInput[] => {
   const seen = new Set<string>()
+  const dashboardRole = pack.dashboardRole || 'normal'
   const interestingObjects = pack.objects.filter((object) => {
     if (
       object.kind === 'note' ||
       object.kind === 'markdown' ||
+      !objectAllowedForDashboardRole(object, dashboardRole) ||
       isLowQualityStudyObject(object, pack.title)
     ) {
       return false
@@ -770,12 +796,17 @@ export const createStudyPackOrchestratorWidgets = (
           widgetIdPrefix: normalizedOptions.widgetIdPrefix,
           studyPath: normalizedOptions.studyPath,
         }),
-        createSourceSummaryWidget(pack, options.rawSource || '', {
-          author: normalizedOptions.author,
-          category: normalizedOptions.category,
-          createdAt: normalizedOptions.createdAt,
-          widgetIdPrefix: normalizedOptions.widgetIdPrefix,
-        }),
+        ...(normalizedOptions.studyPath?.dashboardRole === 'exercises' ||
+        pack.dashboardRole === 'exercises'
+          ? []
+          : [
+              createSourceSummaryWidget(pack, options.rawSource || '', {
+                author: normalizedOptions.author,
+                category: normalizedOptions.category,
+                createdAt: normalizedOptions.createdAt,
+                widgetIdPrefix: normalizedOptions.widgetIdPrefix,
+              }),
+            ]),
       ]
     : []
   const generatedGroups =

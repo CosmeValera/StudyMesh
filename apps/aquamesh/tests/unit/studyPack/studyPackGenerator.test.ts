@@ -390,6 +390,78 @@ A: When differentiating x raised to a constant power.`,
     expect(serialized).toContain('Derivatives Summary')
   })
 
+  it('renders summary Study Path dashboards as recap-only', () => {
+    const pack = parseStudyPack(
+      `- Connect formation and usage rules
+Quiz:: Which form is correct? | A | B | C
+Q: What should you test?
+A: The mixed rules.`,
+      { title: 'French Summary', sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(
+      { ...pack, dashboardRole: 'summary' },
+      {
+        rawSource: 'Synthesize the previous dashboards.',
+        studyPath: {
+          pathId: 'french-path',
+          title: 'French Path',
+          dashboardKey: 'french-path-4',
+          dashboardName: '04 - Summary',
+          dashboardIndex: 4,
+          dashboardCount: 5,
+          folderName: 'French Path',
+          dashboardRole: 'summary',
+        },
+      },
+    )
+    const serialized = JSON.stringify(widgets)
+
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      'French Summary Source',
+      'French Summary Summary',
+      'French Summary Review',
+    ])
+    expect(serialized).not.toContain('QuizBlock')
+    expect(serialized).not.toContain('FlashcardBlock')
+  })
+
+  it('renders exercises Study Path dashboards as practice-only without a visible summary tab', () => {
+    const pack = parseStudyPack(
+      `- This recap should not render on exercises dashboards
+Quiz:: Choose the subjunctive form. | partions | partons | partirez
+Q: Complete: Il faut que nous ___.
+A: partions`,
+      { title: 'French Exercises', sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(
+      { ...pack, dashboardRole: 'exercises' },
+      {
+        rawSource: 'Use this dashboard for mixed practice.',
+        studyPath: {
+          pathId: 'french-path',
+          title: 'French Path',
+          dashboardKey: 'french-path-5',
+          dashboardName: '05 - Exercises',
+          dashboardIndex: 5,
+          dashboardCount: 5,
+          folderName: 'French Path',
+          dashboardRole: 'exercises',
+        },
+      },
+    )
+    const serialized = JSON.stringify(widgets)
+
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      'French Exercises Source',
+      'French Exercises Quizzes',
+      'French Exercises Review',
+    ])
+    expect(serialized).toContain('QuizBlock')
+    expect(serialized).toContain('FlashcardBlock')
+    expect(serialized).not.toContain('French Exercises Summary')
+    expect(serialized).not.toContain('This recap should not render')
+  })
+
   it('can skip the source widget and use caller-provided widget groups', () => {
     const pack = parseStudyPack(
       `Quiz:: One? | A | B | C

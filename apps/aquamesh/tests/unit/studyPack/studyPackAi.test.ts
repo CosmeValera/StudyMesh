@@ -3,6 +3,7 @@ import {
   DEFAULT_STUDY_PACK_AI_MODEL,
   generateStudyPackWithAi,
   generateStudyPathWithAi,
+  getStudyPathDashboardRoles,
   normalizeAiStudyPackDraft,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
@@ -74,6 +75,48 @@ describe('study pack AI settings', () => {
 })
 
 describe('study pack AI normalizer', () => {
+  const strictContract = {
+    title: 'French Subjunctive',
+    sourceSummary: {
+      title: 'Subjunctive summary',
+      bullets: ['Use the subjunctive after triggers like il faut que.'],
+    },
+    conceptRecap: {
+      title: 'Concept recap',
+      sections: [
+        {
+          title: 'Subjunctive trigger: il faut que',
+          bullets: ['Il faut que introduces a required action.'],
+          example: 'Il faut que nous partions.',
+        },
+      ],
+    },
+    practice: {
+      shortAnswer: [
+        {
+          question: 'Complete: Il faut que nous ___ tôt.',
+          expectedAnswer: 'partions',
+          explanation: 'Il faut que triggers the subjunctive.',
+        },
+      ],
+      multipleChoice: [
+        {
+          question:
+            'Which conjunction normally requires the subjunctive in French?',
+          options: ['bien que', 'parce que', 'puisque'],
+          correctOptionIndex: 0,
+          explanation: 'Bien que introduces concession and uses subjunctive.',
+        },
+      ],
+    },
+    flashcards: [
+      {
+        front: 'What mood follows il faut que?',
+        back: 'The subjunctive.',
+      },
+    ],
+  }
+
   it('maps a strict AI contract and drops invalid nested items', () => {
     const draft = normalizeAiStudyPackDraft(
       {
@@ -166,6 +209,67 @@ describe('study pack AI normalizer', () => {
       'AI response did not match the strict Study Pack schema.',
     ])
     expect(draft.debugTrace?.validatedContract).toBeNull()
+  })
+
+  it('enforces summary dashboards as recap-only', () => {
+    const draft = normalizeAiStudyPackDraft(strictContract, 'summary-pack', {
+      dashboardRole: 'summary',
+    })
+
+    expect(draft.dashboardRole).toBe('summary')
+    expect(draft.objects.map((object) => object.kind)).toEqual(['list'])
+    expect(JSON.stringify(draft.objects)).not.toContain('QuizBlock')
+    expect(draft.debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        'Dropped practice: summary dashboards are recap-only.',
+        'Dropped flashcards: summary dashboards are recap-only.',
+      ]),
+    )
+  })
+
+  it('enforces exercises dashboards as practice-only', () => {
+    const draft = normalizeAiStudyPackDraft(strictContract, 'exercise-pack', {
+      dashboardRole: 'exercises',
+    })
+
+    expect(draft.dashboardRole).toBe('exercises')
+    expect(draft.objects.map((object) => object.kind)).toEqual([
+      'quiz',
+      'quiz',
+      'qa',
+    ])
+    expect(draft.objects).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'list' })]),
+    )
+    expect(draft.debugTrace?.droppedOrRepairedItems).toContain(
+      'Dropped conceptRecap: exercises dashboards are practice-only.',
+    )
+  })
+})
+
+describe('Study Path dashboard roles', () => {
+  it('uses fixed role sequences for compact, balanced, and extended paths', () => {
+    expect(getStudyPathDashboardRoles('few')).toEqual([
+      'normal',
+      'normal',
+      'exercises',
+    ])
+    expect(getStudyPathDashboardRoles('medium')).toEqual([
+      'normal',
+      'normal',
+      'normal',
+      'summary',
+      'exercises',
+    ])
+    expect(getStudyPathDashboardRoles('many')).toEqual([
+      'normal',
+      'normal',
+      'normal',
+      'normal',
+      'normal',
+      'summary',
+      'exercises',
+    ])
   })
 })
 
@@ -500,9 +604,18 @@ describe('Gemini study pack client', () => {
     expect(fetchMock.mock.calls[1][1].body).toContain(
       'Return syntactically valid JSON',
     )
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      '1: normal, 2: normal, 3: exercises',
+    )
+    expect(draft.dashboards.map((dashboard) => dashboard.dashboardRole)).toEqual(
+      ['normal', 'normal', 'exercises'],
+    )
     expect(draft.dashboards[2].rawNotes).toContain('Mixed practice source')
     expect(JSON.stringify(draft.dashboards[2].objects)).not.toContain(
       'What do the notes say about exercises?',
+    )
+    expect(draft.dashboards[2].objects).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'list' })]),
     )
   })
 

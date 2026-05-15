@@ -10,6 +10,8 @@ export type StudyPackSourceFormat =
   | 'markdown-table'
   | 'quick-syntax'
 
+export type StudyPathDashboardRole = 'normal' | 'summary' | 'exercises'
+
 export type StudyObjectKind =
   | 'markdown'
   | 'note'
@@ -143,6 +145,7 @@ export interface StudyPack {
     title: string
     bullets: string[]
   }
+  dashboardRole?: StudyPathDashboardRole
 }
 
 export interface StudyPackParseOptions {
@@ -175,6 +178,7 @@ export interface StudyPathDashboardContext {
   dashboardIndex: number
   dashboardCount: number
   folderName: string
+  dashboardRole?: StudyPathDashboardRole
 }
 
 export type StudyPackDashboardLayoutMode = 'smart' | 'tabs' | 'orchestrator'

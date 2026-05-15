@@ -12,6 +12,7 @@ export {
   extractRawNotesWithAi,
   generateStudyPackWithAi,
   generateStudyPathWithAi,
+  getStudyPathDashboardRoles,
 } from './gemini'
 export type {
   AiStudyPathDashboardDraft,
