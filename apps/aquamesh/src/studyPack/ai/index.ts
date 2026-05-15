@@ -21,7 +21,12 @@ export type {
   GenerateStudyPackWithAiOptions,
   GenerateStudyPathWithAiOptions,
 } from './gemini'
-export { normalizeAiStudyPackDraft } from './normalizer'
+export {
+  assertRoleObjectsAreClean,
+  filterStudyObjectsForDashboardRole,
+  normalizeAiStudyPackDraft,
+  studyObjectAllowedForDashboardRole,
+} from './normalizer'
 export type {
   AiGenerationDebugTrace,
   AiSourceSummary,

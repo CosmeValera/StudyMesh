@@ -278,6 +278,83 @@ describe('Gemini study pack client', () => {
     vi.restoreAllMocks()
   })
 
+  const makeStrictPathDashboard = (index: number, label: string) => ({
+    title: `${String(index).padStart(2, '0')} - ${label}`,
+    summary: `${label} preview`,
+    rawNotes: `${label} lesson notes explain the topic with examples and common mistakes for this Study Path section.`,
+    sourceSummary: {
+      title: `${label} source summary`,
+      bullets: [`${label} connects the Study Path ideas.`],
+    },
+    conceptRecap: {
+      title: `${label} concept recap`,
+      sections: [
+        {
+          title: `${label} rule`,
+          bullets: [`Apply ${label.toLowerCase()} in a new example.`],
+          example: `${label} example`,
+        },
+      ],
+    },
+    practice: {
+      shortAnswer: [
+        {
+          question: `How would you apply ${label.toLowerCase()} to a new example?`,
+          expectedAnswer: `Use the ${label.toLowerCase()} rule.`,
+          explanation: `${label} practice checks transfer.`,
+        },
+      ],
+      multipleChoice: [
+        {
+          question: `Which option best applies ${label.toLowerCase()} in context?`,
+          options: [
+            `${label} application`,
+            'A copied heading',
+            'An unrelated fact',
+          ],
+          correctOptionIndex: 0,
+          explanation: `${label} application is the transfer choice.`,
+        },
+      ],
+    },
+    flashcards: [
+      {
+        front: `When should you use ${label.toLowerCase()}?`,
+        back: `Use ${label.toLowerCase()} for the relevant rule.`,
+      },
+    ],
+  })
+
+  const mockStudyPathResponse = (dashboardCount: number) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    title: 'French Subjunctive Path',
+                    folderName: 'French Subjunctive Path',
+                    dashboards: Array.from(
+                      { length: dashboardCount },
+                      (_value, index) =>
+                        makeStrictPathDashboard(index + 1, `Lesson ${index + 1}`),
+                    ),
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    return fetchMock
+  }
+
   it('requests structured JSON and normalizes generated study objects', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -616,6 +693,108 @@ describe('Gemini study pack client', () => {
     )
     expect(draft.dashboards[2].objects).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ kind: 'list' })]),
+    )
+  })
+
+  it('filters balanced Study Path final mappings by dashboard role', async () => {
+    mockStudyPathResponse(5)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'French Subjunctive',
+      prompt: 'Teach French subjunctive',
+      folderName: '',
+      generationAmount: 'medium',
+    })
+    const summary = draft.dashboards[3]
+    const exercises = draft.dashboards[4]
+
+    expect(summary.dashboardRole).toBe('summary')
+    expect(summary.objects.filter((object) => object.kind === 'quiz')).toHaveLength(0)
+    expect(summary.objects.filter((object) => object.kind === 'qa')).toHaveLength(0)
+    expect(summary.debugTrace?.finalObjects).toEqual(summary.objects)
+    expect(
+      JSON.stringify(summary.debugTrace?.rawDashboardInput),
+    ).toContain('Use the lesson 4 rule.')
+    expect(
+      JSON.stringify(summary.debugTrace?.roleSanitizedInput),
+    ).not.toContain('Use the lesson 4 rule.')
+    expect(summary.debugTrace?.validatedContract?.practice.shortAnswer).toHaveLength(0)
+    expect(summary.debugTrace?.roleFilteredContract?.practice.shortAnswer).toHaveLength(0)
+
+    expect(exercises.dashboardRole).toBe('exercises')
+    expect(
+      exercises.objects.filter(
+        (object) => object.kind === 'list' || object.kind === 'markdown',
+      ),
+    ).toHaveLength(0)
+    expect(exercises.debugTrace?.finalObjects).toEqual(exercises.objects)
+    expect(
+      JSON.stringify(exercises.debugTrace?.rawDashboardInput),
+    ).toContain('conceptRecap')
+    expect(
+      JSON.stringify(exercises.debugTrace?.roleSanitizedInput),
+    ).not.toContain('concept recap')
+    expect(exercises.debugTrace?.validatedContract?.conceptRecap.sections).toHaveLength(0)
+    expect(exercises.debugTrace?.roleFilteredContract?.conceptRecap.sections).toHaveLength(0)
+  })
+
+  it('filters extended Study Path summary and exercises final mappings', async () => {
+    mockStudyPathResponse(7)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'French Subjunctive',
+      prompt: 'Teach French subjunctive',
+      folderName: '',
+      generationAmount: 'many',
+    })
+    const summary = draft.dashboards[5]
+    const exercises = draft.dashboards[6]
+
+    expect(summary.dashboardRole).toBe('summary')
+    expect(summary.objects.every((object) => object.kind === 'list')).toBe(true)
+    expect(summary.objects).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'quiz' }),
+        expect.objectContaining({ kind: 'qa' }),
+      ]),
+    )
+
+    expect(exercises.dashboardRole).toBe('exercises')
+    expect(
+      exercises.objects.every(
+        (object) => object.kind === 'quiz' || object.kind === 'qa',
+      ),
+    ).toBe(true)
+  })
+
+  it('filters compact Study Path final exercises mapping', async () => {
+    mockStudyPathResponse(3)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'French Subjunctive',
+      prompt: 'Teach French subjunctive',
+      folderName: '',
+      generationAmount: 'few',
+    })
+    const exercises = draft.dashboards[2]
+
+    expect(exercises.dashboardRole).toBe('exercises')
+    expect(
+      exercises.objects.every(
+        (object) => object.kind === 'quiz' || object.kind === 'qa',
+      ),
+    ).toBe(true)
+    expect(exercises.objects).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'list' }),
+        expect.objectContaining({ kind: 'markdown' }),
+      ]),
     )
   })
 

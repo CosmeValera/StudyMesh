@@ -27,6 +27,8 @@ import {
 import {
   AiGenerationDebugTrace,
   AiStudyPathDraft,
+  assertRoleObjectsAreClean,
+  filterStudyObjectsForDashboardRole,
   generateStudyPathWithAi,
   resolveStudyPackAiCredentials,
 } from '../../studyPack/ai'
@@ -135,15 +137,41 @@ const combinedDebugTrace = (
     return null
   }
 
+  const validatedContracts = draft.dashboards.map((dashboard, index) => ({
+    dashboard: index + 1,
+    title: dashboard.title,
+    dashboardRole: dashboard.dashboardRole,
+    validatedContract: dashboard.debugTrace?.validatedContract || null,
+  }))
+  const roleFilteredContracts = draft.dashboards.map((dashboard, index) => ({
+    dashboard: index + 1,
+    title: dashboard.title,
+    dashboardRole: dashboard.dashboardRole,
+    roleFilteredContract: dashboard.debugTrace?.roleFilteredContract || null,
+  }))
+
   return {
     rawAiResponse: traces
       .map((trace) => trace.rawAiResponse)
       .join('\n\n---\n\n'),
-    validatedContract: traces[0].validatedContract,
+    rawDashboardInput: draft.dashboards.map((dashboard, index) => ({
+      dashboard: index + 1,
+      title: dashboard.title,
+      dashboardRole: dashboard.dashboardRole,
+      rawDashboardInput: dashboard.debugTrace?.rawDashboardInput || null,
+    })),
+    roleSanitizedInput: draft.dashboards.map((dashboard, index) => ({
+      dashboard: index + 1,
+      title: dashboard.title,
+      dashboardRole: dashboard.dashboardRole,
+      roleSanitizedInput: dashboard.debugTrace?.roleSanitizedInput || null,
+    })),
+    validatedContract: validatedContracts,
+    roleFilteredContract: roleFilteredContracts,
     droppedOrRepairedItems: traces.flatMap(
       (trace) => trace.droppedOrRepairedItems,
     ),
-    finalObjects: traces.flatMap((trace) => trace.finalObjects),
+    finalObjects: draft.dashboards.flatMap((dashboard) => dashboard.objects),
   }
 }
 
@@ -208,7 +236,33 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         prompt,
         generationAmount,
       })
-      setDraft(nextDraft)
+      const sanitizedDashboards = nextDraft.dashboards.map((dashboard) => {
+        const events = [...(dashboard.debugTrace?.droppedOrRepairedItems || [])]
+        const objects = filterStudyObjectsForDashboardRole(
+          dashboard.objects,
+          dashboard.dashboardRole,
+          events,
+        )
+        assertRoleObjectsAreClean(
+          objects,
+          dashboard.dashboardRole,
+          dashboard.title,
+        )
+
+        return {
+          ...dashboard,
+          objects,
+          debugTrace: dashboard.debugTrace
+            ? {
+                ...dashboard.debugTrace,
+                droppedOrRepairedItems: events,
+                finalObjects: objects,
+              }
+            : dashboard.debugTrace,
+        }
+      })
+      const sanitizedDraft = { ...nextDraft, dashboards: sanitizedDashboards }
+      setDraft(sanitizedDraft)
       setReviewFolderName(nextDraft.folderName || nextDraft.title || '')
       setStep('review')
     } catch (err) {
@@ -360,6 +414,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                   <Paper
                     key={`${dashboard.title}-${index}`}
                     elevation={0}
+                    data-testid={`study-path-dashboard-${index + 1}`}
                     sx={{ p: 2, border: 1, borderColor: 'divider' }}
                   >
                     <Stack spacing={1}>
@@ -413,9 +468,18 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                   <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                     {[
                       ['Raw AI response', debugTrace.rawAiResponse],
+                      ['Raw dashboard input', debugTrace.rawDashboardInput],
                       [
-                        'Validated strict contract',
+                        'Role-sanitized input before normalization',
+                        debugTrace.roleSanitizedInput,
+                      ],
+                      [
+                        'Validated contract before role filtering',
                         debugTrace.validatedContract,
+                      ],
+                      [
+                        'Role-filtered contract',
+                        debugTrace.roleFilteredContract,
                       ],
                       [
                         'Dropped or repaired items',
@@ -429,6 +493,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                         </Typography>
                         <Box
                           component="pre"
+                          data-testid={`study-path-debug-${String(label)
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-')}`}
                           sx={{
                             m: 0,
                             mt: 0.5,

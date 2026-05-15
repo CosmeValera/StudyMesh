@@ -107,7 +107,10 @@ export interface AiSourceSummary {
 
 export interface AiGenerationDebugTrace {
   rawAiResponse: string
-  validatedContract: StrictAiDashboardContract | null
+  rawDashboardInput?: unknown
+  roleSanitizedInput?: unknown
+  validatedContract: unknown
+  roleFilteredContract: unknown
   droppedOrRepairedItems: string[]
   finalObjects: StudyObject[]
 }
@@ -196,7 +199,6 @@ const normalizeMultipleChoice = (
 const normalizeStrictContract = (
   contract: StrictAiDashboardContract,
   rawNotes: string,
-  dashboardRole: StudyPathDashboardRole = 'normal',
 ): { contract: StrictAiDashboardContract; events: string[] } => {
   const events: string[] = []
   const sourceSummary = {
@@ -207,91 +209,56 @@ const normalizeStrictContract = (
     events.push('Repaired sourceSummary: removed empty or duplicate bullets.')
   }
 
-  const conceptSections =
-    dashboardRole === 'exercises'
-      ? []
-      : contract.conceptRecap.sections
-          .map((section, index) => {
-            const bullets = dedupe(section.bullets).slice(0, 8)
-            if (bullets.length === 0 && !section.example) {
-              events.push(
-                `Dropped conceptRecap section ${
-                  index + 1
-                }: no usable content.`,
-              )
-              return null
-            }
+  const conceptSections = contract.conceptRecap.sections
+    .map((section, index) => {
+      const bullets = dedupe(section.bullets).slice(0, 8)
+      if (bullets.length === 0 && !section.example) {
+        events.push(
+          `Dropped conceptRecap section ${index + 1}: no usable content.`,
+        )
+        return null
+      }
 
-            if (bullets.length !== section.bullets.length) {
-              events.push(
-                `Repaired conceptRecap section ${
-                  index + 1
-                }: removed duplicate bullets.`,
-              )
-            }
+      if (bullets.length !== section.bullets.length) {
+        events.push(
+          `Repaired conceptRecap section ${
+            index + 1
+          }: removed duplicate bullets.`,
+        )
+      }
 
-            return { ...section, bullets }
-          })
-          .filter((section): section is z.infer<typeof conceptSectionSchema> =>
-            Boolean(section),
-          )
-  if (
-    dashboardRole === 'exercises' &&
-    contract.conceptRecap.sections.length > 0
-  ) {
-    events.push(
-      'Dropped conceptRecap: exercises dashboards are practice-only.',
+      return { ...section, bullets }
+    })
+    .filter((section): section is z.infer<typeof conceptSectionSchema> =>
+      Boolean(section),
     )
-  }
 
-  const shortAnswer =
-    dashboardRole === 'summary'
-      ? []
-      : contract.practice.shortAnswer.filter((item, index) => {
-          if (!isUsefulQuestion(item.question, rawNotes)) {
-            events.push(
-              `Dropped shortAnswer ${index + 1}: weak or copied question.`,
-            )
-            return false
-          }
+  const shortAnswer = contract.practice.shortAnswer.filter((item, index) => {
+    if (!isUsefulQuestion(item.question, rawNotes)) {
+      events.push(`Dropped shortAnswer ${index + 1}: weak or copied question.`)
+      return false
+    }
 
-          return true
-        })
-  const multipleChoice =
-    dashboardRole === 'summary'
-      ? []
-      : contract.practice.multipleChoice
-          .map((item, index) =>
-            normalizeMultipleChoice(item, index, rawNotes, events),
-          )
-          .filter(
-            (item): item is z.infer<typeof multipleChoiceSchema> =>
-              Boolean(item),
-          )
-  if (
-    dashboardRole === 'summary' &&
-    (contract.practice.shortAnswer.length > 0 ||
-      contract.practice.multipleChoice.length > 0)
-  ) {
-    events.push('Dropped practice: summary dashboards are recap-only.')
-  }
-  const flashcards =
-    dashboardRole === 'summary'
-      ? []
-      : contract.flashcards.filter((item, index) => {
-          if (
-            genericQuestionPattern.test(item.front) ||
-            normalizeKey(item.front) === normalizeKey(item.back)
-          ) {
-            events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
-            return false
-          }
+    return true
+  })
+  const multipleChoice = contract.practice.multipleChoice
+    .map((item, index) =>
+      normalizeMultipleChoice(item, index, rawNotes, events),
+    )
+    .filter(
+      (item): item is z.infer<typeof multipleChoiceSchema> => Boolean(item),
+    )
+  const flashcards = contract.flashcards.filter((item, index) => {
+    if (
+      genericQuestionPattern.test(item.front) ||
+      normalizeKey(item.front) === normalizeKey(item.back)
+    ) {
+      events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
+      return false
+    }
 
-          return true
-        })
-  if (dashboardRole === 'summary' && contract.flashcards.length > 0) {
-    events.push('Dropped flashcards: summary dashboards are recap-only.')
-  }
+    return true
+  })
 
   return {
     contract: {
@@ -304,6 +271,110 @@ const normalizeStrictContract = (
       flashcards,
     },
     events,
+  }
+}
+
+const applyDashboardRoleFilter = (
+  contract: StrictAiDashboardContract,
+  dashboardRole: StudyPathDashboardRole = 'normal',
+): { contract: StrictAiDashboardContract; events: string[] } => {
+  const events: string[] = []
+
+  if (dashboardRole === 'summary') {
+    if (
+      contract.practice.shortAnswer.length > 0 ||
+      contract.practice.multipleChoice.length > 0
+    ) {
+      events.push('Dropped practice: summary dashboards are recap-only.')
+    }
+
+    if (contract.flashcards.length > 0) {
+      events.push('Dropped flashcards: summary dashboards are recap-only.')
+    }
+
+    return {
+      contract: {
+        ...contract,
+        practice: { shortAnswer: [], multipleChoice: [] },
+        flashcards: [],
+      },
+      events,
+    }
+  }
+
+  if (dashboardRole === 'exercises') {
+    if (contract.conceptRecap.sections.length > 0) {
+      events.push(
+        'Dropped conceptRecap: exercises dashboards are practice-only.',
+      )
+    }
+
+    return {
+      contract: {
+        ...contract,
+        conceptRecap: { ...contract.conceptRecap, sections: [] },
+      },
+      events,
+    }
+  }
+
+  return { contract, events }
+}
+
+export const studyObjectAllowedForDashboardRole = (
+  object: StudyObject,
+  dashboardRole: StudyPathDashboardRole = 'normal',
+): boolean => {
+  if (dashboardRole === 'summary') {
+    return object.kind === 'list' || object.kind === 'markdown'
+  }
+
+  if (dashboardRole === 'exercises') {
+    return (
+      object.kind === 'quiz' ||
+      object.kind === 'qa' ||
+      object.kind === 'reveal'
+    )
+  }
+
+  return true
+}
+
+export const filterStudyObjectsForDashboardRole = (
+  objects: StudyObject[],
+  dashboardRole: StudyPathDashboardRole = 'normal',
+  events: string[],
+): StudyObject[] =>
+  objects.filter((object) => {
+    if (studyObjectAllowedForDashboardRole(object, dashboardRole)) {
+      return true
+    }
+
+    events.push(
+      `Dropped ${object.kind} object "${object.title || object.id}" at final mapping: forbidden for ${dashboardRole} dashboard.`,
+    )
+    return false
+  })
+
+export const assertRoleObjectsAreClean = (
+  objects: StudyObject[],
+  dashboardRole: StudyPathDashboardRole = 'normal',
+  dashboardTitle: string,
+): void => {
+  const forbidden = objects.filter(
+    (object) => !studyObjectAllowedForDashboardRole(object, dashboardRole),
+  )
+
+  if (forbidden.length > 0) {
+    console.error('Role leakage detected', {
+      dashboardTitle,
+      role: dashboardRole,
+      forbidden,
+      objects,
+    })
+    throw new Error(
+      `Role leakage detected in ${dashboardTitle}: ${dashboardRole} dashboard has forbidden objects`,
+    )
   }
 }
 
@@ -406,18 +477,31 @@ export const normalizeAiStudyPackDraft = (
       debugTrace: {
         rawAiResponse,
         validatedContract: null,
+        roleFilteredContract: null,
         droppedOrRepairedItems: events,
         finalObjects: [],
       },
     }
   }
 
-  const { contract, events } = normalizeStrictContract(
+  const normalized = normalizeStrictContract(
     parsed.data,
     options.rawNotes || rawNotes,
+  )
+  const roleFiltered = applyDashboardRoleFilter(
+    normalized.contract,
     options.dashboardRole,
   )
-  const objects = mapStrictContractToStudyObjects(contract, packId)
+  const events = [...normalized.events, ...roleFiltered.events]
+  const mappedObjects = mapStrictContractToStudyObjects(
+    roleFiltered.contract,
+    packId,
+  )
+  const objects = filterStudyObjectsForDashboardRole(
+    mappedObjects,
+    options.dashboardRole,
+    events,
+  )
 
   return {
     title,
@@ -425,15 +509,19 @@ export const normalizeAiStudyPackDraft = (
     rawNotes,
     dashboardRole: options.dashboardRole,
     sourceSummary: {
-      title: asTitle(contract.sourceSummary.title, 'Source summary'),
-      bullets: contract.sourceSummary.bullets,
+      title: asTitle(
+        roleFiltered.contract.sourceSummary.title,
+        'Source summary',
+      ),
+      bullets: roleFiltered.contract.sourceSummary.bullets,
     },
-    strictContract: contract,
+    strictContract: roleFiltered.contract,
     objects,
     warnings,
     debugTrace: {
       rawAiResponse,
-      validatedContract: contract,
+      validatedContract: normalized.contract,
+      roleFilteredContract: roleFiltered.contract,
       droppedOrRepairedItems: events,
       finalObjects: objects,
     },

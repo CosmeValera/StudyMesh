@@ -1810,8 +1810,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   {[
                     ['Raw AI response', aiDebugTrace.rawAiResponse],
                     [
-                      'Validated strict contract',
+                      'Validated contract before role filtering',
                       aiDebugTrace.validatedContract,
+                    ],
+                    [
+                      'Role-filtered contract',
+                      aiDebugTrace.roleFilteredContract,
                     ],
                     [
                       'Dropped or repaired items',
