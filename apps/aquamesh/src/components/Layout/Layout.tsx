@@ -98,7 +98,15 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
   }, [layout, readOnly])
 
   return (
-    <div style={{ height: '100%' }}>
+    <div
+      style={{
+        height: '100%',
+        width: '100%',
+        minWidth: 0,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
       <Layout
         ref={ref}
         model={model}

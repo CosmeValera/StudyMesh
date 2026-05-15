@@ -296,7 +296,16 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 aria-label="Expand Course navigator"
                 onClick={toggleNavigatorCollapsed}
                 color="primary"
-                sx={{ bgcolor: 'background.paper', boxShadow: 1 }}
+                sx={{
+                  bgcolor: 'background.paper',
+                  color: 'primary.main',
+                  border: 1,
+                  borderColor: 'divider',
+                  boxShadow: 1,
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
               >
                 <ChevronRightIcon />
               </IconButton>
@@ -361,13 +370,13 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                       aria-label="Collapse Course navigator"
                       onClick={toggleNavigatorCollapsed}
                       sx={{
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
+                        bgcolor: 'background.paper',
+                        color: 'primary.main',
                         border: 1,
-                        borderColor: 'primary.dark',
-                        boxShadow: 2,
+                        borderColor: 'divider',
+                        boxShadow: 1,
                         '&:hover': {
-                          bgcolor: 'primary.dark',
+                          bgcolor: 'action.hover',
                         },
                       }}
                     >
@@ -503,6 +512,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          position: 'relative',
           p: { xs: 1, md: 1.5 },
           gap: 1.5,
         }}
