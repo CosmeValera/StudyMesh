@@ -353,6 +353,16 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                       size="small"
                       aria-label="Collapse Course navigator"
                       onClick={toggleNavigatorCollapsed}
+                      sx={{
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        border: 1,
+                        borderColor: 'primary.dark',
+                        boxShadow: 2,
+                        '&:hover': {
+                          bgcolor: 'primary.dark',
+                        },
+                      }}
                     >
                       <ChevronLeftIcon fontSize="small" />
                     </IconButton>
@@ -366,22 +376,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 </Typography>
               </Box>
             </Stack>
-
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ChevronLeftIcon />}
-              onClick={toggleNavigatorCollapsed}
-              fullWidth
-              sx={{
-                justifyContent: 'center',
-                bgcolor: 'background.paper',
-                textTransform: 'none',
-                fontWeight: 800,
-              }}
-            >
-              Collapse navigator
-            </Button>
 
             <Paper
               variant="outlined"
