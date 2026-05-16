@@ -302,7 +302,9 @@ describe('CreateStudyPathModal role enforcement', () => {
       model: 'gemini-test',
       tokenSource: 'none',
     })
-    render(<CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />)
+    render(
+      <CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />,
+    )
 
     expect(
       screen.getByText(/Local AI runs on your device and can be slow/i),
@@ -330,12 +332,16 @@ describe('CreateStudyPathModal role enforcement', () => {
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
       .mockResolvedValueOnce('{"title":"Broken",')
+      .mockResolvedValueOnce('{"title":"Broken again",')
+      .mockResolvedValueOnce('{"title":"Broken final",')
     vi.stubGlobal('LanguageModel', {
       availability: vi.fn().mockResolvedValue('available'),
       create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
     })
 
-    render(<CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />)
+    render(
+      <CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />,
+    )
 
     fireEvent.change(
       screen.getByRole('textbox', { name: /what should aquamesh teach/i }),
@@ -343,7 +349,9 @@ describe('CreateStudyPathModal role enforcement', () => {
         target: { value: 'Teach Italian B1 modal verbs' },
       },
     )
-    fireEvent.click(screen.getByRole('button', { name: /generate study path/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /generate study path/i }),
+    )
 
     expect(
       await screen.findByText(/Local AI returned malformed JSON/i),
@@ -351,9 +359,12 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(screen.getByText('Local AI failure debug')).toBeInTheDocument()
     expect(
       screen.getByTestId('local-ai-failure-debug-raw-dashboard-response'),
-    ).toHaveTextContent('{"title":"Broken",')
+    ).toHaveTextContent('{"title":"Broken final",')
     expect(
       screen.getByTestId('local-ai-failure-debug-parse-error'),
     ).toHaveTextContent(/JSON|Unexpected/i)
+    expect(
+      screen.getByTestId('local-ai-failure-debug-failed-attempts'),
+    ).toHaveTextContent('Broken')
   })
 })

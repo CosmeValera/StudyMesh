@@ -174,11 +174,18 @@ const localAiFailureDebugSections = (
       : '',
   ],
   ['Prompt length', debug.promptLength],
+  [
+    'Attempt',
+    debug.attempt && debug.attemptCount
+      ? `${debug.attempt} of ${debug.attemptCount}`
+      : '',
+  ],
   ['Raw dashboard response', debug.rawResponse],
   ['Parsed JSON', debug.parsedJson],
   ['Parse error', debug.parseError],
   ['Mapping error', debug.mappingError],
   ['Dropped or repaired items', debug.droppedOrRepairedItems],
+  ['Failed attempts', debug.attempts],
 ]
 
 const combinedDebugTrace = (
@@ -230,6 +237,9 @@ const combinedDebugTrace = (
       (trace) => trace.droppedOrRepairedItems,
     ),
     finalObjects: draft.dashboards.flatMap((dashboard) => dashboard.objects),
+    localAiFailedAttempts: traces.flatMap(
+      (trace) => trace.localAiFailedAttempts || [],
+    ),
   }
 }
 
@@ -326,6 +336,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         },
       })
       const sanitizedDashboards = nextDraft.dashboards.map((dashboard) => {
+        if (aiProvider === 'local') {
+          return dashboard
+        }
+
         const events = [...(dashboard.debugTrace?.droppedOrRepairedItems || [])]
         const objects = filterStudyObjectsForDashboardRole(
           dashboard.objects,
@@ -471,7 +485,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 screen previews each dashboard before saving anything.
               </Alert>
               {aiProvider === 'local' && (
-                <Alert severity={generationAmount === 'deep' ? 'error' : 'info'}>
+                <Alert
+                  severity={generationAmount === 'deep' ? 'error' : 'info'}
+                >
                   {generationAmount === 'deep'
                     ? LOCAL_DEEP_BLOCKED_MESSAGE
                     : LOCAL_AI_ESTIMATE_COPY}
@@ -496,7 +512,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                       </Typography>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      {providerLabels[aiProvider]}: {getProviderPathDescription(aiProvider)}
+                      {providerLabels[aiProvider]}:{' '}
+                      {getProviderPathDescription(aiProvider)}
                     </Typography>
                     {aiProvider === 'local' && localAiProgress ? (
                       <>
@@ -504,7 +521,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           <Typography variant="caption" color="text.secondary">
                             {localAiProgress.dashboardIndex &&
                             localAiProgress.dashboardCount
-                              ? `Generating dashboard ${localAiProgress.dashboardIndex} of ${localAiProgress.dashboardCount}...`
+                              ? localAiProgress.label
                               : 'Estimated Local AI generation time'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
@@ -673,35 +690,47 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                         'Dropped or repaired items',
                         debugTrace.droppedOrRepairedItems,
                       ],
+                      [
+                        'Local AI failed attempts',
+                        debugTrace.localAiFailedAttempts,
+                      ],
                       ['Final StudyObject mapping', debugTrace.finalObjects],
-                    ].map(([label, value]) => (
-                      <Box key={String(label)}>
-                        <Typography variant="caption" fontWeight={700}>
-                          {String(label)}
-                        </Typography>
-                        <Box
-                          component="pre"
-                          data-testid={`study-path-debug-${String(label)
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]+/g, '-')}`}
-                          sx={{
-                            m: 0,
-                            mt: 0.5,
-                            p: 1,
-                            maxHeight: 180,
-                            overflow: 'auto',
-                            bgcolor: 'background.paper',
-                            border: 1,
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                            fontSize: 12,
-                            whiteSpace: 'pre-wrap',
-                          }}
-                        >
-                          {formatDebugValue(value)}
+                    ]
+                      .filter(([, value]) => {
+                        if (Array.isArray(value)) {
+                          return value.length > 0
+                        }
+
+                        return value !== undefined
+                      })
+                      .map(([label, value]) => (
+                        <Box key={String(label)}>
+                          <Typography variant="caption" fontWeight={700}>
+                            {String(label)}
+                          </Typography>
+                          <Box
+                            component="pre"
+                            data-testid={`study-path-debug-${String(label)
+                              .toLowerCase()
+                              .replace(/[^a-z0-9]+/g, '-')}`}
+                            sx={{
+                              m: 0,
+                              mt: 0.5,
+                              p: 1,
+                              maxHeight: 180,
+                              overflow: 'auto',
+                              bgcolor: 'background.paper',
+                              border: 1,
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              fontSize: 12,
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {formatDebugValue(value)}
+                          </Box>
                         </Box>
-                      </Box>
-                    ))}
+                      ))}
                   </Stack>
                 </Paper>
               ) : null}

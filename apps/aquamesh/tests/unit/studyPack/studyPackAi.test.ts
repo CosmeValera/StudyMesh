@@ -951,6 +951,8 @@ describe('local AI helpers', () => {
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
       .mockResolvedValueOnce('not json at all')
+      .mockResolvedValueOnce('not json at all again')
+      .mockResolvedValueOnce('not json at all final')
     vi.stubGlobal('LanguageModel', {
       availability: vi.fn().mockResolvedValue('available'),
       create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
@@ -975,11 +977,70 @@ describe('local AI helpers', () => {
         expect(error.debug).toMatchObject({
           dashboardIndex: 1,
           dashboardCount: 2,
-          rawResponse: 'not json at all',
+          attempt: 3,
+          attemptCount: 3,
+          rawResponse: 'not json at all final',
         })
         expect(error.debug?.parseError).toMatch(/invalid JSON|Unexpected/i)
+        expect(error.debug?.attempts).toHaveLength(3)
       }
     }
+  })
+
+  it('retries malformed Local Study Path JSON with smaller flat prompts', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce('{"title":"Broken"')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '01 - Italian modal verbs',
+          summary: 'Practice modal verbs.',
+          notes:
+            'Use potere, dovere, and volere for ability, obligation, and desire.',
+          qaQ: 'Which verb expresses obligation?',
+          qaA: 'Dovere expresses obligation.',
+          quizQ: 'Which sentence means I must study?',
+          quizOptions: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
+          quizCorrectIndex: 0,
+          listItems: ['potere = can', 'dovere = must', 'volere = want'],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '02 - Practice',
+          summary: 'Apply modal verbs.',
+          notes: 'Choose modal verbs based on meaning.',
+          qaQ: 'Which verb expresses desire?',
+          qaA: 'Volere expresses desire.',
+          quizQ: 'Which sentence means I want to leave?',
+          quizOptions: ['Voglio partire', 'Devo partire', 'Posso partire'],
+          quizCorrectIndex: 0,
+          listItems: ['ability uses potere', 'obligation uses dovere'],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    const retryPrompt = String(prompt.mock.calls[2][0])
+    expect(retryPrompt).toContain('Use exactly these fields')
+    expect(retryPrompt).toContain('notes')
+    expect(retryPrompt).not.toMatch(/markdown/i)
+    expect(draft.dashboards).toHaveLength(2)
+    expect(draft.dashboards[0].debugTrace?.localAiFailedAttempts).toHaveLength(
+      1,
+    )
   })
 
   it('repairs invalid Local AI JSON backslash escapes before parsing', () => {
@@ -1148,11 +1209,117 @@ describe('local AI helpers', () => {
     )
   })
 
-  it('reports mapped Local Study Path JSON without usable widgets', async () => {
+  it('skips later Local Study Path dashboards after three retryable failures', async () => {
+    const dashboardJson = (index: number) =>
+      JSON.stringify({
+        title: `${String(index).padStart(2, '0')} - Lesson ${index}`,
+        summary: `Lesson ${index}`,
+        notes: `Lesson ${index} notes explain a useful idea with examples.`,
+        qaQ: `What is lesson ${index} about?`,
+        qaA: `Lesson ${index} explains a useful idea.`,
+        quizQ: `Which answer fits lesson ${index}?`,
+        quizOptions: ['Correct idea', 'Wrong idea', 'Other idea'],
+        quizCorrectIndex: 0,
+        listItems: ['key point one', 'key point two', 'key point three'],
+      })
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(dashboardJson(1))
+      .mockResolvedValueOnce('not json 2a')
+      .mockResolvedValueOnce('not json 2b')
+      .mockResolvedValueOnce('not json 2c')
+      .mockResolvedValueOnce(dashboardJson(3))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'compact',
+    })
+
+    expect(draft.dashboards).toHaveLength(2)
+    expect(draft.dashboards.map((dashboard) => dashboard.title)).toEqual([
+      '01 - Lesson 1',
+      '03 - Lesson 3',
+    ])
+    expect(draft.warnings).toContain(
+      'Dashboard 2 could not be generated after 3 Local AI attempts and was skipped.',
+    )
+  })
+
+  it('keeps Local exercise dashboards mixed and treats notes as raw notes', async () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
       .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '01 - Lesson',
+          summary: 'Lesson summary.',
+          notes: '## Summary\n\nModal verbs express ability and obligation.',
+          qaQ: 'Which verb expresses obligation?',
+          qaA: 'Dovere.',
+          quizQ: 'Which sentence means I must study?',
+          quizOptions: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
+          quizCorrectIndex: 0,
+          listItems: ['potere = can', 'dovere = must', 'volere = want'],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '02 - Exercises',
+          summary: 'Mixed practice.',
+          notes: 'Practice modal verbs in realistic sentences.',
+          qaQ: 'Which verb expresses desire?',
+          qaA: 'Volere.',
+          quizQ: 'Which sentence means I want to leave?',
+          quizOptions: ['Voglio partire', 'Devo partire', 'Posso partire'],
+          quizCorrectIndex: 0,
+          listItems: ['ability uses potere', 'obligation uses dovere'],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.dashboards[0].rawNotes).toContain('Modal verbs express')
+    expect(draft.dashboards[0].debugTrace?.validatedContract).not.toMatchObject(
+      {
+        concepts: expect.arrayContaining([
+          expect.objectContaining({ concept: 'Summary' }),
+        ]),
+      },
+    )
+    expect(draft.dashboards[1].dashboardRole).toBe('exercises')
+    expect(draft.dashboards[1].objects.map((object) => object.kind)).toEqual([
+      'markdown',
+      'qa',
+      'quiz',
+      'list',
+    ])
+  })
+
+  it('reports mapped Local Study Path JSON without usable widgets', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValue(
         JSON.stringify({
           title: '',
           summary: '',

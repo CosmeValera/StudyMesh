@@ -62,7 +62,10 @@ const sourceSummarySchema = z.object({
 const conceptSectionSchema = z.object({
   title: stringValue,
   bullets: z.array(stringValue).default([]),
-  example: z.string().transform((value) => normalizeSpaces(value)).default(''),
+  example: z
+    .string()
+    .transform((value) => normalizeSpaces(value))
+    .default(''),
 })
 
 const conceptRecapSchema = z.object({
@@ -113,6 +116,7 @@ export interface AiGenerationDebugTrace {
   roleFilteredContract: unknown
   droppedOrRepairedItems: string[]
   finalObjects: StudyObject[]
+  localAiFailedAttempts?: unknown[]
 }
 
 export interface AiStudyPackDraft {
@@ -172,7 +176,9 @@ const normalizeMultipleChoice = (
 
   const options = dedupe(item.options)
   if (options.length !== item.options.length) {
-    events.push(`Repaired multipleChoice ${index + 1}: removed duplicate options.`)
+    events.push(
+      `Repaired multipleChoice ${index + 1}: removed duplicate options.`,
+    )
   }
 
   if (options.length < 3 || options.length > 4) {
@@ -245,8 +251,8 @@ const normalizeStrictContract = (
     .map((item, index) =>
       normalizeMultipleChoice(item, index, rawNotes, events),
     )
-    .filter(
-      (item): item is z.infer<typeof multipleChoiceSchema> => Boolean(item),
+    .filter((item): item is z.infer<typeof multipleChoiceSchema> =>
+      Boolean(item),
     )
   const flashcards = contract.flashcards.filter((item, index) => {
     if (
@@ -331,9 +337,7 @@ export const studyObjectAllowedForDashboardRole = (
 
   if (dashboardRole === 'exercises') {
     return (
-      object.kind === 'quiz' ||
-      object.kind === 'qa' ||
-      object.kind === 'reveal'
+      object.kind === 'quiz' || object.kind === 'qa' || object.kind === 'reveal'
     )
   }
 

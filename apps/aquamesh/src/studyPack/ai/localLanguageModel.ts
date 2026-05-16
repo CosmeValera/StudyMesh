@@ -7,7 +7,9 @@ type LocalLanguageModelAvailability =
   | 'unavailable'
 
 interface LocalLanguageModelSession {
-  prompt: (prompt: string | LocalLanguageModelPromptMessage[]) => Promise<string>
+  prompt: (
+    prompt: string | LocalLanguageModelPromptMessage[],
+  ) => Promise<string>
   destroy?: () => void
 }
 
@@ -69,6 +71,8 @@ export interface LocalAiProgressEvent {
   label: string
   dashboardIndex?: number
   dashboardCount?: number
+  attempt?: number
+  attemptCount?: number
   timeoutMs?: number
 }
 
@@ -105,9 +109,7 @@ const debugLocalAi = (
   })
 }
 
-const markLocalAiCooldown = (
-  stage: 'create' | 'prompt' | 'smoke',
-): void => {
+const markLocalAiCooldown = (stage: 'create' | 'prompt' | 'smoke'): void => {
   localAiCooldownUntil = Date.now() + LOCAL_AI_COOLDOWN_MS
   localAiLastTimeoutStage = stage
   debugLocalAi('cooldown:start', {
@@ -147,7 +149,9 @@ const summarizePrompt = (
 
   const textParts = prompt.flatMap((message) =>
     message.content
-      .filter((part): part is { type: 'text'; value: string } => part.type === 'text')
+      .filter(
+        (part): part is { type: 'text'; value: string } => part.type === 'text',
+      )
       .map((part) => part.value),
   )
   const imageCount = prompt.reduce(
@@ -235,7 +239,7 @@ const createPromptProgressTimer = (
   onProgress?: (event: LocalAiProgressEvent) => void,
   metadata: Pick<
     LocalAiProgressEvent,
-    'dashboardIndex' | 'dashboardCount'
+    'dashboardIndex' | 'dashboardCount' | 'attempt' | 'attemptCount'
   > = {},
 ): (() => void) => {
   if (!onProgress) {
@@ -287,6 +291,8 @@ export const callLocalLanguageModel = async (
     progressLabel?: string
     dashboardIndex?: number
     dashboardCount?: number
+    attempt?: number
+    attemptCount?: number
   } = {},
 ): Promise<string> => {
   assertLocalAiIsReady()
@@ -330,6 +336,8 @@ export const callLocalLanguageModel = async (
               label: 'Downloading local model',
               dashboardIndex: options.dashboardIndex,
               dashboardCount: options.dashboardCount,
+              attempt: options.attempt,
+              attemptCount: options.attemptCount,
             })
           }
         })
@@ -351,7 +359,9 @@ export const callLocalLanguageModel = async (
           .catch((lateError) => {
             debugLocalAi('create:late-error', {
               message:
-                lateError instanceof Error ? lateError.message : String(lateError),
+                lateError instanceof Error
+                  ? lateError.message
+                  : String(lateError),
             })
           })
       }
@@ -384,6 +394,8 @@ export const callLocalLanguageModel = async (
       {
         dashboardIndex: options.dashboardIndex,
         dashboardCount: options.dashboardCount,
+        attempt: options.attempt,
+        attemptCount: options.attemptCount,
       },
     )
     const result = await withTimeout(
@@ -406,6 +418,8 @@ export const callLocalLanguageModel = async (
           timeoutMs: promptTimeoutMs,
           dashboardIndex: options.dashboardIndex,
           dashboardCount: options.dashboardCount,
+          attempt: options.attempt,
+          attemptCount: options.attemptCount,
         })
         session?.destroy?.()
         session = null
@@ -425,6 +439,8 @@ export const callLocalLanguageModel = async (
       timeoutMs: promptTimeoutMs,
       dashboardIndex: options.dashboardIndex,
       dashboardCount: options.dashboardCount,
+      attempt: options.attempt,
+      attemptCount: options.attemptCount,
     })
     debugLocalAi('prompt:end', {
       durationMs: Math.round(performance.now() - promptStartedAt),
@@ -496,7 +512,8 @@ export const extractNotesFromImageWithLocalLanguageModel = async (
   } = {},
 ): Promise<string> => {
   const outputLanguage = options.outputLanguage || 'en'
-  const availability = await getLocalLanguageModelImageAvailability(outputLanguage)
+  const availability =
+    await getLocalLanguageModelImageAvailability(outputLanguage)
   if (availability === 'unavailable') {
     throw new Error(
       'Google Local AI image input is unavailable in this browser or model.',
