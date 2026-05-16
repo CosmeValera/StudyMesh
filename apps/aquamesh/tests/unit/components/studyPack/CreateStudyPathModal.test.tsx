@@ -289,4 +289,71 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(finalMapping).toHaveTextContent('study-path-7-multiple-choice')
     expect(finalMapping).toHaveTextContent('study-path-7-flashcard')
   })
+
+  it('blocks Deep Study Path when Local AI is selected', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+    })
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+      tokenSource: 'none',
+    })
+    render(<CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />)
+
+    expect(
+      screen.getByText(/Local AI runs on your device and can be slow/i),
+    ).toBeInTheDocument()
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /path depth/i }))
+    expect(screen.getByRole('option', { name: /Deep/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('shows Local AI failure debug after failed Study Path generation', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+    })
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+      tokenSource: 'none',
+    })
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce('{"title":"Broken",')
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    render(<CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />)
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /what should aquamesh teach/i }),
+      {
+        target: { value: 'Teach Italian B1 modal verbs' },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: /generate study path/i }))
+
+    expect(
+      await screen.findByText(/Local AI returned malformed JSON/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Local AI failure debug')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('local-ai-failure-debug-raw-dashboard-response'),
+    ).toHaveTextContent('{"title":"Broken",')
+    expect(
+      screen.getByTestId('local-ai-failure-debug-parse-error'),
+    ).toHaveTextContent(/JSON|Unexpected/i)
+  })
 })

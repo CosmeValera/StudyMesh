@@ -18,10 +18,11 @@ import {
   resolveStudyPackAiCredentials,
   StudyPackAiProvider,
 } from './settings'
+import { LocalAiProgressEvent } from './localLanguageModel'
 
 type ProviderOptions = {
   provider?: StudyPackAiProvider
-  onProgress?: (percent: number) => void
+  onProgress?: (event: LocalAiProgressEvent) => void
 }
 
 const HOSTED_NOT_CONFIGURED_MESSAGE = 'Hosted AI is not configured yet.'

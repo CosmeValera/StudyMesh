@@ -45,6 +45,18 @@ export {
   getLocalLanguageModelImageAvailability,
   getLocalLanguageModelAvailability,
   isLocalLanguageModelSupported,
+  resetLocalLanguageModelCooldownForTests,
+  smokeTestLocalLanguageModel,
   testLocalLanguageModel,
 } from './localLanguageModel'
-export { normalizeLocalAiStudyPackDraft, parseLocalAiJson } from './localGeneration'
+export type { LocalAiProgressEvent } from './localLanguageModel'
+export {
+  generateStudyPathWithLocalAi,
+  isLocalAiGenerationError,
+  normalizeLocalAiStudyPackDraft,
+  parseLocalAiJson,
+} from './localGeneration'
+export type {
+  LocalAiGenerationFailureCode,
+  LocalAiGenerationFailureDebug,
+} from './localGeneration'

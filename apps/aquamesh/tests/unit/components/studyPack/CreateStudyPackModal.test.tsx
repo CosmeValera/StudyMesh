@@ -423,6 +423,71 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     expect(parseStudyPack).not.toHaveBeenCalled()
   })
 
+  it('shows estimated Local AI generation progress for Study Pack generation', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+    })
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+      tokenSource: 'none',
+    })
+    let resolveDraft:
+      | ((draft: Awaited<ReturnType<typeof generateStudyPackWithAi>>) => void)
+      | undefined
+    vi.mocked(generateStudyPackWithAi).mockImplementation(
+      async (options) =>
+        new Promise((resolve) => {
+          resolveDraft = resolve
+          options.onProgress?.({
+            phase: 'generation',
+            percent: 42,
+            label: 'Estimated Local AI generation time',
+            timeoutMs: 4 * 60 * 1000,
+          })
+        }),
+    )
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    expect(
+      screen.getByText(/Local AI runs on your device and can be slow/i),
+    ).toBeInTheDocument()
+    pasteNotes('Photosynthesis happens in chloroplasts.')
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
+    expect(
+      await screen.findByText('Estimated Local AI generation time'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('42%')).toBeInTheDocument()
+
+    resolveDraft?.({
+      title: 'AI Study Pack',
+      sourceFormat: 'text',
+      concepts: [],
+      objects: [
+        {
+          id: 'ai-quiz-1',
+          kind: 'quiz',
+          quizMode: 'shortAnswer',
+          sourceLine: 1,
+          tags: [],
+          question: 'What did AI find?',
+          options: [],
+          correctIndex: 0,
+          answer: 'A grounded answer',
+          explanation: '',
+        },
+      ],
+      warnings: [],
+    })
+    expect(await screen.findByDisplayValue('What did AI find?')).toBeInTheDocument()
+  })
+
   it('extracts image notes before parsing the study pack', async () => {
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,

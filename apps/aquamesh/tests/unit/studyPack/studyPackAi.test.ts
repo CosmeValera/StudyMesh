@@ -1,16 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  callLocalLanguageModel,
   DEFAULT_STUDY_PACK_AI_MODEL,
   extractNotesFromImageWithLocalLanguageModel,
+  generateStudyPathWithLocalAi,
+  generateStudyPackWithAi as generateStudyPackWithProvider,
   generateStudyPackWithGemini as generateStudyPackWithAi,
   generateStudyPathWithGemini as generateStudyPathWithAi,
   getStudyPathDashboardRoles,
+  isLocalAiGenerationError,
   normalizeAiStudyPackDraft,
   normalizeLocalAiStudyPackDraft,
   parseLocalAiJson,
   readStudyPackAiSettings,
+  resetLocalLanguageModelCooldownForTests,
   resolveStudyPackAiCredentials,
   saveStudyPackAiSettings,
+  smokeTestLocalLanguageModel,
   STUDY_PACK_AI_SETTINGS_KEY,
   testLocalLanguageModel,
 } from '../../../src/studyPack/ai'
@@ -257,6 +263,11 @@ describe('study pack AI normalizer', () => {
 })
 
 describe('local AI helpers', () => {
+  afterEach(() => {
+    resetLocalLanguageModelCooldownForTests()
+    vi.useRealTimers()
+  })
+
   it('repairs loose local AI objects without changing Gemini strict behavior', () => {
     const parsed = parseLocalAiJson(`\`\`\`json
 {"title":"Local","objects":[
@@ -286,6 +297,361 @@ describe('local AI helpers', () => {
         expect.stringContaining('Repaired reviewPrompt'),
       ]),
     )
+    expect(draft.debugTrace?.validatedContract).not.toBeNull()
+  })
+
+  it('repairs local concept contracts and drops weak generated practice', () => {
+    const draft = normalizeLocalAiStudyPackDraft(
+      {
+        title: 'Atomic theories',
+        summary: { content: 'Atomic theory changed through evidence.' },
+        sourceSummary: [
+          'Dalton proposed atoms as tiny indivisible particles.',
+          'Rutherford used gold foil evidence for the nucleus.',
+        ],
+        concepts: [
+          {
+            concept: 'Dalton atomic theory',
+            definition: 'Dalton proposed that matter is made of atoms.',
+            keyFact: 'Atoms combine in fixed ratios.',
+            sourcePhrase: 'Dalton proposed atoms.',
+          },
+          {
+            concept: 'target rule formation rule',
+            definition: 'Bad generated label.',
+          },
+        ],
+        quizzes: [
+          {
+            question: 'What rule does Proposed that matter describe?',
+            options: ['Dalton', 'Dalton', 'Rutherford'],
+            correctOptionIndex: 0,
+            explanation: 'Weak generated template.',
+          },
+          {
+            question: 'Which scientist proposed that matter is made of atoms?',
+            options: ['Dalton', 'Thomson', 'Rutherford', 'Dalton'],
+            correctOptionIndex: 0,
+            explanation: 'Dalton proposed atomic theory.',
+          },
+        ],
+        flashcards: [
+          {
+            front: 'What did Dalton propose about atoms?',
+            back: 'Matter is made of atoms that combine in fixed ratios.',
+          },
+        ],
+      },
+      'atomic-theories',
+    )
+
+    expect(draft.rawNotes).toContain('Atomic theory changed')
+    expect(draft.debugTrace?.validatedContract).not.toBeNull()
+    expect(JSON.stringify(draft.objects)).not.toContain('target rule')
+    expect(JSON.stringify(draft.objects)).not.toContain('What rule does')
+    expect(draft.objects.filter((object) => object.kind === 'quiz')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          question: 'Which scientist proposed that matter is made of atoms?',
+          options: ['Dalton', 'Thomson', 'Rutherford'],
+          correctIndex: 0,
+        }),
+      ]),
+    )
+    expect(draft.debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('converted object to text'),
+        expect.stringContaining('Dropped concept 2'),
+        expect.stringContaining('Dropped quiz 1'),
+        expect.stringContaining('removed duplicate options'),
+      ]),
+    )
+  })
+
+  it('keeps local Study Path dashboards useful when fields drift', async () => {
+    const destroy = vi.fn()
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '01 - Past tense contrast',
+          summary: { body: 'Contrast preterite and imperfect.' },
+          sourceSummary: [
+            'Use preterite for completed events.',
+            'Use imperfect for background and habits.',
+          ],
+          concepts: [
+            {
+              concept: 'Preterite vs imperfect',
+              definition:
+                'Choose preterite for completed events and imperfect for background or habitual actions.',
+              keyFact: 'The tense choice changes the meaning of a past action.',
+              example: 'Ayer fui al mercado mientras llovia.',
+            },
+          ],
+          quizzes: [
+            {
+              question:
+                'Which tense fits a completed action in Spanish B1 narration?',
+              options: ['preterite', 'imperfect', 'present'],
+              correctOptionIndex: 0,
+              explanation: 'Completed events use preterite.',
+            },
+          ],
+          flashcards: [
+            {
+              front: 'When do you use the imperfect?',
+              back: 'Use it for background, habits, and ongoing states.',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '02 - Opinions with connectors',
+          rawNotes:
+            '## Goal\nGive opinions with connectors.\n\n## Explanation\nB1 Spanish uses connectors such as aunque, sin embargo, and por eso to join ideas and justify opinions.\n\n## Examples\nCreo que es util, aunque cuesta practicar.',
+          concepts: [
+            {
+              concept: 'Opinion connectors',
+              definition:
+                'Connectors join an opinion with a contrast, cause, or result.',
+              keyFact: 'Aunque introduces contrast.',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '03 - Travel situations',
+          rawNotes:
+            '## Goal\nHandle travel and work situations.\n\n## Explanation\nB1 speakers explain plans, problems, preferences, and solutions with connected sentences.\n\n## Practice\nAsk for alternatives and explain a preference.',
+          concepts: [
+            {
+              concept: 'Travel problem solving',
+              definition:
+                'Explain a travel problem and request a clear alternative.',
+              keyFact: 'Use polite requests and reasons.',
+            },
+          ],
+        }),
+      )
+    const create = vi.fn().mockResolvedValue({ prompt, destroy })
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create,
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Spanish B1',
+      prompt: 'I want to learn Spanish level B1',
+      folderName: '',
+      generationAmount: 'compact',
+    })
+
+    expect(draft.folderName).toBe('Spanish B1')
+    expect(draft.dashboards).toHaveLength(3)
+    expect(
+      draft.dashboards.every(
+        (dashboard) =>
+          dashboard.rawNotes.trim() &&
+          dashboard.objects[0]?.kind === 'markdown' &&
+          dashboard.objects.length >= 4,
+      ),
+    ).toBe(true)
+    expect(JSON.stringify(draft.dashboards)).not.toMatch(
+      /how do you say hello/i,
+    )
+    expect(draft.dashboards[0].debugTrace?.validatedContract).not.toBeNull()
+    expect(prompt).toHaveBeenNthCalledWith(1, 'Return JSON: {"ok":true}')
+  })
+
+  it('emits estimated prompt progress without reporting 100 before completion', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const events: Array<{ phase: string; percent: number }> = []
+    const destroy = vi.fn()
+    const prompt = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          window.setTimeout(() => resolve('done'), 500)
+        }),
+    )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy }),
+    })
+
+    const request = callLocalLanguageModel('Return done', {
+      timeoutMs: 1000,
+      onProgress: (event) => events.push(event),
+    })
+
+    await vi.advanceTimersByTimeAsync(500)
+    await expect(request).resolves.toBe('done')
+    const pending = events.filter((event) => event.phase === 'generation')
+    expect(pending.length).toBeGreaterThan(0)
+    expect(pending.every((event) => event.percent < 100)).toBe(true)
+    expect(events.at(-1)).toMatchObject({ phase: 'complete', percent: 100 })
+    expect(destroy).toHaveBeenCalled()
+  })
+
+  it('emits 100 timeout progress when a prompt times out', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const events: Array<{ phase: string; percent: number; label: string }> = []
+    const destroy = vi.fn()
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({
+        prompt: vi.fn(() => new Promise(() => {})),
+        destroy,
+      }),
+    })
+
+    const request = callLocalLanguageModel('Return done', {
+      timeoutMs: 1000,
+      onProgress: (event) => events.push(event),
+    })
+    const rejection = expect(request).rejects.toThrow(/choose a smaller path/i)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await rejection
+    expect(events.at(-1)).toMatchObject({
+      phase: 'timeout',
+      percent: 100,
+    })
+    expect(events.at(-1)?.label).not.toMatch(/Basic fallback/i)
+    expect(destroy).toHaveBeenCalled()
+  })
+
+  it('uses 4 minutes for Local Study Pack prompting progress', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const events: Array<{
+      phase: string
+      percent: number
+      timeoutMs?: number
+    }> = []
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({
+        prompt: vi
+          .fn()
+          .mockResolvedValueOnce('{"ok":true}')
+          .mockImplementation(() => new Promise(() => {})),
+        destroy: vi.fn(),
+      }),
+    })
+
+    const request = generateStudyPackWithProvider({
+      provider: 'local',
+      apiToken: '',
+      model: '',
+      title: 'Atomic theories',
+      rawNotes: 'Dalton proposed that matter is made of atoms.',
+      packId: 'atomic-theories',
+      onProgress: (event) => events.push(event),
+    })
+    const rejection = expect(request).rejects.toThrow(/choose a smaller path/i)
+
+    await vi.advanceTimersByTimeAsync(4 * 60 * 1000)
+    await rejection
+    expect(events.find((event) => event.phase === 'generation')).toMatchObject({
+      timeoutMs: 4 * 60 * 1000,
+    })
+    expect(events.at(-1)).toMatchObject({ phase: 'timeout', percent: 100 })
+  })
+
+  it('uses 150 second per-dashboard progress and five dashboards for Local Average', async () => {
+    const events: Array<{
+      phase: string
+      dashboardIndex?: number
+      dashboardCount?: number
+      timeoutMs?: number
+    }> = []
+    const dashboardJson = (index: number) =>
+      JSON.stringify({
+        title: `${String(index).padStart(2, '0')} - Lesson ${index}`,
+        summary: `Lesson ${index}`,
+        rawNotes: `Lesson ${index} notes explain one useful concept with examples.`,
+        concepts: [
+          {
+            concept: `Concept ${index}`,
+            definition: `Concept ${index} definition with enough detail.`,
+            keyFact: `Concept ${index} key fact.`,
+          },
+        ],
+        quizzes: [
+          {
+            question: `Quiz ${index}?`,
+            options: ['A', 'B', 'C'],
+            correctIndex: 0,
+            answer: 'A',
+          },
+        ],
+      })
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(dashboardJson(1))
+      .mockResolvedValueOnce(dashboardJson(2))
+      .mockResolvedValueOnce(dashboardJson(3))
+      .mockResolvedValueOnce(dashboardJson(4))
+      .mockResolvedValueOnce(dashboardJson(5))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi(
+      {
+        apiToken: '',
+        model: '',
+        title: 'Spanish B1',
+        prompt: 'I want to learn Spanish level B1',
+        folderName: '',
+        generationAmount: 'average',
+      },
+      { onProgress: (event) => events.push(event) },
+    )
+
+    expect(draft.dashboards).toHaveLength(5)
+    expect(prompt).toHaveBeenCalledTimes(6)
+    expect(events.filter((event) => event.phase === 'generation')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          dashboardIndex: 1,
+          dashboardCount: 5,
+          timeoutMs: 150 * 1000,
+        }),
+        expect.objectContaining({
+          dashboardIndex: 5,
+          dashboardCount: 5,
+          timeoutMs: 150 * 1000,
+        }),
+      ]),
+    )
+  })
+
+  it('rejects Local Deep before creating a LanguageModel session', async () => {
+    const create = vi.fn()
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create,
+    })
+
+    await expect(
+      generateStudyPathWithLocalAi({
+        apiToken: '',
+        model: '',
+        title: 'Spanish B1',
+        prompt: 'I want to learn Spanish level B1',
+        folderName: '',
+        generationAmount: 'deep',
+      }),
+    ).rejects.toThrow(/Deep Study Path is not available with Local AI/i)
+    expect(create).not.toHaveBeenCalled()
   })
 
   it('tests local AI with a tiny hello prompt and destroys the session', async () => {
@@ -303,6 +669,13 @@ describe('local AI helpers', () => {
       result: 'hello',
     })
     expect(prompt).toHaveBeenCalledWith('Return exactly one word: hello')
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outputLanguage: 'en',
+        expectedInputs: [{ type: 'text', languages: ['en'] }],
+        monitor: expect.any(Function),
+      }),
+    )
     expect(destroy).toHaveBeenCalled()
   })
 
@@ -334,6 +707,15 @@ describe('local AI helpers', () => {
         ],
       }),
     )
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedInputs: [
+          { type: 'text', languages: ['en'] },
+          { type: 'image' },
+        ],
+        monitor: expect.any(Function),
+      }),
+    )
     expect(prompt).toHaveBeenCalledWith([
       {
         role: 'user',
@@ -344,6 +726,576 @@ describe('local AI helpers', () => {
       },
     ])
     expect(destroy).toHaveBeenCalled()
+  })
+
+  it('times out local AI session creation, cools down, and destroys late sessions', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const lateDestroy = vi.fn()
+    let resolveCreate:
+      | ((session: {
+          prompt: () => Promise<string>
+          destroy: () => void
+        }) => void)
+      | undefined
+    const create = vi.fn(
+      () =>
+        new Promise<{ prompt: () => Promise<string>; destroy: () => void }>(
+          (resolve) => {
+            resolveCreate = resolve
+          },
+        ),
+    )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create,
+    })
+
+    const request = callLocalLanguageModel('Return exactly one word: hello')
+    const rejection = expect(request).rejects.toThrow(
+      /timed out while creating a session/i,
+    )
+
+    await vi.advanceTimersByTimeAsync(60 * 1000)
+    await rejection
+    await expect(
+      callLocalLanguageModel('Return exactly one word: hello'),
+    ).rejects.toThrow(/cooling down after a timeout/i)
+    expect(create).toHaveBeenCalledTimes(1)
+
+    resolveCreate?.({
+      prompt: vi.fn().mockResolvedValue('late'),
+      destroy: lateDestroy,
+    })
+    await vi.runAllTicks()
+    expect(lateDestroy).toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(8000)
+    vi.useRealTimers()
+  })
+
+  it('destroys the session and rejects immediate retries during prompt cooldown', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const destroy = vi.fn()
+    const create = vi.fn().mockResolvedValue({
+      prompt: vi.fn(() => new Promise(() => {})),
+      destroy,
+    })
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create,
+    })
+
+    const request = callLocalLanguageModel('Return exactly one word: hello', {
+      timeoutMs: 1000,
+    })
+    const rejection = expect(request).rejects.toThrow(
+      /Local AI timed out. Try again, choose a smaller path, or use Own Gemini token/i,
+    )
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await rejection
+    expect(destroy).toHaveBeenCalled()
+    await expect(
+      callLocalLanguageModel('Return exactly one word: hello'),
+    ).rejects.toThrow(/cooling down after a timeout/i)
+    expect(create).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(8000)
+    vi.useRealTimers()
+  })
+
+  it('smoke tests local AI with the exact JSON prompt', async () => {
+    const destroy = vi.fn()
+    const prompt = vi.fn().mockResolvedValue('{"ok":true}')
+    const create = vi.fn().mockResolvedValue({ prompt, destroy })
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create,
+    })
+
+    await expect(smokeTestLocalLanguageModel()).resolves.toBeUndefined()
+    expect(prompt).toHaveBeenCalledWith('Return JSON: {"ok":true}')
+    expect(destroy).toHaveBeenCalled()
+  })
+
+  it('does not auto-use Basic fallback when Local Study Pack prompting times out', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const destroy = vi.fn()
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockImplementation(() => new Promise(() => {}))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({
+        prompt,
+        destroy,
+      }),
+    })
+
+    const request = generateStudyPackWithProvider({
+      provider: 'local',
+      apiToken: '',
+      model: '',
+      title: 'Atomic theories',
+      rawNotes: 'Dalton proposed that matter is made of atoms.',
+      packId: 'atomic-theories',
+    })
+    const rejection = expect(request).rejects.toThrow(
+      /Local AI timed out. Try again, choose a smaller path, or use Own Gemini token/i,
+    )
+
+    await vi.advanceTimersByTimeAsync(4 * 60 * 1000)
+    await rejection
+    expect(destroy).toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(8000)
+    vi.useRealTimers()
+  })
+
+  it('does not auto-use Basic fallback when Local Study Path dashboard prompting times out', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const destroy = vi.fn()
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockImplementation(() => new Promise(() => {}))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({
+        prompt,
+        destroy,
+      }),
+    })
+
+    const request = generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Spanish B1',
+      prompt: 'I want to learn Spanish level B1',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+    const rejection = expect(request).rejects.toThrow(
+      /Try again, choose a smaller path, or use Own Gemini token/i,
+    )
+
+    await vi.advanceTimersByTimeAsync(150 * 1000)
+    await rejection
+    expect(destroy).toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(8000)
+    vi.useRealTimers()
+  })
+
+  it('smoke timeout prevents Local Study Pack generation with the busy message', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const prompt = vi.fn(() => new Promise(() => {}))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({
+        prompt,
+        destroy: vi.fn(),
+      }),
+    })
+
+    const request = generateStudyPackWithProvider({
+      provider: 'local',
+      apiToken: '',
+      model: '',
+      title: 'Atomic theories',
+      rawNotes: 'Dalton proposed that matter is made of atoms.',
+      packId: 'atomic-theories',
+    })
+    const rejection = expect(request).rejects.toThrow(
+      /Chrome Local AI is busy or unstable/i,
+    )
+
+    await vi.advanceTimersByTimeAsync(25 * 1000)
+    await rejection
+    expect(prompt).toHaveBeenCalledTimes(1)
+    expect(prompt).toHaveBeenCalledWith('Return JSON: {"ok":true}')
+    await vi.advanceTimersByTimeAsync(8000)
+    vi.useRealTimers()
+  })
+
+  it('smoke timeout prevents Local Study Path generation with the busy message', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const prompt = vi.fn(() => new Promise(() => {}))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({
+        prompt,
+        destroy: vi.fn(),
+      }),
+    })
+
+    const request = generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Spanish B1',
+      prompt: 'I want to learn Spanish level B1',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+    const rejection = expect(request).rejects.toThrow(
+      /Chrome Local AI is busy or unstable/i,
+    )
+
+    await vi.advanceTimersByTimeAsync(25 * 1000)
+    await rejection
+    expect(prompt).toHaveBeenCalledTimes(1)
+    expect(prompt).toHaveBeenCalledWith('Return JSON: {"ok":true}')
+    await vi.advanceTimersByTimeAsync(8000)
+    vi.useRealTimers()
+  })
+
+  it('reports malformed Local Study Path JSON with raw failure debug', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce('not json at all')
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    try {
+      await generateStudyPathWithLocalAi({
+        apiToken: '',
+        model: '',
+        title: 'Italian B1',
+        prompt: 'Teach Italian B1 modal verbs',
+        folderName: '',
+        generationAmount: 'superSmall',
+      })
+      throw new Error('Expected Local AI generation to fail.')
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error)
+      expect((error as Error).message).toMatch(/malformed JSON/i)
+      expect(isLocalAiGenerationError(error)).toBe(true)
+      if (isLocalAiGenerationError(error)) {
+        expect(error.code).toBe('invalidJson')
+        expect(error.debug).toMatchObject({
+          dashboardIndex: 1,
+          dashboardCount: 2,
+          rawResponse: 'not json at all',
+        })
+        expect(error.debug?.parseError).toMatch(/invalid JSON|Unexpected/i)
+      }
+    }
+  })
+
+  it('repairs invalid Local AI JSON backslash escapes before parsing', () => {
+    expect(parseLocalAiJson('{"phrase":"Watashi wa \\[name] desu"}')).toEqual({
+      phrase: 'Watashi wa [name] desu',
+    })
+    expect(
+      parseLocalAiJson('{"quote":"say \\"hello\\"","path":"a\\\\b"}'),
+    ).toEqual({
+      quote: 'say "hello"',
+      path: 'a\\b',
+    })
+  })
+
+  it('repairs incomplete Local AI JSON with missing closing delimiters', () => {
+    expect(
+      parseLocalAiJson('{"title":"Lesson","listItems":["a","b","c"]'),
+    ).toEqual({
+      title: 'Lesson',
+      listItems: ['a', 'b', 'c'],
+    })
+    expect(
+      parseLocalAiJson('{"title":"Lesson","listItems":["a","b","c"'),
+    ).toEqual({
+      title: 'Lesson',
+      listItems: ['a', 'b', 'c'],
+    })
+    expect(
+      parseLocalAiJson('```json\n{"title":"Lesson","listItems":["a","b"]\n```'),
+    ).toEqual({
+      title: 'Lesson',
+      listItems: ['a', 'b'],
+    })
+    expect(
+      parseLocalAiJson(
+        '{"phrase":"Watashi wa \\[name] desu","listItems":["a"]',
+      ),
+    ).toEqual({
+      phrase: 'Watashi wa [name] desu',
+      listItems: ['a'],
+    })
+  })
+
+  it('maps valid loose Local Study Path objects without treating record debug as a contract', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '01 - Japanese introductions',
+          summary: 'Practice a useful Japanese self-introduction pattern.',
+          rawNotes:
+            'Use Watashi wa [name] desu for simple introductions and replace the bracketed name.',
+          objects: [
+            {
+              kind: 'markdown',
+              title: 'Explanation',
+              markdown:
+                'Watashi wa [name] desu means I am [name]. Use it for simple introductions.',
+            },
+            {
+              kind: 'qa',
+              question: 'How do you introduce your name with this pattern?',
+              answer: 'Watashi wa [name] desu.',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '02 - Practice',
+          summary: 'Practice changing the name in the sentence.',
+          rawNotes:
+            'Swap the placeholder for a real name and say the full sentence aloud.',
+          objects: [
+            {
+              kind: 'quiz',
+              question: 'Which sentence introduces Hana?',
+              options: [
+                'Watashi wa Hana desu',
+                'Watashi wa desu Hana',
+                'Hana wa watashi desu',
+              ],
+              correctIndex: 0,
+              answer: 'Watashi wa Hana desu',
+              explanation: 'The name comes before desu.',
+            },
+          ],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Japanese A1',
+      prompt: 'Teach Japanese A1 introductions',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.dashboards).toHaveLength(2)
+    expect(draft.dashboards[0].objects.length).toBeGreaterThan(0)
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.any(Array),
+    )
+  })
+
+  it('prefers flat Local Study Path dashboard JSON and maps it into four widgets', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '01 - Italian modal verbs',
+          summary: 'Practice modal verbs in everyday Italian requests.',
+          notes:
+            'Italian B1 modal verbs help express what someone can, must, or wants to do.',
+          qaQ: 'Which modal verb expresses obligation?',
+          qaA: 'Dovere expresses obligation.',
+          quizQ: 'Which sentence means I must study?',
+          quizOptions: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
+          quizCorrectIndex: 0,
+          listItems: ['potere = can', 'dovere = must', 'volere = want'],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '02 - Practice',
+          summary: 'Apply the modal verbs in short practice prompts.',
+          notes:
+            'Choose the right modal verb for ability, obligation, or desire.',
+          qaQ: 'Which modal verb expresses desire?',
+          qaA: 'Volere expresses desire.',
+          quizQ: 'Which sentence means I want to leave?',
+          quizOptions: ['Voglio partire', 'Devo partire', 'Posso partire'],
+          quizCorrectIndex: 0,
+          listItems: ['ability uses potere', 'obligation uses dovere'],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.dashboards[0].objects.map((object) => object.kind)).toEqual([
+      'markdown',
+      'qa',
+      'quiz',
+      'list',
+    ])
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toContain(
+      'Mapped Local AI flat dashboard shape into study objects.',
+    )
+  })
+
+  it('reports mapped Local Study Path JSON without usable widgets', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '',
+          summary: '',
+          rawNotes: '',
+          concepts: [
+            {
+              concept: 'it',
+              definition: '',
+            },
+          ],
+          objects: [
+            {
+              kind: 'qa',
+              question: 'What do the notes say?',
+              answer: '',
+            },
+          ],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    try {
+      await generateStudyPathWithLocalAi({
+        apiToken: '',
+        model: '',
+        title: 'French B2',
+        prompt: 'Teach French B2 argument connectors',
+        folderName: '',
+        generationAmount: 'superSmall',
+      })
+      throw new Error('Expected Local AI generation to fail.')
+    } catch (error) {
+      expect((error as Error).message).toMatch(/could not map it into widgets/i)
+      expect(isLocalAiGenerationError(error)).toBe(true)
+      if (isLocalAiGenerationError(error)) {
+        expect(error.code).toBe('noUsableObjects')
+        expect(error.debug?.parsedJson).toBeTruthy()
+        expect(error.debug?.droppedOrRepairedItems).toEqual(
+          expect.arrayContaining([expect.stringContaining('No usable')]),
+        )
+      }
+    }
+  })
+
+  it('preserves unsupported Local AI setup errors for Study Path generation', async () => {
+    vi.stubGlobal('LanguageModel', undefined)
+
+    try {
+      await generateStudyPathWithLocalAi({
+        apiToken: '',
+        model: '',
+        title: 'German B1',
+        prompt: 'Teach German B1 word order',
+        folderName: '',
+        generationAmount: 'superSmall',
+      })
+      throw new Error('Expected unsupported Local AI generation to fail.')
+    } catch (error) {
+      expect((error as Error).message).toMatch(/not supported in this browser/i)
+    }
+  })
+
+  it('keeps unknown Local Study Path failures distinct with the original cause', async () => {
+    const failure = new Error('Model exploded')
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockRejectedValueOnce(failure)
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    try {
+      await generateStudyPathWithLocalAi({
+        apiToken: '',
+        model: '',
+        title: 'German B1',
+        prompt: 'Teach German B1 word order',
+        folderName: '',
+        generationAmount: 'superSmall',
+      })
+      throw new Error('Expected unknown Local AI generation to fail.')
+    } catch (error) {
+      expect((error as Error).message).toBe('Model exploded')
+      expect(isLocalAiGenerationError(error)).toBe(true)
+      if (isLocalAiGenerationError(error)) {
+        expect(error.code).toBe('unknown')
+        expect(error.cause).toBe(failure)
+        expect(error.debug).toMatchObject({
+          dashboardIndex: 1,
+          dashboardCount: 2,
+        })
+      }
+    }
+  })
+
+  it('uses generic language-learning guidance for Local Study Path prompts', async () => {
+    const dashboardJson = (index: number) =>
+      JSON.stringify({
+        title: `${String(index).padStart(2, '0')} - Lesson ${index}`,
+        summary: `Lesson ${index}`,
+        rawNotes: `Lesson ${index} notes explain one useful language-learning concept with examples.`,
+        concepts: [
+          {
+            concept: `Grammar concept ${index}`,
+            definition: `Grammar concept ${index} definition with enough detail.`,
+            keyFact: `Grammar concept ${index} key fact.`,
+          },
+        ],
+      })
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(dashboardJson(1))
+      .mockResolvedValueOnce(dashboardJson(2))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B2',
+      prompt: 'Teach Italian B2 conversation',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    const dashboardPrompt = String(prompt.mock.calls[1][0])
+    expect(dashboardPrompt).toContain(
+      'For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.',
+    )
+    expect(dashboardPrompt).toContain(
+      'Introductions are appropriate only when no level is given or the request is beginner-level.',
+    )
+    expect(dashboardPrompt).not.toMatch(
+      /Spanish B1|For B1, avoid A1 greetings/i,
+    )
   })
 })
 

@@ -46,6 +46,8 @@ import {
 } from '../../../../studyPack/ai'
 
 const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
+const LOCAL_AI_ESTIMATE_COPY =
+  'Local AI runs on your device and can be slow. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
 
 interface SettingsDialogProps {
   open: boolean
@@ -441,9 +443,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   </TextField>
                   {aiProvider === 'local' && (
                     <Alert severity="warning" sx={{ mb: 1.5 }}>
-                      Local AI is experimental and works best with Super small
-                      or Compact generation. For larger Study Paths, use Own
-                      Gemini API token or Hosted AI.
+                      {LOCAL_AI_ESTIMATE_COPY}
                     </Alert>
                   )}
                   {aiProvider === 'hosted' && (

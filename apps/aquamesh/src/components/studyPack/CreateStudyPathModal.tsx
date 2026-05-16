@@ -30,6 +30,9 @@ import {
   assertRoleObjectsAreClean,
   filterStudyObjectsForDashboardRole,
   generateStudyPathWithAi,
+  isLocalAiGenerationError,
+  LocalAiGenerationFailureDebug,
+  LocalAiProgressEvent,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   StudyPackAiProvider,
@@ -87,9 +90,14 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
   hosted: 'Hosted AI tokens',
 }
 
+const LOCAL_AI_ESTIMATE_COPY =
+  'Local AI runs on your device and can be slow. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
+const LOCAL_DEEP_BLOCKED_MESSAGE =
+  'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
+
 const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
   provider === 'local'
-    ? 'Generating compact dashboards with Google Local AI...'
+    ? 'Generating dashboards with Google Local AI...'
     : provider === 'gemini'
       ? 'Generating ordered dashboards with Gemini...'
       : provider === 'basic'
@@ -98,7 +106,7 @@ const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
-    ? 'AquaMesh is asking Chrome Local AI for compact Study Path JSON. The local model can take a few minutes, especially the first time.'
+    ? 'Local AI is running on your device. Each dashboard has its own estimated generation timer.'
     : provider === 'gemini'
       ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
       : provider === 'basic'
@@ -155,6 +163,23 @@ const makePackId = (title: string, index: number) =>
 
 const formatDebugValue = (value: unknown): string =>
   typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+
+const localAiFailureDebugSections = (
+  debug: LocalAiGenerationFailureDebug,
+): Array<[string, unknown]> => [
+  [
+    'Dashboard',
+    debug.dashboardIndex && debug.dashboardCount
+      ? `${debug.dashboardIndex} of ${debug.dashboardCount}`
+      : '',
+  ],
+  ['Prompt length', debug.promptLength],
+  ['Raw dashboard response', debug.rawResponse],
+  ['Parsed JSON', debug.parsedJson],
+  ['Parse error', debug.parseError],
+  ['Mapping error', debug.mappingError],
+  ['Dropped or repaired items', debug.droppedOrRepairedItems],
+]
 
 const combinedDebugTrace = (
   draft: AiStudyPathDraft | null,
@@ -225,6 +250,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [reviewFolderName, setReviewFolderName] = useState('')
   const [openInWorkspace, setOpenInWorkspace] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [localAiProgress, setLocalAiProgress] =
+    useState<LocalAiProgressEvent | null>(null)
+  const [localAiFailureDebug, setLocalAiFailureDebug] =
+    useState<LocalAiGenerationFailureDebug | null>(null)
   const [error, setError] = useState('')
   const debugTrace = combinedDebugTrace(draft)
 
@@ -235,17 +264,19 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
     const provider = readStudyPackAiSettings().provider || 'basic'
     setAiProvider(provider)
-    setGenerationAmount(provider === 'local' ? 'compact' : 'average')
+    setGenerationAmount(provider === 'local' ? 'superSmall' : 'average')
   }, [open])
 
   const reset = () => {
     setStep('prompt')
     setPrompt('')
-    setGenerationAmount(aiProvider === 'local' ? 'compact' : 'average')
+    setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
     setDraft(null)
     setReviewFolderName('')
     setOpenInWorkspace(true)
     setIsGenerating(false)
+    setLocalAiProgress(null)
+    setLocalAiFailureDebug(null)
     setError('')
   }
 
@@ -271,7 +302,14 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       return
     }
 
+    if (aiProvider === 'local' && generationAmount === 'deep') {
+      setError(LOCAL_DEEP_BLOCKED_MESSAGE)
+      return
+    }
+
     setIsGenerating(true)
+    setLocalAiProgress(null)
+    setLocalAiFailureDebug(null)
     setError('')
 
     try {
@@ -283,7 +321,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         folderName: '',
         prompt,
         generationAmount,
-        onProgress: () => undefined,
+        onProgress: (event) => {
+          setLocalAiProgress(event)
+        },
       })
       const sanitizedDashboards = nextDraft.dashboards.map((dashboard) => {
         const events = [...(dashboard.debugTrace?.droppedOrRepairedItems || [])]
@@ -315,6 +355,11 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       setReviewFolderName(nextDraft.folderName || nextDraft.title || '')
       setStep('review')
     } catch (err) {
+      setLocalAiFailureDebug(
+        aiProvider === 'local' && isLocalAiGenerationError(err) && err.debug
+          ? err.debug
+          : null,
+      )
       setError(
         err instanceof Error
           ? err.message
@@ -322,6 +367,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       )
     } finally {
       setIsGenerating(false)
+      setLocalAiProgress(null)
     }
   }
 
@@ -411,7 +457,11 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 sx={{ maxWidth: 320 }}
               >
                 {generationAmountOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
+                  <MenuItem
+                    key={option.value}
+                    value={option.value}
+                    disabled={aiProvider === 'local' && option.value === 'deep'}
+                  >
                     {option.label} - {option.helper}
                   </MenuItem>
                 ))}
@@ -421,16 +471,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 screen previews each dashboard before saving anything.
               </Alert>
               {aiProvider === 'local' && (
-                <Alert
-                  severity={
-                    generationAmount === 'average' || generationAmount === 'deep'
-                      ? 'warning'
-                      : 'info'
-                  }
-                >
-                  Local AI is experimental and works best with Super small or
-                  Compact generation. Average or Deep may be slow, malformed, or
-                  fail.
+                <Alert severity={generationAmount === 'deep' ? 'error' : 'info'}>
+                  {generationAmount === 'deep'
+                    ? LOCAL_DEEP_BLOCKED_MESSAGE
+                    : LOCAL_AI_ESTIMATE_COPY}
                 </Alert>
               )}
               {aiProvider === 'hosted' && (
@@ -447,16 +491,91 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     <Stack direction="row" spacing={1} alignItems="center">
                       <AutoAwesomeIcon color="primary" fontSize="small" />
                       <Typography variant="subtitle2" fontWeight={800}>
-                        {getProviderPathProgressLabel(aiProvider)}
+                        {localAiProgress?.label ||
+                          getProviderPathProgressLabel(aiProvider)}
                       </Typography>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
                       {providerLabels[aiProvider]}: {getProviderPathDescription(aiProvider)}
                     </Typography>
-                    <LinearProgress />
+                    {aiProvider === 'local' && localAiProgress ? (
+                      <>
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography variant="caption" color="text.secondary">
+                            {localAiProgress.dashboardIndex &&
+                            localAiProgress.dashboardCount
+                              ? `Generating dashboard ${localAiProgress.dashboardIndex} of ${localAiProgress.dashboardCount}...`
+                              : 'Estimated Local AI generation time'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {localAiProgress.percent}%
+                          </Typography>
+                        </Stack>
+                        <LinearProgress
+                          variant="determinate"
+                          value={localAiProgress.percent}
+                        />
+                      </>
+                    ) : (
+                      <LinearProgress />
+                    )}
                   </Stack>
                 </Paper>
               )}
+              {localAiFailureDebug ? (
+                <Paper
+                  component="details"
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.default',
+                  }}
+                >
+                  <Typography component="summary" variant="subtitle2">
+                    Local AI failure debug
+                  </Typography>
+                  <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                    {localAiFailureDebugSections(localAiFailureDebug)
+                      .filter(([, value]) => {
+                        if (Array.isArray(value)) {
+                          return value.length > 0
+                        }
+
+                        return value !== undefined && value !== ''
+                      })
+                      .map(([label, value]) => (
+                        <Box key={label}>
+                          <Typography variant="caption" fontWeight={700}>
+                            {label}
+                          </Typography>
+                          <Box
+                            component="pre"
+                            data-testid={`local-ai-failure-debug-${label
+                              .toLowerCase()
+                              .replace(/[^a-z0-9]+/g, '-')}`}
+                            sx={{
+                              m: 0,
+                              mt: 0.5,
+                              p: 1,
+                              maxHeight: 180,
+                              overflow: 'auto',
+                              bgcolor: 'background.paper',
+                              border: 1,
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              fontSize: 12,
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {formatDebugValue(value)}
+                          </Box>
+                        </Box>
+                      ))}
+                  </Stack>
+                </Paper>
+              ) : null}
             </>
           ) : (
             <>

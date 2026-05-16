@@ -44,6 +44,7 @@ import {
   extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
+  LocalAiProgressEvent,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   StudyPackAiProvider,
@@ -155,11 +156,14 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
   hosted: 'Hosted AI tokens',
 }
 
+const LOCAL_AI_ESTIMATE_COPY =
+  'Local AI runs on your device and can be slow. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
+
 const getProviderWorkDescription = (
   provider: StudyPackAiProvider,
 ): string => {
   if (provider === 'local') {
-    return 'AquaMesh is asking Chrome Local AI for a small structured response. The local model can take a few minutes, especially the first time.'
+    return 'Local AI is running on your device. This progress is estimated from the configured generation time budget.'
   }
 
   if (provider === 'gemini') {
@@ -616,6 +620,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [isExtractingImage, setIsExtractingImage] = useState(false)
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [aiProgressLabel, setAiProgressLabel] = useState('')
+  const [aiGenerationProgress, setAiGenerationProgress] = useState(0)
+  const [aiGenerationProgressPhase, setAiGenerationProgressPhase] =
+    useState<LocalAiProgressEvent['phase'] | ''>('')
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrStatus, setOcrStatus] = useState('')
   const [packTitle, setPackTitle] = useState('Study Pack')
@@ -684,6 +691,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setIsExtractingImage(false)
     setIsGeneratingAi(false)
     setAiProgressLabel('')
+    setAiGenerationProgress(0)
+    setAiGenerationProgressPhase('')
     setOcrProgress(0)
     setOcrStatus('')
     setPackTitle('Study Pack')
@@ -788,6 +797,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
     setIsGeneratingAi(true)
     setOcrStatus('Generating study materials')
+    setAiGenerationProgress(0)
+    setAiGenerationProgressPhase('')
     setAiProgressLabel(
       aiProvider === 'local'
         ? 'Starting Google Local AI'
@@ -834,8 +845,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         promptMode: studyTaskMode === 'aiPrompt',
         studyPathMode: learningOutputMode === 'studyPath',
-        onProgress: (progress) => {
-          setAiProgressLabel(`Downloading local model ${progress}%`)
+        onProgress: (event) => {
+          setAiGenerationProgress(event.percent)
+          setAiGenerationProgressPhase(event.phase)
+          setAiProgressLabel(
+            event.phase === 'download'
+              ? `${event.label} ${event.percent}%`
+              : event.label,
+          )
         },
       })
       const nextTitle = draft.title || packTitle
@@ -884,6 +901,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     } finally {
       setIsGeneratingAi(false)
       setAiProgressLabel('')
+      setAiGenerationProgress(0)
+      setAiGenerationProgressPhase('')
       setOcrStatus('')
     }
   }
@@ -938,7 +957,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         try {
           setOcrStatus('Extracting notes with Google Local AI')
           text = await extractNotesFromImageWithLocalLanguageModel(imageFile, {
-            timeoutMs: 5 * 60 * 1000,
+            timeoutMs: 90 * 1000,
             onProgress: (progress) => {
               setOcrProgress(progress)
               setOcrStatus(`Downloading local model ${progress}%`)
@@ -1326,9 +1345,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 </Alert>
                 {aiProvider === 'local' && (
                   <Alert severity="warning">
-                    Local AI is experimental and works best with smaller
-                    outputs. For larger Study Paths, use Own Gemini API token or
-                    Hosted AI.
+                    {LOCAL_AI_ESTIMATE_COPY}
                   </Alert>
                 )}
                 {aiProvider === 'hosted' && (
@@ -1590,7 +1607,24 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {getProviderWorkDescription(aiProvider)}
                   </Typography>
-                  <LinearProgress />
+                  {aiProvider === 'local' && aiGenerationProgressPhase ? (
+                    <>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          Estimated Local AI generation time
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {aiGenerationProgress}%
+                        </Typography>
+                      </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={aiGenerationProgress}
+                      />
+                    </>
+                  ) : (
+                    <LinearProgress />
+                  )}
                 </Stack>
               </Paper>
             )}

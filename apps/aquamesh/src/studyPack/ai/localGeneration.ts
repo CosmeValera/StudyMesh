@@ -12,7 +12,11 @@ import {
   AiStudyPackDraft,
   NormalizeAiStudyPackDraftOptions,
 } from './normalizer'
-import { callLocalLanguageModel } from './localLanguageModel'
+import {
+  callLocalLanguageModel,
+  LocalAiProgressEvent,
+  smokeTestLocalLanguageModel,
+} from './localLanguageModel'
 import {
   AiStudyPathDashboardDraft,
   AiStudyPathDraft,
@@ -32,7 +36,104 @@ type LocalObjectKind =
   | 'reviewPrompt'
 
 interface LocalGenerationOptions {
-  onProgress?: (percent: number) => void
+  onProgress?: (event: LocalAiProgressEvent) => void
+}
+
+export type LocalAiGenerationFailureCode =
+  | 'timeout'
+  | 'invalidJson'
+  | 'noUsableObjects'
+  | 'unsupported'
+  | 'unavailable'
+  | 'unknown'
+
+export interface LocalAiGenerationFailureDebug {
+  dashboardIndex?: number
+  dashboardCount?: number
+  promptLength?: number
+  rawResponse?: string
+  parsedJson?: unknown
+  parseError?: string
+  mappingError?: string
+  droppedOrRepairedItems?: string[]
+}
+
+export class LocalAiGenerationError extends Error {
+  code: LocalAiGenerationFailureCode
+  debug?: LocalAiGenerationFailureDebug
+  cause?: unknown
+
+  constructor(
+    code: LocalAiGenerationFailureCode,
+    message: string,
+    options: {
+      debug?: LocalAiGenerationFailureDebug
+      cause?: unknown
+    } = {},
+  ) {
+    super(message)
+    this.name = 'LocalAiGenerationError'
+    this.code = code
+    this.debug = options.debug
+    this.cause = options.cause
+  }
+}
+
+export const isLocalAiGenerationError = (
+  error: unknown,
+): error is LocalAiGenerationError =>
+  error instanceof LocalAiGenerationError ||
+  (Boolean(error) &&
+    typeof error === 'object' &&
+    (error as { name?: unknown }).name === 'LocalAiGenerationError')
+
+const LOCAL_STUDY_PACK_TIMEOUT_MS = 4 * 60 * 1000
+const LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS = 150 * 1000
+const LOCAL_DEEP_BLOCKED_MESSAGE =
+  'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
+const LOCAL_STUDY_PATH_TIMEOUT_MESSAGE =
+  'Local AI timed out. Try again, choose a smaller path, or use Own Gemini token.'
+const LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE =
+  'Local AI returned malformed JSON. Try again, choose a smaller path, or use Own Gemini token.'
+const LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE =
+  'Local AI returned JSON, but AquaMesh could not map it into widgets.'
+
+interface LocalConceptContract {
+  concept: string
+  definition: string
+  keyFact: string
+  example: string
+  commonConfusion: string
+  sourcePhrase: string
+}
+
+interface LocalSectionContract {
+  title: string
+  items: string[]
+}
+
+interface LocalQuizContract {
+  question: string
+  options: string[]
+  correctIndex: number
+  answer: string
+  explanation: string
+}
+
+interface LocalFlashcardContract {
+  question: string
+  answer: string
+}
+
+interface LocalRepairedContract {
+  title?: string
+  summary: string
+  rawNotes: string
+  sourceSummary: string[]
+  concepts: LocalConceptContract[]
+  sections: LocalSectionContract[]
+  quizzes: LocalQuizContract[]
+  flashcards: LocalFlashcardContract[]
 }
 
 const localAllowedKinds = new Set<LocalObjectKind>([
@@ -47,36 +148,209 @@ const localAllowedKinds = new Set<LocalObjectKind>([
 const normalizeSpaces = (value: string): string =>
   value.replace(/\s+/g, ' ').trim()
 
+const normalizeBlock = (value: string): string =>
+  value
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+const normalizeKey = (value: string): string =>
+  normalizeSpaces(
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9]+/g, ' '),
+  )
+
 const stringValue = (value: unknown): string =>
   typeof value === 'string' ? normalizeSpaces(value) : ''
 
+const blockValue = (value: unknown): string =>
+  typeof value === 'string' ? normalizeBlock(value) : ''
+
+const titleValue = (value: unknown, fallback: string): string =>
+  stringValue(value) || fallback
+
+const localBadTextPattern =
+  /\btarget rule\b|\bformation rule\b|proposed that matter\s*:|what rule does|how do you form|what do the notes say|according to the notes|which statement matches|core idea behind/i
+
+const genericFolderNames = new Set([
+  'aquamesh',
+  'lesson plan',
+  'local ai study path',
+  'study path',
+  'study pack',
+  'untitled',
+])
+
+const localBadConceptKeys = new Set([
+  'active',
+  'example',
+  'goal',
+  'it',
+  'target rule',
+  'formation rule',
+  'target rule formation rule',
+  'proposed that matter',
+])
+
+const isBadLocalText = (value: string): boolean =>
+  !value.trim() || localBadTextPattern.test(value)
+
+const isBadConcept = (value: string): boolean => {
+  const key = normalizeKey(value)
+  const wordCount = key.split(/\s+/).filter(Boolean).length
+
+  return (
+    !key ||
+    key.length < 3 ||
+    localBadConceptKeys.has(key) ||
+    localBadTextPattern.test(value) ||
+    (wordCount <= 1 && key.length < 6)
+  )
+}
+
+const uniqueByKey = <T>(
+  values: T[],
+  keyForValue: (value: T) => string,
+): T[] => {
+  const seen = new Set<string>()
+
+  return values.filter((value) => {
+    const key = normalizeKey(keyForValue(value))
+    if (!key || seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
 const stringArrayValue = (value: unknown): string[] => {
   if (Array.isArray(value)) {
-    return value.map(stringValue).filter(Boolean)
+    return uniqueByKey(value.map(stringValue).filter(Boolean), (item) => item)
   }
 
   if (typeof value === 'string') {
-    return value
-      .split(/\r?\n|;|,(?=\s+\S)/)
-      .map(stringValue)
-      .filter(Boolean)
+    return uniqueByKey(
+      value
+        .split(/\r?\n|;|,(?=\s+\S)/)
+        .map(stringValue)
+        .filter(Boolean),
+      (item) => item,
+    )
   }
 
   return []
 }
 
+const summaryString = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return normalizeSpaces(value)
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    return (
+      blockValue(record.markdown) ||
+      blockValue(record.body) ||
+      blockValue(record.content) ||
+      stringValue(record.title)
+    )
+  }
+
+  return ''
+}
+
 export const parseLocalAiJson = (text: string): unknown => {
   const trimmed = text.trim()
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
-  const candidate = fenced || trimmed
+  const candidate = (fenced || trimmed).replace(/\\(?!["\\/bfnrtu])/g, '')
+
+  const parseCandidate = (value: string): unknown => JSON.parse(value)
+
+  const balanceIncompleteJson = (value: string): string | null => {
+    const stack: string[] = []
+    let inString = false
+    let escaping = false
+
+    for (const char of value) {
+      if (inString) {
+        if (escaping) {
+          escaping = false
+          continue
+        }
+
+        if (char === '\\') {
+          escaping = true
+          continue
+        }
+
+        if (char === '"') {
+          inString = false
+        }
+
+        continue
+      }
+
+      if (char === '"') {
+        inString = true
+        continue
+      }
+
+      if (char === '{') {
+        stack.push('}')
+        continue
+      }
+
+      if (char === '[') {
+        stack.push(']')
+        continue
+      }
+
+      if (char === '}' || char === ']') {
+        if (stack.at(-1) !== char) {
+          return null
+        }
+
+        stack.pop()
+      }
+    }
+
+    if (inString || stack.length === 0) {
+      return null
+    }
+
+    return `${value}${stack.reverse().join('')}`
+  }
 
   try {
-    return JSON.parse(candidate)
+    return parseCandidate(candidate)
   } catch {
+    const balanced = balanceIncompleteJson(candidate)
+    if (balanced) {
+      try {
+        return parseCandidate(balanced)
+      } catch {
+        // Fall through to the bounded object extraction fallback.
+      }
+    }
+
     const firstObject = candidate.indexOf('{')
     const lastObject = candidate.lastIndexOf('}')
     if (firstObject >= 0 && lastObject > firstObject) {
-      return JSON.parse(candidate.slice(firstObject, lastObject + 1))
+      const objectCandidate = candidate.slice(firstObject, lastObject + 1)
+      try {
+        return parseCandidate(objectCandidate)
+      } catch {
+        const balancedObject = balanceIncompleteJson(objectCandidate)
+        if (balancedObject) {
+          return parseCandidate(balancedObject)
+        }
+      }
     }
 
     throw new Error('Google Local AI returned invalid JSON.')
@@ -114,6 +388,75 @@ const repairKind = (value: unknown): LocalObjectKind | '' => {
     : ''
 }
 
+const repairLocalQuiz = (
+  input: Record<string, unknown>,
+  index: number,
+  events: string[],
+): LocalQuizContract | null => {
+  const question = stringValue(input.question)
+  const rawOptions = Array.isArray(input.options)
+    ? input.options.map(stringValue).filter(Boolean)
+    : typeof input.options === 'string'
+      ? input.options
+          .split(/\r?\n|;|,(?=\s+\S)/)
+          .map(stringValue)
+          .filter(Boolean)
+      : []
+  const rawCorrectIndex =
+    typeof input.correctIndex === 'number'
+      ? input.correctIndex
+      : typeof input.correctOptionIndex === 'number'
+        ? input.correctOptionIndex
+        : 0
+  const originalAnswer =
+    stringValue(input.answer) ||
+    (rawCorrectIndex >= 0 && rawCorrectIndex < rawOptions.length
+      ? rawOptions[rawCorrectIndex]
+      : '')
+  const options = uniqueByKey(rawOptions, (option) => option).slice(0, 4)
+  const correctIndex = options.findIndex(
+    (option) => normalizeKey(option) === normalizeKey(originalAnswer),
+  )
+  const answer =
+    originalAnswer ||
+    (rawCorrectIndex >= 0 && rawCorrectIndex < options.length
+      ? options[rawCorrectIndex]
+      : options[0] || '')
+  const finalCorrectIndex =
+    correctIndex >= 0
+      ? correctIndex
+      : options.findIndex(
+          (option) => normalizeKey(option) === normalizeKey(answer),
+        )
+
+  if (rawOptions.length !== options.length) {
+    events.push(`Repaired quiz ${index + 1}: removed duplicate options.`)
+  }
+
+  if (isBadLocalText(question)) {
+    events.push(`Dropped quiz ${index + 1}: generic or weak question.`)
+    return null
+  }
+
+  if (options.length > 0 && options.length < 3) {
+    events.push(`Dropped quiz ${index + 1}: fewer than 3 unique options.`)
+    return null
+  }
+
+  if (!question || !answer) {
+    events.push(`Dropped quiz ${index + 1}: missing question or answer.`)
+    return null
+  }
+
+  return {
+    question,
+    options,
+    correctIndex: finalCorrectIndex >= 0 ? finalCorrectIndex : 0,
+    answer,
+    explanation: stringValue(input.explanation),
+  }
+}
+
 const localObjectToStudyObject = (
   input: Record<string, unknown>,
   packId: string,
@@ -126,14 +469,14 @@ const localObjectToStudyObject = (
     return null
   }
 
-  const title = stringValue(input.title) || `Study item ${index + 1}`
+  const title = titleValue(input.title, `Study item ${index + 1}`)
   const base = createBase(packId, kind, index, title)
 
   if (kind === 'markdown') {
     const markdown =
-      stringValue(input.markdown) ||
-      stringValue(input.content) ||
-      stringValue(input.body)
+      blockValue(input.markdown) ||
+      blockValue(input.content) ||
+      blockValue(input.body)
     if (!markdown) {
       events.push(`Dropped markdown ${index + 1}: missing markdown.`)
       return null
@@ -155,8 +498,8 @@ const localObjectToStudyObject = (
       stringValue(input.definition) ||
       stringValue(input.answer) ||
       stringValue(input.explanation)
-    if (!term || !definition) {
-      events.push(`Dropped term ${index + 1}: missing term or definition.`)
+    if (!term || !definition || isBadConcept(term)) {
+      events.push(`Dropped term ${index + 1}: weak term or missing definition.`)
       return null
     }
 
@@ -166,8 +509,8 @@ const localObjectToStudyObject = (
   if (kind === 'qa') {
     const question = stringValue(input.question) || stringValue(input.front)
     const answer = stringValue(input.answer) || stringValue(input.back)
-    if (!question || !answer) {
-      events.push(`Dropped qa ${index + 1}: missing question or answer.`)
+    if (!question || !answer || isBadLocalText(question)) {
+      events.push(`Dropped qa ${index + 1}: weak question or missing answer.`)
       return null
     }
 
@@ -175,47 +518,29 @@ const localObjectToStudyObject = (
   }
 
   if (kind === 'quiz') {
-    const question = stringValue(input.question)
-    const options = stringArrayValue(input.options)
-    const rawCorrectIndex =
-      typeof input.correctIndex === 'number'
-        ? input.correctIndex
-        : typeof input.correctOptionIndex === 'number'
-          ? input.correctOptionIndex
-          : 0
-    const correctIndex =
-      rawCorrectIndex >= 0 && rawCorrectIndex < options.length
-        ? rawCorrectIndex
-        : 0
-    const answer =
-      stringValue(input.answer) || (options.length > 0 ? options[correctIndex] : '')
-    const explanation = stringValue(input.explanation)
-    const quizMode =
-      input.quizMode === 'multipleChoice' || options.length >= 3
-        ? 'multipleChoice'
-        : 'shortAnswer'
-
-    if (!question || !answer || (quizMode === 'multipleChoice' && options.length < 3)) {
-      events.push(`Dropped quiz ${index + 1}: missing usable quiz fields.`)
+    const quiz = repairLocalQuiz(input, index, events)
+    if (!quiz) {
       return null
     }
 
     return {
       ...base,
       kind,
-      quizMode,
-      question,
-      options: quizMode === 'multipleChoice' ? options.slice(0, 4) : [],
-      correctIndex: quizMode === 'multipleChoice' ? correctIndex : 0,
-      answer,
-      explanation,
+      quizMode: quiz.options.length >= 3 ? 'multipleChoice' : 'shortAnswer',
+      question: quiz.question,
+      options: quiz.options.length >= 3 ? quiz.options : [],
+      correctIndex: quiz.options.length >= 3 ? quiz.correctIndex : 0,
+      answer: quiz.answer,
+      explanation: quiz.explanation,
     }
   }
 
   if (kind === 'list') {
-    const items = stringArrayValue(input.items || input.content)
+    const items = stringArrayValue(input.items || input.content).filter(
+      (item) => !isBadLocalText(item),
+    )
     if (items.length === 0) {
-      events.push(`Dropped list ${index + 1}: missing items.`)
+      events.push(`Dropped list ${index + 1}: missing usable items.`)
       return null
     }
 
@@ -236,8 +561,8 @@ const localObjectToStudyObject = (
     stringValue(input.prompt) ||
     stringValue(input.content) ||
     stringValue(input.title)
-  if (!prompt) {
-    events.push(`Dropped reviewPrompt ${index + 1}: missing prompt.`)
+  if (!prompt || isBadLocalText(prompt)) {
+    events.push(`Dropped reviewPrompt ${index + 1}: weak or missing prompt.`)
     return null
   }
 
@@ -254,6 +579,420 @@ const localObjectToStudyObject = (
   }
 }
 
+const conceptFromRecord = (
+  value: unknown,
+  index: number,
+  events: string[],
+): LocalConceptContract | null => {
+  const record =
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const concept = stringValue(record.concept || record.title || record.term)
+  const definition =
+    stringValue(record.definition) ||
+    stringValue(record.keyFact) ||
+    stringValue(record.explanation) ||
+    stringValue(record.answer)
+  const keyFact =
+    stringValue(record.keyFact) || stringValue(record.fact) || definition
+  const example = stringValue(record.example)
+  const commonConfusion =
+    stringValue(record.commonConfusion) ||
+    stringValue(record.commonMistake) ||
+    stringValue(record.confusion)
+  const sourcePhrase = stringValue(record.sourcePhrase || record.source)
+
+  if (isBadConcept(concept) || !definition) {
+    events.push(`Dropped concept ${index + 1}: weak label or definition.`)
+    return null
+  }
+
+  return {
+    concept,
+    definition,
+    keyFact,
+    example,
+    commonConfusion,
+    sourcePhrase,
+  }
+}
+
+const conceptFromText = (
+  value: string,
+  index: number,
+): LocalConceptContract | null => {
+  const cleaned = normalizeSpaces(value)
+  if (!cleaned || localBadTextPattern.test(cleaned)) {
+    return null
+  }
+
+  const parts = cleaned.split(/\s*[:\-]\s+/)
+  const concept =
+    parts.length > 1 ? parts[0] : cleaned.split(/\s+/).slice(0, 5).join(' ')
+  if (isBadConcept(concept)) {
+    return null
+  }
+
+  return {
+    concept,
+    definition: parts.length > 1 ? parts.slice(1).join(': ') : cleaned,
+    keyFact: cleaned,
+    example: '',
+    commonConfusion: '',
+    sourcePhrase: cleaned,
+  }
+}
+
+const conceptsFromRawNotes = (rawNotes: string): LocalConceptContract[] =>
+  uniqueByKey(
+    rawNotes
+      .split(/\r?\n|(?<=[.!?])\s+/)
+      .map((line, index) => conceptFromText(line, index))
+      .filter((concept): concept is LocalConceptContract => Boolean(concept))
+      .slice(0, 6),
+    (concept) => concept.concept,
+  )
+
+const sectionsFromRecord = (
+  value: unknown,
+  events: string[],
+): LocalSectionContract[] => {
+  const records = Array.isArray(value) ? value : []
+
+  return records
+    .map((item, index): LocalSectionContract | null => {
+      const record =
+        item && typeof item === 'object'
+          ? (item as Record<string, unknown>)
+          : {}
+      const title = stringValue(record.title) || `Key ideas ${index + 1}`
+      const items = stringArrayValue(
+        record.items || record.bullets || record.content,
+      )
+        .filter((line) => !isBadLocalText(line))
+        .slice(0, 6)
+
+      if (items.length === 0) {
+        events.push(`Dropped section ${index + 1}: no usable items.`)
+        return null
+      }
+
+      return { title, items }
+    })
+    .filter((section): section is LocalSectionContract => Boolean(section))
+}
+
+const buildSummaryMarkdown = (
+  title: string,
+  summary: string,
+  sourceSummary: string[],
+  concepts: LocalConceptContract[],
+): string => {
+  const bullets =
+    sourceSummary.length > 0
+      ? sourceSummary
+      : concepts.map((concept) => `${concept.concept}: ${concept.definition}`)
+
+  return [
+    `# ${title}`,
+    summary,
+    bullets.length > 0
+      ? `## Key ideas\n${bullets
+          .slice(0, 5)
+          .map((item) => `- ${item}`)
+          .join('\n')}`
+      : '',
+  ]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+const buildRawNotesFromContract = (
+  title: string,
+  summary: string,
+  sourceSummary: string[],
+  concepts: LocalConceptContract[],
+): string =>
+  [
+    `# ${title}`,
+    summary ? `## Summary\n${summary}` : '',
+    sourceSummary.length > 0
+      ? `## Source summary\n${sourceSummary.map((item) => `- ${item}`).join('\n')}`
+      : '',
+    concepts.length > 0
+      ? `## Concepts\n${concepts
+          .map((concept) => {
+            const lines = [
+              `### ${concept.concept}`,
+              concept.definition,
+              concept.keyFact ? `Key fact: ${concept.keyFact}` : '',
+              concept.example ? `Example: ${concept.example}` : '',
+              concept.commonConfusion
+                ? `Watch for: ${concept.commonConfusion}`
+                : '',
+            ]
+            return lines.filter(Boolean).join('\n')
+          })
+          .join('\n\n')}`
+      : '',
+  ]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n')
+
+const contractFromRecord = (
+  record: Record<string, unknown>,
+  titleFallback: string,
+  rawNotesFallback: string,
+  events: string[],
+): LocalRepairedContract => {
+  const title = stringValue(record.title) || titleFallback
+  const sourceSummary = stringArrayValue(
+    record.sourceSummary ||
+      record.bullets ||
+      (record.summary && typeof record.summary === 'object'
+        ? (record.summary as Record<string, unknown>).bullets
+        : undefined),
+  ).filter((item) => !isBadLocalText(item))
+  const concepts = uniqueByKey(
+    (Array.isArray(record.concepts) ? record.concepts : [])
+      .map((item, index) => conceptFromRecord(item, index, events))
+      .filter((concept): concept is LocalConceptContract => Boolean(concept)),
+    (concept) => concept.concept,
+  )
+  const summary =
+    summaryString(record.summary) ||
+    sourceSummary[0] ||
+    concepts[0]?.definition ||
+    ''
+  const rawMarkdown = Array.isArray(record.objects)
+    ? record.objects
+        .map((item) =>
+          item && typeof item === 'object'
+            ? localObjectToStudyObject(
+                item as Record<string, unknown>,
+                'debug',
+                0,
+                [],
+              )
+            : null,
+        )
+        .find((object): object is Extract<StudyObject, { kind: 'markdown' }> =>
+          Boolean(object && object.kind === 'markdown'),
+        )?.markdown || ''
+    : ''
+  const rawNotes =
+    blockValue(record.rawNotes) ||
+    rawMarkdown ||
+    rawNotesFallback ||
+    buildRawNotesFromContract(title, summary, sourceSummary, concepts)
+  const repairedConcepts =
+    concepts.length > 0 ? concepts : conceptsFromRawNotes(rawNotes)
+
+  if (typeof record.summary === 'object' && record.summary) {
+    events.push('Repaired summary: converted object to text.')
+  }
+
+  if (!blockValue(record.rawNotes) && rawNotes) {
+    events.push('Repaired rawNotes: derived from Local AI content.')
+  }
+
+  return {
+    title,
+    summary,
+    rawNotes,
+    sourceSummary,
+    concepts: repairedConcepts,
+    sections: sectionsFromRecord(record.sections || record.lists, events),
+    quizzes: (Array.isArray(record.quizzes) ? record.quizzes : [])
+      .map((item, index) =>
+        item && typeof item === 'object'
+          ? repairLocalQuiz(item as Record<string, unknown>, index, events)
+          : null,
+      )
+      .filter((quiz): quiz is LocalQuizContract => Boolean(quiz)),
+    flashcards: (Array.isArray(record.flashcards) ? record.flashcards : [])
+      .map((item, index): LocalFlashcardContract | null => {
+        const input =
+          item && typeof item === 'object'
+            ? (item as Record<string, unknown>)
+            : {}
+        const question =
+          stringValue(input.question) ||
+          stringValue(input.front) ||
+          stringValue(input.prompt)
+        const answer =
+          stringValue(input.answer) ||
+          stringValue(input.back) ||
+          stringValue(input.definition)
+        if (!question || !answer || isBadLocalText(question)) {
+          events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
+          return null
+        }
+
+        return { question, answer }
+      })
+      .filter((flashcard): flashcard is LocalFlashcardContract =>
+        Boolean(flashcard),
+      ),
+  }
+}
+
+const conceptQuestion = (
+  concept: LocalConceptContract,
+  index: number,
+): string => {
+  if (
+    /\b(dalton|democritus|thomson|rutherford|bohr|scientist|theory)\b/i.test(
+      `${concept.concept} ${concept.definition}`,
+    )
+  ) {
+    return `What did ${concept.concept} contribute or explain?`
+  }
+
+  if (
+    /\b(spanish|french|b1|tense|conjugat|verb|subjunctive|preterite|imperfect)\b/i.test(
+      `${concept.concept} ${concept.definition}`,
+    )
+  ) {
+    return `When would you use ${concept.concept} in context?`
+  }
+
+  return index % 2 === 0
+    ? `What is the key idea behind ${concept.concept}?`
+    : `How would you explain ${concept.concept} in your own words?`
+}
+
+const conceptQuiz = (
+  packId: string,
+  concept: LocalConceptContract,
+  index: number,
+): StudyObject => ({
+  ...createBase(packId, 'quiz', index, `${concept.concept} practice`),
+  kind: 'quiz',
+  quizMode: 'shortAnswer',
+  question: conceptQuestion(concept, index),
+  options: [],
+  correctIndex: 0,
+  answer: concept.keyFact || concept.definition,
+  explanation: concept.definition,
+})
+
+const conceptFlashcard = (
+  packId: string,
+  concept: LocalConceptContract,
+  index: number,
+): StudyObject => ({
+  ...createBase(packId, 'flashcard', index, `${concept.concept} flashcard`),
+  kind: 'qa',
+  question: conceptQuestion(concept, index),
+  answer: concept.definition,
+})
+
+const objectsFromContract = (
+  contract: LocalRepairedContract,
+  packId: string,
+  events: string[],
+): StudyObject[] => {
+  const sourceSummary = Array.isArray(contract.sourceSummary)
+    ? contract.sourceSummary
+    : []
+  const concepts = Array.isArray(contract.concepts) ? contract.concepts : []
+  const sections = Array.isArray(contract.sections) ? contract.sections : []
+  const quizzes = Array.isArray(contract.quizzes) ? contract.quizzes : []
+  const flashcards = Array.isArray(contract.flashcards)
+    ? contract.flashcards
+    : []
+  const objects: StudyObject[] = [
+    {
+      ...createBase(packId, 'markdown', 0, 'Source summary'),
+      kind: 'markdown',
+      markdown: buildSummaryMarkdown(
+        contract.title || 'Study Pack',
+        contract.summary,
+        sourceSummary,
+        concepts,
+      ),
+    },
+  ]
+
+  sections.slice(0, 4).forEach((section, index) => {
+    objects.push({
+      ...createBase(packId, 'list', index, section.title),
+      kind: 'list',
+      items: section.items,
+      ordered: false,
+      checklist: false,
+    })
+  })
+
+  if (sections.length === 0 && concepts.length > 0) {
+    objects.push({
+      ...createBase(packId, 'list', 0, 'Key concepts'),
+      kind: 'list',
+      items: concepts
+        .slice(0, 6)
+        .map((concept) => `${concept.concept}: ${concept.definition}`),
+      ordered: false,
+      checklist: false,
+    })
+    events.push('Repaired sections: created Key concepts list.')
+  }
+
+  quizzes.slice(0, 6).forEach((quiz, index) => {
+    objects.push({
+      ...createBase(packId, 'quiz', index, `Quiz ${index + 1}`),
+      kind: 'quiz',
+      quizMode: quiz.options.length >= 3 ? 'multipleChoice' : 'shortAnswer',
+      question: quiz.question,
+      options: quiz.options.length >= 3 ? quiz.options : [],
+      correctIndex: quiz.options.length >= 3 ? quiz.correctIndex : 0,
+      answer: quiz.answer,
+      explanation: quiz.explanation,
+    })
+  })
+
+  flashcards.slice(0, 5).forEach((flashcard, index) => {
+    objects.push({
+      ...createBase(packId, 'flashcard', index, `Flashcard ${index + 1}`),
+      kind: 'qa',
+      question: flashcard.question,
+      answer: flashcard.answer,
+    })
+  })
+
+  const usableConcepts = concepts.filter(
+    (concept) => !isBadConcept(concept.concept),
+  )
+  while (
+    objects.filter((object) => object.kind === 'quiz').length < 3 &&
+    usableConcepts.length > 0
+  ) {
+    const index = objects.filter((object) => object.kind === 'quiz').length
+    objects.push(
+      conceptQuiz(packId, usableConcepts[index % usableConcepts.length], index),
+    )
+    events.push('Augmented Local AI output: added concept quiz.')
+  }
+
+  while (
+    objects.filter((object) => object.kind === 'qa').length < 3 &&
+    usableConcepts.length > 0
+  ) {
+    const index = objects.filter((object) => object.kind === 'qa').length
+    objects.push(
+      conceptFlashcard(
+        packId,
+        usableConcepts[index % usableConcepts.length],
+        index,
+      ),
+    )
+    events.push('Augmented Local AI output: added concept flashcard.')
+  }
+
+  return objects
+}
+
 export const normalizeLocalAiStudyPackDraft = (
   value: unknown,
   packId: string,
@@ -261,13 +1000,13 @@ export const normalizeLocalAiStudyPackDraft = (
 ): AiStudyPackDraft => {
   const record =
     value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const events: string[] = []
   const rawObjects = Array.isArray(record.objects)
     ? record.objects
     : Array.isArray(record.studyObjects)
       ? record.studyObjects
       : []
-  const events: string[] = []
-  const objects = rawObjects
+  const looseObjects = rawObjects
     .map((item, index) =>
       item && typeof item === 'object'
         ? localObjectToStudyObject(
@@ -280,25 +1019,66 @@ export const normalizeLocalAiStudyPackDraft = (
     )
     .filter((object): object is StudyObject => Boolean(object))
 
+  if (rawObjects.length > 0) {
+    if (looseObjects.length === 0) {
+      events.push('Google Local AI did not return any usable study objects.')
+    }
+
+    return {
+      title:
+        typeof record.title === 'string' && record.title.trim()
+          ? normalizeSpaces(record.title)
+          : undefined,
+      sourceFormat: 'text' as StudyPackSourceFormat,
+      rawNotes:
+        blockValue(record.rawNotes) ||
+        blockValue(record.markdown) ||
+        options.rawNotes ||
+        '',
+      dashboardRole: options.dashboardRole,
+      objects: looseObjects,
+      warnings:
+        looseObjects.length === 0 ? ['No usable Local AI objects found.'] : [],
+      debugTrace: {
+        rawAiResponse: options.rawAiResponse || JSON.stringify(value, null, 2),
+        validatedContract: record,
+        roleFilteredContract: record,
+        droppedOrRepairedItems: events,
+        finalObjects: looseObjects,
+      },
+    }
+  }
+
+  const contract = contractFromRecord(
+    record,
+    'Study Pack',
+    options.rawNotes || '',
+    events,
+  )
+  const contractObjects = objectsFromContract(contract, packId, events)
+  const objects = uniqueByKey(
+    [...contractObjects, ...looseObjects],
+    (object) =>
+      object.kind === 'markdown'
+        ? `${object.kind}:${object.title}`
+        : JSON.stringify(object),
+  )
+
   if (objects.length === 0) {
     events.push('Google Local AI did not return any usable study objects.')
   }
 
   return {
-    title:
-      typeof record.title === 'string' && record.title.trim()
-        ? normalizeSpaces(record.title)
-        : undefined,
+    title: contract.title,
     sourceFormat: 'text' as StudyPackSourceFormat,
-    rawNotes:
-      typeof record.rawNotes === 'string' ? normalizeSpaces(record.rawNotes) : '',
+    rawNotes: contract.rawNotes,
     dashboardRole: options.dashboardRole,
     objects,
     warnings: objects.length === 0 ? ['No usable Local AI objects found.'] : [],
     debugTrace: {
       rawAiResponse: options.rawAiResponse || JSON.stringify(value, null, 2),
-      validatedContract: null,
-      roleFilteredContract: null,
+      validatedContract: contract,
+      roleFilteredContract: contract,
       droppedOrRepairedItems: events,
       finalObjects: objects,
     },
@@ -313,63 +1093,55 @@ const getLocalStudyPathDashboardCount = (
     return 2
   }
 
-  if (normalized === 'compact') {
-    return 3
+  if (normalized === 'average') {
+    return 5
   }
 
-  if (normalized === 'deep') {
-    return 7
-  }
-
-  return 5
+  return 3
 }
 
 const localStudyPackPrompt = ({
   title,
   rawNotes,
-  generationAmount = 'medium',
   promptMode = false,
 }: GenerateStudyPackWithAiOptions): string => {
-  const targetCount =
-    generationAmount === 'few' ? '4' : generationAmount === 'many' ? '6' : '5'
-  const compactNotes = rawNotes.replace(/\s+/g, ' ').trim().slice(0, 4000)
+  const compactNotes = rawNotes.replace(/\s+/g, ' ').trim().slice(0, 1800)
 
   return `Return JSON only. No prose. No markdown fences.
-Make a tiny study pack with exactly ${targetCount} objects.
-Use only these object shapes:
-{"kind":"markdown","title":"Summary","markdown":"..."}
-{"kind":"term","term":"...","definition":"..."}
-{"kind":"qa","question":"...","answer":"..."}
-{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"..."}
-{"kind":"list","title":"Key points","items":["...","..."]}
-{"kind":"reviewPrompt","prompt":"...","reason":"..."}
-Output:
-{"title":"${title.replace(/"/g, '')}","objects":[...]}
-Title: ${title}
+Create exactly 6 simple study objects from the source.
+Allowed kinds only: markdown, qa, quiz, list.
+Use this shape:
+{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}
+Rules: exactly 6 objects. First object markdown. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
 Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }
 
-const localStudyPathPrompt = ({
-  title,
-  prompt,
-  folderName,
-  generationAmount,
-}: GenerateStudyPathWithAiOptions): string => {
-  const count = Math.min(3, getLocalStudyPathDashboardCount(generationAmount))
-  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 2500)
+const localStudyPathDashboardPrompt = (
+  {
+    title,
+    prompt,
+    generationAmount: _generationAmount,
+  }: GenerateStudyPathWithAiOptions,
+  index: number,
+  count: number,
+): string => {
+  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1800)
+  const lessonHint =
+    count === 2
+      ? index === 0
+        ? 'first focused lesson'
+        : 'second practice-oriented lesson'
+      : `lesson ${index + 1}`
 
-  return `Return JSON only. No prose. No markdown fences.
-Create exactly ${count} short dashboards. Each dashboard has 3 objects.
-Each dashboard objects:
-1 markdown summary: {"kind":"markdown","title":"Summary","markdown":"..."}
-1 qa: {"kind":"qa","question":"...","answer":"..."}
-1 quiz: {"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"..."}
-Output:
-{"title":"...","folderName":"...","dashboards":[{"title":"01 - Lesson","summary":"...","rawNotes":"...","objects":[...]}]}
-Path title fallback: ${title}
-Folder name fallback: ${folderName || 'Study Path'}
-Topic:
+  return `Return minified JSON only. End with }.
+Create dashboard ${index + 1} of ${count} for "${title}" (${lessonHint}).
+Shape:
+{"title":"${String(index + 1).padStart(2, '0')} - Lesson","summary":"...","notes":"max 60 words","qaQ":"...","qaA":"...","quizQ":"...","quizOptions":["...","...","..."],"quizCorrectIndex":0,"listItems":["...","...","..."]}
+Rules: no objects array. No markdown fences. Keep it short. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
+For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.
+Introductions are appropriate only when no level is given or the request is beginner-level. Otherwise use level-appropriate grammar, vocabulary, realistic situations, and practice.
+User topic:
 ${compactPrompt}`
 }
 
@@ -377,9 +1149,11 @@ export const generateStudyPackWithLocalAi = async (
   options: GenerateStudyPackWithAiOptions,
   localOptions: LocalGenerationOptions = {},
 ): Promise<AiStudyPackDraft> => {
+  await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
   const text = await callLocalLanguageModel(localStudyPackPrompt(options), {
-    timeoutMs: 5 * 60 * 1000,
+    timeoutMs: LOCAL_STUDY_PACK_TIMEOUT_MS,
     onProgress: localOptions.onProgress,
+    progressLabel: 'Estimated Local AI generation time',
   })
   const parsed = parseLocalAiJson(text)
   const draft = normalizeLocalAiStudyPackDraft(parsed, options.packId, {
@@ -399,12 +1173,278 @@ const roleForIndex = (
   index: number,
 ): StudyPathDashboardRole => roles[index] || 'normal'
 
+const firstMarkdownObject = (objects: StudyObject[]): StudyObject | undefined =>
+  objects.find((object) => object.kind === 'markdown')
+
+const ensureFirstMarkdown = (
+  objects: StudyObject[],
+  packId: string,
+  title: string,
+  markdown: string,
+  events: string[],
+): StudyObject[] => {
+  if (objects[0]?.kind === 'markdown') {
+    return objects
+  }
+
+  const existingMarkdown = firstMarkdownObject(objects)
+  const otherObjects = objects.filter((object) => object !== existingMarkdown)
+  const markdownObject =
+    existingMarkdown ||
+    ({
+      ...createBase(packId, 'markdown', 0, 'Lesson explanation'),
+      kind: 'markdown',
+      markdown: markdown || `# ${title}\n\nReview this lesson before practice.`,
+    } as StudyObject)
+
+  if (!existingMarkdown) {
+    events.push('Repaired dashboard: added first markdown explanation.')
+  }
+
+  return [markdownObject, ...otherObjects]
+}
+
+const fillDashboardObjects = (
+  objects: StudyObject[],
+  contract: LocalRepairedContract,
+  packId: string,
+  targetCount: number,
+  events: string[],
+): StudyObject[] => {
+  const filled = [...objects]
+  const concepts = (
+    Array.isArray(contract.concepts) ? contract.concepts : []
+  ).filter((concept) => !isBadConcept(concept.concept))
+  let cursor = 0
+
+  while (filled.length < targetCount && concepts.length > 0) {
+    const concept = concepts[cursor % concepts.length]
+    const index = filled.length
+    filled.push(
+      index % 2 === 0
+        ? conceptQuiz(packId, concept, index)
+        : conceptFlashcard(packId, concept, index),
+    )
+    cursor += 1
+    events.push('Augmented Local AI dashboard: added concept practice object.')
+  }
+
+  return filled
+}
+
+const wordCount = (value: string): number =>
+  value.split(/\s+/).filter(Boolean).length
+
+const isLocalRepairedContract = (
+  value: unknown,
+): value is LocalRepairedContract => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const record = value as Partial<Record<keyof LocalRepairedContract, unknown>>
+
+  return (
+    Array.isArray(record.sourceSummary) &&
+    Array.isArray(record.concepts) &&
+    Array.isArray(record.sections) &&
+    Array.isArray(record.quizzes) &&
+    Array.isArray(record.flashcards)
+  )
+}
+
+const fallbackContractFromDashboard = (
+  title: string,
+  summary: string,
+  rawNotes: string,
+): LocalRepairedContract => ({
+  title,
+  summary,
+  rawNotes,
+  sourceSummary: [],
+  concepts: conceptsFromRawNotes(rawNotes),
+  sections: [],
+  quizzes: [],
+  flashcards: [],
+})
+
+const flatDashboardObjects = (
+  record: Record<string, unknown>,
+  packId: string,
+  title: string,
+  rawNotes: string,
+  events: string[],
+): StudyObject[] => {
+  const objects: StudyObject[] = []
+  const markdown =
+    blockValue(record.notes) ||
+    blockValue(record.markdown) ||
+    blockValue(record.explanation) ||
+    blockValue(record.content)
+
+  if (markdown || rawNotes) {
+    objects.push({
+      ...createBase(packId, 'markdown', 0, 'Explanation'),
+      kind: 'markdown',
+      markdown: markdown || rawNotes || `# ${title}`,
+    })
+  }
+
+  const qaQuestion = stringValue(
+    record.qaQ || record.qaQuestion || record.question,
+  )
+  const qaAnswer = stringValue(record.qaA || record.qaAnswer || record.answer)
+  if (qaQuestion && qaAnswer && !isBadLocalText(qaQuestion)) {
+    objects.push({
+      ...createBase(packId, 'qa', 0, 'Check understanding'),
+      kind: 'qa',
+      question: qaQuestion,
+      answer: qaAnswer,
+    })
+  }
+
+  const quizQuestion = stringValue(record.quizQ || record.quizQuestion)
+  const quizOptions = stringArrayValue(record.quizOptions || record.options)
+  const quizCorrectIndex =
+    typeof record.quizCorrectIndex === 'number'
+      ? record.quizCorrectIndex
+      : typeof record.correctIndex === 'number'
+        ? record.correctIndex
+        : 0
+  const quizAnswer =
+    quizCorrectIndex >= 0 && quizCorrectIndex < quizOptions.length
+      ? quizOptions[quizCorrectIndex]
+      : quizOptions[0] || ''
+  const quiz = repairLocalQuiz(
+    {
+      question: quizQuestion,
+      options: quizOptions,
+      correctIndex: quizCorrectIndex,
+      answer: quizAnswer || stringValue(record.quizAnswer),
+      explanation:
+        stringValue(record.quizExplanation) ||
+        (quizAnswer ? `Correct answer: ${quizAnswer}` : ''),
+    },
+    0,
+    events,
+  )
+  if (quiz) {
+    objects.push({
+      ...createBase(packId, 'quiz', 0, 'Practice question'),
+      kind: 'quiz',
+      quizMode: quiz.options.length >= 3 ? 'multipleChoice' : 'shortAnswer',
+      question: quiz.question,
+      options: quiz.options.length >= 3 ? quiz.options : [],
+      correctIndex: quiz.options.length >= 3 ? quiz.correctIndex : 0,
+      answer: quiz.answer,
+      explanation: quiz.explanation,
+    })
+  }
+
+  const listItems = stringArrayValue(record.listItems || record.items).filter(
+    (item) => !isBadLocalText(item),
+  )
+  if (listItems.length > 0) {
+    objects.push({
+      ...createBase(
+        packId,
+        'list',
+        0,
+        stringValue(record.listTitle) || 'Key points',
+      ),
+      kind: 'list',
+      items: listItems,
+      ordered: false,
+      checklist: false,
+    })
+  }
+
+  if (objects.length > 0) {
+    events.push('Mapped Local AI flat dashboard shape into study objects.')
+  }
+
+  return objects
+}
+
+const hasMeaningfulDashboardInput = (
+  record: Record<string, unknown>,
+): boolean => {
+  if (wordCount(blockValue(record.rawNotes)) >= 5) {
+    return true
+  }
+
+  if (wordCount(blockValue(record.notes)) >= 5) {
+    return true
+  }
+
+  if (wordCount(summaryString(record.summary)) >= 5) {
+    return true
+  }
+
+  if (
+    blockValue(record.markdown) ||
+    (stringValue(record.qaQ) && stringValue(record.qaA)) ||
+    (stringValue(record.qaQuestion) && stringValue(record.qaAnswer)) ||
+    stringValue(record.quizQ) ||
+    stringValue(record.quizQuestion) ||
+    stringArrayValue(record.listItems).length > 0
+  ) {
+    return true
+  }
+
+  if (stringArrayValue(record.sourceSummary).length > 0) {
+    return true
+  }
+
+  if (
+    (Array.isArray(record.concepts) ? record.concepts : []).some((item) =>
+      Boolean(conceptFromRecord(item, 0, [])),
+    )
+  ) {
+    return true
+  }
+
+  if (
+    (Array.isArray(record.quizzes) ? record.quizzes : []).some((item) =>
+      item && typeof item === 'object'
+        ? Boolean(repairLocalQuiz(item as Record<string, unknown>, 0, []))
+        : false,
+    )
+  ) {
+    return true
+  }
+
+  if (
+    (Array.isArray(record.flashcards) ? record.flashcards : []).some((item) => {
+      const input =
+        item && typeof item === 'object'
+          ? (item as Record<string, unknown>)
+          : {}
+      const question =
+        stringValue(input.question) ||
+        stringValue(input.front) ||
+        stringValue(input.prompt)
+      const answer =
+        stringValue(input.answer) ||
+        stringValue(input.back) ||
+        stringValue(input.definition)
+
+      return Boolean(question && answer && !isBadLocalText(question))
+    })
+  ) {
+    return true
+  }
+
+  return false
+}
+
 const mapLocalDashboard = (
   input: unknown,
   index: number,
   options: GenerateStudyPathWithAiOptions,
   rawAiResponse: string,
   role: StudyPathDashboardRole,
+  targetCount: number,
 ): AiStudyPathDashboardDraft | null => {
   const record =
     input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
@@ -419,57 +1459,308 @@ const mapLocalDashboard = (
     rawAiResponse,
     dashboardRole: role,
   })
+  const events = [...(draft.debugTrace?.droppedOrRepairedItems || [])]
+  if (draft.objects.length === 0 && !hasMeaningfulDashboardInput(record)) {
+    return null
+  }
 
-  if (draft.objects.length === 0 && !stringValue(record.rawNotes)) {
+  const summary = summaryString(record.summary) || 'Generated local AI lesson.'
+  const rawNotes =
+    blockValue(record.notes) ||
+    blockValue(record.rawNotes) ||
+    draft.rawNotes ||
+    summary
+  const contract = isLocalRepairedContract(draft.debugTrace?.validatedContract)
+    ? draft.debugTrace.validatedContract
+    : fallbackContractFromDashboard(title, summary, rawNotes)
+  const flatObjects = flatDashboardObjects(
+    record,
+    packId,
+    title,
+    rawNotes,
+    events,
+  )
+  const markdownObjects = ensureFirstMarkdown(
+    flatObjects.length > 0 ? flatObjects : draft.objects,
+    packId,
+    title,
+    buildRawNotesFromContract(
+      title,
+      summary,
+      Array.isArray(contract.sourceSummary) ? contract.sourceSummary : [],
+      Array.isArray(contract.concepts) ? contract.concepts : [],
+    ) || rawNotes,
+    events,
+  )
+  const finalObjects = fillDashboardObjects(
+    markdownObjects,
+    contract || {
+      title,
+      summary,
+      rawNotes,
+      sourceSummary: [],
+      concepts: conceptsFromRawNotes(rawNotes),
+      sections: [],
+      quizzes: [],
+      flashcards: [],
+    },
+    packId,
+    targetCount,
+    events,
+  ).slice(0, Math.max(targetCount, 6))
+
+  if (finalObjects.length === 0 && !rawNotes) {
     return null
   }
 
   return {
     ...draft,
     title,
-    summary: stringValue(record.summary) || 'Generated local AI lesson.',
-    rawNotes: stringValue(record.rawNotes) || stringValue(record.summary),
+    summary,
+    rawNotes,
     dashboardRole: role,
     sourceFormat: 'text',
+    objects: finalObjects,
+    debugTrace: draft.debugTrace
+      ? {
+          ...draft.debugTrace,
+          rawDashboardInput: record,
+          roleSanitizedInput: contract,
+          validatedContract: contract,
+          droppedOrRepairedItems: events,
+          finalObjects,
+        }
+      : draft.debugTrace,
   }
+}
+
+const specificFolderName = (
+  value: string,
+  fallback: string,
+  prompt: string,
+): string => {
+  const candidate = normalizeSpaces(value)
+  if (candidate && !genericFolderNames.has(normalizeKey(candidate))) {
+    return candidate
+  }
+
+  const languageLevel = prompt.match(
+    /\b(english|spanish|french|german|italian|portuguese|japanese|korean|chinese|arabic|dutch|swedish|norwegian|danish|polish|russian)\s+(?:level\s+)?(a1|a2|b1|b2|c1|c2)\b/i,
+  )
+  if (languageLevel) {
+    return `${titleValue(languageLevel[1], 'Language')} ${languageLevel[2].toUpperCase()}`
+  }
+
+  const fallbackCandidate = normalizeSpaces(fallback)
+  if (
+    fallbackCandidate &&
+    !genericFolderNames.has(normalizeKey(fallbackCandidate))
+  ) {
+    return fallbackCandidate
+  }
+
+  return 'Local AI Study Path'
+}
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
+
+const localAiFailureCodeForError = (
+  error: unknown,
+): LocalAiGenerationFailureCode => {
+  const message = errorMessage(error)
+  if (/timed out|timeout/i.test(message)) {
+    return 'timeout'
+  }
+
+  if (/not supported/i.test(message)) {
+    return 'unsupported'
+  }
+
+  if (/unavailable|cooling down|busy or unstable/i.test(message)) {
+    return 'unavailable'
+  }
+
+  return 'unknown'
+}
+
+const localAiFailureMessageForCode = (
+  code: LocalAiGenerationFailureCode,
+  fallback: string,
+): string => {
+  if (code === 'timeout') {
+    return LOCAL_STUDY_PATH_TIMEOUT_MESSAGE
+  }
+
+  return fallback
+}
+
+const hasUsableMappedWidgets = (
+  dashboard: AiStudyPathDashboardDraft | null,
+): dashboard is AiStudyPathDashboardDraft => {
+  if (!dashboard || dashboard.objects.length === 0) {
+    return false
+  }
+
+  return dashboard.objects.some((object) => {
+    if (object.kind === 'markdown') {
+      const content = normalizeSpaces(object.markdown.replace(/^#+\s*/gm, ''))
+      return content.split(/\s+/).filter(Boolean).length >= 5
+    }
+
+    return true
+  })
+}
+
+const logLocalDashboardError = (
+  debug: LocalAiGenerationFailureDebug,
+  error: unknown,
+): void => {
+  console.debug('[AquaMesh Local AI] dashboard:error', {
+    dashboardIndex: debug.dashboardIndex,
+    dashboardCount: debug.dashboardCount,
+    promptLength: debug.promptLength,
+    rawResponse: debug.rawResponse,
+    parsedJson: debug.parsedJson,
+    parseError: debug.parseError,
+    mappingError: debug.mappingError,
+    droppedOrRepairedItems: debug.droppedOrRepairedItems,
+    message: errorMessage(error),
+  })
 }
 
 export const generateStudyPathWithLocalAi = async (
   options: GenerateStudyPathWithAiOptions,
   localOptions: LocalGenerationOptions = {},
 ): Promise<AiStudyPathDraft> => {
-  const text = await callLocalLanguageModel(localStudyPathPrompt(options), {
-    timeoutMs: 5 * 60 * 1000,
-    onProgress: localOptions.onProgress,
-  })
-  const parsed = parseLocalAiJson(text)
-  const record =
-    parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
-  const rawDashboards = Array.isArray(record.dashboards) ? record.dashboards : []
-  const expectedCount = getLocalStudyPathDashboardCount(options.generationAmount)
+  if (normalizeStudyPathGenerationAmount(options.generationAmount) === 'deep') {
+    throw new Error(LOCAL_DEEP_BLOCKED_MESSAGE)
+  }
+
+  await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
+  const expectedCount = getLocalStudyPathDashboardCount(
+    options.generationAmount,
+  )
   const roles = getStudyPathDashboardRoles(options.generationAmount).slice(
     0,
     expectedCount,
   )
-  const dashboards = rawDashboards
-    .slice(0, expectedCount)
-    .map((dashboard, index) =>
-      mapLocalDashboard(dashboard, index, options, text, roleForIndex(roles, index)),
+  const targetCount = 4
+  const dashboards: AiStudyPathDashboardDraft[] = []
+  const rawResponses: string[] = []
+
+  for (let index = 0; index < expectedCount; index += 1) {
+    const promptText = localStudyPathDashboardPrompt(
+      options,
+      index,
+      expectedCount,
     )
-    .filter((dashboard): dashboard is AiStudyPathDashboardDraft =>
-      Boolean(dashboard),
-    )
+    const debug: LocalAiGenerationFailureDebug = {
+      dashboardIndex: index + 1,
+      dashboardCount: expectedCount,
+      promptLength: promptText.length,
+    }
+    try {
+      const text = await callLocalLanguageModel(promptText, {
+        timeoutMs: LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS,
+        onProgress: localOptions.onProgress,
+        progressLabel: `Generating dashboard ${index + 1} of ${expectedCount}...`,
+        dashboardIndex: index + 1,
+        dashboardCount: expectedCount,
+      })
+      rawResponses.push(text)
+      debug.rawResponse = text
+      let parsed: unknown
+      try {
+        parsed = parseLocalAiJson(text)
+        debug.parsedJson = parsed
+      } catch (error) {
+        debug.parseError = errorMessage(error)
+        logLocalDashboardError(debug, error)
+        throw new LocalAiGenerationError(
+          'invalidJson',
+          LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE,
+          { debug, cause: error },
+        )
+      }
+      const record =
+        parsed && typeof parsed === 'object'
+          ? (parsed as Record<string, unknown>)
+          : {}
+      const dashboard = Array.isArray(record.dashboards)
+        ? record.dashboards[0]
+        : record
+      let mappedDashboard: AiStudyPathDashboardDraft | null
+      try {
+        mappedDashboard = mapLocalDashboard(
+          dashboard,
+          index,
+          options,
+          text,
+          roleForIndex(roles, index),
+          targetCount,
+        )
+        debug.droppedOrRepairedItems =
+          mappedDashboard?.debugTrace?.droppedOrRepairedItems || []
+      } catch (error) {
+        debug.mappingError = errorMessage(error)
+        logLocalDashboardError(debug, error)
+        throw new LocalAiGenerationError(
+          'noUsableObjects',
+          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+          { debug, cause: error },
+        )
+      }
+
+      if (hasUsableMappedWidgets(mappedDashboard)) {
+        dashboards.push(mappedDashboard)
+      } else {
+        debug.mappingError = 'No usable Study Path widgets were produced.'
+        debug.droppedOrRepairedItems =
+          debug.droppedOrRepairedItems &&
+          debug.droppedOrRepairedItems.length > 0
+            ? debug.droppedOrRepairedItems
+            : ['No usable Local AI objects found.']
+        logLocalDashboardError(debug, new Error(debug.mappingError))
+        throw new LocalAiGenerationError(
+          'noUsableObjects',
+          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+          { debug },
+        )
+      }
+    } catch (error) {
+      if (isLocalAiGenerationError(error)) {
+        throw error
+      }
+
+      const code = localAiFailureCodeForError(error)
+      logLocalDashboardError(debug, error)
+      throw new LocalAiGenerationError(
+        code,
+        localAiFailureMessageForCode(code, errorMessage(error)),
+        { debug, cause: error },
+      )
+    }
+  }
 
   if (dashboards.length === 0) {
-    throw new Error('Google Local AI did not return usable Study Path dashboards.')
+    throw new Error(
+      'Google Local AI did not return usable Study Path dashboards.',
+    )
   }
 
   return {
-    title: stringValue(record.title) || options.title,
-    folderName: stringValue(record.folderName) || options.folderName || options.title,
+    title: options.title,
+    folderName: specificFolderName(
+      '',
+      options.folderName || options.title,
+      options.prompt,
+    ),
     dashboards,
     warnings: [
-      'Google Local AI is experimental and works best with Super small or Compact generation.',
+      rawResponses.length > 2
+        ? 'Google Local AI generated this Compact path one dashboard at a time and may be slow.'
+        : 'Google Local AI generated this Super small path one dashboard at a time.',
     ],
   }
 }
