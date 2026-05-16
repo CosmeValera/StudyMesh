@@ -12,7 +12,10 @@ interface LocalLanguageModelSession {
   ) => Promise<string>
   destroy?: () => void
 }
-
+type LocalLanguageModelExpectedOutput = {
+  type: 'text'
+  languages: LocalLanguage[]
+}
 type LocalLanguageModelExpectedInput =
   | { type: 'text'; languages: LocalLanguage[] }
   | { type: 'image' }
@@ -38,11 +41,15 @@ interface LocalLanguageModelMonitor extends EventTarget {
 interface LocalLanguageModelFactory {
   availability: (options?: {
     languages?: LocalLanguage[]
+    outputLanguage?: LocalLanguage
     expectedInputs?: LocalLanguageModelExpectedInput[]
+    expectedOutputs?: LocalLanguageModelExpectedOutput[]
   }) => Promise<LocalLanguageModelAvailability>
+
   create: (options?: {
     outputLanguage?: LocalLanguage
     expectedInputs?: LocalLanguageModelExpectedInput[]
+    expectedOutputs?: LocalLanguageModelExpectedOutput[]
     monitor?: (monitor: LocalLanguageModelMonitor) => void
   }) => Promise<LocalLanguageModelSession>
 }
@@ -78,7 +85,7 @@ export interface LocalAiProgressEvent {
 
 const LOCAL_AI_TIMEOUT_MS = 90 * 1000
 const LOCAL_AI_CREATE_TIMEOUT_MS = 60 * 1000
-const LOCAL_AI_SMOKE_TIMEOUT_MS = 25 * 1000
+const LOCAL_AI_SMOKE_TIMEOUT_MS = 60 * 1000
 const LOCAL_AI_COOLDOWN_MS = 8000
 const LOCAL_AI_TIMEOUT_MESSAGE =
   'Local AI timed out. Try again, choose a smaller path, or use Own Gemini token.'
@@ -187,6 +194,7 @@ export const isLocalLanguageModelSupported = (): boolean =>
 export const getLocalLanguageModelAvailability = async (
   language: LocalLanguage = 'en',
   expectedInputs?: LocalLanguageModelExpectedInput[],
+  expectedOutputs?: LocalLanguageModelExpectedOutput[],
 ): Promise<LocalLanguageModelAvailability> => {
   const languageModel = getLanguageModel()
   if (!languageModel) {
@@ -198,7 +206,13 @@ export const getLocalLanguageModelAvailability = async (
     debugLocalAi('availability:start', { language, expectedInputs })
     const availability = await languageModel.availability({
       languages: [language],
-      ...(expectedInputs ? { expectedInputs } : {}),
+      outputLanguage: language,
+      expectedInputs: expectedInputs || [
+        { type: 'text' as const, languages: [language] },
+      ],
+      expectedOutputs: expectedOutputs || [
+        { type: 'text' as const, languages: [language] },
+      ],
     })
     debugLocalAi('availability:end', {
       availability,
@@ -308,9 +322,13 @@ export const callLocalLanguageModel = async (
   const expectedInputs = options.expectedInputs || [
     { type: 'text' as const, languages: [outputLanguage] },
   ]
+  const expectedOutputs = [
+    { type: 'text' as const, languages: [outputLanguage] },
+  ]
   const availability = await getLocalLanguageModelAvailability(
     outputLanguage,
     expectedInputs,
+    expectedOutputs
   )
   if (availability === 'unavailable') {
     throw new Error(
@@ -325,6 +343,7 @@ export const callLocalLanguageModel = async (
     const createPromise = languageModel.create({
       outputLanguage,
       expectedInputs,
+      expectedOutputs,
       monitor: (monitor) => {
         monitor.addEventListener('downloadprogress', (event) => {
           const total = Number(event.total || 0)
@@ -467,7 +486,7 @@ export const smokeTestLocalLanguageModel = async (
   } = {},
 ): Promise<void> => {
   try {
-    const result = await callLocalLanguageModel('Return JSON: {"ok":true}', {
+    const result = await callLocalLanguageModel('Return exactly this JSON and nothing else: {"ok":true}', {
       outputLanguage: 'en',
       timeoutMs: LOCAL_AI_SMOKE_TIMEOUT_MS,
       timeoutStage: 'smoke',

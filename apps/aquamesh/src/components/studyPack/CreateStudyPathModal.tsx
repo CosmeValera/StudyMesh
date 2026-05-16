@@ -26,6 +26,7 @@ import {
 } from '../../studyPack'
 import {
   AiGenerationDebugTrace,
+  AiStudyPathDashboardDraft,
   AiStudyPathDraft,
   assertRoleObjectsAreClean,
   filterStudyObjectsForDashboardRole,
@@ -91,7 +92,7 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
 }
 
 const LOCAL_AI_ESTIMATE_COPY =
-  'Local AI runs on your device and can be slow. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
+  'Local AI runs on your device and can be slow. It creates compact notes plus a few practice cards. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
 
@@ -106,7 +107,7 @@ const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
-    ? 'Local AI is running on your device. Each dashboard has its own estimated generation timer.'
+    ? 'Local AI is running on your device. Each dashboard has compact notes plus a few practice cards and its own estimated generation timer.'
     : provider === 'gemini'
       ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
       : provider === 'basic'
@@ -149,6 +150,14 @@ const getObjectPreview = (object?: StudyObject) => {
       return 'Generated study widgets for this lesson.'
   }
 }
+
+const getDashboardPreviewSummary = (
+  dashboard: AiStudyPathDashboardDraft,
+  provider: StudyPackAiProvider,
+): string =>
+  provider === 'local' && !dashboard.summary
+    ? truncate(getObjectPreview(dashboard.objects[0]))
+    : dashboard.summary || truncate(getObjectPreview(dashboard.objects[0]))
 
 const truncate = (value: string, max = 150) => {
   const normalized = value.replace(/\s+/g, ' ').trim()
@@ -644,7 +653,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                         {dashboard.title}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {dashboard.summary}
+                        {getDashboardPreviewSummary(dashboard, aiProvider)}
                       </Typography>
                       <Typography variant="body2">
                         {truncate(getObjectPreview(dashboard.objects[0]))}

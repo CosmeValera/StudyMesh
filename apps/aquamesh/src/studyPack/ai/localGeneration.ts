@@ -1201,12 +1201,13 @@ const localStudyPathDashboardPrompt = (
         ? 'first focused lesson'
         : 'second practice-oriented lesson'
       : `lesson ${index + 1}`
-
   return `Return minified JSON only. End with }.
 Create dashboard ${index + 1} of ${count} for "${title}" (${lessonHint}).
 Shape:
-{"title":"${String(index + 1).padStart(2, '0')} - Lesson","summary":"...","notes":"max 60 words","qaQ":"...","qaA":"...","quizQ":"...","quizOptions":["...","...","..."],"quizCorrectIndex":0,"listItems":["...","...","..."]}
-Rules: no objects array. No markdown fences. Keep it short. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
+{"title":"${String(index + 1).padStart(2, '0')} - Lesson","notes":"Markdown notes, 70-110 words","flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
+Rules: small valid JSON only. No summary field. No listItems. No objects array. No nested objects except flashcards[] and quizzes[]. No markdown fences. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
+Write notes as compact Markdown: optional short heading plus bullets or short paragraphs. Include the minimum theory needed to answer every flashcard and quiz.
+Make flashcards and quizzes directly answerable from notes.
 For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.
 Introductions are appropriate only when no level is given or the request is beginner-level. Otherwise use level-appropriate grammar, vocabulary, realistic situations, and practice.
 User topic:
@@ -1224,8 +1225,9 @@ const localStudyPathDashboardRetryPrompt = (
   return `Return one tiny minified JSON object only. End with }.
 Retry attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} for dashboard ${index + 1} of ${count} for "${options.title}".
 Use exactly these fields:
-{"title":"${String(index + 1).padStart(2, '0')} - Lesson","summary":"one sentence","notes":"35 words max","qaQ":"short question","qaA":"short answer","quizQ":"short question","quizOptions":["A","B","C"],"quizCorrectIndex":0,"listItems":["point 1","point 2","point 3"]}
-No rich text. No objects array. No extra fields. No prose. No code fence. Keep every string short.
+{"title":"${String(index + 1).padStart(2, '0')} - Lesson","notes":"50-80 words","flashcards":[{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["A","B","C"],"correctIndex":0}]}
+Prioritize valid JSON over rich content. No summary. No listItems. No objects array. No nested objects except flashcards[] and quizzes[]. No extra fields. No prose outside JSON. No code fence.
+Notes can be plain text. Flashcards and quizzes must be answerable from notes.
 Topic:
 ${compactPrompt}`
 }
@@ -1320,6 +1322,13 @@ const fillDashboardObjects = (
 const wordCount = (value: string): number =>
   value.split(/\s+/).filter(Boolean).length
 
+const previewSummaryFromNotes = (notes: string, fallback: string): string => {
+  const cleaned = normalizeSpaces(notes.replace(/^#{1,6}\s*/gm, ''))
+  const sentence = cleaned.match(/^[^.!?]+[.!?]/)?.[0]
+
+  return normalizeSpaces(sentence || cleaned).slice(0, 180) || fallback
+}
+
 const isLocalRepairedContract = (
   value: unknown,
 ): value is LocalRepairedContract => {
@@ -1362,6 +1371,7 @@ const flatDashboardObjects = (
 ): StudyObject[] => {
   const objects: StudyObject[] = []
   const markdown =
+    blockValue(record.notes) ||
     rawNotes ||
     blockValue(record.markdown) ||
     blockValue(record.explanation) ||
@@ -1375,18 +1385,70 @@ const flatDashboardObjects = (
     })
   }
 
+  const flashcards = Array.isArray(record.flashcards) ? record.flashcards : []
+  flashcards.slice(0, 4).forEach((item, index) => {
+    const input =
+      item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+    const question =
+      stringValue(input.question) ||
+      stringValue(input.front) ||
+      stringValue(input.prompt)
+    const answer =
+      stringValue(input.answer) ||
+      stringValue(input.back) ||
+      stringValue(input.definition)
+
+    if (!question || !answer || isBadLocalText(question)) {
+      events.push(`Dropped flashcard ${index + 1}: weak or incomplete card.`)
+      return
+    }
+
+    objects.push({
+      ...createBase(packId, 'qa', index, `Flashcard ${index + 1}`),
+      kind: 'qa',
+      question,
+      answer,
+    })
+  })
+
   const qaQuestion = stringValue(
     record.qaQ || record.qaQuestion || record.question,
   )
   const qaAnswer = stringValue(record.qaA || record.qaAnswer || record.answer)
   if (qaQuestion && qaAnswer && !isBadLocalText(qaQuestion)) {
     objects.push({
-      ...createBase(packId, 'qa', 0, 'Check understanding'),
+      ...createBase(packId, 'qa', flashcards.length, 'Check understanding'),
       kind: 'qa',
       question: qaQuestion,
       answer: qaAnswer,
     })
   }
+
+  const quizzes = Array.isArray(record.quizzes) ? record.quizzes : []
+  quizzes.slice(0, 4).forEach((item, index) => {
+    const input =
+      item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+    const quiz = repairLocalQuiz(input, index, events)
+    if (!quiz) {
+      return
+    }
+
+    if (quiz.options.length < 3) {
+      events.push(`Dropped quiz ${index + 1}: fewer than 3 unique options.`)
+      return
+    }
+
+    objects.push({
+      ...createBase(packId, 'quiz', index, `Quiz ${index + 1}`),
+      kind: 'quiz',
+      quizMode: 'multipleChoice',
+      question: quiz.question,
+      options: quiz.options,
+      correctIndex: quiz.correctIndex,
+      answer: quiz.answer,
+      explanation: quiz.explanation,
+    })
+  })
 
   const quizQuestion = stringValue(record.quizQ || record.quizQuestion)
   const quizOptions = stringArrayValue(record.quizOptions || record.options)
@@ -1413,9 +1475,9 @@ const flatDashboardObjects = (
     0,
     events,
   )
-  if (quiz) {
+  if (quiz && quiz.options.length >= 3) {
     objects.push({
-      ...createBase(packId, 'quiz', 0, 'Practice question'),
+      ...createBase(packId, 'quiz', quizzes.length, 'Practice question'),
       kind: 'quiz',
       quizMode: quiz.options.length >= 3 ? 'multipleChoice' : 'shortAnswer',
       question: quiz.question,
@@ -1426,26 +1488,10 @@ const flatDashboardObjects = (
     })
   }
 
-  const listItems = stringArrayValue(record.listItems || record.items).filter(
-    (item) => !isBadLocalText(item),
-  )
-  if (listItems.length > 0) {
-    objects.push({
-      ...createBase(
-        packId,
-        'list',
-        0,
-        stringValue(record.listTitle) || 'Key points',
-      ),
-      kind: 'list',
-      items: listItems,
-      ordered: false,
-      checklist: false,
-    })
-  }
-
   if (objects.length > 0) {
-    events.push('Mapped Local AI flat dashboard shape into study objects.')
+    events.push(
+      'Mapped Local AI notes and recall dashboard shape into study objects.',
+    )
   }
 
   return objects
@@ -1549,12 +1595,15 @@ const mapLocalDashboard = (
     return null
   }
 
-  const summary = summaryString(record.summary) || 'Generated local AI lesson.'
   const rawNotes =
     blockValue(record.rawNotes) ||
     blockValue(record.notes) ||
     draft.rawNotes ||
-    summary
+    summaryString(record.summary) ||
+    ''
+  const summary =
+    summaryString(record.summary) ||
+    previewSummaryFromNotes(rawNotes, title || 'Generated local AI lesson.')
   const contract = isLocalRepairedContract(draft.debugTrace?.validatedContract)
     ? draft.debugTrace.validatedContract
     : fallbackContractFromDashboard(title, summary, rawNotes)
@@ -1565,8 +1614,22 @@ const mapLocalDashboard = (
     rawNotes,
     events,
   )
+  const flatHasRecall = flatObjects.some(
+    (object) => object.kind === 'qa' || object.kind === 'quiz',
+  )
+  const sourceObjects = flatHasRecall
+    ? flatObjects
+    : [
+        ...flatObjects,
+        ...draft.objects.filter(
+          (object) =>
+            object.kind !== 'markdown' &&
+            object.kind !== 'list' &&
+            (object.kind === 'qa' || object.kind === 'quiz'),
+        ),
+      ]
   const markdownObjects = ensureFirstMarkdown(
-    flatObjects.length > 0 ? flatObjects : draft.objects,
+    sourceObjects.length > 0 ? sourceObjects : draft.objects,
     packId,
     title,
     buildRawNotesFromContract(
@@ -1577,22 +1640,9 @@ const mapLocalDashboard = (
     ) || rawNotes,
     events,
   )
-  const finalObjects = fillDashboardObjects(
-    markdownObjects,
-    contract || {
-      title,
-      summary,
-      rawNotes,
-      sourceSummary: [],
-      concepts: conceptsFromRawNotes(rawNotes),
-      sections: [],
-      quizzes: [],
-      flashcards: [],
-    },
-    packId,
-    targetCount,
-    events,
-  ).slice(0, Math.max(targetCount, 6))
+  const finalObjects = markdownObjects
+    .filter((object) => object.kind !== 'list')
+    .slice(0, Math.max(targetCount, 6))
 
   if (finalObjects.length === 0 && !rawNotes) {
     return null
@@ -1691,6 +1741,14 @@ const hasUsableMappedWidgets = (
   dashboard: AiStudyPathDashboardDraft | null,
 ): dashboard is AiStudyPathDashboardDraft => {
   if (!dashboard || dashboard.objects.length === 0) {
+    return false
+  }
+
+  if (
+    !dashboard.objects.some(
+      (object) => object.kind === 'qa' || object.kind === 'quiz',
+    )
+  ) {
     return false
   }
 

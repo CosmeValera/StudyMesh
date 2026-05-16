@@ -410,14 +410,20 @@ describe('local AI helpers', () => {
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '02 - Opinions with connectors',
-          rawNotes:
+          notes:
             '## Goal\nGive opinions with connectors.\n\n## Explanation\nB1 Spanish uses connectors such as aunque, sin embargo, and por eso to join ideas and justify opinions.\n\n## Examples\nCreo que es util, aunque cuesta practicar.',
-          concepts: [
+          flashcards: [
             {
-              concept: 'Opinion connectors',
-              definition:
+              question: 'What do opinion connectors join?',
+              answer:
                 'Connectors join an opinion with a contrast, cause, or result.',
-              keyFact: 'Aunque introduces contrast.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which connector introduces contrast?',
+              options: ['aunque', 'por eso', 'porque'],
+              correctIndex: 0,
             },
           ],
         }),
@@ -425,14 +431,24 @@ describe('local AI helpers', () => {
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '03 - Travel situations',
-          rawNotes:
+          notes:
             '## Goal\nHandle travel and work situations.\n\n## Explanation\nB1 speakers explain plans, problems, preferences, and solutions with connected sentences.\n\n## Practice\nAsk for alternatives and explain a preference.',
-          concepts: [
+          flashcards: [
             {
-              concept: 'Travel problem solving',
-              definition:
+              question: 'What should a travel problem response include?',
+              answer:
                 'Explain a travel problem and request a clear alternative.',
-              keyFact: 'Use polite requests and reasons.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'What makes a useful travel request?',
+              options: [
+                'polite request with reasons',
+                'single noun',
+                'random greeting',
+              ],
+              correctIndex: 0,
             },
           ],
         }),
@@ -459,7 +475,7 @@ describe('local AI helpers', () => {
         (dashboard) =>
           dashboard.rawNotes.trim() &&
           dashboard.objects[0]?.kind === 'markdown' &&
-          dashboard.objects.length >= 4,
+          dashboard.objects.length >= 3,
       ),
     ).toBe(true)
     expect(JSON.stringify(draft.dashboards)).not.toMatch(
@@ -995,28 +1011,40 @@ describe('local AI helpers', () => {
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Italian modal verbs',
-          summary: 'Practice modal verbs.',
           notes:
             'Use potere, dovere, and volere for ability, obligation, and desire.',
-          qaQ: 'Which verb expresses obligation?',
-          qaA: 'Dovere expresses obligation.',
-          quizQ: 'Which sentence means I must study?',
-          quizOptions: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
-          quizCorrectIndex: 0,
-          listItems: ['potere = can', 'dovere = must', 'volere = want'],
+          flashcards: [
+            {
+              question: 'Which verb expresses obligation?',
+              answer: 'Dovere expresses obligation.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which sentence means I must study?',
+              options: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
+              correctIndex: 0,
+            },
+          ],
         }),
       )
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '02 - Practice',
-          summary: 'Apply modal verbs.',
           notes: 'Choose modal verbs based on meaning.',
-          qaQ: 'Which verb expresses desire?',
-          qaA: 'Volere expresses desire.',
-          quizQ: 'Which sentence means I want to leave?',
-          quizOptions: ['Voglio partire', 'Devo partire', 'Posso partire'],
-          quizCorrectIndex: 0,
-          listItems: ['ability uses potere', 'obligation uses dovere'],
+          flashcards: [
+            {
+              question: 'Which verb expresses desire?',
+              answer: 'Volere expresses desire.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which sentence means I want to leave?',
+              options: ['Voglio partire', 'Devo partire', 'Posso partire'],
+              correctIndex: 0,
+            },
+          ],
         }),
       )
     vi.stubGlobal('LanguageModel', {
@@ -1036,7 +1064,13 @@ describe('local AI helpers', () => {
     const retryPrompt = String(prompt.mock.calls[2][0])
     expect(retryPrompt).toContain('Use exactly these fields')
     expect(retryPrompt).toContain('notes')
-    expect(retryPrompt).not.toMatch(/markdown/i)
+    expect(retryPrompt).toContain('50-80 words')
+    expect(retryPrompt).toContain('flashcards')
+    expect(retryPrompt).toContain('quizzes')
+    expect(retryPrompt).toContain('Prioritize valid JSON')
+    expect(retryPrompt).not.toContain('Markdown notes')
+    expect(retryPrompt).not.toContain('example')
+    expect(retryPrompt).toContain('No listItems')
     expect(draft.dashboards).toHaveLength(2)
     expect(draft.dashboards[0].debugTrace?.localAiFailedAttempts).toHaveLength(
       1,
@@ -1152,36 +1186,52 @@ describe('local AI helpers', () => {
     )
   })
 
-  it('prefers flat Local Study Path dashboard JSON and maps it into four widgets', async () => {
+  it('prefers compact Local Study Path dashboard JSON and maps recall widgets', async () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Italian modal verbs',
-          summary: 'Practice modal verbs in everyday Italian requests.',
           notes:
             'Italian B1 modal verbs help express what someone can, must, or wants to do.',
-          qaQ: 'Which modal verb expresses obligation?',
-          qaA: 'Dovere expresses obligation.',
-          quizQ: 'Which sentence means I must study?',
-          quizOptions: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
-          quizCorrectIndex: 0,
-          listItems: ['potere = can', 'dovere = must', 'volere = want'],
+          flashcards: [
+            {
+              question: 'Which modal verb expresses obligation?',
+              answer: 'Dovere expresses obligation.',
+            },
+            {
+              question: 'Which modal verb expresses ability?',
+              answer: 'Potere expresses ability.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which sentence means I must study?',
+              options: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
+              correctIndex: 0,
+            },
+          ],
         }),
       )
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '02 - Practice',
-          summary: 'Apply the modal verbs in short practice prompts.',
           notes:
             'Choose the right modal verb for ability, obligation, or desire.',
-          qaQ: 'Which modal verb expresses desire?',
-          qaA: 'Volere expresses desire.',
-          quizQ: 'Which sentence means I want to leave?',
-          quizOptions: ['Voglio partire', 'Devo partire', 'Posso partire'],
-          quizCorrectIndex: 0,
-          listItems: ['ability uses potere', 'obligation uses dovere'],
+          flashcards: [
+            {
+              question: 'Which modal verb expresses desire?',
+              answer: 'Volere expresses desire.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which sentence means I want to leave?',
+              options: ['Voglio partire', 'Devo partire', 'Posso partire'],
+              correctIndex: 0,
+            },
+          ],
         }),
       )
     vi.stubGlobal('LanguageModel', {
@@ -1201,11 +1251,58 @@ describe('local AI helpers', () => {
     expect(draft.dashboards[0].objects.map((object) => object.kind)).toEqual([
       'markdown',
       'qa',
+      'qa',
       'quiz',
-      'list',
     ])
     expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toContain(
-      'Mapped Local AI flat dashboard shape into study objects.',
+      'Mapped Local AI notes and recall dashboard shape into study objects.',
+    )
+  })
+
+  it('drops weak Local Study Path quiz options and ignores listItems widgets', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValue(
+        JSON.stringify({
+          title: '01 - Modal verbs',
+          notes: 'Modal verbs express ability, obligation, or desire.',
+          flashcards: [
+            {
+              question: 'Which verb expresses obligation?',
+              answer: 'Dovere.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which verb expresses obligation?',
+              options: ['Dovere', 'Dovere', 'Potere'],
+              correctIndex: 0,
+            },
+          ],
+          listItems: ['Do not render this as a list widget'],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.dashboards[0].objects.map((object) => object.kind)).toEqual([
+      'markdown',
+      'qa',
+    ])
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toContain(
+      'Dropped quiz 1: fewer than 3 unique options.',
     )
   })
 
@@ -1213,14 +1310,20 @@ describe('local AI helpers', () => {
     const dashboardJson = (index: number) =>
       JSON.stringify({
         title: `${String(index).padStart(2, '0')} - Lesson ${index}`,
-        summary: `Lesson ${index}`,
         notes: `Lesson ${index} notes explain a useful idea with examples.`,
-        qaQ: `What is lesson ${index} about?`,
-        qaA: `Lesson ${index} explains a useful idea.`,
-        quizQ: `Which answer fits lesson ${index}?`,
-        quizOptions: ['Correct idea', 'Wrong idea', 'Other idea'],
-        quizCorrectIndex: 0,
-        listItems: ['key point one', 'key point two', 'key point three'],
+        flashcards: [
+          {
+            question: `What is lesson ${index} about?`,
+            answer: `Lesson ${index} explains a useful idea.`,
+          },
+        ],
+        quizzes: [
+          {
+            question: `Which answer fits lesson ${index}?`,
+            options: ['Correct idea', 'Wrong idea', 'Other idea'],
+            correctIndex: 0,
+          },
+        ],
       })
     const prompt = vi
       .fn()
@@ -1261,27 +1364,39 @@ describe('local AI helpers', () => {
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Lesson',
-          summary: 'Lesson summary.',
           notes: '## Summary\n\nModal verbs express ability and obligation.',
-          qaQ: 'Which verb expresses obligation?',
-          qaA: 'Dovere.',
-          quizQ: 'Which sentence means I must study?',
-          quizOptions: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
-          quizCorrectIndex: 0,
-          listItems: ['potere = can', 'dovere = must', 'volere = want'],
+          flashcards: [
+            {
+              question: 'Which verb expresses obligation?',
+              answer: 'Dovere.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which sentence means I must study?',
+              options: ['Devo studiare', 'Posso studiare', 'Voglio studiare'],
+              correctIndex: 0,
+            },
+          ],
         }),
       )
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '02 - Exercises',
-          summary: 'Mixed practice.',
           notes: 'Practice modal verbs in realistic sentences.',
-          qaQ: 'Which verb expresses desire?',
-          qaA: 'Volere.',
-          quizQ: 'Which sentence means I want to leave?',
-          quizOptions: ['Voglio partire', 'Devo partire', 'Posso partire'],
-          quizCorrectIndex: 0,
-          listItems: ['ability uses potere', 'obligation uses dovere'],
+          flashcards: [
+            {
+              question: 'Which verb expresses desire?',
+              answer: 'Volere.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which sentence means I want to leave?',
+              options: ['Voglio partire', 'Devo partire', 'Posso partire'],
+              correctIndex: 0,
+            },
+          ],
         }),
       )
     vi.stubGlobal('LanguageModel', {
@@ -1299,6 +1414,10 @@ describe('local AI helpers', () => {
     })
 
     expect(draft.dashboards[0].rawNotes).toContain('Modal verbs express')
+    expect(draft.dashboards[0].objects[0]).toMatchObject({
+      kind: 'markdown',
+      markdown: '## Summary\n\nModal verbs express ability and obligation.',
+    })
     expect(draft.dashboards[0].debugTrace?.validatedContract).not.toMatchObject(
       {
         concepts: expect.arrayContaining([
@@ -1311,7 +1430,6 @@ describe('local AI helpers', () => {
       'markdown',
       'qa',
       'quiz',
-      'list',
     ])
   })
 
@@ -1424,13 +1542,18 @@ describe('local AI helpers', () => {
     const dashboardJson = (index: number) =>
       JSON.stringify({
         title: `${String(index).padStart(2, '0')} - Lesson ${index}`,
-        summary: `Lesson ${index}`,
-        rawNotes: `Lesson ${index} notes explain one useful language-learning concept with examples.`,
-        concepts: [
+        notes: `Lesson ${index} notes explain one useful language-learning concept with examples.`,
+        flashcards: [
           {
-            concept: `Grammar concept ${index}`,
-            definition: `Grammar concept ${index} definition with enough detail.`,
-            keyFact: `Grammar concept ${index} key fact.`,
+            question: `What does grammar concept ${index} explain?`,
+            answer: `Grammar concept ${index} explains a useful language-learning pattern.`,
+          },
+        ],
+        quizzes: [
+          {
+            question: `Which answer fits grammar concept ${index}?`,
+            options: ['Correct pattern', 'Wrong pattern', 'Unrelated pattern'],
+            correctIndex: 0,
           },
         ],
       })
@@ -1454,6 +1577,16 @@ describe('local AI helpers', () => {
     })
 
     const dashboardPrompt = String(prompt.mock.calls[1][0])
+    const exercisePrompt = String(prompt.mock.calls[2][0])
+    expect(dashboardPrompt).toContain('Markdown notes, 70-110 words')
+    expect(exercisePrompt).toContain('Markdown notes, 70-110 words')
+    expect(dashboardPrompt).toContain('flashcards')
+    expect(dashboardPrompt).toContain('quizzes')
+    expect(dashboardPrompt).toContain('No summary field')
+    expect(dashboardPrompt).toContain('No listItems')
+    expect(dashboardPrompt).toContain(
+      'Make flashcards and quizzes directly answerable from notes.',
+    )
     expect(dashboardPrompt).toContain(
       'For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.',
     )
