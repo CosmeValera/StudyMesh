@@ -8,25 +8,23 @@ Within each app, source files are in `src/`, public assets are in `public/`, and
 
 ## Product Direction & Core Workflows
 
-AquaMesh is evolving from a dashboard builder into a student knowledge wiki centered on the Create Study Pack feature. Study Packs should let students quickly turn notes, references, learning materials, and related data into useful widgets and reusable views without having to manually design every dashboard and widget first.
+AquaMesh is evolving from a dashboard builder into a student knowledge wiki. The main product goal is helping students turn prompts, messy notes, camera pictures, references, and learning materials into useful tutorials, study dashboards, widgets, exercises, and reusable workspace views without forcing them to manually design dashboards or widgets first.
 
-Treat Create Study Pack as the primary workflow for most student users:
+Keep the main AquaMesh experience clear about the current primary workflows:
 
-- Create a Study Pack from student materials or a learning goal.
-- Generate or assemble the widgets needed for that Study Pack quickly.
-- Open the resulting Study Pack or dashboard in the main workspace for study, editing, and reuse.
+- Create Study Path: creates a tutorial from a user prompt using the selected generation mode.
+- Create From Notes: previously Create Study Pack. Translates messy text notes or camera pictures into a clearer study dashboard with exercises. Future iterations should let users choose the output shape, such as ordered markdown notes, exercise/exam-style practice, or a mix of clearer notes and exercises based on the notes.
+- Advanced path: manually create a widget or dashboard. This is the least ideal path for beginner students and should gradually become less prominent. In the future, it may be hidden behind a settings option that enables advanced creation actions in the top navigation menu.
+- Workspace path: open an existing Study Path tutorial, Study Pack, or custom dashboard in the main workspace for study, editing, and reuse.
 
-Manual dashboard and widget creation still exists, but it is now the advanced workflow. Keep those actions available for users who want precise control, but avoid making students rely on separate "create dashboard" and "create widget" steps before they can start studying.
+Create Study Path and Create From Notes should support several generation modes. Use Create From Notes as the forward-looking name, while still recognizing older Create Study Pack references in existing code or UI until the rename is complete.
 
-A planned future capability is allowing users to provide their own API key to improve LLM-generated Study Pack widgets. This should enable richer generated learning materials such as custom exercises, quizzes, flashcards, and related practice content, including useful study aids that were not explicitly mentioned in the raw notes.
+- Basic fallback: does not use AI. It parses notes programmatically from keywords and obvious structure. It is instantaneous, but usually produces weak results. This mode only supports Create From Notes/Create Study Pack flows, not Study Path. For images, it relies on basic OCR such as Tesseract, so it works best on clear screenshots, slides, or obvious printed text and performs poorly on messy handwritten notes.
+- Gemini API token: bring-your-own Gemini token/key. This is the preferred high-quality path for users who already have an API key and want richer AI-generated study materials.
+- Google local AI: runs free and locally, with no internet connection required. Results are usually worse than Gemini API mode, but better than Basic fallback. It can still help with image discovery and can turn messy handwritten-note images into usable notes better than the basic OCR fallback.
+- Hoisted tokens: not implemented yet. The intended product direction is to give new users a small free allowance, such as 5-10 generations using the app owner's Gemini token. After that, users should switch to local AI, provide their own API token, or optionally make a small payment for continued hosted-token usage, for example a low one-time payment with an hourly usage allowance. This needs payment integration such as Stripe and should avoid feeling like a subscription unless the product direction changes.
 
-Keep the main AquaMesh experience clear about the difference between:
-
-- Fast path: Create Study Pack.
-- Advanced path: manually create a widget or dashboard.
-- Workspace path: open an existing Study Pack or dashboard in the main workspace.
-
-Creation flows can remain modal-driven when they are setup tasks. Opening an existing Study Pack or dashboard should take the user into the main workspace rather than sharing the same modal flow.
+Generation flows can remain modal-driven when they are setup tasks. Opening an existing Study Path tutorial, Study Pack, or custom dashboard should take the user into the main workspace rather than sharing the same modal flow.
 
 ## Build, Test, and Development Commands
 
