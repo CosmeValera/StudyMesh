@@ -21,6 +21,22 @@ import {
   testLocalLanguageModel,
 } from '../../../src/studyPack/ai'
 
+const localStudyPathPlanJson = (
+  count: number,
+  title = 'Italian B1',
+  folderName = title,
+) =>
+  JSON.stringify({
+    title,
+    folderName,
+    dashboards: Array.from({ length: count }, (_, index) => ({
+      title: `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`,
+      goal: `Teach lesson ${index + 1}.`,
+      topics: [`Topic ${index + 1}`, `Practice ${index + 1}`],
+      avoid: ['summary dashboard', 'exercises-only dashboard'],
+    })),
+  })
+
 describe('study pack AI settings', () => {
   let storage: Record<string, string>
 
@@ -373,6 +389,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(3, 'Spanish B1'))
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Past tense contrast',
@@ -482,7 +499,167 @@ describe('local AI helpers', () => {
       /how do you say hello/i,
     )
     expect(draft.dashboards[0].debugTrace?.validatedContract).not.toBeNull()
-    expect(prompt).toHaveBeenNthCalledWith(1, 'Return JSON: {"ok":true}')
+    expect(prompt).toHaveBeenNthCalledWith(
+      1,
+      'Return exactly this JSON and nothing else: {"ok":true}',
+    )
+    expect(String(prompt.mock.calls[1][0])).toContain(
+      'Plan a Study Path with exactly 3 normal lesson dashboards',
+    )
+  })
+
+  it('plans Local AI compact paths before generating three normal dashboards', async () => {
+    const dashboardJson = (index: number, topic: string) =>
+      JSON.stringify({
+        title: `${String(index).padStart(2, '0')} - ${topic}`,
+        notes: `${topic} notes explain a useful Italian B1 lesson with examples.`,
+        flashcards: [
+          {
+            question: `What is the main use of ${topic}?`,
+            answer: `${topic} supports Italian B1 communication.`,
+          },
+          {
+            question: `How should students practice ${topic}?`,
+            answer: `Practice ${topic} in short realistic sentences.`,
+          },
+        ],
+        quizzes: [
+          {
+            question: `Which option fits ${topic}?`,
+            options: ['Correct Italian pattern', 'Wrong tense', 'Random word'],
+            correctIndex: 0,
+          },
+        ],
+      })
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: 'Learn Italian level B1',
+          folderName: 'Italian B1',
+          dashboards: [
+            {
+              title: '01 - Past tense review',
+              goal: 'Review past tense choices.',
+              topics: ['passato prossimo', 'imperfetto'],
+              avoid: ['summary dashboard'],
+            },
+            {
+              title: '02 - Connectors',
+              goal: 'Connect opinions and reasons.',
+              topics: ['perche', 'anche se'],
+              avoid: ['exercises-only dashboard'],
+            },
+            {
+              title: '03 - Practical situations',
+              goal: 'Use B1 language in daily contexts.',
+              topics: ['travel', 'work'],
+              avoid: ['final recap only'],
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(dashboardJson(1, 'Past tense review'))
+      .mockResolvedValueOnce(dashboardJson(2, 'Connectors'))
+      .mockResolvedValueOnce(dashboardJson(3, 'Practical situations'))
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Learn Italian level B1',
+      folderName: '',
+      generationAmount: 'compact',
+    })
+
+    expect(draft.folderName).toBe('Italian B1')
+    expect(draft.dashboards).toHaveLength(3)
+    expect(
+      draft.dashboards.map((dashboard) => dashboard.dashboardRole),
+    ).toEqual(['normal', 'normal', 'normal'])
+    expect(draft.dashboards.map((dashboard) => dashboard.title)).toEqual([
+      '01 - Past tense review',
+      '02 - Connectors',
+      '03 - Practical situations',
+    ])
+    expect(JSON.stringify(draft.dashboards)).not.toMatch(
+      /"dashboardRole":"(?:summary|exercises)"/,
+    )
+    const firstDashboardPrompt = String(prompt.mock.calls[2][0])
+    expect(firstDashboardPrompt).toContain(
+      'Study path topic: Learn Italian level B1',
+    )
+    expect(firstDashboardPrompt).toContain(
+      'Full outline titles only: 01 - Past tense review | 02 - Connectors | 03 - Practical situations',
+    )
+    expect(firstDashboardPrompt).toContain(
+      'Current dashboard topics: passato prossimo, imperfetto',
+    )
+    expect(firstDashboardPrompt).toContain(
+      'Make exactly 2 flashcards and 1-2 quizzes',
+    )
+    expect(firstDashboardPrompt).toContain(
+      'Do not merge multiple flashcards into one object',
+    )
+    expect(firstDashboardPrompt).not.toContain('objects')
+  })
+
+  it('salvages malformed Local AI planner JSON with separate dashboard fragments', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        `\`\`\`json
+{"title":"Study Path","folderName":"Learn German B1","dashboards":[{"title":"01 - German Grammar Basics","goal":"Understand fundamental grammar structures","topics":["Noun genders","Verb conjugation"],"avoid":["summary dashboard"]}]}
+{"title":"02 - Conversational German","goal":"Develop basic conversation skills","topics":["Greetings","Daily routines"]}
+}
+\`\`\``,
+      )
+      .mockResolvedValue(
+        JSON.stringify({
+          title: 'Ignored model title',
+          notes:
+            'German B1 lessons need clear grammar, examples, and short practice sentences.',
+          flashcards: [
+            {
+              question: 'What should a German B1 lesson include?',
+              answer: 'Clear grammar, examples, and practice sentences.',
+            },
+            {
+              question: 'Why use examples?',
+              answer: 'Examples make the grammar easier to apply.',
+            },
+          ],
+          quizzes: [],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Study Path',
+      prompt: 'learn german b1',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.folderName).toBe('Learn German B1')
+    expect(draft.dashboards.map((dashboard) => dashboard.title)).toEqual([
+      '01 - German Grammar Basics',
+      '02 - Conversational German',
+    ])
+    expect(
+      draft.dashboards.map((dashboard) => dashboard.dashboardRole),
+    ).toEqual(['normal', 'normal'])
   })
 
   it('emits estimated prompt progress without reporting 100 before completion', async () => {
@@ -610,6 +787,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(5, 'Spanish B1'))
       .mockResolvedValueOnce(dashboardJson(1))
       .mockResolvedValueOnce(dashboardJson(2))
       .mockResolvedValueOnce(dashboardJson(3))
@@ -633,18 +811,21 @@ describe('local AI helpers', () => {
     )
 
     expect(draft.dashboards).toHaveLength(5)
-    expect(prompt).toHaveBeenCalledTimes(6)
+    expect(prompt).toHaveBeenCalledTimes(7)
     expect(events.filter((event) => event.phase === 'generation')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          timeoutMs: 90 * 1000,
+        }),
+        expect.objectContaining({
           dashboardIndex: 1,
           dashboardCount: 5,
-          timeoutMs: 150 * 1000,
+          timeoutMs: 180 * 1000,
         }),
         expect.objectContaining({
           dashboardIndex: 5,
           dashboardCount: 5,
-          timeoutMs: 150 * 1000,
+          timeoutMs: 180 * 1000,
         }),
       ]),
     )
@@ -828,7 +1009,9 @@ describe('local AI helpers', () => {
     })
 
     await expect(smokeTestLocalLanguageModel()).resolves.toBeUndefined()
-    expect(prompt).toHaveBeenCalledWith('Return JSON: {"ok":true}')
+    expect(prompt).toHaveBeenCalledWith(
+      'Return exactly this JSON and nothing else: {"ok":true}',
+    )
     expect(destroy).toHaveBeenCalled()
   })
 
@@ -872,6 +1055,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Spanish B1'))
       .mockImplementation(() => new Promise(() => {}))
     vi.stubGlobal('LanguageModel', {
       availability: vi.fn().mockResolvedValue('available'),
@@ -893,7 +1077,7 @@ describe('local AI helpers', () => {
       /Try again, choose a smaller path, or use Own Gemini token/i,
     )
 
-    await vi.advanceTimersByTimeAsync(150 * 1000)
+    await vi.advanceTimersByTimeAsync(180 * 1000)
     await rejection
     expect(destroy).toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(8000)
@@ -923,10 +1107,12 @@ describe('local AI helpers', () => {
       /Chrome Local AI is busy or unstable/i,
     )
 
-    await vi.advanceTimersByTimeAsync(25 * 1000)
+    await vi.advanceTimersByTimeAsync(60 * 1000)
     await rejection
     expect(prompt).toHaveBeenCalledTimes(1)
-    expect(prompt).toHaveBeenCalledWith('Return JSON: {"ok":true}')
+    expect(prompt).toHaveBeenCalledWith(
+      'Return exactly this JSON and nothing else: {"ok":true}',
+    )
     await vi.advanceTimersByTimeAsync(8000)
     vi.useRealTimers()
   })
@@ -954,10 +1140,12 @@ describe('local AI helpers', () => {
       /Chrome Local AI is busy or unstable/i,
     )
 
-    await vi.advanceTimersByTimeAsync(25 * 1000)
+    await vi.advanceTimersByTimeAsync(60 * 1000)
     await rejection
     expect(prompt).toHaveBeenCalledTimes(1)
-    expect(prompt).toHaveBeenCalledWith('Return JSON: {"ok":true}')
+    expect(prompt).toHaveBeenCalledWith(
+      'Return exactly this JSON and nothing else: {"ok":true}',
+    )
     await vi.advanceTimersByTimeAsync(8000)
     vi.useRealTimers()
   })
@@ -966,6 +1154,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
       .mockResolvedValueOnce('not json at all')
       .mockResolvedValueOnce('not json at all again')
       .mockResolvedValueOnce('not json at all final')
@@ -1007,6 +1196,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
       .mockResolvedValueOnce('{"title":"Broken"')
       .mockResolvedValueOnce(
         JSON.stringify({
@@ -1061,13 +1251,14 @@ describe('local AI helpers', () => {
       generationAmount: 'superSmall',
     })
 
-    const retryPrompt = String(prompt.mock.calls[2][0])
+    const retryPrompt = String(prompt.mock.calls[3][0])
     expect(retryPrompt).toContain('Use exactly these fields')
     expect(retryPrompt).toContain('notes')
-    expect(retryPrompt).toContain('50-80 words')
+    expect(retryPrompt).toContain('60-90 words')
     expect(retryPrompt).toContain('flashcards')
     expect(retryPrompt).toContain('quizzes')
     expect(retryPrompt).toContain('Prioritize valid JSON')
+    expect(retryPrompt).toContain('Make exactly 2 flashcards and 1-2 quizzes')
     expect(retryPrompt).not.toContain('Markdown notes')
     expect(retryPrompt).not.toContain('example')
     expect(retryPrompt).toContain('No listItems')
@@ -1122,6 +1313,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Japanese A1'))
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Japanese introductions',
@@ -1190,6 +1382,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Italian modal verbs',
@@ -1259,10 +1452,97 @@ describe('local AI helpers', () => {
     )
   })
 
+  it('accepts Local AI dashboards with notes and flashcards but no quizzes', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
+      .mockResolvedValue(
+        JSON.stringify({
+          title: '01 - Modal verbs',
+          notes:
+            'Modal verbs explain ability, obligation, and desire in Italian B1.',
+          flashcards: [
+            {
+              question: 'Which verb expresses obligation?',
+              answer: 'Dovere expresses obligation.',
+            },
+            {
+              question: 'Which verb expresses ability?',
+              answer: 'Potere expresses ability.',
+            },
+          ],
+          quizzes: [],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.dashboards[0].objects.map((object) => object.kind)).toEqual([
+      'markdown',
+      'qa',
+      'qa',
+    ])
+  })
+
+  it('repairs merged Local AI flashcard question and answer pairs', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
+      .mockResolvedValue(
+        JSON.stringify({
+          title: '01 - Modal verbs',
+          notes:
+            'Modal verbs explain ability, obligation, and desire in Italian B1.',
+          flashcards: [
+            {
+              question:
+                'Q1: Which verb expresses obligation?\nA1: Dovere.\nQ2: Which verb expresses ability?\nA2: Potere.',
+              answer: 'Q3: Which verb expresses desire?\nA3: Volere.',
+            },
+          ],
+          quizzes: [],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(
+      draft.dashboards[0].objects.filter((object) => object.kind === 'qa'),
+    ).toHaveLength(3)
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toContain(
+      'Repaired flashcard 1: split merged question/answer pairs.',
+    )
+  })
+
   it('drops weak Local Study Path quiz options and ignores listItems widgets', async () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
       .mockResolvedValue(
         JSON.stringify({
           title: '01 - Modal verbs',
@@ -1306,6 +1586,53 @@ describe('local AI helpers', () => {
     )
   })
 
+  it('drops placeholder Local AI quiz options without rejecting good notes and flashcards', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
+      .mockResolvedValue(
+        JSON.stringify({
+          title: '01 - Modal verbs',
+          notes: 'Modal verbs express ability, obligation, or desire.',
+          flashcards: [
+            {
+              question: 'Which verb expresses obligation?',
+              answer: 'Dovere.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which verb expresses obligation?',
+              options: ['A', 'B', 'C'],
+              correctIndex: 0,
+            },
+          ],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi({
+      apiToken: '',
+      model: '',
+      title: 'Italian B1',
+      prompt: 'Teach Italian B1 modal verbs',
+      folderName: '',
+      generationAmount: 'superSmall',
+    })
+
+    expect(draft.dashboards[0].objects.map((object) => object.kind)).toEqual([
+      'markdown',
+      'qa',
+    ])
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toContain(
+      'Dropped quiz 1: placeholder options.',
+    )
+  })
+
   it('skips later Local Study Path dashboards after three retryable failures', async () => {
     const dashboardJson = (index: number) =>
       JSON.stringify({
@@ -1328,6 +1655,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(3, 'Italian B1'))
       .mockResolvedValueOnce(dashboardJson(1))
       .mockResolvedValueOnce('not json 2a')
       .mockResolvedValueOnce('not json 2b')
@@ -1357,10 +1685,11 @@ describe('local AI helpers', () => {
     )
   })
 
-  it('keeps Local exercise dashboards mixed and treats notes as raw notes', async () => {
+  it('keeps Local dashboards normal and treats notes as raw notes', async () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
       .mockResolvedValueOnce(
         JSON.stringify({
           title: '01 - Lesson',
@@ -1425,7 +1754,12 @@ describe('local AI helpers', () => {
         ]),
       },
     )
-    expect(draft.dashboards[1].dashboardRole).toBe('exercises')
+    expect(
+      draft.dashboards.every((dashboard) => dashboard.dashboardRole),
+    ).toEqual(true)
+    expect(
+      draft.dashboards.map((dashboard) => dashboard.dashboardRole),
+    ).toEqual(['normal', 'normal'])
     expect(draft.dashboards[1].objects.map((object) => object.kind)).toEqual([
       'markdown',
       'qa',
@@ -1437,6 +1771,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'French B2'))
       .mockResolvedValue(
         JSON.stringify({
           title: '',
@@ -1508,6 +1843,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'German B1'))
       .mockRejectedValueOnce(failure)
     vi.stubGlobal('LanguageModel', {
       availability: vi.fn().mockResolvedValue('available'),
@@ -1560,6 +1896,7 @@ describe('local AI helpers', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B2'))
       .mockResolvedValueOnce(dashboardJson(1))
       .mockResolvedValueOnce(dashboardJson(2))
     vi.stubGlobal('LanguageModel', {
@@ -1576,16 +1913,19 @@ describe('local AI helpers', () => {
       generationAmount: 'superSmall',
     })
 
-    const dashboardPrompt = String(prompt.mock.calls[1][0])
-    const exercisePrompt = String(prompt.mock.calls[2][0])
-    expect(dashboardPrompt).toContain('Markdown notes, 70-110 words')
-    expect(exercisePrompt).toContain('Markdown notes, 70-110 words')
+    const dashboardPrompt = String(prompt.mock.calls[2][0])
+    const secondDashboardPrompt = String(prompt.mock.calls[3][0])
+    expect(dashboardPrompt).toContain('Markdown notes, 90-140 words')
+    expect(secondDashboardPrompt).toContain('Markdown notes, 90-140 words')
     expect(dashboardPrompt).toContain('flashcards')
     expect(dashboardPrompt).toContain('quizzes')
     expect(dashboardPrompt).toContain('No summary field')
     expect(dashboardPrompt).toContain('No listItems')
     expect(dashboardPrompt).toContain(
-      'Make flashcards and quizzes directly answerable from notes.',
+      'Make exactly 2 flashcards and 1-2 quizzes directly answerable from notes.',
+    )
+    expect(dashboardPrompt).toContain(
+      'Do not merge multiple flashcards into one object',
     )
     expect(dashboardPrompt).toContain(
       'For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.',
@@ -1725,9 +2065,14 @@ describe('Gemini study pack client', () => {
                     dashboards: Array.from(
                       { length: dashboardCount },
                       (_value, index) => ({
-                        title: `${String(index + 1).padStart(2, '0')} - Sparse ${index + 1}`,
+                        title: `${String(index + 1).padStart(
+                          2,
+                          '0',
+                        )} - Sparse ${index + 1}`,
                         summary: `Sparse dashboard ${index + 1}`,
-                        rawNotes: `Sparse notes ${index + 1} explain one usable idea with enough context for a Study Path dashboard.`,
+                        rawNotes: `Sparse notes ${
+                          index + 1
+                        } explain one usable idea with enough context for a Study Path dashboard.`,
                         sourceSummary: {
                           title: `Sparse summary ${index + 1}`,
                           bullets: [
@@ -2203,7 +2548,9 @@ describe('Gemini study pack client', () => {
     const sparseDashboards = Array.from({ length: 5 }, (_value, index) => ({
       title: `${String(index + 1).padStart(2, '0')} - Sparse ${index + 1}`,
       summary: `Sparse dashboard ${index + 1}`,
-      rawNotes: `Sparse notes ${index + 1} explain a rich rule with examples and mistakes that can support practice and flashcards.`,
+      rawNotes: `Sparse notes ${
+        index + 1
+      } explain a rich rule with examples and mistakes that can support practice and flashcards.`,
       sourceSummary: {
         title: `Sparse summary ${index + 1}`,
         bullets: [`Sparse source summary bullet ${index + 1}.`],

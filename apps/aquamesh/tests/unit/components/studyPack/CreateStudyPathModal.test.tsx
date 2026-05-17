@@ -307,9 +307,20 @@ describe('CreateStudyPathModal role enforcement', () => {
     )
 
     expect(
-      screen.getByText(/Local AI runs on your device and can be slow/i),
+      screen.getByText(/Super small usually takes 2-3 min/i),
     ).toBeInTheDocument()
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /path depth/i }))
+    expect(
+      screen.getByRole('option', {
+        name: /Super small - 2 lesson dashboards/i,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: /Compact - 3 lesson dashboards/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: /Average - 5 lesson dashboards/i }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Deep/i })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -331,6 +342,26 @@ describe('CreateStudyPathModal role enforcement', () => {
     const prompt = vi
       .fn()
       .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: 'Italian B1',
+          folderName: 'Italian B1',
+          dashboards: [
+            {
+              title: '01 - Modal verbs',
+              goal: 'Learn modal verbs.',
+              topics: ['potere', 'dovere'],
+              avoid: ['summary dashboard'],
+            },
+            {
+              title: '02 - Practice contexts',
+              goal: 'Use modal verbs in context.',
+              topics: ['travel', 'study'],
+              avoid: ['exercises-only dashboard'],
+            },
+          ],
+        }),
+      )
       .mockResolvedValueOnce('{"title":"Broken",')
       .mockResolvedValueOnce('{"title":"Broken again",')
       .mockResolvedValueOnce('{"title":"Broken final",')

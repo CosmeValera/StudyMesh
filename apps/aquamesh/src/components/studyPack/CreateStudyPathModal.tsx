@@ -92,7 +92,7 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
 }
 
 const LOCAL_AI_ESTIMATE_COPY =
-  'Local AI runs on your device and can be slow. It creates compact notes plus a few practice cards. Super small usually takes 3-5 min, Compact 4-7 min, Average 7-12 min. For faster/deeper paths, use Own Gemini token.'
+  'Local AI runs on your device and can be slow. Super small usually takes 2-3 min, Compact 3-5 min, Average 5-8 min. For faster/deeper paths, use Own Gemini token.'
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
 
@@ -100,19 +100,42 @@ const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Generating dashboards with Google Local AI...'
     : provider === 'gemini'
-      ? 'Generating ordered dashboards with Gemini...'
-      : provider === 'basic'
-        ? 'Generating ordered dashboards with Basic fallback...'
-        : 'Checking hosted AI configuration...'
+    ? 'Generating ordered dashboards with Gemini...'
+    : provider === 'basic'
+    ? 'Generating ordered dashboards with Basic fallback...'
+    : 'Checking hosted AI configuration...'
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
-    ? 'Local AI is running on your device. Each dashboard has compact notes plus a few practice cards and its own estimated generation timer.'
+    ? 'Local AI is running on your device. AquaMesh plans the path first, then generates each lesson dashboard with its own estimated timer.'
     : provider === 'gemini'
-      ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
-      : provider === 'basic'
-        ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
-        : 'Hosted AI is not configured yet.'
+    ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
+    : provider === 'basic'
+    ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
+    : 'Hosted AI is not configured yet.'
+
+const getGenerationAmountHelper = (
+  option: (typeof generationAmountOptions)[number],
+  provider: StudyPackAiProvider,
+): string => {
+  if (provider !== 'local') {
+    return option.helper
+  }
+
+  if (option.value === 'superSmall') {
+    return '2 lesson dashboards'
+  }
+
+  if (option.value === 'compact') {
+    return '3 lesson dashboards'
+  }
+
+  if (option.value === 'average') {
+    return '5 lesson dashboards'
+  }
+
+  return 'unavailable with Local AI'
+}
 
 const getObjectPreview = (object?: StudyObject) => {
   if (!object) {
@@ -485,7 +508,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     value={option.value}
                     disabled={aiProvider === 'local' && option.value === 'deep'}
                   >
-                    {option.label} - {option.helper}
+                    {option.label} -{' '}
+                    {getGenerationAmountHelper(option, aiProvider)}
                   </MenuItem>
                 ))}
               </TextField>

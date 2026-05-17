@@ -92,7 +92,8 @@ export const isLocalAiGenerationError = (
     (error as { name?: unknown }).name === 'LocalAiGenerationError')
 
 const LOCAL_STUDY_PACK_TIMEOUT_MS = 4 * 60 * 1000
-const LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS = 150 * 1000
+const LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS = 90 * 1000
+const LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS = 180 * 1000
 const LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS = 3
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
@@ -128,6 +129,19 @@ interface LocalQuizContract {
 interface LocalFlashcardContract {
   question: string
   answer: string
+}
+
+interface LocalStudyPathPlanItem {
+  title: string
+  goal: string
+  topics: string[]
+  avoid: string[]
+}
+
+interface LocalStudyPathPlan {
+  title: string
+  folderName: string
+  dashboards: LocalStudyPathPlanItem[]
 }
 
 interface LocalRepairedContract {
@@ -458,45 +472,58 @@ const repairLocalQuiz = (
   input: Record<string, unknown>,
   index: number,
   events: string[],
+  options: { rejectPlaceholderOptions?: boolean } = {},
 ): LocalQuizContract | null => {
   const question = stringValue(input.question)
   const rawOptions = Array.isArray(input.options)
     ? input.options.map(stringValue).filter(Boolean)
     : typeof input.options === 'string'
-      ? input.options
-          .split(/\r?\n|;|,(?=\s+\S)/)
-          .map(stringValue)
-          .filter(Boolean)
-      : []
+    ? input.options
+        .split(/\r?\n|;|,(?=\s+\S)/)
+        .map(stringValue)
+        .filter(Boolean)
+    : []
   const rawCorrectIndex =
     typeof input.correctIndex === 'number'
       ? input.correctIndex
       : typeof input.correctOptionIndex === 'number'
-        ? input.correctOptionIndex
-        : 0
+      ? input.correctOptionIndex
+      : 0
   const originalAnswer =
     stringValue(input.answer) ||
     (rawCorrectIndex >= 0 && rawCorrectIndex < rawOptions.length
       ? rawOptions[rawCorrectIndex]
       : '')
-  const options = uniqueByKey(rawOptions, (option) => option).slice(0, 4)
-  const correctIndex = options.findIndex(
+  const quizOptions = uniqueByKey(rawOptions, (option) => option).slice(0, 4)
+  const placeholderOptions = quizOptions.every((option) =>
+    /^(?:[a-d]|option\s+[a-d]|choice\s+[a-d])$/i.test(option),
+  )
+  const correctIndex = quizOptions.findIndex(
     (option) => normalizeKey(option) === normalizeKey(originalAnswer),
   )
   const answer =
     originalAnswer ||
-    (rawCorrectIndex >= 0 && rawCorrectIndex < options.length
-      ? options[rawCorrectIndex]
-      : options[0] || '')
+    (rawCorrectIndex >= 0 && rawCorrectIndex < quizOptions.length
+      ? quizOptions[rawCorrectIndex]
+      : quizOptions[0] || '')
   const finalCorrectIndex =
     correctIndex >= 0
       ? correctIndex
-      : options.findIndex(
+      : quizOptions.findIndex(
           (option) => normalizeKey(option) === normalizeKey(answer),
         )
 
-  if (rawOptions.length !== options.length) {
+  if (rawOptions.length !== quizOptions.length) {
     events.push(`Repaired quiz ${index + 1}: removed duplicate options.`)
+  }
+
+  if (
+    options.rejectPlaceholderOptions &&
+    quizOptions.length >= 3 &&
+    placeholderOptions
+  ) {
+    events.push(`Dropped quiz ${index + 1}: placeholder options.`)
+    return null
   }
 
   if (isBadLocalText(question)) {
@@ -504,7 +531,7 @@ const repairLocalQuiz = (
     return null
   }
 
-  if (options.length > 0 && options.length < 3) {
+  if (quizOptions.length > 0 && quizOptions.length < 3) {
     events.push(`Dropped quiz ${index + 1}: fewer than 3 unique options.`)
     return null
   }
@@ -516,11 +543,67 @@ const repairLocalQuiz = (
 
   return {
     question,
-    options,
+    options: quizOptions,
     correctIndex: finalCorrectIndex >= 0 ? finalCorrectIndex : 0,
     answer,
     explanation: stringValue(input.explanation),
   }
+}
+
+const flashcardFromRecord = (
+  value: unknown,
+  index: number,
+  events: string[],
+): LocalFlashcardContract[] => {
+  const input =
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const rawQuestion =
+    blockValue(input.question) ||
+    blockValue(input.front) ||
+    blockValue(input.prompt)
+  const rawAnswer =
+    blockValue(input.answer) ||
+    blockValue(input.back) ||
+    blockValue(input.definition)
+  const question =
+    stringValue(input.question) ||
+    stringValue(input.front) ||
+    stringValue(input.prompt)
+  const answer =
+    stringValue(input.answer) ||
+    stringValue(input.back) ||
+    stringValue(input.definition)
+
+  if (!question || !answer || isBadLocalText(question)) {
+    events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
+    return []
+  }
+
+  const combined = `${rawQuestion || question}\n${rawAnswer || answer}`
+  const pairs = [
+    ...combined.matchAll(
+      /(?:^|\n)\s*(?:q(?:uestion)?\s*\d*[:.)-]\s*)([^\n]+)\n\s*(?:a(?:nswer)?\s*\d*[:.)-]\s*)([^\n]+)/gi,
+    ),
+  ]
+    .map((match) => ({
+      question: stringValue(match[1]),
+      answer: stringValue(match[2]),
+    }))
+    .filter(
+      (flashcard) =>
+        flashcard.question &&
+        flashcard.answer &&
+        !isBadLocalText(flashcard.question),
+    )
+
+  if (pairs.length > 1) {
+    events.push(
+      `Repaired flashcard ${index + 1}: split merged question/answer pairs.`,
+    )
+    return pairs
+  }
+
+  return [{ question, answer }]
 }
 
 const localObjectToStudyObject = (
@@ -783,7 +866,9 @@ const buildRawNotesFromContract = (
     `# ${title}`,
     summary ? `## Summary\n${summary}` : '',
     sourceSummary.length > 0
-      ? `## Source summary\n${sourceSummary.map((item) => `- ${item}`).join('\n')}`
+      ? `## Source summary\n${sourceSummary
+          .map((item) => `- ${item}`)
+          .join('\n')}`
       : '',
     concepts.length > 0
       ? `## Concepts\n${concepts
@@ -878,30 +963,10 @@ const contractFromRecord = (
           : null,
       )
       .filter((quiz): quiz is LocalQuizContract => Boolean(quiz)),
-    flashcards: (Array.isArray(record.flashcards) ? record.flashcards : [])
-      .map((item, index): LocalFlashcardContract | null => {
-        const input =
-          item && typeof item === 'object'
-            ? (item as Record<string, unknown>)
-            : {}
-        const question =
-          stringValue(input.question) ||
-          stringValue(input.front) ||
-          stringValue(input.prompt)
-        const answer =
-          stringValue(input.answer) ||
-          stringValue(input.back) ||
-          stringValue(input.definition)
-        if (!question || !answer || isBadLocalText(question)) {
-          events.push(`Dropped flashcard ${index + 1}: weak prompt.`)
-          return null
-        }
-
-        return { question, answer }
-      })
-      .filter((flashcard): flashcard is LocalFlashcardContract =>
-        Boolean(flashcard),
-      ),
+    flashcards: (Array.isArray(record.flashcards)
+      ? record.flashcards
+      : []
+    ).flatMap((item, index) => flashcardFromRecord(item, index, events)),
   }
 }
 
@@ -1071,8 +1136,8 @@ export const normalizeLocalAiStudyPackDraft = (
   const rawObjects = Array.isArray(record.objects)
     ? record.objects
     : Array.isArray(record.studyObjects)
-      ? record.studyObjects
-      : []
+    ? record.studyObjects
+    : []
   const looseObjects = rawObjects
     .map((item, index) =>
       item && typeof item === 'object'
@@ -1179,57 +1244,86 @@ const localStudyPackPrompt = ({
 Create exactly 6 simple study objects from the source.
 Allowed kinds only: markdown, qa, quiz, list.
 Use this shape:
-{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}
+{"title":"${title.replace(
+    /"/g,
+    '',
+  )}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}
 Rules: exactly 6 objects. First object markdown. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
 Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }
 
-const localStudyPathDashboardPrompt = (
-  {
-    title,
-    prompt,
-    generationAmount: _generationAmount,
-  }: GenerateStudyPathWithAiOptions,
-  index: number,
+const localStudyPathPlannerPrompt = (
+  { title, prompt }: GenerateStudyPathWithAiOptions,
   count: number,
 ): string => {
-  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1800)
-  const lessonHint =
-    count === 2
-      ? index === 0
-        ? 'first focused lesson'
-        : 'second practice-oriented lesson'
-      : `lesson ${index + 1}`
+  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1600)
+
   return `Return minified JSON only. End with }.
-Create dashboard ${index + 1} of ${count} for "${title}" (${lessonHint}).
+Plan a Study Path with exactly ${count} normal lesson dashboards for "${title}".
+No lesson content. No flashcards. No quizzes. No summary dashboard. No exercises-only dashboard.
 Shape:
-{"title":"${String(index + 1).padStart(2, '0')} - Lesson","notes":"Markdown notes, 70-110 words","flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
-Rules: small valid JSON only. No summary field. No listItems. No objects array. No nested objects except flashcards[] and quizzes[]. No markdown fences. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
+{"title":"...","folderName":"...","dashboards":[{"title":"01 - ...","goal":"...","topics":["...","...","..."],"avoid":["...","..."]}]}
+Rules: dashboards must be distinct lesson topics. Titles must start with 01, 02, etc. Keep goals and topics short. Avoid generic introductions unless beginner level.
+Study path topic:
+${compactPrompt}`
+}
+
+const localStudyPathDashboardPrompt = (
+  { title, prompt }: GenerateStudyPathWithAiOptions,
+  outline: LocalStudyPathPlanItem[],
+  item: LocalStudyPathPlanItem,
+): string => {
+  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1800)
+  const outlineTitles = outline.map((entry) => entry.title).join(' | ')
+
+  return `Return minified JSON only. End with }.
+Create exactly one normal lesson dashboard for "${title}".
+Shape:
+{"title":"${item.title.replace(
+    /"/g,
+    '',
+  )}","notes":"Markdown notes, 90-140 words","flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
+Rules: small valid JSON only. No summary field. No listItems. No extra fields. No markdown fences. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
 Write notes as compact Markdown: optional short heading plus bullets or short paragraphs. Include the minimum theory needed to answer every flashcard and quiz.
-Make flashcards and quizzes directly answerable from notes.
+Make exactly 2 flashcards and 1-2 quizzes directly answerable from notes.
+Do not merge multiple flashcards into one object; each flashcard must be a separate object with exactly one question and one answer.
 For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.
 Introductions are appropriate only when no level is given or the request is beginner-level. Otherwise use level-appropriate grammar, vocabulary, realistic situations, and practice.
-User topic:
-${compactPrompt}`
+Study path topic: ${compactPrompt}
+Full outline titles only: ${outlineTitles}
+Current dashboard title: ${item.title}
+Current dashboard goal: ${item.goal}
+Current dashboard topics: ${item.topics.join(', ')}
+Current dashboard avoid list: ${item.avoid.join(', ')}`
 }
 
 const localStudyPathDashboardRetryPrompt = (
   options: GenerateStudyPathWithAiOptions,
-  index: number,
-  count: number,
+  outline: LocalStudyPathPlanItem[],
+  item: LocalStudyPathPlanItem,
   attempt: number,
 ): string => {
   const compactPrompt = options.prompt.replace(/\s+/g, ' ').trim().slice(0, 900)
+  const outlineTitles = outline.map((entry) => entry.title).join(' | ')
 
   return `Return one tiny minified JSON object only. End with }.
-Retry attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} for dashboard ${index + 1} of ${count} for "${options.title}".
+Retry attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} for "${
+    item.title
+  }" in "${options.title}".
 Use exactly these fields:
-{"title":"${String(index + 1).padStart(2, '0')} - Lesson","notes":"50-80 words","flashcards":[{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["A","B","C"],"correctIndex":0}]}
-Prioritize valid JSON over rich content. No summary. No listItems. No objects array. No nested objects except flashcards[] and quizzes[]. No extra fields. No prose outside JSON. No code fence.
+{"title":"${item.title.replace(
+    /"/g,
+    '',
+  )}","notes":"60-90 words","flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
+Prioritize valid JSON over rich content. Make exactly 2 flashcards and 1-2 quizzes. Do not merge multiple flashcards into one object; each flashcard must be a separate object with exactly one question and one answer.
+No summary. No listItems. No extra fields. No prose outside JSON. No code fence.
 Notes can be plain text. Flashcards and quizzes must be answerable from notes.
-Topic:
-${compactPrompt}`
+Topic: ${compactPrompt}
+Outline titles: ${outlineTitles}
+Goal: ${item.goal}
+Topics: ${item.topics.join(', ')}
+Avoid: ${item.avoid.join(', ')}`
 }
 
 export const generateStudyPackWithLocalAi = async (
@@ -1254,11 +1348,6 @@ export const generateStudyPackWithLocalAi = async (
     sourceFormat: draft.sourceFormat || 'text',
   }
 }
-
-const roleForIndex = (
-  roles: StudyPathDashboardRole[],
-  index: number,
-): StudyPathDashboardRole => roles[index] || 'normal'
 
 const firstMarkdownObject = (objects: StudyObject[]): StudyObject | undefined =>
   objects.find((object) => object.kind === 'markdown')
@@ -1386,30 +1475,17 @@ const flatDashboardObjects = (
   }
 
   const flashcards = Array.isArray(record.flashcards) ? record.flashcards : []
-  flashcards.slice(0, 4).forEach((item, index) => {
-    const input =
-      item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
-    const question =
-      stringValue(input.question) ||
-      stringValue(input.front) ||
-      stringValue(input.prompt)
-    const answer =
-      stringValue(input.answer) ||
-      stringValue(input.back) ||
-      stringValue(input.definition)
-
-    if (!question || !answer || isBadLocalText(question)) {
-      events.push(`Dropped flashcard ${index + 1}: weak or incomplete card.`)
-      return
-    }
-
-    objects.push({
-      ...createBase(packId, 'qa', index, `Flashcard ${index + 1}`),
-      kind: 'qa',
-      question,
-      answer,
+  flashcards
+    .flatMap((item, index) => flashcardFromRecord(item, index, events))
+    .slice(0, 4)
+    .forEach((flashcard, index) => {
+      objects.push({
+        ...createBase(packId, 'qa', index, `Flashcard ${index + 1}`),
+        kind: 'qa',
+        question: flashcard.question,
+        answer: flashcard.answer,
+      })
     })
-  })
 
   const qaQuestion = stringValue(
     record.qaQ || record.qaQuestion || record.question,
@@ -1428,7 +1504,9 @@ const flatDashboardObjects = (
   quizzes.slice(0, 4).forEach((item, index) => {
     const input =
       item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
-    const quiz = repairLocalQuiz(input, index, events)
+    const quiz = repairLocalQuiz(input, index, events, {
+      rejectPlaceholderOptions: true,
+    })
     if (!quiz) {
       return
     }
@@ -1456,8 +1534,8 @@ const flatDashboardObjects = (
     typeof record.quizCorrectIndex === 'number'
       ? record.quizCorrectIndex
       : typeof record.correctIndex === 'number'
-        ? record.correctIndex
-        : 0
+      ? record.correctIndex
+      : 0
   const quizAnswer =
     quizCorrectIndex >= 0 && quizCorrectIndex < quizOptions.length
       ? quizOptions[quizCorrectIndex]
@@ -1474,6 +1552,7 @@ const flatDashboardObjects = (
     },
     0,
     events,
+    { rejectPlaceholderOptions: true },
   )
   if (quiz && quiz.options.length >= 3) {
     objects.push({
@@ -1576,10 +1655,12 @@ const mapLocalDashboard = (
   rawAiResponse: string,
   role: StudyPathDashboardRole,
   targetCount: number,
+  plannerItem?: LocalStudyPathPlanItem,
 ): AiStudyPathDashboardDraft | null => {
   const record =
     input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
   const title =
+    plannerItem?.title ||
     stringValue(record.title) ||
     `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`
   const packId = `${options.title}-${index + 1}`
@@ -1683,7 +1764,10 @@ const specificFolderName = (
     /\b(english|spanish|french|german|italian|portuguese|japanese|korean|chinese|arabic|dutch|swedish|norwegian|danish|polish|russian)\s+(?:level\s+)?(a1|a2|b1|b2|c1|c2)\b/i,
   )
   if (languageLevel) {
-    return `${titleValue(languageLevel[1], 'Language')} ${languageLevel[2].toUpperCase()}`
+    return `${titleValue(
+      languageLevel[1],
+      'Language',
+    )} ${languageLevel[2].toUpperCase()}`
   }
 
   const fallbackCandidate = normalizeSpaces(fallback)
@@ -1695,6 +1779,180 @@ const specificFolderName = (
   }
 
   return 'Local AI Study Path'
+}
+
+const fallbackPlannerItem = (
+  options: GenerateStudyPathWithAiOptions,
+  index: number,
+): LocalStudyPathPlanItem => ({
+  title: `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`,
+  goal: `Teach one useful part of ${options.title || 'this topic'}.`,
+  topics: [options.prompt.replace(/\s+/g, ' ').trim().slice(0, 120)],
+  avoid: ['summary-only dashboard', 'exercises-only dashboard'],
+})
+
+const normalizePlannerItem = (
+  value: unknown,
+  options: GenerateStudyPathWithAiOptions,
+  index: number,
+): LocalStudyPathPlanItem => {
+  const record =
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const fallback = fallbackPlannerItem(options, index)
+
+  return {
+    title:
+      stringValue(record.title) ||
+      `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`,
+    goal: stringValue(record.goal) || fallback.goal,
+    topics:
+      stringArrayValue(record.topics).length > 0
+        ? stringArrayValue(record.topics).slice(0, 5)
+        : fallback.topics,
+    avoid:
+      stringArrayValue(record.avoid).length > 0
+        ? stringArrayValue(record.avoid).slice(0, 5)
+        : fallback.avoid,
+  }
+}
+
+const normalizeLocalStudyPathPlan = (
+  value: unknown,
+  options: GenerateStudyPathWithAiOptions,
+  expectedCount: number,
+): { plan: LocalStudyPathPlan; warnings: string[] } => {
+  const record =
+    value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const rawDashboards = Array.isArray(record.dashboards)
+    ? record.dashboards
+    : []
+  const warnings: string[] = []
+  const dashboards = rawDashboards
+    .slice(0, expectedCount)
+    .map((item, index) => normalizePlannerItem(item, options, index))
+
+  if (rawDashboards.length > expectedCount) {
+    warnings.push('Local AI planner returned extra dashboards; extras skipped.')
+  }
+
+  if (dashboards.length === 0) {
+    throw new LocalAiGenerationError(
+      'noUsableObjects',
+      LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+      {
+        debug: {
+          parsedJson: value,
+          mappingError: 'Local AI planner returned no usable dashboards.',
+        },
+      },
+    )
+  }
+
+  while (dashboards.length < expectedCount) {
+    dashboards.push(fallbackPlannerItem(options, dashboards.length))
+  }
+
+  if (rawDashboards.length > 0 && rawDashboards.length < expectedCount) {
+    warnings.push(
+      'Local AI planner returned too few dashboards; AquaMesh filled the missing lesson outlines.',
+    )
+  }
+
+  return {
+    plan: {
+      title: stringValue(record.title) || options.title || 'Study Path',
+      folderName: specificFolderName(
+        stringValue(record.folderName),
+        options.folderName || options.title,
+        options.prompt,
+      ),
+      dashboards,
+    },
+    warnings,
+  }
+}
+
+const parsePlannerJsonLeniently = (text: string): unknown => {
+  try {
+    return parseLocalAiJson(text)
+  } catch (error) {
+    const trimmed = text.trim()
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
+    const candidate = fenced || trimmed
+    const dashboardMatches = [
+      ...candidate.matchAll(
+        /\{[^{}]*"title"\s*:\s*"[^"]+"[^{}]*"goal"\s*:\s*"[^"]+"[^{}]*"topics"\s*:\s*\[[^\]]*\][^{}]*\}/g,
+      ),
+    ]
+    const dashboards = dashboardMatches
+      .map((match) => {
+        try {
+          return JSON.parse(match[0])
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
+
+    if (dashboards.length === 0) {
+      throw error
+    }
+
+    return {
+      title: candidate.match(/"title"\s*:\s*"([^"]+)"/)?.[1],
+      folderName: candidate.match(/"folderName"\s*:\s*"([^"]+)"/)?.[1],
+      dashboards,
+    }
+  }
+}
+
+const createLocalStudyPathPlan = async (
+  options: GenerateStudyPathWithAiOptions,
+  expectedCount: number,
+  localOptions: LocalGenerationOptions,
+): Promise<{ plan: LocalStudyPathPlan; warnings: string[] }> => {
+  const promptText = localStudyPathPlannerPrompt(options, expectedCount)
+  const debug: LocalAiGenerationFailureDebug = {
+    dashboardCount: expectedCount,
+    promptLength: promptText.length,
+  }
+
+  try {
+    const text = await callLocalLanguageModel(promptText, {
+      timeoutMs: LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS,
+      onProgress: localOptions.onProgress,
+      progressLabel: 'Planning Local AI Study Path...',
+    })
+    debug.rawResponse = text
+
+    if (localAiJsonLooksTruncated(text)) {
+      throw new Error(
+        'Google Local AI returned truncated JSON before the final closing brace.',
+      )
+    }
+
+    const parsed = parsePlannerJsonLeniently(text)
+    debug.parsedJson = parsed
+    return normalizeLocalStudyPathPlan(parsed, options, expectedCount)
+  } catch (error) {
+    if (isLocalAiGenerationError(error)) {
+      throw error
+    }
+
+    const code = /invalid JSON|Unexpected|truncated JSON/i.test(
+      errorMessage(error),
+    )
+      ? 'invalidJson'
+      : localAiFailureCodeForError(error)
+    debug.parseError = code === 'invalidJson' ? errorMessage(error) : undefined
+    throw new LocalAiGenerationError(
+      code,
+      code === 'invalidJson'
+        ? LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE
+        : localAiFailureMessageForCode(code, errorMessage(error)),
+      { debug, cause: error },
+    )
+  }
 }
 
 const errorMessage = (error: unknown): string =>
@@ -1801,15 +2059,17 @@ export const generateStudyPathWithLocalAi = async (
   const expectedCount = getLocalStudyPathDashboardCount(
     options.generationAmount,
   )
-  const roles = getStudyPathDashboardRoles(options.generationAmount).slice(
-    0,
+  const { plan, warnings: plannerWarnings } = await createLocalStudyPathPlan(
+    options,
     expectedCount,
+    localOptions,
   )
   const targetCount = 4
   const dashboards: AiStudyPathDashboardDraft[] = []
-  const warnings: string[] = []
+  const warnings: string[] = [...plannerWarnings]
 
   for (let index = 0; index < expectedCount; index += 1) {
+    const plannerItem = plan.dashboards[index]
     const failedAttempts: LocalAiGenerationFailureDebug[] = []
     let lastError: LocalAiGenerationError | null = null
 
@@ -1820,11 +2080,11 @@ export const generateStudyPathWithLocalAi = async (
     ) {
       const promptText =
         attempt === 1
-          ? localStudyPathDashboardPrompt(options, index, expectedCount)
+          ? localStudyPathDashboardPrompt(options, plan.dashboards, plannerItem)
           : localStudyPathDashboardRetryPrompt(
               options,
-              index,
-              expectedCount,
+              plan.dashboards,
+              plannerItem,
               attempt,
             )
       const debug: LocalAiGenerationFailureDebug = {
@@ -1839,7 +2099,9 @@ export const generateStudyPathWithLocalAi = async (
         const text = await callLocalLanguageModel(promptText, {
           timeoutMs: LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS,
           onProgress: localOptions.onProgress,
-          progressLabel: `Generating dashboard ${index + 1} of ${expectedCount}, attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
+          progressLabel: `Generating dashboard ${
+            index + 1
+          } of ${expectedCount}, attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
           dashboardIndex: index + 1,
           dashboardCount: expectedCount,
           attempt,
@@ -1879,8 +2141,9 @@ export const generateStudyPathWithLocalAi = async (
             index,
             options,
             text,
-            roleForIndex(roles, index),
+            'normal',
             targetCount,
+            plannerItem,
           )
           debug.droppedOrRepairedItems =
             mappedDashboard?.debugTrace?.droppedOrRepairedItems || []
@@ -1966,7 +2229,9 @@ export const generateStudyPathWithLocalAi = async (
       }
 
       warnings.push(
-        `Dashboard ${index + 1} could not be generated after ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} Local AI attempts and was skipped.`,
+        `Dashboard ${
+          index + 1
+        } could not be generated after ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} Local AI attempts and was skipped.`,
       )
     }
   }
@@ -1978,12 +2243,8 @@ export const generateStudyPathWithLocalAi = async (
   }
 
   return {
-    title: options.title,
-    folderName: specificFolderName(
-      '',
-      options.folderName || options.title,
-      options.prompt,
-    ),
+    title: plan.title || options.title,
+    folderName: plan.folderName,
     dashboards,
     warnings: [
       ...warnings,
@@ -2022,15 +2283,15 @@ export const generateStudyPathWithBasicFallback = ({
     normalizeStudyPathGenerationAmount(generationAmount) === 'deep'
       ? 'many'
       : normalizeStudyPathGenerationAmount(generationAmount) === 'average'
-        ? 'medium'
-        : 'few'
+      ? 'medium'
+      : 'few'
   const dashboards = roles.map((role, index) => {
     const dashboardTitle = `${String(index + 1).padStart(2, '0')} - ${
       role === 'summary'
         ? 'Summary'
         : role === 'exercises'
-          ? 'Exercises'
-          : `Lesson ${index + 1}`
+        ? 'Exercises'
+        : `Lesson ${index + 1}`
     }`
     const rawNotes = fallbackPromptForDashboard(
       prompt,
