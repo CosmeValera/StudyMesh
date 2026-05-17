@@ -398,4 +398,133 @@ describe('CreateStudyPathModal role enforcement', () => {
       screen.getByTestId('local-ai-failure-debug-failed-attempts'),
     ).toHaveTextContent('Broken')
   })
+
+  it('creates Local AI Study Path dashboards with visible source notes widgets', async () => {
+    vi.mocked(readStudyPackAiSettings).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+    })
+    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
+      provider: 'local',
+      apiToken: '',
+      model: 'gemini-test',
+      tokenSource: 'none',
+    })
+    const onCreatePath = vi.fn()
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('{"ok":true}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: 'German A2',
+          folderName: 'German A2',
+          dashboards: [
+            {
+              title: '01 - Everyday routines',
+              goal: 'Talk about routines.',
+              topics: ['time phrases', 'separable verbs'],
+              avoid: ['summary dashboard'],
+            },
+            {
+              title: '02 - Travel basics',
+              goal: 'Handle travel situations.',
+              topics: ['tickets', 'directions'],
+              avoid: ['exercises-only dashboard'],
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '01 - Everyday routines',
+          notes:
+            '## Lesson notes\n\nGerman A2 routines use time phrases like jeden Morgen with present tense verbs.',
+          flashcards: [
+            {
+              question: 'What does jeden Morgen mean?',
+              answer: 'Every morning.',
+            },
+            {
+              question: 'Where does a separable prefix go?',
+              answer: 'To the end in simple present main clauses.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'Which phrase means every morning?',
+              options: ['jeden Morgen', 'gestern Abend', 'naechste Woche'],
+              correctIndex: 0,
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: '02 - Travel basics',
+          notes:
+            '## Lesson notes\n\nGerman A2 travel lessons use polite requests and short direction phrases.',
+          flashcards: [
+            {
+              question: 'What should travel requests be?',
+              answer: 'Polite and short.',
+            },
+            {
+              question: 'What is the lesson focus?',
+              answer: 'Tickets and directions.',
+            },
+          ],
+          quizzes: [
+            {
+              question: 'What is useful in travel situations?',
+              options: ['directions', 'advanced poetry', 'chemical symbols'],
+              correctIndex: 0,
+            },
+          ],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    render(
+      <CreateStudyPathModal
+        open
+        onClose={vi.fn()}
+        onCreatePath={onCreatePath}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /what should aquamesh teach/i }),
+      {
+        target: { value: 'German A2' },
+      },
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: /generate study path/i }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('02 - Travel basics')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /^create 2 dashboards$/i }),
+    )
+
+    expect(onCreatePath).toHaveBeenCalledTimes(1)
+    const payload = onCreatePath.mock.calls[0][0]
+    const firstDashboardWidgets = JSON.stringify(payload.dashboards[0].widgets)
+
+    expect(firstDashboardWidgets).toContain('Source notes')
+    expect(firstDashboardWidgets).toContain(
+      'German A2 routines use time phrases',
+    )
+    expect(firstDashboardWidgets).toContain('FlashcardBlock')
+    expect(firstDashboardWidgets).toContain('QuizBlock')
+    expect(firstDashboardWidgets).not.toContain('"Chart"')
+    expect(firstDashboardWidgets).not.toContain('Summary')
+  })
 })

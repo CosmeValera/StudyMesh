@@ -162,6 +162,7 @@ export interface StudyPackGeneratorOptions {
   dashboardName?: string
   groupingThreshold?: number
   includeSourceWidget?: boolean
+  includeSourceSummaryWidget?: boolean
   includeSummaryChart?: boolean
   rawSource?: string
   maxObjectsPerWidget?: number

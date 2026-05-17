@@ -1745,8 +1745,15 @@ describe('local AI helpers', () => {
     expect(draft.dashboards[0].rawNotes).toContain('Modal verbs express')
     expect(draft.dashboards[0].objects[0]).toMatchObject({
       kind: 'markdown',
-      markdown: '## Summary\n\nModal verbs express ability and obligation.',
+      title: 'Lesson notes',
+      markdown:
+        '## Lesson notes\n\nModal verbs express ability and obligation.',
     })
+    expect(
+      draft.dashboards[0].objects.filter(
+        (object) => object.kind === 'markdown',
+      ),
+    ).toHaveLength(1)
     expect(draft.dashboards[0].debugTrace?.validatedContract).not.toMatchObject(
       {
         concepts: expect.arrayContaining([

@@ -426,6 +426,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       reviewFolderName.trim() || draft.folderName || draft.title || 'Study Path'
     const studyPathId = makeStudyPathId(draft.title || effectiveFolder)
     const dashboardCount = draft.dashboards.length
+    const firstMarkdown = (dashboard: AiStudyPathDraft['dashboards'][number]) =>
+      dashboard.objects.find((object) => object.kind === 'markdown')
+    const sourceTextForDashboard = (
+      dashboard: AiStudyPathDraft['dashboards'][number],
+    ) => {
+      const markdown = firstMarkdown(dashboard)
+
+      return dashboard.rawNotes || markdown?.markdown || prompt
+    }
 
     onCreatePath({
       folderName: effectiveFolder,
@@ -445,8 +454,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             dashboardRole: dashboard.dashboardRole,
           },
           {
-            rawSource: dashboard.rawNotes || prompt,
+            rawSource: sourceTextForDashboard(dashboard),
             includeSourceWidget: true,
+            includeSourceSummaryWidget: aiProvider !== 'local',
             includeSummaryChart: false,
             widgetIdPrefix: makePackId(dashboard.title || draft.title, index),
             studyPath: {

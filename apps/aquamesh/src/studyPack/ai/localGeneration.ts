@@ -1360,7 +1360,14 @@ const ensureFirstMarkdown = (
   events: string[],
 ): StudyObject[] => {
   if (objects[0]?.kind === 'markdown') {
-    return objects
+    return [
+      {
+        ...objects[0],
+        title: 'Lesson notes',
+        markdown: sanitizeLocalLessonNotesMarkdown(objects[0].markdown),
+      },
+      ...objects.slice(1),
+    ]
   }
 
   const existingMarkdown = firstMarkdownObject(objects)
@@ -1370,7 +1377,9 @@ const ensureFirstMarkdown = (
     ({
       ...createBase(packId, 'markdown', 0, 'Lesson explanation'),
       kind: 'markdown',
-      markdown: markdown || `# ${title}\n\nReview this lesson before practice.`,
+      markdown: sanitizeLocalLessonNotesMarkdown(
+        markdown || `# ${title}\n\nReview this lesson before practice.`,
+      ),
     } as StudyObject)
 
   if (!existingMarkdown) {
@@ -1379,6 +1388,11 @@ const ensureFirstMarkdown = (
 
   return [markdownObject, ...otherObjects]
 }
+
+const sanitizeLocalLessonNotesMarkdown = (markdown: string): string =>
+  markdown
+    .replace(/^(#{1,6}\s*)Summary\b/gim, '$1Lesson notes')
+    .replace(/^(#{1,6}\s*)Source summary\b/gim, '$1Source notes')
 
 const fillDashboardObjects = (
   objects: StudyObject[],
@@ -1468,9 +1482,11 @@ const flatDashboardObjects = (
 
   if (markdown || rawNotes) {
     objects.push({
-      ...createBase(packId, 'markdown', 0, 'Explanation'),
+      ...createBase(packId, 'markdown', 0, 'Lesson notes'),
       kind: 'markdown',
-      markdown: markdown || rawNotes || `# ${title}`,
+      markdown: sanitizeLocalLessonNotesMarkdown(
+        markdown || rawNotes || `# ${title}`,
+      ),
     })
   }
 
@@ -1721,8 +1737,25 @@ const mapLocalDashboard = (
     ) || rawNotes,
     events,
   )
+  let keptMarkdown = false
   const finalObjects = markdownObjects
-    .filter((object) => object.kind !== 'list')
+    .filter((object) => {
+      if (object.kind === 'list') {
+        return false
+      }
+
+      if (object.kind !== 'markdown') {
+        return true
+      }
+
+      if (keptMarkdown) {
+        events.push('Dropped extra Local AI markdown object.')
+        return false
+      }
+
+      keptMarkdown = true
+      return true
+    })
     .slice(0, Math.max(targetCount, 6))
 
   if (finalObjects.length === 0 && !rawNotes) {

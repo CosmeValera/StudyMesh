@@ -781,6 +781,7 @@ export const createStudyPackOrchestratorWidgets = (
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
     groupingThreshold: Math.max(2, options.groupingThreshold || 3),
     includeSourceWidget: options.includeSourceWidget ?? true,
+    includeSourceSummaryWidget: options.includeSourceSummaryWidget ?? true,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
     includeSummaryChart: options.includeSummaryChart ?? true,
@@ -798,7 +799,9 @@ export const createStudyPackOrchestratorWidgets = (
           widgetIdPrefix: normalizedOptions.widgetIdPrefix,
           studyPath: normalizedOptions.studyPath,
         }),
-        ...(dashboardRole === 'exercises' || dashboardRole === 'summary'
+        ...(!normalizedOptions.includeSourceSummaryWidget ||
+        dashboardRole === 'exercises' ||
+        dashboardRole === 'summary'
           ? []
           : [
               createSourceSummaryWidget(pack, options.rawSource || '', {
@@ -1033,8 +1036,8 @@ export const createStudyPackDashboardLayout = (
   options.mode === 'orchestrator'
     ? createOrchestratorDashboardLayout(widgets)
     : options.mode === 'tabs'
-      ? createTabbedDashboardLayout(widgets)
-      : createSmartDashboardLayout(widgets)
+    ? createTabbedDashboardLayout(widgets)
+    : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],
