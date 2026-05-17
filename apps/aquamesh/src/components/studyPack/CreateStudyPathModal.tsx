@@ -92,7 +92,7 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
 }
 
 const LOCAL_AI_ESTIMATE_COPY =
-  'Local AI runs on your device and can be slow. It creates compact notes plus a few practice cards. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
+  'Local AI runs on your device and can be slow. It creates compact notes plus a few practice cards. Super small usually takes 3-5 min, Compact 4-7 min, Average 7-12 min. For faster/deeper paths, use Own Gemini token.'
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
 
