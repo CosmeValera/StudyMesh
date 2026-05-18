@@ -480,35 +480,6 @@ export const callLocalLanguageModel = async (
   }
 }
 
-export const smokeTestLocalLanguageModel = async (
-  options: {
-    onProgress?: (event: LocalAiProgressEvent) => void
-  } = {},
-): Promise<void> => {
-  try {
-    const result = await callLocalLanguageModel('Return exactly this JSON and nothing else: {"ok":true}', {
-      outputLanguage: 'en',
-      timeoutMs: LOCAL_AI_SMOKE_TIMEOUT_MS,
-      timeoutStage: 'smoke',
-      onProgress: options.onProgress,
-    })
-    const parsed = parseLocalAiSmokeJson(result)
-    if (!parsed || typeof parsed !== 'object' || parsed.ok !== true) {
-      throw new Error('Local AI smoke test returned invalid JSON.')
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    debugLocalAi('smoke:error', {
-      message,
-    })
-    if (/not supported|unavailable/i.test(message) && error instanceof Error) {
-      throw error
-    }
-
-    throw new Error(LOCAL_AI_SMOKE_FAILURE_MESSAGE)
-  }
-}
-
 export const resetLocalLanguageModelCooldownForTests = (): void => {
   localAiCooldownUntil = 0
   localAiLastTimeoutStage = null

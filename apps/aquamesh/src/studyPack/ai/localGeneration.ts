@@ -15,7 +15,6 @@ import {
 import {
   callLocalLanguageModel,
   LocalAiProgressEvent,
-  smokeTestLocalLanguageModel,
 } from './localLanguageModel'
 import {
   AiStudyPathDashboardDraft,
@@ -93,7 +92,7 @@ export const isLocalAiGenerationError = (
     (error as { name?: unknown }).name === 'LocalAiGenerationError')
 
 const LOCAL_STUDY_PACK_TIMEOUT_MS = 4 * 60 * 1000
-const LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS = 90 * 1000
+const LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS = 180 * 1000
 const LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS = 180 * 1000
 const LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS = 150 * 1000
 const LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS = 3
@@ -133,9 +132,16 @@ interface LocalFlashcardContract {
   answer: string
 }
 
+interface LocalStudyPathPlanSection {
+  title: string
+  goal: string
+  focus?: string
+}
+
 interface LocalStudyPathPlanItem {
   title: string
   goal: string
+  sections: LocalStudyPathPlanSection[]
   topics: string[]
   avoid: string[]
 }
@@ -155,6 +161,14 @@ interface LocalRepairedContract {
   sections: LocalSectionContract[]
   quizzes: LocalQuizContract[]
   flashcards: LocalFlashcardContract[]
+}
+
+interface LocalStudyPathConceptDraftItem {
+  section: string
+  name: string
+  explanation: string
+  example: string
+  commonMistake: string
 }
 
 const localAllowedKinds = new Set<LocalObjectKind>([
@@ -210,8 +224,13 @@ const localBadConceptKeys = new Set([
   'active',
   'example',
   'goal',
+  'grammar',
+  'introduction',
   'it',
+  'lesson',
   'concepts',
+  'overview',
+  'practice',
   'target rule',
   'formation rule',
   'target rule formation rule',
@@ -480,17 +499,17 @@ const repairLocalQuiz = (
   const rawOptions = Array.isArray(input.options)
     ? input.options.map(stringValue).filter(Boolean)
     : typeof input.options === 'string'
-    ? input.options
-        .split(/\r?\n|;|,(?=\s+\S)/)
-        .map(stringValue)
-        .filter(Boolean)
-    : []
+      ? input.options
+          .split(/\r?\n|;|,(?=\s+\S)/)
+          .map(stringValue)
+          .filter(Boolean)
+      : []
   const rawCorrectIndex =
     typeof input.correctIndex === 'number'
       ? input.correctIndex
       : typeof input.correctOptionIndex === 'number'
-      ? input.correctOptionIndex
-      : 0
+        ? input.correctOptionIndex
+        : 0
   const originalAnswer =
     stringValue(input.answer) ||
     (rawCorrectIndex >= 0 && rawCorrectIndex < rawOptions.length
@@ -1138,8 +1157,8 @@ export const normalizeLocalAiStudyPackDraft = (
   const rawObjects = Array.isArray(record.objects)
     ? record.objects
     : Array.isArray(record.studyObjects)
-    ? record.studyObjects
-    : []
+      ? record.studyObjects
+      : []
   const looseObjects = rawObjects
     .map((item, index) =>
       item && typeof item === 'object'
@@ -1259,31 +1278,48 @@ const localStudyPathPlannerPrompt = (
   { title, prompt }: GenerateStudyPathWithAiOptions,
   count: number,
 ): string => {
-  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1600)
+  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 800)
 
-  return `Return minified JSON only. End with }.
-Plan a Study Path with exactly ${count} normal lesson dashboards for "${title}".
-No lesson content. No flashcards. No quizzes. No summary dashboard. No exercises-only dashboard.
+  return `Return JSON only. Start with { and end with }.
+
+Plan a Study Path with exactly ${count} lesson dashboards for "${title}".
+
 Shape:
-{"title":"...","folderName":"...","dashboards":[{"title":"01 - ...","goal":"...","topics":["...","...","..."],"avoid":["...","..."]}]}
-Rules: dashboards must be distinct lesson topics. Titles must start with 01, 02, etc. Keep goals and topics short. Avoid generic introductions unless beginner level.
-Study path topic:
-${compactPrompt}`
+{"title":"...","folderName":"...","dashboards":[{"title":"01 - ...","goal":"...","sections":[{"title":"...","goal":"...","focus":"...; ...; ..."},{"title":"...","goal":"...","focus":"...; ...; ..."}],"avoid":"...; ..."}]}
+
+Topic:
+${compactPrompt}
+
+Rules:
+- Return exactly one JSON object.
+- dashboards must contain exactly ${count} dashboards.
+- Every dashboard title must start with 01 -, 02 -, etc.
+- Each dashboard must have exactly 2 sections.
+- Each section has only title, goal, and focus.
+- focus is one string with exactly 3 short topics separated by semicolons.
+- avoid is one string with exactly 2 short topics separated by semicolons.
+- No lesson content.
+- No quizzes.
+- No flashcards.
+- No markdown.
+- No code fences.
+- No explanations outside JSON.
+- Use short strings.`
 }
 
-const localStudyPathNotesWordTarget = (attempt: number): string => {
+const localStudyPathMarkdownWordTarget = (attempt: number): string => {
   if (attempt === 1) {
-    return '70-90 words, 90 words max'
+    return '80-100 words'
   }
 
   if (attempt === 2) {
-    return '50-70 words, 70 words max'
+    return '60-80 words'
   }
 
-  return '30-40 words, 40 words max'
+  return '40-60 words'
 }
 
-const localStudyPathNotesPrompt = (
+const localStudyPathConceptDraftPrompt = (
   { title, prompt }: GenerateStudyPathWithAiOptions,
   outline: LocalStudyPathPlanItem[],
   item: LocalStudyPathPlanItem,
@@ -1291,31 +1327,142 @@ const localStudyPathNotesPrompt = (
 ): string => {
   const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1200)
   const outlineTitles = outline.map((entry) => entry.title).join(' | ')
-  const notesWordTarget = localStudyPathNotesWordTarget(attempt)
+  const sections = item.sections
+    .map((section) => {
+      const focus = section.focus ? ` Focus: ${section.focus}` : ''
+      return `${section.title}: ${section.goal}${focus}`
+    })
+    .join('\n')
+  const attemptGuidance =
+    attempt === 1
+      ? 'Use the section focus as the main source.'
+      : attempt === 2
+        ? 'Use simpler, safer concepts from the section goals and focus.'
+        : 'Survival mode: use short obvious concepts only.'
 
-  return `Return one minified JSON object only. End with }.
+  return `Return minified JSON only. End with ].
 
-Create lesson notes for one dashboard in "${title}".
+Create a concept draft for one Study Path dashboard in "${title}".
 
 Output shape:
-{"title":"${item.title.replace(/"/g, '')}","notes":"Markdown lesson notes"}
+[{"section":"${item.sections[0]?.title.replace(/"/g, '') || 'Section 1'}","name":"...","explanation":"...","example":"...","commonMistake":"..."}]
 
 Rules:
-- JSON only. No markdown fences.
-- Notes length: ${notesWordTarget}.
-- Notes only: no flashcards, quizzes, exercises, practice questions, or summary field.
+- Return a flat JSON array only. No Markdown. No code fences.
+- Return exactly 6 objects, not 5, not 7.
+- Exactly 3 concepts per section.
+- section must exactly match one of the section titles below.
+- name must be a specific concept, not the section title.
+- all names must be different.
+- avoid quotation marks inside JSON values.
+- Use exactly these keys: section, name, explanation, example, commonMistake.
+- Avoid concepts called Goal, Overview, Example, Practice, Introduction, Grammar, Vocabulary, Lesson.
+- Explanations must be true, short, and beginner-friendly.
+- commonMistake can be an empty string when not useful.
+- Choose concepts from the section focus first.
+- If focus has 3 topics, create one concept per topic.
 - Write only in the user's request language.
-- Use the target language only for examples, vocabulary, and short phrases.
-- Use Markdown: headings, short paragraphs, bullets, and examples.
-- Keep grammar explanations simple and safe.
-- Do not teach beginner introductions if the requested level is B1/B2 or higher.
+- ${attemptGuidance}
 
 Study path topic: ${compactPrompt}
 Outline titles: ${outlineTitles}
 Current dashboard title: ${item.title}
 Current dashboard goal: ${item.goal}
-Current dashboard topics: ${item.topics.join(', ')}
+Section titles, goals, and focus:
+${sections}
 Avoid: ${item.avoid.join(', ')}`
+}
+
+const localStudyPathMarkdownSectionPrompt = (
+  options: GenerateStudyPathWithAiOptions,
+  outline: LocalStudyPathPlanItem[],
+  item: LocalStudyPathPlanItem,
+  section: LocalStudyPathPlanSection,
+  concepts: LocalStudyPathConceptDraftItem[],
+  sectionIndex: number,
+  attempt: number,
+): string => {
+  const compactPrompt = options.prompt.replace(/\s+/g, ' ').trim().slice(0, 900)
+  const outlineTitles = outline.map((entry) => entry.title).join(' | ')
+  const wordTarget = localStudyPathMarkdownWordTarget(attempt)
+  const compactConcepts = concepts
+    .filter(
+      (concept) =>
+        normalizeKey(concept.section) === normalizeKey(section.title),
+    )
+    .map(
+      (concept) =>
+        `- ${concept.name}: ${concept.explanation} Example: ${concept.example} Mistake: ${concept.commonMistake}`,
+    )
+    .join('\n')
+  const role =
+    sectionIndex === 0
+      ? 'core explanation, rules, and meaning'
+      : 'examples, usage, and common mistakes'
+  const structure =
+    sectionIndex === 0
+      ? `Recommended structure:
+## ${section.title}
+
+### Core meanings
+- ...
+- ...
+- ...
+
+### When to use each one
+- **Concept 1**: ...
+- **Concept 2**: ...
+- **Concept 3**: ...`
+      : `Recommended structure:
+## ${section.title}
+
+### Mini examples
+- **Example 1** = ...
+- **Example 2** = ...
+- **Example 3** = ...
+
+### Common mistakes
+- ...
+- ...`
+  const attemptRule =
+    attempt === 1
+      ? 'Use full structured Markdown with short bullets.'
+      : attempt === 2
+        ? 'Use simpler structured Markdown with fewer bullets.'
+        : 'Survival mode: write the shortest usable structured Markdown.'
+
+  return `Return Markdown only.
+No JSON. No code fences.
+Start exactly with this heading:
+## ${section.title}
+
+Write ${role} for "${item.title}" in "${options.title}".
+Target length: around ${wordTarget}.
+${attemptRule}
+
+Rules:
+- Return Markdown only.
+- No JSON.
+- No code fences.
+- Do not mention dashboard, study path, lesson, concepts, part 1, or part 2.
+- Do not write Goal:.
+- Do not add a generic intro.
+- Do not add a conclusion.
+- Prefer bullets, short sections, and small lists.
+- Write only in the user's request language.
+- Use the target language only for examples, vocabulary, and short phrases.
+- Keep grammar explanations simple and safe.
+- Do not teach beginner introductions if the requested level is B1/B2 or higher.
+
+${structure}
+
+Study path topic: ${compactPrompt}
+Outline titles: ${outlineTitles}
+Current page goal: ${item.goal}
+Current section goal: ${section.goal}
+Avoid: ${item.avoid.join(', ')}
+Concept draft:
+${compactConcepts}`
 }
 
 const localStudyPathPracticePrompt = (
@@ -1351,7 +1498,6 @@ export const generateStudyPackWithLocalAi = async (
   options: GenerateStudyPackWithAiOptions,
   localOptions: LocalGenerationOptions = {},
 ): Promise<AiStudyPackDraft> => {
-  // await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
   const text = await callLocalLanguageModel(localStudyPackPrompt(options), {
     timeoutMs: LOCAL_STUDY_PACK_TIMEOUT_MS,
     onProgress: localOptions.onProgress,
@@ -1411,18 +1557,59 @@ const ensureFirstMarkdown = (
 }
 
 const sanitizeLocalLessonNotesMarkdown = (markdown: string): string =>
-  markdown
+  normalizeBlock(
+    markdown
+      .replace(/^```(?:json|markdown|md)?\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .replace(/^goal\s*:.*$/gim, '')
+      .replace(
+        /^#{1,6}\s*Validation and Cleanup\b[\s\S]*?(?=^#{1,6}\s|$(?![\s\S]))/gim,
+        '',
+      ),
+  )
     .replace(/^(#{1,6}\s*)Summary\b/gim, '$1Lesson notes')
     .replace(/^(#{1,6}\s*)Source summary\b/gim, '$1Source notes')
 
 const stripLocalPracticeSectionsFromNotes = (markdown: string): string => {
   const practiceStart = markdown.search(
-    /^#{1,6}\s*(?:practice|quiz|quizzes|flashcards?)\b|^\*{0,2}(?:quiz|flashcard)\s*\d*\*{0,2}\s*:/im,
+    /^#{1,6}\s*(?:(?:practice\s+(?:questions?|exercises?|tasks?))|quiz|quizzes|flashcards?)\b|^\*{0,2}(?:quiz|flashcard)\s*\d*\*{0,2}\s*:/im,
   )
 
   return sanitizeLocalLessonNotesMarkdown(
     practiceStart >= 0 ? markdown.slice(0, practiceStart) : markdown,
   ).trim()
+}
+
+const cleanLocalStudyPathSectionMarkdown = (
+  markdown: string,
+  requiredHeading: string,
+): string => {
+  const cleaned = sanitizeLocalLessonNotesMarkdown(markdown)
+  if (/^\s*[\[{]/.test(cleaned)) {
+    throw new LocalAiGenerationError(
+      'noUsableObjects',
+      LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+      {
+        debug: {
+          mappingError: 'Local AI returned JSON instead of Markdown notes.',
+        },
+      },
+    )
+  }
+
+  if (!cleaned.startsWith(requiredHeading)) {
+    throw new LocalAiGenerationError(
+      'noUsableObjects',
+      LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+      {
+        debug: {
+          mappingError: `Local AI Markdown did not start with ${requiredHeading}.`,
+        },
+      },
+    )
+  }
+
+  return cleaned
 }
 
 const fillDashboardObjects = (
@@ -1455,6 +1642,178 @@ const fillDashboardObjects = (
 
 const wordCount = (value: string): number =>
   value.split(/\s+/).filter(Boolean).length
+
+const normalizeLocalStudyPathConceptDraft = (
+  value: unknown,
+  item: LocalStudyPathPlanItem,
+): { concepts: LocalStudyPathConceptDraftItem[]; events: string[] } => {
+  const rawConcepts = Array.isArray(value) ? value : []
+  const events: string[] = []
+  const sectionKeys = item.sections.map((section) =>
+    normalizeKey(section.title),
+  )
+  const sectionTitleByKey = new Map(
+    item.sections.map((section) => [
+      normalizeKey(section.title),
+      section.title,
+    ]),
+  )
+  const concepts = rawConcepts
+    .map((concept) => {
+      const record =
+        concept && typeof concept === 'object'
+          ? (concept as Record<string, unknown>)
+          : {}
+      const allowedKeys = [
+        'section',
+        'name',
+        'explanation',
+        'example',
+        'commonMistake',
+      ]
+      const hasOnlyAllowedKeys = Object.keys(record).every((key) =>
+        allowedKeys.includes(key),
+      )
+      const section = stringValue(record.section)
+      const sectionKey = normalizeKey(section)
+      const name = stringValue(record.name).replace(/"/g, '')
+      const explanation = stringValue(record.explanation).replace(/"/g, '')
+      const example = stringValue(record.example).replace(/"/g, '')
+      const commonMistake = stringValue(record.commonMistake).replace(/"/g, '')
+      if (
+        !hasOnlyAllowedKeys ||
+        !section ||
+        !name ||
+        !explanation ||
+        isBadConcept(name) ||
+        normalizeKey(name) === sectionKey ||
+        !sectionKeys.includes(sectionKey)
+      ) {
+        return null
+      }
+
+      return {
+        section: sectionTitleByKey.get(sectionKey) || section,
+        name,
+        explanation,
+        example,
+        commonMistake,
+      }
+    })
+    .filter((concept): concept is LocalStudyPathConceptDraftItem =>
+      Boolean(concept),
+    )
+  const uniqueConcepts = uniqueByKey(concepts, (concept) => concept.name)
+  const grouped = new Map<string, LocalStudyPathConceptDraftItem[]>()
+
+  for (const section of item.sections) {
+    grouped.set(normalizeKey(section.title), [])
+  }
+
+  for (const concept of uniqueConcepts) {
+    const sectionKey = normalizeKey(concept.section)
+    const sectionConcepts = grouped.get(sectionKey)
+    if (sectionConcepts) {
+      sectionConcepts.push(concept)
+    }
+  }
+
+  for (const [sectionKey, sectionConcepts] of grouped) {
+    if (sectionConcepts.length > 3) {
+      grouped.set(sectionKey, sectionConcepts.slice(0, 3))
+      events.push(
+        `Trimmed extra Local AI concept draft items for ${sectionTitleByKey.get(sectionKey) || sectionKey}.`,
+      )
+    }
+  }
+
+  let repairedConcepts = item.sections.flatMap(
+    (section) => grouped.get(normalizeKey(section.title)) || [],
+  )
+
+  if (repairedConcepts.length <= 4) {
+    throw new LocalAiGenerationError(
+      'noUsableObjects',
+      LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+      {
+        debug: {
+          parsedJson: value,
+          mappingError:
+            'Local AI concept draft did not contain enough usable concepts.',
+          droppedOrRepairedItems: [
+            ...events,
+            'No usable Local AI concept draft found.',
+          ],
+        },
+      },
+    )
+  }
+
+  if (repairedConcepts.length === 5) {
+    const usedNames = new Set(
+      repairedConcepts.map((concept) => normalizeKey(concept.name)),
+    )
+    const sectionToFill = item.sections.find((section) => {
+      const sectionKey = normalizeKey(section.title)
+      return (grouped.get(sectionKey) || []).length < 3
+    })
+    const focusTopic = sectionToFill?.focus
+      ?.split(';')
+      .map((value) => value.replace(/"/g, '').trim())
+      .find(
+        (value) =>
+          value &&
+          !usedNames.has(normalizeKey(value)) &&
+          normalizeKey(value) !== normalizeKey(sectionToFill.title) &&
+          !isBadConcept(value),
+      )
+
+    if (sectionToFill && focusTopic) {
+      const filler: LocalStudyPathConceptDraftItem = {
+        section: sectionToFill.title,
+        name: focusTopic,
+        explanation: `${focusTopic} is a key idea for this section.`,
+        example: '',
+        commonMistake: '',
+      }
+      grouped.get(normalizeKey(sectionToFill.title))?.push(filler)
+      events.push(
+        `Filled missing Local AI concept draft item from planner focus for ${sectionToFill.title}.`,
+      )
+      repairedConcepts = item.sections.flatMap(
+        (section) => grouped.get(normalizeKey(section.title)) || [],
+      )
+    }
+  }
+
+  const everySectionHasThree = item.sections.every((section) => {
+    const sectionKey = normalizeKey(section.title)
+    return (
+      repairedConcepts.filter(
+        (concept) => normalizeKey(concept.section) === sectionKey,
+      ).length === 3
+    )
+  })
+  if (!everySectionHasThree || repairedConcepts.length !== 6) {
+    throw new LocalAiGenerationError(
+      'noUsableObjects',
+      LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+      {
+        debug: {
+          parsedJson: value,
+          mappingError:
+            'Local AI concept draft did not contain 3 concepts per section.',
+          droppedOrRepairedItems: [
+            ...events,
+            'No usable Local AI concept draft found.',
+          ],
+        },
+      },
+    )
+  }
+
+  return { concepts: repairedConcepts, events }
+}
 
 const previewSummaryFromNotes = (notes: string, fallback: string): string => {
   const cleaned = normalizeSpaces(notes.replace(/^#{1,6}\s*/gm, ''))
@@ -1581,8 +1940,8 @@ const flatDashboardObjects = (
     typeof record.quizCorrectIndex === 'number'
       ? record.quizCorrectIndex
       : typeof record.correctIndex === 'number'
-      ? record.correctIndex
-      : 0
+        ? record.correctIndex
+        : 0
   const quizAnswer =
     quizCorrectIndex >= 0 && quizCorrectIndex < quizOptions.length
       ? quizOptions[quizCorrectIndex]
@@ -1870,12 +2229,71 @@ const specificFolderName = (
 const fallbackPlannerItem = (
   options: GenerateStudyPathWithAiOptions,
   index: number,
-): LocalStudyPathPlanItem => ({
-  title: `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`,
-  goal: `Teach one useful part of ${options.title || 'this topic'}.`,
-  topics: [options.prompt.replace(/\s+/g, ' ').trim().slice(0, 120)],
-  avoid: ['summary-only dashboard', 'exercises-only dashboard'],
-})
+): LocalStudyPathPlanItem => {
+  const sections = [
+    {
+      title: `Key ideas ${index + 1}`,
+      goal: `Explain the main ideas for ${options.title || 'this topic'}.`,
+      focus: '',
+    },
+    {
+      title: `Examples ${index + 1}`,
+      goal: 'Show examples, usage, and common mistakes.',
+      focus: '',
+    },
+  ]
+
+  return {
+    title: `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`,
+    goal: `Teach one useful part of ${options.title || 'this topic'}.`,
+    sections,
+    topics: sections.map((section) => section.title),
+    avoid: ['summary-only dashboard', 'exercises-only dashboard'],
+  }
+}
+
+const normalizePlannerSections = (
+  value: unknown,
+  fallback: LocalStudyPathPlanItem,
+): LocalStudyPathPlanSection[] => {
+  const rawSections = Array.isArray(value) ? value : []
+  const sections = rawSections
+    .map((item) => {
+      const record =
+        item && typeof item === 'object'
+          ? (item as Record<string, unknown>)
+          : {}
+      const title = stringValue(record.title)
+      const goal = stringValue(record.goal)
+      const focus =
+        stringValue(record.focus) ||
+        stringArrayValue(record.seeds).slice(0, 3).join('; ')
+      return title || goal
+        ? { title: title || goal, goal: goal || title, focus }
+        : null
+    })
+    .filter((section): section is LocalStudyPathPlanSection => Boolean(section))
+    .slice(0, 2)
+
+  const legacyTopics = fallback.topics.map((topic, index) => ({
+    title: topic || fallback.sections[index]?.title || `Section ${index + 1}`,
+    goal: topic || fallback.sections[index]?.goal || fallback.goal,
+    focus: fallback.sections[index]?.focus || '',
+  }))
+
+  while (sections.length < 2) {
+    sections.push(
+      legacyTopics[sections.length] ||
+        fallback.sections[sections.length] || {
+          title: `Section ${sections.length + 1}`,
+          goal: fallback.goal,
+          focus: '',
+        },
+    )
+  }
+
+  return sections
+}
 
 const normalizePlannerItem = (
   value: unknown,
@@ -1885,20 +2303,28 @@ const normalizePlannerItem = (
   const record =
     value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
   const fallback = fallbackPlannerItem(options, index)
+  const sections = normalizePlannerSections(record.sections, fallback)
 
   return {
     title:
       stringValue(record.title) ||
       `${String(index + 1).padStart(2, '0')} - Lesson ${index + 1}`,
     goal: stringValue(record.goal) || fallback.goal,
+    sections,
     topics:
       stringArrayValue(record.topics).length > 0
         ? stringArrayValue(record.topics).slice(0, 5)
-        : fallback.topics,
+        : sections.map((section) => section.title),
     avoid:
       stringArrayValue(record.avoid).length > 0
         ? stringArrayValue(record.avoid).slice(0, 5)
-        : fallback.avoid,
+        : stringValue(record.avoid)
+          ? stringValue(record.avoid)
+              .split(';')
+              .map((item) => item.trim())
+              .filter(Boolean)
+              .slice(0, 5)
+          : fallback.avoid,
   }
 }
 
@@ -1959,15 +2385,95 @@ const normalizeLocalStudyPathPlan = (
 }
 
 const parsePlannerJsonLeniently = (text: string): unknown => {
+  const plannerString = (value: string): string =>
+    value.replace(/\\"/g, '"').trim()
+  const splitDashboardChunks = (candidate: string): string[] => {
+    const matches = [
+      ...candidate.matchAll(/\{\s*"title"\s*:\s*"\d{2}\s*-\s*[^"]+"/g),
+    ]
+
+    return matches.map((match, index) => {
+      const start = match.index || 0
+      const end =
+        index + 1 < matches.length
+          ? matches[index + 1].index || candidate.length
+          : candidate.length
+      return candidate.slice(start, end)
+    })
+  }
+  const salvageDashboardChunks = (candidate: string): unknown[] => {
+    const chunks = splitDashboardChunks(candidate)
+
+    return chunks
+      .map((chunk) => {
+        const title = plannerString(
+          chunk.match(/"title"\s*:\s*"([^"]+)"/)?.[1] || '',
+        )
+        const goal = plannerString(
+          chunk.match(/"goal"\s*:\s*"([^"]+)"/)?.[1] || '',
+        )
+        const sectionMatches = [
+          ...chunk.matchAll(
+            /\{\s*"title"\s*:\s*"([^"]+)"\s*,\s*"goal"\s*:\s*"([^"]+)"\s*,\s*(?:"focus"\s*:\s*"([^"]*)"|"seeds"\s*:\s*\[([^\]]*)\])\s*\}/g,
+          ),
+        ]
+        const sections = sectionMatches.slice(0, 2).map((sectionMatch) => {
+          const focus =
+            plannerString(sectionMatch[3] || '') ||
+            [...(sectionMatch[4] || '').matchAll(/"([^"]+)"/g)]
+              .map((seedMatch) => plannerString(seedMatch[1]))
+              .slice(0, 3)
+              .join('; ')
+
+          return {
+            title: plannerString(sectionMatch[1]),
+            goal: plannerString(sectionMatch[2]),
+            focus,
+          }
+        })
+        const avoidString = plannerString(
+          chunk.match(/"avoid"\s*:\s*"([^"]*)"/)?.[1] || '',
+        )
+        const avoidSource = chunk.match(/"avoid"\s*:\s*\[([^\]]*)\]/)?.[1] || ''
+        const avoidFromString = avoidString
+          .split(';')
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, 2)
+        const avoid =
+          avoidFromString.length > 0
+            ? avoidFromString
+            : [...avoidSource.matchAll(/"([^"]+)"/g)]
+                .map((avoidMatch) => plannerString(avoidMatch[1]))
+                .slice(0, 2)
+
+        if (!title || !goal || sections.length === 0) {
+          return null
+        }
+
+        return { title, goal, sections, avoid }
+      })
+      .filter(Boolean)
+  }
+
   try {
     return parseLocalAiJson(text)
   } catch (error) {
     const trimmed = text.trim()
     const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
     const candidate = fenced || trimmed
+    const salvagedDashboards = salvageDashboardChunks(candidate)
+    if (salvagedDashboards.length > 0) {
+      return {
+        title: candidate.match(/"title"\s*:\s*"([^"]+)"/)?.[1],
+        folderName: candidate.match(/"folderName"\s*:\s*"([^"]+)"/)?.[1],
+        dashboards: salvagedDashboards,
+      }
+    }
+
     const dashboardMatches = [
       ...candidate.matchAll(
-        /\{[^{}]*"title"\s*:\s*"[^"]+"[^{}]*"goal"\s*:\s*"[^"]+"[^{}]*"topics"\s*:\s*\[[^\]]*\][^{}]*\}/g,
+        /\{[^{}]*"title"\s*:\s*"[^"]+"[^{}]*"goal"\s*:\s*"[^"]+"[^{}]*(?:"topics"\s*:\s*\[[^\]]*\]|"sections"\s*:\s*\[[\s\S]*?\])[^{}]*\}/g,
       ),
     ]
     const dashboards = dashboardMatches
@@ -2010,12 +2516,6 @@ const createLocalStudyPathPlan = async (
       progressLabel: 'Planning path...',
     })
     debug.rawResponse = text
-
-    if (localAiJsonLooksTruncated(text)) {
-      throw new Error(
-        'Google Local AI returned truncated JSON before the final closing brace.',
-      )
-    }
 
     const parsed = parsePlannerJsonLeniently(text)
     debug.parsedJson = parsed
@@ -2079,7 +2579,8 @@ const localAiStudyPathFailureIsRetryable = (
 ): boolean =>
   error.code === 'invalidJson' ||
   error.code === 'mappingError' ||
-  error.code === 'noUsableObjects'
+  error.code === 'noUsableObjects' ||
+  error.code === 'timeout'
 
 const hasUsableMappedWidgets = (
   dashboard: AiStudyPathDashboardDraft | null,
@@ -2163,6 +2664,7 @@ interface LocalStudyPathNotesResult {
   notes: string
   rawResponse: string
   failedAttempts: LocalAiGenerationFailureDebug[]
+  repairEvents: string[]
 }
 
 interface LocalStudyPathPracticeResult {
@@ -2303,15 +2805,71 @@ const parseLocalStudyPathObject = (
     : {}
 }
 
-const generateLocalStudyPathNotes = async (
+const localStudyPathMarkdownWordBounds = (
+  attempt: number,
+): { min: number; max: number } => {
+  if (attempt === 1) {
+    return { min: 65, max: 140 }
+  }
+
+  if (attempt === 2) {
+    return { min: 45, max: 110 }
+  }
+
+  return { min: 30, max: 90 }
+}
+
+const createLocalAiErrorFromUnknown = (
+  error: unknown,
+  debug: LocalAiGenerationFailureDebug,
+): LocalAiGenerationError => {
+  if (isLocalAiGenerationError(error)) {
+    return new LocalAiGenerationError(error.code, error.message, {
+      debug: { ...debug, ...error.debug },
+      cause: error.cause,
+    })
+  }
+
+  return new LocalAiGenerationError(
+    /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
+      ? 'invalidJson'
+      : localAiFailureCodeForError(error),
+    /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
+      ? LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE
+      : localAiFailureMessageForCode(
+          localAiFailureCodeForError(error),
+          errorMessage(error),
+        ),
+    {
+      debug: {
+        ...debug,
+        parseError: /invalid JSON|Unexpected|truncated JSON/i.test(
+          errorMessage(error),
+        )
+          ? errorMessage(error)
+          : undefined,
+      },
+      cause: error,
+    },
+  )
+}
+
+const generateLocalStudyPathConceptDraft = async (
   index: number,
   options: GenerateStudyPathWithAiOptions,
   plan: LocalStudyPathPlan,
   expectedCount: number,
   localOptions: LocalGenerationOptions,
-): Promise<LocalStudyPathNotesResult> => {
+): Promise<{
+  concepts: LocalStudyPathConceptDraftItem[]
+  rawResponse: string
+  legacyNotes?: string
+  failedAttempts: LocalAiGenerationFailureDebug[]
+  repairEvents: string[]
+}> => {
   const plannerItem = plan.dashboards[index]
   const failedAttempts: LocalAiGenerationFailureDebug[] = []
+  const repairEvents: string[] = []
   let lastError: LocalAiGenerationError | null = null
 
   for (
@@ -2319,7 +2877,7 @@ const generateLocalStudyPathNotes = async (
     attempt <= LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS;
     attempt += 1
   ) {
-    const promptText = localStudyPathNotesPrompt(
+    const promptText = localStudyPathConceptDraftPrompt(
       options,
       plan.dashboards,
       plannerItem,
@@ -2337,7 +2895,7 @@ const generateLocalStudyPathNotes = async (
       const text = await callLocalLanguageModel(promptText, {
         timeoutMs: LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS,
         onProgress: localOptions.onProgress,
-        progressLabel: `Generating notes for dashboard ${
+        progressLabel: `Generating concept draft for dashboard ${
           index + 1
         }/${expectedCount}, attempt ${attempt}/${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
         dashboardIndex: index + 1,
@@ -2346,55 +2904,49 @@ const generateLocalStudyPathNotes = async (
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
       })
       debug.rawResponse = text
-      const record = parseLocalStudyPathObject(text, debug)
-      const notes = stripLocalPracticeSectionsFromNotes(
-        blockValue(record.notes) || blockValue(record.rawNotes),
-      )
-      if (wordCount(notes.replace(/^#+\s*/gm, '')) < 5) {
-        throw new LocalAiGenerationError(
-          'noUsableObjects',
-          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
-          {
-            debug: {
-              ...debug,
-              mappingError: 'Local AI notes were too short to use.',
-              droppedOrRepairedItems: ['No usable Local AI notes found.'],
-            },
-          },
+      const parsed = parseLocalAiJson(text)
+      debug.parsedJson = parsed
+      if (!Array.isArray(parsed) && parsed && typeof parsed === 'object') {
+        const record = parsed as Record<string, unknown>
+        const legacyNotes = stripLocalPracticeSectionsFromNotes(
+          blockValue(record.notes) ||
+            blockValue(record.rawNotes) ||
+            blockValue(record.markdown),
         )
+        if (wordCount(legacyNotes.replace(/^#+\s*/gm, '')) >= 5) {
+          return {
+            concepts: [],
+            rawResponse: text,
+            legacyNotes,
+            failedAttempts,
+            repairEvents,
+          }
+        }
       }
 
+      const normalizedConceptDraft = normalizeLocalStudyPathConceptDraft(
+        parsed,
+        plannerItem,
+      )
+      repairEvents.push(...normalizedConceptDraft.events)
+
       return {
-        title: stringValue(record.title) || plannerItem.title,
-        notes,
+        concepts: normalizedConceptDraft.concepts,
         rawResponse: text,
-        failedAttempts,
+        failedAttempts:
+          repairEvents.length > 0
+            ? [
+                ...failedAttempts,
+                {
+                  ...debug,
+                  droppedOrRepairedItems: repairEvents,
+                },
+              ]
+            : failedAttempts,
+        repairEvents,
       }
     } catch (error) {
-      const localError = isLocalAiGenerationError(error)
-        ? error
-        : new LocalAiGenerationError(
-            /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
-              ? 'invalidJson'
-              : localAiFailureCodeForError(error),
-            /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
-              ? LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE
-              : localAiFailureMessageForCode(
-                  localAiFailureCodeForError(error),
-                  errorMessage(error),
-                ),
-            {
-              debug: {
-                ...debug,
-                parseError: /invalid JSON|Unexpected|truncated JSON/i.test(
-                  errorMessage(error),
-                )
-                  ? errorMessage(error)
-                  : undefined,
-              },
-              cause: error,
-            },
-          )
+      const localError = createLocalAiErrorFromUnknown(error, debug)
       lastError = localError
       failedAttempts.push(localError.debug || debug)
 
@@ -2420,6 +2972,178 @@ const generateLocalStudyPathNotes = async (
     lastError?.message || LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
     { debug, cause: lastError?.cause },
   )
+}
+
+const generateLocalStudyPathMarkdownSection = async (
+  index: number,
+  sectionIndex: number,
+  options: GenerateStudyPathWithAiOptions,
+  plan: LocalStudyPathPlan,
+  concepts: LocalStudyPathConceptDraftItem[],
+  expectedCount: number,
+  localOptions: LocalGenerationOptions,
+): Promise<{
+  markdown: string
+  rawResponse: string
+  failedAttempts: LocalAiGenerationFailureDebug[]
+}> => {
+  const plannerItem = plan.dashboards[index]
+  const section = plannerItem.sections[sectionIndex]
+  const requiredHeading = `## ${section.title}`
+  const failedAttempts: LocalAiGenerationFailureDebug[] = []
+  let lastError: LocalAiGenerationError | null = null
+
+  for (
+    let attempt = 1;
+    attempt <= LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    const promptText = localStudyPathMarkdownSectionPrompt(
+      options,
+      plan.dashboards,
+      plannerItem,
+      section,
+      concepts,
+      sectionIndex,
+      attempt,
+    )
+    const debug: LocalAiGenerationFailureDebug = {
+      dashboardIndex: index + 1,
+      dashboardCount: expectedCount,
+      attempt,
+      attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      promptLength: promptText.length,
+    }
+
+    try {
+      const text = await callLocalLanguageModel(promptText, {
+        timeoutMs: LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS,
+        onProgress: localOptions.onProgress,
+        progressLabel: `Generating source notes section ${
+          sectionIndex + 1
+        } for dashboard ${
+          index + 1
+        }/${expectedCount}, attempt ${attempt}/${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
+        dashboardIndex: index + 1,
+        dashboardCount: expectedCount,
+        attempt,
+        attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      })
+      debug.rawResponse = text
+      const markdown = cleanLocalStudyPathSectionMarkdown(text, requiredHeading)
+      const count = wordCount(markdown.replace(/^#+\s*/gm, ''))
+      const bounds = localStudyPathMarkdownWordBounds(attempt)
+      if (count < bounds.min || count > bounds.max) {
+        throw new LocalAiGenerationError(
+          'noUsableObjects',
+          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+          {
+            debug: {
+              ...debug,
+              mappingError: `Local AI Markdown section word count ${count} was outside ${bounds.min}-${bounds.max}.`,
+            },
+          },
+        )
+      }
+
+      return { markdown, rawResponse: text, failedAttempts }
+    } catch (error) {
+      const localError = createLocalAiErrorFromUnknown(error, debug)
+      lastError = localError
+      failedAttempts.push(localError.debug || debug)
+
+      if (
+        !localAiStudyPathFailureIsRetryable(localError) ||
+        attempt === LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS
+      ) {
+        logLocalDashboardError(localError.debug || debug, localError)
+        break
+      }
+    }
+  }
+
+  const debug = withAttemptDebug(
+    lastError?.debug || {
+      dashboardIndex: index + 1,
+      dashboardCount: expectedCount,
+    },
+    failedAttempts,
+  )
+  throw new LocalAiGenerationError(
+    lastError?.code || 'noUsableObjects',
+    lastError?.message || LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+    { debug, cause: lastError?.cause },
+  )
+}
+
+const generateLocalStudyPathNotes = async (
+  index: number,
+  options: GenerateStudyPathWithAiOptions,
+  plan: LocalStudyPathPlan,
+  expectedCount: number,
+  localOptions: LocalGenerationOptions,
+): Promise<LocalStudyPathNotesResult> => {
+  const plannerItem = plan.dashboards[index]
+  const conceptResult = await generateLocalStudyPathConceptDraft(
+    index,
+    options,
+    plan,
+    expectedCount,
+    localOptions,
+  )
+  if (conceptResult.legacyNotes) {
+    return {
+      title: plannerItem.title,
+      notes: conceptResult.legacyNotes,
+      rawResponse: conceptResult.rawResponse,
+      failedAttempts: conceptResult.failedAttempts,
+      repairEvents: conceptResult.repairEvents,
+    }
+  }
+
+  const sectionOne = await generateLocalStudyPathMarkdownSection(
+    index,
+    0,
+    options,
+    plan,
+    conceptResult.concepts,
+    expectedCount,
+    localOptions,
+  )
+  const sectionTwo = await generateLocalStudyPathMarkdownSection(
+    index,
+    1,
+    options,
+    plan,
+    conceptResult.concepts,
+    expectedCount,
+    localOptions,
+  )
+  const notes = [
+    `# ${plannerItem.title}`,
+    sectionOne.markdown.trim(),
+    sectionTwo.markdown.trim(),
+  ].join('\n\n')
+
+  return {
+    title: plannerItem.title,
+    notes: stripLocalPracticeSectionsFromNotes(notes),
+    rawResponse: JSON.stringify(
+      {
+        conceptResponse: conceptResult.rawResponse,
+        sectionOneResponse: sectionOne.rawResponse,
+        sectionTwoResponse: sectionTwo.rawResponse,
+      },
+      null,
+      2,
+    ),
+    failedAttempts: [
+      ...conceptResult.failedAttempts,
+      ...sectionOne.failedAttempts,
+      ...sectionTwo.failedAttempts,
+    ],
+    repairEvents: conceptResult.repairEvents,
+  }
 }
 
 const generateLocalStudyPathPractice = async (
@@ -2610,6 +3334,13 @@ const generateLocalStudyPathDashboard = async (
       )
     }
 
+    if (notesResult.repairEvents.length > 0 && mappedDashboard.debugTrace) {
+      mappedDashboard.debugTrace.droppedOrRepairedItems = [
+        ...(mappedDashboard.debugTrace.droppedOrRepairedItems || []),
+        ...notesResult.repairEvents,
+      ]
+    }
+
     const failedAttempts = [
       ...notesResult.failedAttempts,
       ...practiceResult.failedAttempts,
@@ -2705,7 +3436,6 @@ export const generateStudyPathWithLocalAi = async (
     throw new Error(LOCAL_DEEP_BLOCKED_MESSAGE)
   }
 
-  // await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
   const expectedCount = getLocalStudyPathDashboardCount(
     options.generationAmount,
   )
@@ -2804,15 +3534,15 @@ export const generateStudyPathWithBasicFallback = ({
     normalizeStudyPathGenerationAmount(generationAmount) === 'deep'
       ? 'many'
       : normalizeStudyPathGenerationAmount(generationAmount) === 'average'
-      ? 'medium'
-      : 'few'
+        ? 'medium'
+        : 'few'
   const dashboards = roles.map((role, index) => {
     const dashboardTitle = `${String(index + 1).padStart(2, '0')} - ${
       role === 'summary'
         ? 'Summary'
         : role === 'exercises'
-        ? 'Exercises'
-        : `Lesson ${index + 1}`
+          ? 'Exercises'
+          : `Lesson ${index + 1}`
     }`
     const rawNotes = fallbackPromptForDashboard(
       prompt,

@@ -341,7 +341,6 @@ describe('CreateStudyPathModal role enforcement', () => {
     })
     const prompt = vi
       .fn()
-      .mockResolvedValueOnce('{"ok":true}')
       .mockResolvedValueOnce(
         JSON.stringify({
           title: 'Italian B1',
@@ -419,9 +418,65 @@ describe('CreateStudyPathModal role enforcement', () => {
       tokenSource: 'none',
     })
     const onCreatePath = vi.fn()
+    const conceptDraft = (firstSection: string, secondSection: string) =>
+      JSON.stringify([
+        {
+          section: firstSection,
+          name: 'Routine phrase',
+          explanation: 'A routine phrase describes repeated daily action.',
+          example: 'jeden Morgen',
+          commonMistake: 'Do not use yesterday words for habits.',
+        },
+        {
+          section: firstSection,
+          name: 'Time marker',
+          explanation: 'A time marker says when the action happens.',
+          example: 'am Abend',
+          commonMistake: '',
+        },
+        {
+          section: firstSection,
+          name: 'Verb position',
+          explanation: 'Verb position keeps the German sentence clear.',
+          example: 'Ich stehe frueh auf.',
+          commonMistake: 'Do not leave separable prefixes in the middle.',
+        },
+        {
+          section: secondSection,
+          name: 'Travel request',
+          explanation: 'A travel request asks for help politely.',
+          example: 'Eine Fahrkarte, bitte.',
+          commonMistake: '',
+        },
+        {
+          section: secondSection,
+          name: 'Direction phrase',
+          explanation: 'A direction phrase helps find a place.',
+          example: 'Wo ist der Bahnhof?',
+          commonMistake:
+            'Do not use long sentences when a short request works.',
+        },
+        {
+          section: secondSection,
+          name: 'Polite form',
+          explanation: 'A polite form makes basic requests sound respectful.',
+          example: 'Koennen Sie mir helfen?',
+          commonMistake: '',
+        },
+      ])
+    const sectionMarkdown = (heading: string, focus: string) => `## ${heading}
+
+### Core meanings
+- **Routine phrase**: ${focus} gives students language they can reuse in short daily situations.
+- **Time marker**: choose a phrase that matches morning, evening, travel, or direction context.
+- **Verb position**: keep the verb pattern clear before changing names, places, or times.
+
+### When to use each one
+- Use short examples for quick speaking practice.
+- Use polite forms with staff or strangers.
+- Check word order before answering practice questions.`
     const prompt = vi
       .fn()
-      .mockResolvedValueOnce('{"ok":true}')
       .mockResolvedValueOnce(
         JSON.stringify({
           title: 'German A2',
@@ -430,23 +485,48 @@ describe('CreateStudyPathModal role enforcement', () => {
             {
               title: '01 - Everyday routines',
               goal: 'Talk about routines.',
-              topics: ['time phrases', 'separable verbs'],
+              sections: [
+                {
+                  title: 'Time phrases',
+                  goal: 'Explain routine time phrases.',
+                },
+                {
+                  title: 'Separable verbs',
+                  goal: 'Show routine examples and mistakes.',
+                },
+              ],
               avoid: ['summary dashboard'],
             },
             {
               title: '02 - Travel basics',
               goal: 'Handle travel situations.',
-              topics: ['tickets', 'directions'],
+              sections: [
+                {
+                  title: 'Tickets',
+                  goal: 'Explain ticket request phrases.',
+                },
+                {
+                  title: 'Directions',
+                  goal: 'Show directions examples and mistakes.',
+                },
+              ],
               avoid: ['exercises-only dashboard'],
             },
           ],
         }),
       )
+      .mockResolvedValueOnce(conceptDraft('Time phrases', 'Separable verbs'))
+      .mockResolvedValueOnce(
+        sectionMarkdown(
+          'Time phrases',
+          'German A2 routines use time phrases like jeden Morgen',
+        ),
+      )
+      .mockResolvedValueOnce(
+        sectionMarkdown('Separable verbs', 'Separable verbs describe routines'),
+      )
       .mockResolvedValueOnce(
         JSON.stringify({
-          title: '01 - Everyday routines',
-          notes:
-            '## Lesson notes\n\nGerman A2 routines use time phrases like jeden Morgen with present tense verbs.',
           flashcards: [
             {
               question: 'What does jeden Morgen mean?',
@@ -466,11 +546,15 @@ describe('CreateStudyPathModal role enforcement', () => {
           ],
         }),
       )
+      .mockResolvedValueOnce(conceptDraft('Tickets', 'Directions'))
+      .mockResolvedValueOnce(
+        sectionMarkdown('Tickets', 'German A2 travel uses ticket requests'),
+      )
+      .mockResolvedValueOnce(
+        sectionMarkdown('Directions', 'Direction phrases help find stations'),
+      )
       .mockResolvedValueOnce(
         JSON.stringify({
-          title: '02 - Travel basics',
-          notes:
-            '## Lesson notes\n\nGerman A2 travel lessons use polite requests and short direction phrases.',
           flashcards: [
             {
               question: 'What should travel requests be?',
@@ -501,6 +585,13 @@ describe('CreateStudyPathModal role enforcement', () => {
         onClose={vi.fn()}
         onCreatePath={onCreatePath}
       />,
+    )
+
+    fireEvent.mouseDown(
+      screen.getByRole('combobox', { name: /local ai concurrency/i }),
+    )
+    fireEvent.click(
+      screen.getByRole('option', { name: /1 dashboard at once/i }),
     )
 
     fireEvent.change(

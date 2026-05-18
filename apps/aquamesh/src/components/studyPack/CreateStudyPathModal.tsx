@@ -96,24 +96,25 @@ const LOCAL_AI_ESTIMATE_COPY =
   'Local AI runs on your device and can be slow. Super small usually takes 2-3 min, Compact 3-5 min, Average 5-8 min. For faster/deeper paths, use Own Gemini token.'
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
+const DEFAULT_STUDY_PATH_PROMPT = 'I want to learn Italian level A2'
 
 const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Generating dashboards with Google Local AI...'
     : provider === 'gemini'
-    ? 'Generating ordered dashboards with Gemini...'
-    : provider === 'basic'
-    ? 'Generating ordered dashboards with Basic fallback...'
-    : 'Checking hosted AI configuration...'
+      ? 'Generating ordered dashboards with Gemini...'
+      : provider === 'basic'
+        ? 'Generating ordered dashboards with Basic fallback...'
+        : 'Checking hosted AI configuration...'
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Local AI is running on your device. AquaMesh plans the path first, then generates each lesson dashboard with its own estimated timer.'
     : provider === 'gemini'
-    ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
-    : provider === 'basic'
-    ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
-    : 'Hosted AI is not configured yet.'
+      ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
+      : provider === 'basic'
+        ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
+        : 'Hosted AI is not configured yet.'
 
 const getGenerationAmountHelper = (
   option: (typeof generationAmountOptions)[number],
@@ -285,7 +286,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onCreatePath,
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState(DEFAULT_STUDY_PATH_PROMPT)
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
@@ -315,7 +316,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
   const reset = () => {
     setStep('prompt')
-    setPrompt('')
+    setPrompt(DEFAULT_STUDY_PATH_PROMPT)
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
     setLocalAiDashboardConcurrency(2)
     setDraft(null)

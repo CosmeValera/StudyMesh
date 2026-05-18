@@ -46,7 +46,6 @@ export {
   getLocalLanguageModelAvailability,
   isLocalLanguageModelSupported,
   resetLocalLanguageModelCooldownForTests,
-  smokeTestLocalLanguageModel,
   testLocalLanguageModel,
 } from './localLanguageModel'
 export type { LocalAiProgressEvent } from './localLanguageModel'
