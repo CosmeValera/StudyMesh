@@ -41,6 +41,7 @@ import {
 } from '../../studyPack/ai'
 
 type GenerationAmount = StudyPathGenerationAmount
+type LocalAiDashboardConcurrency = 1 | 2 | 3 | 5
 
 interface CreateStudyPathModalProps {
   open: boolean
@@ -288,6 +289,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
+  const [localAiDashboardConcurrency, setLocalAiDashboardConcurrency] =
+    useState<LocalAiDashboardConcurrency>(2)
   const [draft, setDraft] = useState<AiStudyPathDraft | null>(null)
   const [reviewFolderName, setReviewFolderName] = useState('')
   const [openInWorkspace, setOpenInWorkspace] = useState(true)
@@ -307,12 +310,14 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     const provider = readStudyPackAiSettings().provider || 'basic'
     setAiProvider(provider)
     setGenerationAmount(provider === 'local' ? 'superSmall' : 'average')
+    setLocalAiDashboardConcurrency(2)
   }, [open])
 
   const reset = () => {
     setStep('prompt')
     setPrompt('')
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
+    setLocalAiDashboardConcurrency(2)
     setDraft(null)
     setReviewFolderName('')
     setOpenInWorkspace(true)
@@ -363,6 +368,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         folderName: '',
         prompt,
         generationAmount,
+        localAiDashboardConcurrency:
+          aiProvider === 'local' ? localAiDashboardConcurrency : undefined,
         onProgress: (event) => {
           setLocalAiProgress(event)
         },
@@ -503,26 +510,57 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 minRows={5}
                 fullWidth
               />
-              <TextField
-                select
-                label="Path depth"
-                value={generationAmount}
-                onChange={(event) =>
-                  setGenerationAmount(event.target.value as GenerationAmount)
-                }
-                sx={{ maxWidth: 320 }}
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', sm: 'flex-start' }}
               >
-                {generationAmountOptions.map((option) => (
-                  <MenuItem
-                    key={option.value}
-                    value={option.value}
-                    disabled={aiProvider === 'local' && option.value === 'deep'}
+                <TextField
+                  select
+                  label="Path depth"
+                  value={generationAmount}
+                  onChange={(event) =>
+                    setGenerationAmount(event.target.value as GenerationAmount)
+                  }
+                  sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
+                >
+                  {generationAmountOptions.map((option) => (
+                    <MenuItem
+                      key={option.value}
+                      value={option.value}
+                      disabled={
+                        aiProvider === 'local' && option.value === 'deep'
+                      }
+                    >
+                      {option.label} -{' '}
+                      {getGenerationAmountHelper(option, aiProvider)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                {aiProvider === 'local' && (
+                  <TextField
+                    select
+                    label="Local AI concurrency"
+                    value={localAiDashboardConcurrency}
+                    onChange={(event) =>
+                      setLocalAiDashboardConcurrency(
+                        Number(
+                          event.target.value,
+                        ) as LocalAiDashboardConcurrency,
+                      )
+                    }
+                    helperText="How many lesson dashboards Local AI tries to generate at once."
+                    sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
                   >
-                    {option.label} -{' '}
-                    {getGenerationAmountHelper(option, aiProvider)}
-                  </MenuItem>
-                ))}
-              </TextField>
+                    {[1, 2, 3, 5].map((value) => (
+                      <MenuItem key={value} value={value}>
+                        {value} dashboard{value === 1 ? '' : 's'} at once
+                        {value === 2 ? ' (default)' : ''}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              </Stack>
               <Alert severity="info">
                 Study Path uses the AI provider selected in Settings. The next
                 screen previews each dashboard before saving anything.

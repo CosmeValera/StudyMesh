@@ -108,6 +108,7 @@ export interface GenerateStudyPathWithAiOptions {
   prompt: string
   folderName: string
   generationAmount?: StudyPathGenerationAmount
+  localAiDashboardConcurrency?: 1 | 2 | 3 | 5
 }
 
 export const normalizeStudyPathGenerationAmount = (

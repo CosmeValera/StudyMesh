@@ -374,6 +374,13 @@ describe('CreateStudyPathModal role enforcement', () => {
       <CreateStudyPathModal open onClose={vi.fn()} onCreatePath={vi.fn()} />,
     )
 
+    fireEvent.mouseDown(
+      screen.getByRole('combobox', { name: /local ai concurrency/i }),
+    )
+    fireEvent.click(
+      screen.getByRole('option', { name: /1 dashboard at once/i }),
+    )
+
     fireEvent.change(
       screen.getByRole('textbox', { name: /what should aquamesh teach/i }),
       {

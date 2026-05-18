@@ -37,6 +37,7 @@ type LocalObjectKind =
 
 interface LocalGenerationOptions {
   onProgress?: (event: LocalAiProgressEvent) => void
+  dashboardConcurrency?: 1 | 2 | 3 | 5
 }
 
 export type LocalAiGenerationFailureCode =
@@ -93,7 +94,8 @@ export const isLocalAiGenerationError = (
 
 const LOCAL_STUDY_PACK_TIMEOUT_MS = 4 * 60 * 1000
 const LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS = 90 * 1000
-const LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS = 180 * 1000
+const LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS = 180 * 1000
+const LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS = 150 * 1000
 const LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS = 3
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
@@ -1269,61 +1271,80 @@ Study path topic:
 ${compactPrompt}`
 }
 
-const localStudyPathDashboardPrompt = (
-  { title, prompt }: GenerateStudyPathWithAiOptions,
-  outline: LocalStudyPathPlanItem[],
-  item: LocalStudyPathPlanItem,
-): string => {
-  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1800)
-  const outlineTitles = outline.map((entry) => entry.title).join(' | ')
+const localStudyPathNotesWordTarget = (attempt: number): string => {
+  if (attempt === 1) {
+    return '90-120 words, 120 words max'
+  }
 
-  return `Return minified JSON only. End with }.
-Create exactly one normal lesson dashboard for "${title}".
-Shape:
-{"title":"${item.title.replace(
-    /"/g,
-    '',
-  )}","notes":"Markdown notes, 90-140 words","flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
-Rules: small valid JSON only. No summary field. No listItems. No extra fields. No markdown fences. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
-Write notes as compact Markdown: optional short heading plus bullets or short paragraphs. Include the minimum theory needed to answer every flashcard and quiz.
-Make exactly 2 flashcards and 1-2 quizzes directly answerable from notes.
-Do not merge multiple flashcards into one object; each flashcard must be a separate object with exactly one question and one answer.
-For language learning, generate useful grammar/vocabulary/practice topics appropriate to the requested language and level.
-Introductions are appropriate only when no level is given or the request is beginner-level. Otherwise use level-appropriate grammar, vocabulary, realistic situations, and practice.
-Study path topic: ${compactPrompt}
-Full outline titles only: ${outlineTitles}
-Current dashboard title: ${item.title}
-Current dashboard goal: ${item.goal}
-Current dashboard topics: ${item.topics.join(', ')}
-Current dashboard avoid list: ${item.avoid.join(', ')}`
+  if (attempt === 2) {
+    return '70-90 words, 90 words max'
+  }
+
+  return '50-70 words, 70 words max'
 }
 
-const localStudyPathDashboardRetryPrompt = (
-  options: GenerateStudyPathWithAiOptions,
+const localStudyPathNotesPrompt = (
+  { title, prompt }: GenerateStudyPathWithAiOptions,
   outline: LocalStudyPathPlanItem[],
   item: LocalStudyPathPlanItem,
   attempt: number,
 ): string => {
+  const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 1200)
+  const outlineTitles = outline.map((entry) => entry.title).join(' | ')
+  const notesWordTarget = localStudyPathNotesWordTarget(attempt)
+
+  return `Return one minified JSON object only. End with }.
+
+Create lesson notes for one dashboard in "${title}".
+
+Output shape:
+{"title":"${item.title.replace(/"/g, '')}","notes":"Markdown lesson notes"}
+
+Rules:
+- JSON only. No markdown fences.
+- Notes length: ${notesWordTarget}.
+- Notes only: no flashcards, quizzes, exercises, practice questions, or summary field.
+- Write only in the user's request language.
+- Use the target language only for examples, vocabulary, and short phrases.
+- Use Markdown: headings, short paragraphs, bullets, and examples.
+- Keep grammar explanations simple and safe.
+- Do not teach beginner introductions if the requested level is B1/B2 or higher.
+
+Study path topic: ${compactPrompt}
+Outline titles: ${outlineTitles}
+Current dashboard title: ${item.title}
+Current dashboard goal: ${item.goal}
+Current dashboard topics: ${item.topics.join(', ')}
+Avoid: ${item.avoid.join(', ')}`
+}
+
+const localStudyPathPracticePrompt = (
+  options: GenerateStudyPathWithAiOptions,
+  outline: LocalStudyPathPlanItem[],
+  item: LocalStudyPathPlanItem,
+  notes: string,
+  attempt: number,
+): string => {
   const compactPrompt = options.prompt.replace(/\s+/g, ' ').trim().slice(0, 900)
   const outlineTitles = outline.map((entry) => entry.title).join(' | ')
+  const compactNotes = notes.replace(/\s+/g, ' ').trim().slice(0, 1800)
 
-  return `Return one tiny minified JSON object only. End with }.
-Retry attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} for "${
+  return `Return minified JSON only. End with }.
+Create practice from these exact lesson notes. Attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} for "${
     item.title
   }" in "${options.title}".
-Use exactly these fields:
-{"title":"${item.title.replace(
-    /"/g,
-    '',
-  )}","notes":"60-90 words","flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
-Prioritize valid JSON over rich content. Make exactly 2 flashcards and 1-2 quizzes. Do not merge multiple flashcards into one object; each flashcard must be a separate object with exactly one question and one answer.
-No summary. No listItems. No extra fields. No prose outside JSON. No code fence.
-Notes can be plain text. Flashcards and quizzes must be answerable from notes.
+Shape:
+{"flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}],"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
+Rules: JSON only. No notes field. No prose outside JSON. Ask for 2 flashcards and 1-2 quizzes, but usable output matters more than exact counts.
+Practice must be answerable from the notes. Do not merge multiple flashcards into one object; each flashcard must have exactly one question and one answer.
+Quiz options must be real answer choices, not A/B/C placeholders. Avoid duplicate options. correctIndex must point to the right option.
 Topic: ${compactPrompt}
 Outline titles: ${outlineTitles}
 Goal: ${item.goal}
 Topics: ${item.topics.join(', ')}
-Avoid: ${item.avoid.join(', ')}`
+Avoid: ${item.avoid.join(', ')}
+Lesson notes:
+${compactNotes}`
 }
 
 export const generateStudyPackWithLocalAi = async (
@@ -1393,6 +1414,16 @@ const sanitizeLocalLessonNotesMarkdown = (markdown: string): string =>
   markdown
     .replace(/^(#{1,6}\s*)Summary\b/gim, '$1Lesson notes')
     .replace(/^(#{1,6}\s*)Source summary\b/gim, '$1Source notes')
+
+const stripLocalPracticeSectionsFromNotes = (markdown: string): string => {
+  const practiceStart = markdown.search(
+    /^#{1,6}\s*(?:practice|quiz|quizzes|flashcards?)\b|^\*{0,2}(?:quiz|flashcard)\s*\d*\*{0,2}\s*:/im,
+  )
+
+  return sanitizeLocalLessonNotesMarkdown(
+    practiceStart >= 0 ? markdown.slice(0, practiceStart) : markdown,
+  ).trim()
+}
 
 const fillDashboardObjects = (
   objects: StudyObject[],
@@ -1672,6 +1703,7 @@ const mapLocalDashboard = (
   role: StudyPathDashboardRole,
   targetCount: number,
   plannerItem?: LocalStudyPathPlanItem,
+  mapOptions: { allowPracticeFallback?: boolean } = {},
 ): AiStudyPathDashboardDraft | null => {
   const record =
     input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
@@ -1711,20 +1743,41 @@ const mapLocalDashboard = (
     rawNotes,
     events,
   )
-  const flatHasRecall = flatObjects.some(
-    (object) => object.kind === 'qa' || object.kind === 'quiz',
+  const flatHasQa = flatObjects.some((object) => object.kind === 'qa')
+  const flatHasQuiz = flatObjects.some((object) => object.kind === 'quiz')
+  const draftRecallObjects = draft.objects.filter(
+    (object) =>
+      mapOptions.allowPracticeFallback !== false &&
+      object.kind !== 'markdown' &&
+      object.kind !== 'list' &&
+      (object.kind === 'qa' || object.kind === 'quiz'),
   )
-  const sourceObjects = flatHasRecall
-    ? flatObjects
-    : [
-        ...flatObjects,
-        ...draft.objects.filter(
-          (object) =>
-            object.kind !== 'markdown' &&
-            object.kind !== 'list' &&
-            (object.kind === 'qa' || object.kind === 'quiz'),
-        ),
-      ]
+  let addedFallbackQa = flatHasQa
+  let addedFallbackQuiz = flatHasQuiz
+  const sourceObjects = [
+    ...flatObjects,
+    ...draftRecallObjects.filter((object) => {
+      if (object.kind === 'qa') {
+        if (addedFallbackQa) {
+          return false
+        }
+
+        addedFallbackQa = true
+        return true
+      }
+
+      if (object.kind === 'quiz') {
+        if (addedFallbackQuiz) {
+          return false
+        }
+
+        addedFallbackQuiz = true
+        return true
+      }
+
+      return false
+    }),
+  ]
   const markdownObjects = ensureFirstMarkdown(
     sourceObjects.length > 0 ? sourceObjects : draft.objects,
     packId,
@@ -1954,7 +2007,7 @@ const createLocalStudyPathPlan = async (
     const text = await callLocalLanguageModel(promptText, {
       timeoutMs: LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS,
       onProgress: localOptions.onProgress,
-      progressLabel: 'Planning Local AI Study Path...',
+      progressLabel: 'Planning path...',
     })
     debug.rawResponse = text
 
@@ -2053,6 +2106,20 @@ const hasUsableMappedWidgets = (
   })
 }
 
+const hasUsableMarkdownNotes = (
+  dashboard: AiStudyPathDashboardDraft | null,
+): dashboard is AiStudyPathDashboardDraft =>
+  Boolean(
+    dashboard?.objects.some((object) => {
+      if (object.kind !== 'markdown') {
+        return false
+      }
+
+      const content = normalizeSpaces(object.markdown.replace(/^#+\s*/gm, ''))
+      return content.split(/\s+/).filter(Boolean).length >= 10
+    }),
+  )
+
 const logLocalDashboardError = (
   debug: LocalAiGenerationFailureDebug,
   error: unknown,
@@ -2080,6 +2147,556 @@ const withAttemptDebug = (
   attempts: attempts.map((attempt) => ({ ...attempt })),
 })
 
+const normalizeLocalStudyPathConcurrency = (
+  value: LocalGenerationOptions['dashboardConcurrency'],
+): 1 | 2 | 3 | 5 => (value === 1 || value === 3 || value === 5 ? value : 2)
+
+interface LocalDashboardGenerationResult {
+  index: number
+  dashboard: AiStudyPathDashboardDraft | null
+  warning?: string
+  error?: LocalAiGenerationError
+}
+
+interface LocalStudyPathNotesResult {
+  title: string
+  notes: string
+  rawResponse: string
+  failedAttempts: LocalAiGenerationFailureDebug[]
+}
+
+interface LocalStudyPathPracticeResult {
+  record: Record<string, unknown> | null
+  rawResponse?: string
+  failedAttempts: LocalAiGenerationFailureDebug[]
+  error?: LocalAiGenerationError
+}
+
+type LocalDashboardProgressState = {
+  status: 'pending' | 'running' | 'complete' | 'failed'
+  attempt?: number
+  attemptCount?: number
+  percent?: number
+  step?: 'notes' | 'practice'
+}
+
+const renderLocalDashboardProgressLabel = (
+  states: LocalDashboardProgressState[],
+): string => {
+  const completedCount = states.filter(
+    (state) => state.status === 'complete',
+  ).length
+  if (completedCount === states.length) {
+    return `Generated ${completedCount} of ${states.length} dashboards`
+  }
+
+  const parts = states
+    .map((state, index) => {
+      const position = `${index + 1}/${states.length}`
+      if (state.status === 'running') {
+        const step = state.step === 'practice' ? 'practice' : 'notes'
+        return `${step} for dashboard ${position}, attempt ${
+          state.attempt || 1
+        }/${state.attemptCount || LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`
+      }
+
+      if (state.status === 'complete') {
+        return `${position} is complete`
+      }
+
+      if (state.status === 'failed') {
+        return `${position} failed`
+      }
+
+      return null
+    })
+    .filter((part): part is string => Boolean(part))
+
+  if (parts.length === 0) {
+    return `Generating dashboards 0/${states.length}...`
+  }
+
+  return `Generating ${parts.join(' and ')}`
+}
+
+const createLocalDashboardProgressTracker = (
+  expectedCount: number,
+  onProgress?: (event: LocalAiProgressEvent) => void,
+) => {
+  const states: LocalDashboardProgressState[] = Array.from(
+    { length: expectedCount },
+    () => ({ status: 'pending' }),
+  )
+
+  const emit = (timeoutMs?: number) => {
+    if (!onProgress) {
+      return
+    }
+
+    const progressUnits = states.reduce((total, state) => {
+      if (state.status === 'complete' || state.status === 'failed') {
+        return total + 1
+      }
+
+      if (state.status === 'running') {
+        return total + Math.min(0.99, Math.max(0, (state.percent || 0) / 100))
+      }
+
+      return total
+    }, 0)
+
+    onProgress({
+      phase: 'generation',
+      percent: Math.max(
+        0,
+        Math.min(99, Math.round((progressUnits / expectedCount) * 100)),
+      ),
+      label: renderLocalDashboardProgressLabel(states),
+      dashboardCount: expectedCount,
+      timeoutMs,
+    })
+  }
+
+  return {
+    handleDashboardProgress: (
+      index: number,
+      event: LocalAiProgressEvent,
+    ): void => {
+      if (event.phase !== 'generation') {
+        return
+      }
+
+      states[index] = {
+        status: 'running',
+        attempt: event.attempt,
+        attemptCount: event.attemptCount,
+        percent: event.percent,
+        step: /practice/i.test(event.label) ? 'practice' : 'notes',
+      }
+      emit(event.timeoutMs)
+    },
+    markFinished: (
+      index: number,
+      status: 'complete' | 'failed',
+      timeoutMs?: number,
+    ): void => {
+      states[index] = { ...states[index], status, percent: 100 }
+      emit(timeoutMs)
+    },
+  }
+}
+
+const parseLocalStudyPathObject = (
+  text: string,
+  debug: LocalAiGenerationFailureDebug,
+): Record<string, unknown> => {
+  if (localAiJsonLooksTruncated(text)) {
+    throw new Error(
+      'Google Local AI returned truncated JSON before the final closing brace.',
+    )
+  }
+
+  const parsed = parseLocalAiJson(text)
+  debug.parsedJson = parsed
+  return parsed && typeof parsed === 'object'
+    ? (parsed as Record<string, unknown>)
+    : {}
+}
+
+const generateLocalStudyPathNotes = async (
+  index: number,
+  options: GenerateStudyPathWithAiOptions,
+  plan: LocalStudyPathPlan,
+  expectedCount: number,
+  localOptions: LocalGenerationOptions,
+): Promise<LocalStudyPathNotesResult> => {
+  const plannerItem = plan.dashboards[index]
+  const failedAttempts: LocalAiGenerationFailureDebug[] = []
+  let lastError: LocalAiGenerationError | null = null
+
+  for (
+    let attempt = 1;
+    attempt <= LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    const promptText = localStudyPathNotesPrompt(
+      options,
+      plan.dashboards,
+      plannerItem,
+      attempt,
+    )
+    const debug: LocalAiGenerationFailureDebug = {
+      dashboardIndex: index + 1,
+      dashboardCount: expectedCount,
+      attempt,
+      attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      promptLength: promptText.length,
+    }
+
+    try {
+      const text = await callLocalLanguageModel(promptText, {
+        timeoutMs: LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS,
+        onProgress: localOptions.onProgress,
+        progressLabel: `Generating notes for dashboard ${
+          index + 1
+        }/${expectedCount}, attempt ${attempt}/${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
+        dashboardIndex: index + 1,
+        dashboardCount: expectedCount,
+        attempt,
+        attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      })
+      debug.rawResponse = text
+      const record = parseLocalStudyPathObject(text, debug)
+      const notes = stripLocalPracticeSectionsFromNotes(
+        blockValue(record.notes) || blockValue(record.rawNotes),
+      )
+      if (wordCount(notes.replace(/^#+\s*/gm, '')) < 5) {
+        throw new LocalAiGenerationError(
+          'noUsableObjects',
+          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+          {
+            debug: {
+              ...debug,
+              mappingError: 'Local AI notes were too short to use.',
+              droppedOrRepairedItems: ['No usable Local AI notes found.'],
+            },
+          },
+        )
+      }
+
+      return {
+        title: stringValue(record.title) || plannerItem.title,
+        notes,
+        rawResponse: text,
+        failedAttempts,
+      }
+    } catch (error) {
+      const localError = isLocalAiGenerationError(error)
+        ? error
+        : new LocalAiGenerationError(
+            /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
+              ? 'invalidJson'
+              : localAiFailureCodeForError(error),
+            /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
+              ? LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE
+              : localAiFailureMessageForCode(
+                  localAiFailureCodeForError(error),
+                  errorMessage(error),
+                ),
+            {
+              debug: {
+                ...debug,
+                parseError: /invalid JSON|Unexpected|truncated JSON/i.test(
+                  errorMessage(error),
+                )
+                  ? errorMessage(error)
+                  : undefined,
+              },
+              cause: error,
+            },
+          )
+      lastError = localError
+      failedAttempts.push(localError.debug || debug)
+
+      if (
+        !localAiStudyPathFailureIsRetryable(localError) ||
+        attempt === LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS
+      ) {
+        logLocalDashboardError(localError.debug || debug, localError)
+        break
+      }
+    }
+  }
+
+  const debug = withAttemptDebug(
+    lastError?.debug || {
+      dashboardIndex: index + 1,
+      dashboardCount: expectedCount,
+    },
+    failedAttempts,
+  )
+  throw new LocalAiGenerationError(
+    lastError?.code || 'noUsableObjects',
+    lastError?.message || LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+    { debug, cause: lastError?.cause },
+  )
+}
+
+const generateLocalStudyPathPractice = async (
+  index: number,
+  options: GenerateStudyPathWithAiOptions,
+  plan: LocalStudyPathPlan,
+  notes: string,
+  expectedCount: number,
+  localOptions: LocalGenerationOptions,
+): Promise<LocalStudyPathPracticeResult> => {
+  const plannerItem = plan.dashboards[index]
+  const failedAttempts: LocalAiGenerationFailureDebug[] = []
+  let lastError: LocalAiGenerationError | null = null
+
+  for (
+    let attempt = 1;
+    attempt <= LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    const promptText = localStudyPathPracticePrompt(
+      options,
+      plan.dashboards,
+      plannerItem,
+      notes,
+      attempt,
+    )
+    const debug: LocalAiGenerationFailureDebug = {
+      dashboardIndex: index + 1,
+      dashboardCount: expectedCount,
+      attempt,
+      attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      promptLength: promptText.length,
+    }
+
+    try {
+      const text = await callLocalLanguageModel(promptText, {
+        timeoutMs: LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS,
+        onProgress: localOptions.onProgress,
+        progressLabel: `Generating practice for dashboard ${
+          index + 1
+        }/${expectedCount}, attempt ${attempt}/${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
+        dashboardIndex: index + 1,
+        dashboardCount: expectedCount,
+        attempt,
+        attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      })
+      debug.rawResponse = text
+      const record = parseLocalStudyPathObject(text, debug)
+      const flashcards = Array.isArray(record.flashcards)
+        ? record.flashcards.flatMap((item, itemIndex) =>
+            flashcardFromRecord(item, itemIndex, []),
+          )
+        : []
+      if (flashcards.length === 0) {
+        throw new LocalAiGenerationError(
+          'noUsableObjects',
+          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+          {
+            debug: {
+              ...debug,
+              mappingError: 'Local AI practice returned no usable flashcards.',
+            },
+          },
+        )
+      }
+
+      return {
+        record,
+        rawResponse: text,
+        failedAttempts,
+      }
+    } catch (error) {
+      const localError = isLocalAiGenerationError(error)
+        ? error
+        : new LocalAiGenerationError(
+            /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
+              ? 'invalidJson'
+              : localAiFailureCodeForError(error),
+            /invalid JSON|Unexpected|truncated JSON/i.test(errorMessage(error))
+              ? LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE
+              : localAiFailureMessageForCode(
+                  localAiFailureCodeForError(error),
+                  errorMessage(error),
+                ),
+            {
+              debug: {
+                ...debug,
+                parseError: /invalid JSON|Unexpected|truncated JSON/i.test(
+                  errorMessage(error),
+                )
+                  ? errorMessage(error)
+                  : undefined,
+              },
+              cause: error,
+            },
+          )
+      lastError = localError
+      failedAttempts.push(localError.debug || debug)
+
+      if (
+        !localAiStudyPathFailureIsRetryable(localError) ||
+        attempt === LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS
+      ) {
+        logLocalDashboardError(localError.debug || debug, localError)
+        break
+      }
+    }
+  }
+
+  return {
+    record: null,
+    failedAttempts,
+    error: lastError || undefined,
+  }
+}
+
+const generateLocalStudyPathDashboard = async (
+  index: number,
+  options: GenerateStudyPathWithAiOptions,
+  plan: LocalStudyPathPlan,
+  expectedCount: number,
+  targetCount: number,
+  localOptions: LocalGenerationOptions,
+): Promise<LocalDashboardGenerationResult> => {
+  const plannerItem = plan.dashboards[index]
+
+  try {
+    const notesResult = await generateLocalStudyPathNotes(
+      index,
+      options,
+      plan,
+      expectedCount,
+      localOptions,
+    )
+    const practiceResult = await generateLocalStudyPathPractice(
+      index,
+      options,
+      plan,
+      notesResult.notes,
+      expectedCount,
+      localOptions,
+    )
+    const practiceRecord = practiceResult.record || {}
+    const combinedRecord = {
+      ...practiceRecord,
+      title: notesResult.title || plannerItem.title,
+      notes: notesResult.notes,
+      rawNotes: notesResult.notes,
+    }
+    const rawAiResponse = JSON.stringify(
+      {
+        notesResponse: notesResult.rawResponse,
+        practiceResponse: practiceResult.rawResponse || '',
+      },
+      null,
+      2,
+    )
+    const mappedDashboard = mapLocalDashboard(
+      combinedRecord,
+      index,
+      options,
+      rawAiResponse,
+      'normal',
+      targetCount,
+      plannerItem,
+      { allowPracticeFallback: Boolean(practiceResult.record) },
+    )
+
+    const dashboardIsUsable = practiceResult.record
+      ? hasUsableMappedWidgets(mappedDashboard)
+      : hasUsableMarkdownNotes(mappedDashboard)
+
+    if (!mappedDashboard || !dashboardIsUsable) {
+      throw new LocalAiGenerationError(
+        'noUsableObjects',
+        LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+        {
+          debug: {
+            dashboardIndex: index + 1,
+            dashboardCount: expectedCount,
+            rawResponse: rawAiResponse,
+            parsedJson: combinedRecord,
+            mappingError: 'No usable Study Path widgets were produced.',
+            droppedOrRepairedItems:
+              mappedDashboard?.debugTrace?.droppedOrRepairedItems || [],
+          },
+        },
+      )
+    }
+
+    const failedAttempts = [
+      ...notesResult.failedAttempts,
+      ...practiceResult.failedAttempts,
+    ]
+    if (failedAttempts.length > 0 && mappedDashboard.debugTrace) {
+      mappedDashboard.debugTrace.localAiFailedAttempts = failedAttempts
+    }
+
+    const warning = practiceResult.record
+      ? undefined
+      : `Dashboard ${
+          index + 1
+        } kept lesson notes, but Local AI practice widgets failed after ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} attempts.`
+
+    return { index, dashboard: mappedDashboard, warning }
+  } catch (error) {
+    const localError = isLocalAiGenerationError(error)
+      ? error
+      : new LocalAiGenerationError(
+          localAiFailureCodeForError(error),
+          localAiFailureMessageForCode(
+            localAiFailureCodeForError(error),
+            errorMessage(error),
+          ),
+          {
+            debug: {
+              dashboardIndex: index + 1,
+              dashboardCount: expectedCount,
+            },
+            cause: error,
+          },
+        )
+    const debug = withAttemptDebug(localError.debug || {}, [
+      ...(localError.debug?.attempts || []),
+    ])
+
+    return {
+      index,
+      dashboard: null,
+      error: new LocalAiGenerationError(localError.code, localError.message, {
+        debug,
+        cause: localError.cause,
+      }),
+      warning: `Dashboard ${
+        index + 1
+      } could not be generated after ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} Local AI attempts and was skipped.`,
+    }
+  }
+}
+
+const runLocalDashboardJobs = async (
+  expectedCount: number,
+  concurrency: number,
+  runJob: (
+    index: number,
+    onProgress: (event: LocalAiProgressEvent) => void,
+  ) => Promise<LocalDashboardGenerationResult>,
+  progressTracker: ReturnType<typeof createLocalDashboardProgressTracker>,
+): Promise<LocalDashboardGenerationResult[]> => {
+  const results: LocalDashboardGenerationResult[] = []
+  let nextIndex = 0
+
+  const worker = async () => {
+    while (nextIndex < expectedCount) {
+      const index = nextIndex
+      nextIndex += 1
+      const result = await runJob(index, (event) =>
+        progressTracker.handleDashboardProgress(index, event),
+      )
+      results.push(result)
+      progressTracker.markFinished(
+        index,
+        result.dashboard ? 'complete' : 'failed',
+        LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS,
+      )
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, expectedCount) }, () =>
+      worker(),
+    ),
+  )
+
+  return results.sort((a, b) => a.index - b.index)
+}
+
 export const generateStudyPathWithLocalAi = async (
   options: GenerateStudyPathWithAiOptions,
   localOptions: LocalGenerationOptions = {},
@@ -2098,178 +2715,49 @@ export const generateStudyPathWithLocalAi = async (
     localOptions,
   )
   const targetCount = 4
-  const dashboards: AiStudyPathDashboardDraft[] = []
   const warnings: string[] = [...plannerWarnings]
-
-  for (let index = 0; index < expectedCount; index += 1) {
-    const plannerItem = plan.dashboards[index]
-    const failedAttempts: LocalAiGenerationFailureDebug[] = []
-    let lastError: LocalAiGenerationError | null = null
-
-    for (
-      let attempt = 1;
-      attempt <= LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS;
-      attempt += 1
-    ) {
-      const promptText =
-        attempt === 1
-          ? localStudyPathDashboardPrompt(options, plan.dashboards, plannerItem)
-          : localStudyPathDashboardRetryPrompt(
-              options,
-              plan.dashboards,
-              plannerItem,
-              attempt,
-            )
-      const debug: LocalAiGenerationFailureDebug = {
-        dashboardIndex: index + 1,
-        dashboardCount: expectedCount,
-        attempt,
-        attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
-        promptLength: promptText.length,
-      }
-
-      try {
-        const text = await callLocalLanguageModel(promptText, {
-          timeoutMs: LOCAL_STUDY_PATH_DASHBOARD_TIMEOUT_MS,
-          onProgress: localOptions.onProgress,
-          progressLabel: `Generating dashboard ${
-            index + 1
-          } of ${expectedCount}, attempt ${attempt} of ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
-          dashboardIndex: index + 1,
-          dashboardCount: expectedCount,
-          attempt,
-          attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
-        })
-        debug.rawResponse = text
-        let parsed: unknown
-        try {
-          if (localAiJsonLooksTruncated(text)) {
-            throw new Error(
-              'Google Local AI returned truncated JSON before the final closing brace.',
-            )
-          }
-
-          parsed = parseLocalAiJson(text)
-          debug.parsedJson = parsed
-        } catch (error) {
-          debug.parseError = errorMessage(error)
-          logLocalDashboardError(debug, error)
-          throw new LocalAiGenerationError(
-            'invalidJson',
-            LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE,
-            { debug, cause: error },
-          )
-        }
-        const record =
-          parsed && typeof parsed === 'object'
-            ? (parsed as Record<string, unknown>)
-            : {}
-        const dashboard = Array.isArray(record.dashboards)
-          ? record.dashboards[0]
-          : record
-        let mappedDashboard: AiStudyPathDashboardDraft | null
-        try {
-          mappedDashboard = mapLocalDashboard(
-            dashboard,
-            index,
-            options,
-            text,
-            'normal',
-            targetCount,
-            plannerItem,
-          )
-          debug.droppedOrRepairedItems =
-            mappedDashboard?.debugTrace?.droppedOrRepairedItems || []
-        } catch (error) {
-          debug.mappingError = errorMessage(error)
-          logLocalDashboardError(debug, error)
-          throw new LocalAiGenerationError(
-            'mappingError',
-            LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
-            { debug, cause: error },
-          )
-        }
-
-        if (hasUsableMappedWidgets(mappedDashboard)) {
-          if (
-            failedAttempts.length > 0 &&
-            mappedDashboard.debugTrace?.localAiFailedAttempts
-          ) {
-            mappedDashboard.debugTrace.localAiFailedAttempts.push(
-              ...failedAttempts,
-            )
-          } else if (failedAttempts.length > 0 && mappedDashboard.debugTrace) {
-            mappedDashboard.debugTrace.localAiFailedAttempts = [
-              ...failedAttempts,
-            ]
-          }
-
-          dashboards.push(mappedDashboard)
-          lastError = null
-          break
-        }
-
-        debug.mappingError = 'No usable Study Path widgets were produced.'
-        debug.droppedOrRepairedItems =
-          debug.droppedOrRepairedItems &&
-          debug.droppedOrRepairedItems.length > 0
-            ? debug.droppedOrRepairedItems
-            : ['No usable Local AI objects found.']
-        logLocalDashboardError(debug, new Error(debug.mappingError))
-        throw new LocalAiGenerationError(
-          'noUsableObjects',
-          LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
-          { debug },
-        )
-      } catch (error) {
-        const localError = isLocalAiGenerationError(error)
-          ? error
-          : new LocalAiGenerationError(
-              localAiFailureCodeForError(error),
-              localAiFailureMessageForCode(
-                localAiFailureCodeForError(error),
-                errorMessage(error),
-              ),
-              { debug, cause: error },
-            )
-        lastError = localError
-        const attemptDebug = localError.debug || debug
-        failedAttempts.push(attemptDebug)
-
-        if (
-          !localAiStudyPathFailureIsRetryable(localError) ||
-          attempt === LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS
-        ) {
-          logLocalDashboardError(attemptDebug, localError)
-          break
-        }
-      }
-    }
-
-    if (lastError) {
-      const debug = withAttemptDebug(
-        lastError.debug || {
-          dashboardIndex: index + 1,
-          dashboardCount: expectedCount,
+  const concurrency = normalizeLocalStudyPathConcurrency(
+    localOptions.dashboardConcurrency,
+  )
+  const progressTracker = createLocalDashboardProgressTracker(
+    expectedCount,
+    localOptions.onProgress,
+  )
+  const results = await runLocalDashboardJobs(
+    expectedCount,
+    concurrency,
+    (index, onProgress) =>
+      generateLocalStudyPathDashboard(
+        index,
+        options,
+        plan,
+        expectedCount,
+        targetCount,
+        {
+          ...localOptions,
+          onProgress,
         },
-        failedAttempts,
-      )
-      if (dashboards.length === 0) {
-        throw new LocalAiGenerationError(lastError.code, lastError.message, {
-          debug,
-          cause: lastError.cause,
-        })
-      }
+      ),
+    progressTracker,
+  )
+  const dashboards = results
+    .map((result) => result.dashboard)
+    .filter((dashboard): dashboard is AiStudyPathDashboardDraft =>
+      Boolean(dashboard),
+    )
 
-      warnings.push(
-        `Dashboard ${
-          index + 1
-        } could not be generated after ${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS} Local AI attempts and was skipped.`,
-      )
+  results.forEach((result) => {
+    if (result.warning) {
+      warnings.push(result.warning)
     }
-  }
+  })
 
   if (dashboards.length === 0) {
+    const error = results.find((result) => result.error)?.error
+    if (error) {
+      throw error
+    }
+
     throw new Error(
       'Google Local AI did not return usable Study Path dashboards.',
     )
@@ -2282,8 +2770,8 @@ export const generateStudyPathWithLocalAi = async (
     warnings: [
       ...warnings,
       expectedCount > 2
-        ? 'Google Local AI generated this Compact path one dashboard at a time and may be slow.'
-        : 'Google Local AI generated this Super small path one dashboard at a time.',
+        ? `Google Local AI generated this path with up to ${concurrency} dashboards at a time.`
+        : `Google Local AI generated this Super small path with up to ${concurrency} dashboards at a time.`,
     ],
   }
 }
