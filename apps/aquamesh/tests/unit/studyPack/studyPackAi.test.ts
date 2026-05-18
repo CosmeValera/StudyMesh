@@ -1091,7 +1091,7 @@ describe('local AI helpers', () => {
     expect(events.filter((event) => event.phase === 'generation')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: 'Planning path...',
+          label: 'Planning path, attempt 1/3...',
           timeoutMs: 180 * 1000,
         }),
         expect.objectContaining({
@@ -1323,19 +1323,22 @@ describe('local AI helpers', () => {
       }),
     })
 
-    const request = generateStudyPathWithLocalAi({
-      apiToken: '',
-      model: '',
-      title: 'Spanish B1',
-      prompt: 'I want to learn Spanish level B1',
-      folderName: '',
-      generationAmount: 'superSmall',
-    })
+    const request = generateStudyPathWithLocalAi(
+      {
+        apiToken: '',
+        model: '',
+        title: 'Spanish B1',
+        prompt: 'I want to learn Spanish level B1',
+        folderName: '',
+        generationAmount: 'superSmall',
+      },
+      { dashboardConcurrency: 1 },
+    )
     const rejection = expect(request).rejects.toThrow(
       /Try again, choose a smaller path, or use Own Gemini token/i,
     )
 
-    await vi.advanceTimersByTimeAsync(240 * 1000)
+    await vi.advanceTimersByTimeAsync(1200 * 1000)
     await rejection
     expect(destroy).toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(8000)

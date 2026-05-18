@@ -96,6 +96,7 @@ const LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS = 180 * 1000
 const LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS = 180 * 1000
 const LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS = 150 * 1000
 const LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS = 3
+const LOCAL_AI_RETRY_COOLDOWN_MS = 8500
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
 const LOCAL_STUDY_PATH_TIMEOUT_MESSAGE =
@@ -2503,42 +2504,62 @@ const createLocalStudyPathPlan = async (
   expectedCount: number,
   localOptions: LocalGenerationOptions,
 ): Promise<{ plan: LocalStudyPathPlan; warnings: string[] }> => {
-  const promptText = localStudyPathPlannerPrompt(options, expectedCount)
-  const debug: LocalAiGenerationFailureDebug = {
-    dashboardCount: expectedCount,
-    promptLength: promptText.length,
-  }
+  const failedAttempts: LocalAiGenerationFailureDebug[] = []
+  let lastError: LocalAiGenerationError | null = null
 
-  try {
-    const text = await callLocalLanguageModel(promptText, {
-      timeoutMs: LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS,
-      onProgress: localOptions.onProgress,
-      progressLabel: 'Planning path...',
-    })
-    debug.rawResponse = text
-
-    const parsed = parsePlannerJsonLeniently(text)
-    debug.parsedJson = parsed
-    return normalizeLocalStudyPathPlan(parsed, options, expectedCount)
-  } catch (error) {
-    if (isLocalAiGenerationError(error)) {
-      throw error
+  for (
+    let attempt = 1;
+    attempt <= LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    const promptText = localStudyPathPlannerPrompt(options, expectedCount)
+    const debug: LocalAiGenerationFailureDebug = {
+      dashboardCount: expectedCount,
+      attempt,
+      attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      promptLength: promptText.length,
     }
 
-    const code = /invalid JSON|Unexpected|truncated JSON/i.test(
-      errorMessage(error),
-    )
-      ? 'invalidJson'
-      : localAiFailureCodeForError(error)
-    debug.parseError = code === 'invalidJson' ? errorMessage(error) : undefined
-    throw new LocalAiGenerationError(
-      code,
-      code === 'invalidJson'
-        ? LOCAL_STUDY_PATH_INVALID_JSON_MESSAGE
-        : localAiFailureMessageForCode(code, errorMessage(error)),
-      { debug, cause: error },
-    )
+    try {
+      const text = await callLocalLanguageModel(promptText, {
+        timeoutMs: LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS,
+        onProgress: localOptions.onProgress,
+        progressLabel: `Planning path, attempt ${attempt}/${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
+        attempt,
+        attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+      })
+      debug.rawResponse = text
+
+      const parsed = parsePlannerJsonLeniently(text)
+      debug.parsedJson = parsed
+      return normalizeLocalStudyPathPlan(parsed, options, expectedCount)
+    } catch (error) {
+      const localError = createLocalAiErrorFromUnknown(error, debug)
+      lastError = localError
+      failedAttempts.push(localError.debug || debug)
+
+      if (
+        !localAiStudyPathFailureIsRetryable(localError) ||
+        attempt === LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS
+      ) {
+        throw new LocalAiGenerationError(localError.code, localError.message, {
+          debug: withAttemptDebug(localError.debug || debug, failedAttempts),
+          cause: localError.cause,
+        })
+      }
+
+      await waitForLocalAiRetryCooldown(localError)
+    }
   }
+
+  throw new LocalAiGenerationError(
+    lastError?.code || 'noUsableObjects',
+    lastError?.message || LOCAL_STUDY_PATH_NO_USABLE_OBJECTS_MESSAGE,
+    {
+      debug: withAttemptDebug(lastError?.debug || {}, failedAttempts),
+      cause: lastError?.cause,
+    },
+  )
 }
 
 const errorMessage = (error: unknown): string =>
@@ -2548,7 +2569,7 @@ const localAiFailureCodeForError = (
   error: unknown,
 ): LocalAiGenerationFailureCode => {
   const message = errorMessage(error)
-  if (/timed out|timeout/i.test(message)) {
+  if (/timed out|timeout|cooling down/i.test(message)) {
     return 'timeout'
   }
 
@@ -2556,7 +2577,7 @@ const localAiFailureCodeForError = (
     return 'unsupported'
   }
 
-  if (/unavailable|cooling down|busy or unstable/i.test(message)) {
+  if (/unavailable|busy or unstable/i.test(message)) {
     return 'unavailable'
   }
 
@@ -2581,6 +2602,18 @@ const localAiStudyPathFailureIsRetryable = (
   error.code === 'mappingError' ||
   error.code === 'noUsableObjects' ||
   error.code === 'timeout'
+
+const waitForLocalAiRetryCooldown = async (
+  error: LocalAiGenerationError,
+): Promise<void> => {
+  if (error.code !== 'timeout') {
+    return
+  }
+
+  await new Promise((resolve) =>
+    window.setTimeout(resolve, LOCAL_AI_RETRY_COOLDOWN_MS),
+  )
+}
 
 const hasUsableMappedWidgets = (
   dashboard: AiStudyPathDashboardDraft | null,
@@ -2957,6 +2990,8 @@ const generateLocalStudyPathConceptDraft = async (
         logLocalDashboardError(localError.debug || debug, localError)
         break
       }
+
+      await waitForLocalAiRetryCooldown(localError)
     }
   }
 
@@ -3059,6 +3094,8 @@ const generateLocalStudyPathMarkdownSection = async (
         logLocalDashboardError(localError.debug || debug, localError)
         break
       }
+
+      await waitForLocalAiRetryCooldown(localError)
     }
   }
 
@@ -3250,6 +3287,8 @@ const generateLocalStudyPathPractice = async (
         logLocalDashboardError(localError.debug || debug, localError)
         break
       }
+
+      await waitForLocalAiRetryCooldown(localError)
     }
   }
 
