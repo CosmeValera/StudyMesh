@@ -26,6 +26,24 @@ Create Study Path and Create From Notes should support several generation modes.
 
 Generation flows can remain modal-driven when they are setup tasks. Opening an existing Study Path tutorial, Study Pack, or custom dashboard should take the user into the main workspace rather than sharing the same modal flow.
 
+## AI Generation File Map
+
+Most current AI-mode work is in the AquaMesh app under `apps/aquamesh/src/studyPack/ai/` and the two creation modals under `apps/aquamesh/src/components/studyPack/`.
+
+- Provider selection and routing: `apps/aquamesh/src/studyPack/ai/provider.ts` chooses Basic fallback, Google local AI, Own Gemini API token, or the future hosted-token provider for Study Pack and Study Path generation. Start here when changing mode behavior or fallback rules.
+- Provider settings: `apps/aquamesh/src/studyPack/ai/settings.ts` stores the selected provider, Gemini token, model, and `GEMINI_API_KEY` environment fallback. Settings UI lives in `apps/aquamesh/src/components/WidgetEditor/components/dialogs/SettingsDialog.tsx`.
+- Public AI exports: `apps/aquamesh/src/studyPack/ai/index.ts` re-exports the AI helpers used by UI and tests.
+- Create From Notes/Create Study Pack UI: `apps/aquamesh/src/components/studyPack/CreateStudyPackModal.tsx` handles pasted notes, uploaded text files, image extraction, provider-specific progress, and final Study Pack creation.
+- Create Study Path UI: `apps/aquamesh/src/components/studyPack/CreateStudyPathModal.tsx` handles prompt-to-tutorial generation, Study Path size choices, local-AI concurrency, provider-specific progress, and Local AI failure debug output.
+- Gemini API mode: `apps/aquamesh/src/studyPack/ai/gemini.ts` contains Gemini prompts, strict JSON parsing, retry/repair behavior, image note extraction, Study Pack generation, and Study Path dashboard generation. Use this for Own Gemini API token changes.
+- Google local AI mode: `apps/aquamesh/src/studyPack/ai/localLanguageModel.ts` wraps Chrome built-in AI availability checks, session creation, prompting, timeouts, smoke tests, cooldowns, and image input. `apps/aquamesh/src/studyPack/ai/localGeneration.ts` contains Local AI JSON parsing/repair, Study Pack generation, Study Path planning, dashboard generation, concurrency, and Basic fallback Study Path generation.
+- Basic fallback mode: `apps/aquamesh/src/studyPack/parser.ts`, `apps/aquamesh/src/studyPack/generator.ts`, `apps/aquamesh/src/studyPack/practice.ts`, and the Basic branches in `apps/aquamesh/src/studyPack/ai/provider.ts` provide non-AI parsing and exercise generation. Basic image extraction uses `apps/aquamesh/src/studyPack/imageOcr.ts`.
+- Image OCR and image-to-notes paths: `apps/aquamesh/src/studyPack/imageOcr.ts` uses Tesseract for Basic OCR, Gemini image extraction is in `gemini.ts`, and Local AI image extraction is in `localLanguageModel.ts`. The modal decision tree is in `CreateStudyPackModal.tsx`.
+- Normalization and contracts: `apps/aquamesh/src/studyPack/ai/normalizer.ts` maps strict AI output into study objects and enforces Study Path dashboard role constraints.
+- Shared Study Pack types and exports: `apps/aquamesh/src/studyPack/types.ts` and `apps/aquamesh/src/studyPack/index.ts` define and expose the study object model used by all generation modes.
+
+Tests for these flows are mainly in `apps/aquamesh/tests/unit/studyPack/studyPackAi.test.ts`, `apps/aquamesh/tests/unit/studyPack/studyPackGenerator.test.ts`, `apps/aquamesh/tests/unit/studyPack/studyPackParser.test.ts`, `apps/aquamesh/tests/unit/studyPack/imageOcr.test.ts`, `apps/aquamesh/tests/unit/components/studyPack/CreateStudyPackModal.test.tsx`, and `apps/aquamesh/tests/unit/components/studyPack/CreateStudyPathModal.test.tsx`.
+
 ## Build, Test, and Development Commands
 
 Run commands from the repository root unless noted:
