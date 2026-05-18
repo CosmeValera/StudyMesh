@@ -1273,14 +1273,14 @@ ${compactPrompt}`
 
 const localStudyPathNotesWordTarget = (attempt: number): string => {
   if (attempt === 1) {
-    return '90-120 words, 120 words max'
-  }
-
-  if (attempt === 2) {
     return '70-90 words, 90 words max'
   }
 
-  return '50-70 words, 70 words max'
+  if (attempt === 2) {
+    return '50-70 words, 70 words max'
+  }
+
+  return '30-40 words, 40 words max'
 }
 
 const localStudyPathNotesPrompt = (
@@ -1351,7 +1351,7 @@ export const generateStudyPackWithLocalAi = async (
   options: GenerateStudyPackWithAiOptions,
   localOptions: LocalGenerationOptions = {},
 ): Promise<AiStudyPackDraft> => {
-  await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
+  // await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
   const text = await callLocalLanguageModel(localStudyPackPrompt(options), {
     timeoutMs: LOCAL_STUDY_PACK_TIMEOUT_MS,
     onProgress: localOptions.onProgress,
@@ -2705,7 +2705,7 @@ export const generateStudyPathWithLocalAi = async (
     throw new Error(LOCAL_DEEP_BLOCKED_MESSAGE)
   }
 
-  await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
+  // await smokeTestLocalLanguageModel({ onProgress: localOptions.onProgress })
   const expectedCount = getLocalStudyPathDashboardCount(
     options.generationAmount,
   )
