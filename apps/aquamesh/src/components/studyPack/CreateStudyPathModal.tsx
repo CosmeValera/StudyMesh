@@ -601,10 +601,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                       <>
                         <Stack direction="row" justifyContent="space-between">
                           <Typography variant="caption" color="text.secondary">
-                            {localAiProgress.dashboardIndex &&
-                            localAiProgress.dashboardCount
-                              ? localAiProgress.label
-                              : 'Estimated Local AI generation time'}
+                            Estimated Local AI generation time
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {localAiProgress.percent}%
@@ -614,6 +611,46 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           variant="determinate"
                           value={localAiProgress.percent}
                         />
+                        {localAiProgress.dashboardProgress &&
+                          localAiProgress.dashboardProgress.length > 0 && (
+                            <Stack spacing={1} sx={{ mt: 0.5 }}>
+                              {localAiProgress.dashboardProgress.map(
+                                (thread) => (
+                                  <Box key={thread.dashboardIndex}>
+                                    <Stack
+                                      direction="row"
+                                      justifyContent="space-between"
+                                      spacing={1}
+                                    >
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        {thread.label}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        {thread.percent}%
+                                      </Typography>
+                                    </Stack>
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={thread.percent}
+                                      color={
+                                        thread.status === 'failed'
+                                          ? 'error'
+                                          : thread.status === 'complete'
+                                            ? 'success'
+                                            : 'primary'
+                                      }
+                                    />
+                                  </Box>
+                                ),
+                              )}
+                            </Stack>
+                          )}
                       </>
                     ) : (
                       <LinearProgress />

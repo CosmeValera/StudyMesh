@@ -2527,6 +2527,7 @@ const createLocalStudyPathPlan = async (
         progressLabel: `Planning path, attempt ${attempt}/${LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`,
         attempt,
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+        studyPathStep: 'planner',
       })
       debug.rawResponse = text
 
@@ -2712,7 +2713,29 @@ type LocalDashboardProgressState = {
   attempt?: number
   attemptCount?: number
   percent?: number
-  step?: 'notes' | 'practice'
+  step?: LocalAiProgressEvent['studyPathStep']
+}
+
+const localDashboardProgressStepLabel = (
+  step: LocalAiProgressEvent['studyPathStep'],
+): string => {
+  if (step === 'concept') {
+    return 'Concept draft'
+  }
+
+  if (step === 'markdown1') {
+    return 'Markdown part 1'
+  }
+
+  if (step === 'markdown2') {
+    return 'Markdown part 2'
+  }
+
+  if (step === 'practice') {
+    return 'Practice'
+  }
+
+  return 'Notes'
 }
 
 const renderLocalDashboardProgressLabel = (
@@ -2725,33 +2748,32 @@ const renderLocalDashboardProgressLabel = (
     return `Generated ${completedCount} of ${states.length} dashboards`
   }
 
-  const parts = states
-    .map((state, index) => {
-      const position = `${index + 1}/${states.length}`
-      if (state.status === 'running') {
-        const step = state.step === 'practice' ? 'practice' : 'notes'
-        return `${step} for dashboard ${position}, attempt ${
-          state.attempt || 1
-        }/${state.attemptCount || LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS}...`
-      }
+  return `Generating ${completedCount} of ${states.length} dashboards`
+}
 
-      if (state.status === 'complete') {
-        return `${position} is complete`
-      }
-
-      if (state.status === 'failed') {
-        return `${position} failed`
-      }
-
-      return null
-    })
-    .filter((part): part is string => Boolean(part))
-
-  if (parts.length === 0) {
-    return `Generating dashboards 0/${states.length}...`
+const renderLocalDashboardThreadLabel = (
+  state: LocalDashboardProgressState,
+  index: number,
+  dashboardCount: number,
+): string => {
+  const position = `${index + 1}/${dashboardCount}`
+  if (state.status === 'running') {
+    return `${localDashboardProgressStepLabel(
+      state.step,
+    )} for dashboard ${position}, attempt ${state.attempt || 1}/${
+      state.attemptCount || LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS
+    }`
   }
 
-  return `Generating ${parts.join(' and ')}`
+  if (state.status === 'complete') {
+    return `Dashboard ${position} complete`
+  }
+
+  if (state.status === 'failed') {
+    return `Dashboard ${position} failed`
+  }
+
+  return `Dashboard ${position} waiting`
 }
 
 const createLocalDashboardProgressTracker = (
@@ -2789,6 +2811,19 @@ const createLocalDashboardProgressTracker = (
       label: renderLocalDashboardProgressLabel(states),
       dashboardCount: expectedCount,
       timeoutMs,
+      dashboardProgress: states.map((state, index) => ({
+        dashboardIndex: index + 1,
+        dashboardCount: expectedCount,
+        status: state.status,
+        label: renderLocalDashboardThreadLabel(state, index, expectedCount),
+        percent:
+          state.status === 'complete' || state.status === 'failed'
+            ? 100
+            : Math.max(0, Math.min(99, Math.round(state.percent || 0))),
+        attempt: state.attempt,
+        attemptCount: state.attemptCount,
+        studyPathStep: state.step,
+      })),
     })
   }
 
@@ -2806,7 +2841,7 @@ const createLocalDashboardProgressTracker = (
         attempt: event.attempt,
         attemptCount: event.attemptCount,
         percent: event.percent,
-        step: /practice/i.test(event.label) ? 'practice' : 'notes',
+        step: event.studyPathStep,
       }
       emit(event.timeoutMs)
     },
@@ -2935,6 +2970,7 @@ const generateLocalStudyPathConceptDraft = async (
         dashboardCount: expectedCount,
         attempt,
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+        studyPathStep: 'concept',
       })
       debug.rawResponse = text
       const parsed = parseLocalAiJson(text)
@@ -3054,7 +3090,7 @@ const generateLocalStudyPathMarkdownSection = async (
       const text = await callLocalLanguageModel(promptText, {
         timeoutMs: LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS,
         onProgress: localOptions.onProgress,
-        progressLabel: `Generating source notes section ${
+        progressLabel: `Generating Markdown part ${
           sectionIndex + 1
         } for dashboard ${
           index + 1
@@ -3063,6 +3099,7 @@ const generateLocalStudyPathMarkdownSection = async (
         dashboardCount: expectedCount,
         attempt,
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+        studyPathStep: sectionIndex === 0 ? 'markdown1' : 'markdown2',
       })
       debug.rawResponse = text
       const markdown = cleanLocalStudyPathSectionMarkdown(text, requiredHeading)
@@ -3226,6 +3263,7 @@ const generateLocalStudyPathPractice = async (
         dashboardCount: expectedCount,
         attempt,
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
+        studyPathStep: 'practice',
       })
       debug.rawResponse = text
       const record = parseLocalStudyPathObject(text, debug)

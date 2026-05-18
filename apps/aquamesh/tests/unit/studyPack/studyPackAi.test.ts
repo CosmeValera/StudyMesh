@@ -1096,8 +1096,19 @@ describe('local AI helpers', () => {
         }),
         expect.objectContaining({
           dashboardCount: 5,
-          label:
-            'Generating notes for dashboard 1/5, attempt 1/3... and notes for dashboard 2/5, attempt 1/3...',
+          label: 'Generating 0 of 5 dashboards',
+          dashboardProgress: expect.arrayContaining([
+            expect.objectContaining({
+              dashboardIndex: 1,
+              label: 'Concept draft for dashboard 1/5, attempt 1/3',
+              studyPathStep: 'concept',
+            }),
+            expect.objectContaining({
+              dashboardIndex: 2,
+              label: 'Concept draft for dashboard 2/5, attempt 1/3',
+              studyPathStep: 'concept',
+            }),
+          ]),
           timeoutMs: 180 * 1000,
         }),
         expect.objectContaining({
