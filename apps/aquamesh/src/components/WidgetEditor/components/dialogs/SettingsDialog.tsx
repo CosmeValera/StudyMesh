@@ -418,9 +418,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Create Study Pack uses the configured provider only when AI
-                    mode runs. API keys are optional advanced settings and stay
-                    in this browser.
+                    Create from notes can use the configured provider to turn
+                    notes into a dashboard. API keys are optional advanced
+                    settings and stay in this browser.
                   </Typography>
                   <TextField
                     select
@@ -432,7 +432,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     fullWidth
                     size="small"
                     sx={{ mb: 1.5 }}
-                    helperText="This provider is used by Create Study Pack and Create Study Path."
+                    helperText="This provider is used by Create from notes and Create Study Path."
                   >
                     <MenuItem value="basic">Basic fallback</MenuItem>
                     <MenuItem value="local">

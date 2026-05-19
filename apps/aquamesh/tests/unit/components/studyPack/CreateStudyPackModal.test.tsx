@@ -141,7 +141,7 @@ vi.mock('../../../../src/studyPack', async () => {
   }
 })
 
-describe('CreateStudyPackModal orchestrator pipeline', () => {
+describe('CreateStudyPackModal create from notes flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(readStudyPackAiSettings).mockReturnValue({
@@ -195,16 +195,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
   }
 
   const selectImageSource = () => {
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: /source type/i }))
-    fireEvent.click(screen.getByRole('option', { name: /^image$/i }))
-  }
-
-  const selectBasicMode = () => {
-    vi.mocked(readStudyPackAiSettings).mockReturnValue({
-      provider: 'basic',
-      apiToken: '',
-      model: 'gemini-test',
-    })
+    fireEvent.click(screen.getByRole('button', { name: /image notes/i }))
   }
 
   const getImageFileInput = () =>
@@ -212,78 +203,25 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       'input[type="file"][accept*=".png"]',
     ) as HTMLInputElement
 
-  it('uses text source input by default and previews generated widgets', async () => {
+  it('presents a simple Create from notes source choice and no AI Tutor controls', () => {
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
+    expect(screen.getByText('Create from notes')).toBeInTheDocument()
     expect(
-      screen.getByRole('combobox', { name: /source type/i }),
-    ).toHaveTextContent('Text')
-
-    selectBasicMode()
-    expect(screen.getByText('Basic fallback')).toBeInTheDocument()
-    expect(screen.getByText('Practice')).toBeInTheDocument()
-    expect(screen.getByText('Support')).toBeInTheDocument()
-    expect(screen.getByText('Structured')).toBeInTheDocument()
-    expect(screen.getByLabelText('Summaries')).toBeInTheDocument()
-    expect(screen.getByLabelText('Definitions')).toBeInTheDocument()
-    expect(screen.getByLabelText('Flashcards')).toBeInTheDocument()
-    expect(screen.getByLabelText('Quizzes')).toBeInTheDocument()
-    expect(screen.getByLabelText('Review prompts')).toBeInTheDocument()
-    expect(screen.getByLabelText('Lists / steps')).toBeInTheDocument()
-    expect(
-      screen.getByRole('combobox', { name: /target amount/i }),
+      screen.getByRole('button', { name: /text notes/i }),
     ).toBeInTheDocument()
-    pasteNotes('# Biology\n\n## Cell theory\n\n- Cells carry DNA')
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-
-    await waitFor(() => {
-      expect(parseStudyPack).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ defaultTags: ['study-pack'] }),
-      )
-    })
-    expect(screen.getByText('Source notes')).toBeInTheDocument()
-    expect(screen.getByText('1 MarkdownBlock')).toBeInTheDocument()
-    expect(screen.getByText('Locked')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Derivative quiz')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Study Pack Generated')).toBeInTheDocument()
     expect(
-      screen.getByRole('combobox', { name: /workspace layout/i }),
+      screen.getByRole('button', { name: /image notes/i }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('Smart split')).not.toBeInTheDocument()
-    expect(screen.queryByDisplayValue('Loose note')).not.toBeInTheDocument()
-    expect(screen.queryByText('1 note')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('dialog', { name: /use markdown format/i }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/AI Tutor/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Target amount/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Practice$/i)).not.toBeInTheDocument()
   })
 
-  it('respects selected widget types in Basic mode', async () => {
-    render(
-      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
-    )
-
-    selectBasicMode()
-    fireEvent.click(screen.getByLabelText('Quizzes'))
-    pasteNotes('Only loose notes here with one useful fact for review.')
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
-
-    const createdPack = vi.mocked(createStudyPackOrchestratorWidgets).mock
-      .calls[0][0]
-    expect(createdPack.objects.some((object) => object.kind === 'quiz')).toBe(
-      false,
-    )
-    expect(createdPack.objects).toEqual(
-      expect.arrayContaining([expect.objectContaining({ kind: 'qa' })]),
-    )
-  })
-
-  it('creates orchestrator widgets with the raw source and orchestrator layout', async () => {
+  it('creates a dashboard from pasted notes with a compact review screen', async () => {
     const onCreatePack = vi.fn()
-
     render(
       <CreateStudyPackModal
         open
@@ -292,10 +230,17 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       />,
     )
 
-    selectBasicMode()
     pasteNotes('Quiz:: What is derivative? | Rate of change')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
+
+    expect(await screen.findByText('1 study blocks')).toBeInTheDocument()
+    expect(screen.getByText('1 sections')).toBeInTheDocument()
+    expect(screen.getByText('Notes Dashboard Generated')).toBeInTheDocument()
+    expect(
+      screen.queryByDisplayValue('Derivative quiz'),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /create dashboard/i }))
 
     expect(createStudyPackOrchestratorWidgets).toHaveBeenCalledWith(
       expect.objectContaining({ sourceFormat: 'text' }),
@@ -305,7 +250,7 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
         rawSource: 'Quiz:: What is derivative? | Rate of change',
         widgetGroups: [
           expect.objectContaining({
-            name: 'Study Pack Generated',
+            name: 'Notes Dashboard Generated',
             objects: expect.arrayContaining([
               expect.objectContaining({ kind: 'quiz' }),
             ]),
@@ -314,96 +259,29 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       }),
     )
     expect(onCreatePack).toHaveBeenCalledWith(
-      expect.objectContaining({ layoutMode: 'orchestrator' }),
-    )
-  })
-
-  it('adds basic practice when parsing only finds study notes', async () => {
-    const onCreatePack = vi.fn()
-
-    render(
-      <CreateStudyPackModal
-        open
-        onClose={vi.fn()}
-        onCreatePack={onCreatePack}
-      />,
-    )
-
-    selectBasicMode()
-    pasteNotes('Only loose notes here with one useful fact for review.')
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-    expect(await screen.findByText('AquaMesh found')).toBeInTheDocument()
-    expect(screen.getByText(/target study blocks/i)).toBeInTheDocument()
-    expect(
-      screen.getByRole('combobox', { name: /workspace layout/i }),
-    ).toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
-
-    expect(createStudyPackOrchestratorWidgets).toHaveBeenCalledWith(
       expect.objectContaining({
-        objects: expect.arrayContaining([
-          expect.objectContaining({ kind: 'quiz' }),
-          expect.objectContaining({ kind: 'qa' }),
-        ]),
-      }),
-      expect.objectContaining({
-        rawSource: 'Only loose notes here with one useful fact for review.',
+        name: 'Notes Dashboard',
+        layoutMode: 'orchestrator',
       }),
     )
-    expect(onCreatePack).toHaveBeenCalledWith(
-      expect.objectContaining({ layoutMode: 'orchestrator' }),
-    )
   })
 
-  it('previews CSV sources as a source table widget', async () => {
-    render(
-      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
-    )
-
-    selectBasicMode()
-    pasteNotes('Rule,Formula\nPower,nx^(n-1)')
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-
-    expect(await screen.findByText('1 TableBlock')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('CSV Table')).toBeInTheDocument()
-    expect(createStudyPackSmartWidgetGroups).toHaveBeenCalled()
-  })
-
-  it('requires an API key before AI mode generates widgets', async () => {
-    vi.mocked(readStudyPackAiSettings).mockReturnValue({
-      provider: 'gemini',
-      apiToken: '',
-      model: 'gemini-test',
-    })
-    render(
-      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
-    )
-
-    pasteNotes('Photosynthesis happens in chloroplasts.')
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-
-    expect(
-      await screen.findByText(/configured API key/i),
-    ).toBeInTheDocument()
-    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
-    expect(parseStudyPack).not.toHaveBeenCalled()
-  })
-
-  it('uses AI mode to generate reviewable widgets from raw text notes', async () => {
+  it('uses configured AI generation for text notes without exposing AI Tutor mode', async () => {
     vi.mocked(readStudyPackAiSettings).mockReturnValue({
       provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
     })
-    render(
-      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
-    )
     vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
       provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
       tokenSource: 'settings',
     })
+
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
 
     pasteNotes('Photosynthesis happens in chloroplasts.')
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
@@ -414,102 +292,27 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
           apiToken: 'settings-token',
           model: 'gemini-test',
           rawNotes: 'Photosynthesis happens in chloroplasts.',
+          promptMode: false,
         }),
       )
     })
     expect(
-      await screen.findByDisplayValue('What did AI find?'),
+      await screen.findByText('AI Study Pack Generated'),
     ).toBeInTheDocument()
-    expect(parseStudyPack).not.toHaveBeenCalled()
   })
 
-  it('shows estimated Local AI generation progress for Study Pack generation', async () => {
-    vi.mocked(readStudyPackAiSettings).mockReturnValue({
-      provider: 'local',
-      apiToken: '',
-      model: 'gemini-test',
-    })
-    vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
-      provider: 'local',
-      apiToken: '',
-      model: 'gemini-test',
-      tokenSource: 'none',
-    })
-    let resolveDraft:
-      | ((draft: Awaited<ReturnType<typeof generateStudyPackWithAi>>) => void)
-      | undefined
-    vi.mocked(generateStudyPackWithAi).mockImplementation(
-      async (options) =>
-        new Promise((resolve) => {
-          resolveDraft = resolve
-          options.onProgress?.({
-            phase: 'generation',
-            percent: 42,
-            label: 'Estimated Local AI generation time',
-            timeoutMs: 4 * 60 * 1000,
-          })
-        }),
-    )
+  it('extracts image notes before parsing the dashboard', async () => {
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    expect(
-      screen.getByText(/Local AI runs on your device and can be slow/i),
-    ).toBeInTheDocument()
-    pasteNotes('Photosynthesis happens in chloroplasts.')
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-
-    expect(
-      await screen.findByText('Estimated Local AI generation time'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('42%')).toBeInTheDocument()
-
-    resolveDraft?.({
-      title: 'AI Study Pack',
-      sourceFormat: 'text',
-      concepts: [],
-      objects: [
-        {
-          id: 'ai-quiz-1',
-          kind: 'quiz',
-          quizMode: 'shortAnswer',
-          sourceLine: 1,
-          tags: [],
-          question: 'What did AI find?',
-          options: [],
-          correctIndex: 0,
-          answer: 'A grounded answer',
-          explanation: '',
-        },
-      ],
-      warnings: [],
-    })
-    expect(await screen.findByDisplayValue('What did AI find?')).toBeInTheDocument()
-  })
-
-  it('extracts image notes before parsing the study pack', async () => {
-    render(
-      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
-    )
-
-    selectBasicMode()
     selectImageSource()
+    expect(screen.getByText(/drop an image here/i)).toBeInTheDocument()
 
-    expect(screen.getByText(/drop an image of your notes/i)).toBeInTheDocument()
-    expect(
-      screen.getByText(/works best with screenshots, slides/i),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(/may fail or return inaccurate text for handwritten/i),
-    ).toBeInTheDocument()
-
-    const input = getImageFileInput()
     const image = new File(['image-bytes'], 'lecture.png', {
       type: 'image/png',
     })
-
-    fireEvent.change(input, { target: { files: [image] } })
+    fireEvent.change(getImageFileInput(), { target: { files: [image] } })
     fireEvent.click(screen.getByRole('button', { name: /extract notes/i }))
 
     await waitFor(() => {
@@ -526,15 +329,12 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     ).toBeInTheDocument()
   })
 
-  it('uses Gemini image extraction in AI mode instead of local OCR', async () => {
+  it('uses Gemini image extraction when configured', async () => {
     vi.mocked(readStudyPackAiSettings).mockReturnValue({
       provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
     })
-    render(
-      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
-    )
     vi.mocked(resolveStudyPackAiCredentials).mockReturnValue({
       provider: 'gemini',
       apiToken: 'settings-token',
@@ -542,13 +342,15 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
       tokenSource: 'settings',
     })
 
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
     selectImageSource()
-    const input = getImageFileInput()
     const image = new File(['image-bytes'], 'handwritten.png', {
       type: 'image/png',
     })
-
-    fireEvent.change(input, { target: { files: [image] } })
+    fireEvent.change(getImageFileInput(), { target: { files: [image] } })
     fireEvent.click(screen.getByRole('button', { name: /extract notes/i }))
 
     await waitFor(() => {
@@ -566,65 +368,32 @@ describe('CreateStudyPackModal orchestrator pipeline', () => {
     ).toBeInTheDocument()
   })
 
-  it('parses edited OCR notes and uses them as the raw source', async () => {
-    const onCreatePack = vi.fn()
-    render(
-      <CreateStudyPackModal
-        open
-        onClose={vi.fn()}
-        onCreatePack={onCreatePack}
-      />,
-    )
-
-    selectBasicMode()
-    selectImageSource()
-    const input = getImageFileInput()
-    const image = new File(['image-bytes'], 'lecture.png', {
-      type: 'image/png',
-    })
-
-    fireEvent.change(input, { target: { files: [image] } })
-    fireEvent.click(screen.getByRole('button', { name: /extract notes/i }))
-
-    const extractedNotes = await screen.findByRole('textbox', {
-      name: /extracted notes/i,
-    })
-    fireEvent.change(extractedNotes, {
-      target: { value: 'Quiz:: Edited OCR question | Edited OCR answer' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-    fireEvent.click(await screen.findByRole('button', { name: /create pack/i }))
-
-    expect(parseStudyPack).toHaveBeenCalledWith(
-      'Quiz:: Edited OCR question | Edited OCR answer',
-      expect.objectContaining({ defaultTags: ['study-pack'] }),
-    )
-    expect(createStudyPackOrchestratorWidgets).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.objectContaining({
-        rawSource: 'Quiz:: Edited OCR question | Edited OCR answer',
-      }),
-    )
-    expect(onCreatePack).toHaveBeenCalled()
-  })
-
   it('rejects unsupported image files before OCR', async () => {
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    selectBasicMode()
     selectImageSource()
-    const input = getImageFileInput()
     const unsupported = new File(['pdf-bytes'], 'notes.pdf', {
       type: 'application/pdf',
     })
-
-    fireEvent.change(input, { target: { files: [unsupported] } })
+    fireEvent.change(getImageFileInput(), { target: { files: [unsupported] } })
 
     expect(
       await screen.findByText(/use a png, jpg, webp, gif, bmp, or pbm image/i),
     ).toBeInTheDocument()
     expect(extractRawNotesFromImage).not.toHaveBeenCalled()
+  })
+
+  it('previews CSV sources as a source table dashboard', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    pasteNotes('Rule,Formula\nPower,nx^(n-1)')
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
+    expect(await screen.findByText('Source table included')).toBeInTheDocument()
+    expect(createStudyPackSmartWidgetGroups).toHaveBeenCalled()
   })
 })
