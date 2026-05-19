@@ -4,8 +4,7 @@
 const HtmlWebPackPlugin = require('html-webpack-plugin')
 const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
-const { CleanWebpackPlugin } = require('clean-webpack-plugin')
-
+const { CleanWebpackPlugin } = require('clean-webpack-pluconst 
 const Dotenv = require('dotenv-webpack')
 const path = require('path')
 const fs = require('fs')
@@ -27,7 +26,12 @@ module.exports = (_, argv) => ({
     port: 3000,
     allowedHosts: ['.csb.app'],
     historyApiFallback: true,
+    hot: argv.mode === 'development',
+    liveReload: argv.mode !== 'development',
     watchFiles: [path.resolve(__dirname, 'src')],
+    client: {
+      overlay: true,
+    },
     onListening: function (devServer) {
       const port = devServer.server.address().port
 
@@ -130,6 +134,12 @@ module.exports = (_, argv) => ({
     new CleanWebpackPlugin(),
     new Dotenv({
       path: fs.existsSync(path.resolve(__dirname, `.env.${argv.mode}`))
+        ? `./.env.${argv.mode}`
+        : './.env',
+    }),
+  ],
+})
+existsSync(path.resolve(__dirname, `.env.${argv.mode}`))
         ? `./.env.${argv.mode}`
         : './.env',
     }),
