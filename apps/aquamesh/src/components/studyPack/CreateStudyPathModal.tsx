@@ -128,6 +128,126 @@ const formatPipelineRemaining = (remainingMs: number): string => {
   return `~${minutes}m ${String(seconds).padStart(2, '0')}s remaining`
 }
 
+type LocalPipelineStep = NonNullable<
+  LocalAiProgressEvent['studyPathPipeline']
+>['steps'][number]
+type LocalDashboardProgress = NonNullable<
+  LocalAiProgressEvent['dashboardProgress']
+>[number]
+
+const pipelineStepGroups: Array<{
+  key: NonNullable<LocalAiProgressEvent['studyPathStep']>
+  label: string
+}> = [
+  { key: 'planner', label: 'Planning' },
+  { key: 'markdown1', label: 'Markdown 1' },
+  { key: 'markdown2', label: 'Markdown 2' },
+  { key: 'flashcards', label: 'Flashcards' },
+  { key: 'quizzes', label: 'Quizzes' },
+]
+
+const statusColor = (status: LocalPipelineStep['status']) =>
+  status === 'failed'
+    ? 'error'
+    : status === 'complete'
+    ? 'success'
+    : status === 'running'
+    ? 'primary'
+    : 'default'
+
+const aggregatePipelineSteps = (
+  steps: LocalPipelineStep[],
+): LocalPipelineStep[] =>
+  pipelineStepGroups
+    .map((group): LocalPipelineStep | null => {
+      const groupSteps = steps.filter((step) =>
+        group.key === 'planner'
+          ? step.id === 'planner'
+          : step.id.endsWith(`-${group.key}`),
+      )
+      if (groupSteps.length === 0) {
+        return null
+      }
+
+      const completeCount = groupSteps.filter(
+        (step) => step.status === 'complete',
+      ).length
+      const status: LocalPipelineStep['status'] = groupSteps.some(
+        (step) => step.status === 'failed',
+      )
+        ? 'failed'
+        : groupSteps.some((step) => step.status === 'running')
+        ? 'running'
+        : completeCount === groupSteps.length
+        ? 'complete'
+        : 'pending'
+      const percent = Math.round(
+        groupSteps.reduce((total, step) => total + step.percent, 0) /
+          groupSteps.length,
+      )
+      const label =
+        group.key === 'planner'
+          ? group.label
+          : `${group.label} ${completeCount}/${groupSteps.length}`
+
+      return {
+        id: group.key,
+        label,
+        status,
+        percent,
+      }
+    })
+    .filter((step): step is LocalPipelineStep => Boolean(step))
+
+const threadLaneSteps = (
+  pipelineSteps: LocalPipelineStep[],
+  dashboardIndex?: number,
+): LocalPipelineStep[] =>
+  dashboardIndex
+    ? pipelineSteps.filter((step) =>
+        step.id.startsWith(`dashboard-${dashboardIndex}-`),
+      )
+    : []
+
+const localThreadLanes = (
+  progress: LocalAiProgressEvent,
+): Array<{
+  threadId: number
+  threadCount: number
+  active?: LocalDashboardProgress
+  completedCount: number
+  failedCount: number
+  steps: LocalPipelineStep[]
+}> => {
+  const dashboardProgress = progress.dashboardProgress || []
+  const pipelineSteps = progress.studyPathPipeline?.steps || []
+  const threadCount =
+    dashboardProgress.find((item) => item.threadCount)?.threadCount ||
+    Math.max(1, ...dashboardProgress.map((item) => item.threadId || 0))
+
+  return Array.from({ length: threadCount }, (_value, index) => {
+    const threadId = index + 1
+    const entries = dashboardProgress.filter(
+      (item) => item.threadId === threadId,
+    )
+    const active =
+      entries.find((item) => item.status === 'running') ||
+      entries
+        .filter((item) => item.status !== 'pending')
+        .sort((first, second) => second.dashboardIndex - first.dashboardIndex)[0]
+
+    return {
+      threadId,
+      threadCount,
+      active,
+      completedCount: entries.filter((item) => item.status === 'complete')
+        .length,
+      failedCount: entries.filter((item) => item.status === 'failed').length,
+      steps: threadLaneSteps(pipelineSteps, active?.dashboardIndex),
+    }
+  })
+}
+
 const getGenerationAmountHelper = (
   option: (typeof generationAmountOptions)[number],
   provider: StudyPackAiProvider,
@@ -401,7 +521,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         assertRoleObjectsAreClean(
           objects,
           dashboard.dashboardRole,
-          dashboard.title,
+          dashboard.title || 'Study Path dashboard',
         )
 
         return {
@@ -610,121 +730,160 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                       {getProviderPathDescription(aiProvider)}
                     </Typography>
                     {aiProvider === 'local' && localAiProgress ? (
-                      <>
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography variant="caption" color="text.secondary">
-                            Estimated Local AI generation time
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {localAiProgress.percent}%
-                          </Typography>
-                        </Stack>
-                        <LinearProgress
-                          variant="determinate"
-                          value={localAiProgress.percent}
-                        />
-                        {localAiProgress.studyPathPipeline ? (
-                          <Box sx={{ mt: 1 }}>
-                            <Stack
-                              direction="row"
-                              justifyContent="space-between"
-                              spacing={1}
-                            >
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                fontWeight={700}
+                      (() => {
+                        const pipeline = localAiProgress.studyPathPipeline
+                        const threadLanes = localThreadLanes(localAiProgress)
+
+                        return (
+                          <Stack spacing={1.5}>
+                            {pipeline ? (
+                              <Box>
+                                <Stack
+                                  direction="row"
+                                  justifyContent="space-between"
+                                  spacing={1}
+                                >
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    fontWeight={700}
+                                  >
+                                    {pipeline.label}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {formatPipelineRemaining(
+                                      pipeline.estimatedRemainingMs,
+                                    )}
+                                  </Typography>
+                                </Stack>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={pipeline.percent}
+                                />
+                                <Stack
+                                  direction="row"
+                                  spacing={0.75}
+                                  useFlexGap
+                                  flexWrap="wrap"
+                                  sx={{ mt: 1 }}
+                                >
+                                  {aggregatePipelineSteps(pipeline.steps).map(
+                                    (pipelineStep) => (
+                                      <Chip
+                                        key={pipelineStep.id}
+                                        size="small"
+                                        label={`${pipelineStep.label} ${pipelineStep.percent}%`}
+                                        color={statusColor(pipelineStep.status)}
+                                        variant={
+                                          pipelineStep.status === 'pending'
+                                            ? 'outlined'
+                                            : 'filled'
+                                        }
+                                      />
+                                    ),
+                                  )}
+                                </Stack>
+                              </Box>
+                            ) : (
+                              <LinearProgress
+                                variant="determinate"
+                                value={localAiProgress.percent}
+                              />
+                            )}
+                            {threadLanes.length > 0 ? (
+                              <Box
+                                sx={{
+                                  display: 'grid',
+                                  gridTemplateColumns:
+                                    'repeat(auto-fit, minmax(220px, 1fr))',
+                                  gap: 1,
+                                }}
                               >
-                                {localAiProgress.studyPathPipeline.label}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {formatPipelineRemaining(
-                                  localAiProgress.studyPathPipeline
-                                    .estimatedRemainingMs,
-                                )}
-                              </Typography>
-                            </Stack>
-                            <LinearProgress
-                              variant="determinate"
-                              value={localAiProgress.studyPathPipeline.percent}
-                            />
-                            <Stack
-                              direction="row"
-                              spacing={0.75}
-                              useFlexGap
-                              flexWrap="wrap"
-                              sx={{ mt: 1 }}
-                            >
-                              {localAiProgress.studyPathPipeline.steps.map(
-                                (pipelineStep) => (
-                                  <Chip
-                                    key={pipelineStep.id}
-                                    size="small"
-                                    label={`${pipelineStep.label} ${pipelineStep.percent}%`}
-                                    color={
-                                      pipelineStep.status === 'failed'
-                                        ? 'error'
-                                        : pipelineStep.status === 'complete'
-                                        ? 'success'
-                                        : pipelineStep.status === 'running'
-                                        ? 'primary'
-                                        : 'default'
-                                    }
-                                    variant={
-                                      pipelineStep.status === 'pending'
-                                        ? 'outlined'
-                                        : 'filled'
-                                    }
-                                  />
-                                ),
-                              )}
-                            </Stack>
-                          </Box>
-                        ) : null}
-                        {localAiProgress.dashboardProgress &&
-                          localAiProgress.dashboardProgress.length > 0 && (
-                            <Stack spacing={1} sx={{ mt: 0.5 }}>
-                              {localAiProgress.dashboardProgress.map(
-                                (thread) => (
-                                  <Box key={thread.dashboardIndex}>
-                                    <Stack
-                                      direction="row"
-                                      justifyContent="space-between"
-                                      spacing={1}
-                                    >
+                                {threadLanes.map((lane) => (
+                                  <Box
+                                    key={lane.threadId}
+                                    sx={{
+                                      border: 1,
+                                      borderColor: 'divider',
+                                      borderRadius: 1,
+                                      p: 1,
+                                    }}
+                                  >
+                                    <Stack spacing={0.75}>
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        spacing={1}
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          fontWeight={800}
+                                        >
+                                          Thread {lane.threadId}
+                                        </Typography>
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                        >
+                                          {lane.completedCount} done
+                                          {lane.failedCount > 0
+                                            ? `, ${lane.failedCount} failed`
+                                            : ''}
+                                        </Typography>
+                                      </Stack>
                                       <Typography
                                         variant="caption"
                                         color="text.secondary"
                                       >
-                                        {thread.label}
+                                        {lane.active?.label || 'Waiting'}
                                       </Typography>
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                      >
-                                        {thread.percent}%
-                                      </Typography>
+                                      <LinearProgress
+                                        variant="determinate"
+                                        value={lane.active?.percent || 0}
+                                        color={
+                                          lane.active?.status === 'failed'
+                                            ? 'error'
+                                            : lane.active?.status === 'complete'
+                                            ? 'success'
+                                            : 'primary'
+                                        }
+                                      />
+                                      {lane.steps.length > 0 ? (
+                                        <Stack
+                                          direction="row"
+                                          spacing={0.5}
+                                          useFlexGap
+                                          flexWrap="wrap"
+                                        >
+                                          {lane.steps.map((step) => (
+                                            <Chip
+                                              key={step.id}
+                                              size="small"
+                                              label={`${step.label.replace(
+                                                /^Dashboard \d+: /,
+                                                '',
+                                              )} ${step.percent}%`}
+                                              color={statusColor(step.status)}
+                                              variant={
+                                                step.status === 'pending'
+                                                  ? 'outlined'
+                                                  : 'filled'
+                                              }
+                                            />
+                                          ))}
+                                        </Stack>
+                                      ) : null}
                                     </Stack>
-                                    <LinearProgress
-                                      variant="determinate"
-                                      value={thread.percent}
-                                      color={
-                                        thread.status === 'failed'
-                                          ? 'error'
-                                          : thread.status === 'complete'
-                                          ? 'success'
-                                          : 'primary'
-                                      }
-                                    />
                                   </Box>
-                                ),
-                              )}
-                            </Stack>
-                          )}
-                      </>
+                                ))}
+                              </Box>
+                            ) : null}
+                          </Stack>
+                        )
+                      })()
                     ) : (
                       <LinearProgress />
                     )}

@@ -11,6 +11,7 @@ import {
   OPEN_STUDY_PACK_EVENT,
 } from '../../../../src/customHooks/useWorkspaceActions'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../../src/components/onboarding/onboardingEvents'
+import { STUDY_PACK_AI_SETTINGS_KEY } from '../../../../src/studyPack/ai'
 
 // Mock custom hooks and providers
 vi.mock('../../../../src/customHooks/useTopNavBarWidgets', () => ({
@@ -103,9 +104,25 @@ describe('TopNavBar Component', () => {
     vi.clearAllMocks()
 
     // Setup localStorage mock
-    localStorage.getItem.mockReturnValue(
-      JSON.stringify({ id: 'admin', name: 'Admin User', role: 'ADMIN_ROLE' }),
-    )
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === STUDY_PACK_AI_SETTINGS_KEY) {
+        return JSON.stringify({
+          provider: 'gemini',
+          apiToken: 'test-token',
+          model: 'gemini-test',
+        })
+      }
+
+      return null
+    })
 
     // Setup useTopNavBarWidgets mock
     vi.mocked(useTopNavBarWidgetsModule.default).mockReturnValue({
@@ -231,6 +248,76 @@ describe('TopNavBar Component', () => {
       createFromNotesButton.compareDocumentPosition(advancedButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+  })
+
+  it('disables Study Path but keeps Create From Notes available in Basic fallback mode', () => {
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === STUDY_PACK_AI_SETTINGS_KEY) {
+        return JSON.stringify({
+          provider: 'basic',
+          apiToken: '',
+          model: 'gemini-test',
+        })
+      }
+
+      return null
+    })
+
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /create study path/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /create from notes/i }),
+    ).toBeEnabled()
+  })
+
+  it('disables Study Path and Create From Notes in Hosted AI tokens mode', () => {
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === STUDY_PACK_AI_SETTINGS_KEY) {
+        return JSON.stringify({
+          provider: 'hosted',
+          apiToken: '',
+          model: 'gemini-test',
+        })
+      }
+
+      return null
+    })
+
+    render(
+      <BrowserRouter>
+        <TopNavBar />
+      </BrowserRouter>,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /create study path/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /create from notes/i }),
+    ).toBeDisabled()
   })
 
   it('renders the AquaMesh logo', () => {

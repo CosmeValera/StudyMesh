@@ -1727,6 +1727,127 @@ describe('local AI helpers', () => {
     )
   })
 
+  it('recovers malformed Local Study Path practice JSON without retrying the dashboard', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
+      .mockImplementationOnce((promptText: string) =>
+        localStudyPathMarkdownFromPrompt(promptText, 'Modal verbs'),
+      )
+      .mockImplementationOnce((promptText: string) =>
+        localStudyPathMarkdownFromPrompt(promptText, 'Modal verbs'),
+      )
+      .mockResolvedValueOnce(
+        `\`\`\`json
+{flashcards:[{question:"Which verb expresses obligation?",answer:"Dovere."},{"question":"Which verb expresses obligation?","answer":"Dovere duplicate."},{"question":"Which verb expresses ability?","answer":"Potere."}]
+\`\`\``,
+      )
+      .mockResolvedValueOnce(
+        `{"quizzes":[{"question":"Which modal means obligation?","options":["Dovere","Potere","Volere"],"correctIndex":0}], [{"question":"Which modal means ability?","options":["Potere","Dovere","Volere"],"correctIndex":0}]}`,
+      )
+      .mockImplementation((promptText: string) =>
+        /Create (?:flashcards|quizzes)/i.test(promptText)
+          ? localStudyPathPracticeJson(2, 'Modal verbs')
+          : localStudyPathMarkdownFromPrompt(promptText, 'Modal verbs'),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi(
+      {
+        apiToken: '',
+        model: '',
+        title: 'Italian B1',
+        prompt: 'Teach Italian B1 modal verbs',
+        folderName: '',
+        generationAmount: 'superSmall',
+      },
+      { dashboardConcurrency: 1 },
+    )
+
+    const firstDashboardQuestions = draft.dashboards[0].objects
+      .filter((object) => object.kind === 'qa' || object.kind === 'quiz')
+      .map((object) => object.question)
+
+    expect(firstDashboardQuestions).toEqual(
+      expect.arrayContaining([
+        'Which verb expresses obligation?',
+        'Which verb expresses ability?',
+        'Which modal means obligation?',
+        'Which modal means ability?',
+      ]),
+    )
+    expect(
+      firstDashboardQuestions.filter(
+        (question) => question === 'Which verb expresses obligation?',
+      ),
+    ).toHaveLength(1)
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toEqual(
+      expect.arrayContaining([
+        'Repaired flashcards: stripped code fence or invalid escapes.',
+        'Repaired flashcards: dropped duplicate question.',
+        'Repaired quizzes: recovered standalone practice objects.',
+      ]),
+    )
+  })
+
+  it('recovers repeated standalone flashcards with stray closing delimiters', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce(localStudyPathPlanJson(2, 'Italian B1'))
+      .mockImplementationOnce((promptText: string) =>
+        localStudyPathMarkdownFromPrompt(promptText, 'Modal verbs'),
+      )
+      .mockImplementationOnce((promptText: string) =>
+        localStudyPathMarkdownFromPrompt(promptText, 'Modal verbs'),
+      )
+      .mockResolvedValueOnce(
+        `{"question":"What is a modal verb?",answer:"A helper verb."}]}; {"question":"Which modal expresses desire?",answer:"Volere."}]};`,
+      )
+      .mockResolvedValueOnce(localStudyPathPracticeJson(1, 'Modal verbs'))
+      .mockImplementation((promptText: string) =>
+        /Create (?:flashcards|quizzes)/i.test(promptText)
+          ? localStudyPathPracticeJson(2, 'Modal verbs')
+          : localStudyPathMarkdownFromPrompt(promptText, 'Modal verbs'),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPathWithLocalAi(
+      {
+        apiToken: '',
+        model: '',
+        title: 'Italian B1',
+        prompt: 'Teach Italian B1 modal verbs',
+        folderName: '',
+        generationAmount: 'superSmall',
+      },
+      { dashboardConcurrency: 1 },
+    )
+
+    expect(draft.dashboards[0].objects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'qa',
+          question: 'What is a modal verb?',
+          answer: 'A helper verb.',
+        }),
+        expect.objectContaining({
+          kind: 'qa',
+          question: 'Which modal expresses desire?',
+          answer: 'Volere.',
+        }),
+      ]),
+    )
+    expect(draft.dashboards[0].debugTrace?.droppedOrRepairedItems).toContain(
+      'Repaired flashcards: recovered standalone practice objects.',
+    )
+  })
+
   it('skips later Local Study Path dashboards after three retryable failures', async () => {
     const prompt = vi
       .fn()

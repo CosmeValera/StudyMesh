@@ -86,6 +86,8 @@ export interface LocalAiProgressEvent {
   label: string
   dashboardIndex?: number
   dashboardCount?: number
+  threadId?: number
+  threadCount?: number
   attempt?: number
   attemptCount?: number
   timeoutMs?: number
@@ -107,6 +109,8 @@ export interface LocalAiProgressEvent {
     status: 'pending' | 'running' | 'complete' | 'failed'
     label: string
     percent: number
+    threadId?: number
+    threadCount?: number
     attempt?: number
     attemptCount?: number
     studyPathStep?: LocalAiStudyPathStep
@@ -288,6 +292,8 @@ const createPromptProgressTimer = (
     | 'attempt'
     | 'attemptCount'
     | 'studyPathStep'
+    | 'threadId'
+    | 'threadCount'
   > = {},
 ): (() => void) => {
   if (!onProgress) {
@@ -342,6 +348,8 @@ export const callLocalLanguageModel = async (
     attempt?: number
     attemptCount?: number
     studyPathStep?: LocalAiStudyPathStep
+    threadId?: number
+    threadCount?: number
   } = {},
 ): Promise<string> => {
   assertLocalAiIsReady()
@@ -393,6 +401,8 @@ export const callLocalLanguageModel = async (
               attempt: options.attempt,
               attemptCount: options.attemptCount,
               studyPathStep: options.studyPathStep,
+              threadId: options.threadId,
+              threadCount: options.threadCount,
             })
           }
         })
@@ -452,6 +462,8 @@ export const callLocalLanguageModel = async (
         attempt: options.attempt,
         attemptCount: options.attemptCount,
         studyPathStep: options.studyPathStep,
+        threadId: options.threadId,
+        threadCount: options.threadCount,
       },
     )
     const result = await withTimeout(
@@ -477,6 +489,8 @@ export const callLocalLanguageModel = async (
           attempt: options.attempt,
           attemptCount: options.attemptCount,
           studyPathStep: options.studyPathStep,
+          threadId: options.threadId,
+          threadCount: options.threadCount,
         })
         session?.destroy?.()
         session = null
@@ -499,6 +513,8 @@ export const callLocalLanguageModel = async (
       attempt: options.attempt,
       attemptCount: options.attemptCount,
       studyPathStep: options.studyPathStep,
+      threadId: options.threadId,
+      threadCount: options.threadCount,
     })
     debugLocalAi('prompt:end', {
       durationMs: Math.round(performance.now() - promptStartedAt),

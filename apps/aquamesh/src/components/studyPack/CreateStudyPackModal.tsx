@@ -157,7 +157,7 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
 }
 
 const LOCAL_AI_ESTIMATE_COPY =
-  'Local AI runs on your device and can be slow. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
+  'Local AI runs on your device and can be slow. Super small usually takes 6-8 min, Compact 8-10 min, Average 10-15 min. For faster/deeper paths, use Own Gemini API token.'
 
 const getProviderWorkDescription = (
   provider: StudyPackAiProvider,

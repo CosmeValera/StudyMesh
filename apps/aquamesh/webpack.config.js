@@ -9,7 +9,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const Dotenv = require('dotenv-webpack')
 const path = require('path')
 const fs = require('fs')
-const deps = require('./package.json').dependencies
+// const deps = require('./package.json').dependencies
 
 const printCompilationMessage = require('./compilation.config.js')
 
@@ -93,28 +93,28 @@ module.exports = (_, argv) => ({
   },
 
   plugins: [
-    new ModuleFederationPlugin({
-      name: 'aquamesh',
-      filename: 'remoteEntry.js',
-      remotes: {
-        aquamesh_system_lens:
-          'aquamesh_system_lens@http://localhost:3001/remoteEntry.js',
-        aquamesh_control_flow:
-          'aquamesh_control_flow@http://localhost:3002/remoteEntry.js',
-      },
-      exposes: {},
-      shared: {
-        ...deps,
-        react: {
-          singleton: true,
-          requiredVersion: deps.react,
-        },
-        'react-dom': {
-          singleton: true,
-          requiredVersion: deps['react-dom'],
-        },
-      },
-    }),
+    // new ModuleFederationPlugin({
+    //   name: 'aquamesh',
+    //   filename: 'remoteEntry.js',
+    //   remotes: {
+    //     aquamesh_system_lens:
+    //       'aquamesh_system_lens@http://localhost:3001/remoteEntry.js',
+    //     aquamesh_control_flow:
+    //       'aquamesh_control_flow@http://localhost:3002/remoteEntry.js',
+    //   },
+    //   exposes: {},
+    //   shared: {
+    //     ...deps,
+    //     react: {
+    //       singleton: true,
+    //       requiredVersion: deps.react,
+    //     },
+    //     'react-dom': {
+    //       singleton: true,
+    //       requiredVersion: deps['react-dom'],
+    //     },
+    //   },
+    // }),
     new HtmlWebPackPlugin({
       template: './src/index.html',
     }),

@@ -1424,8 +1424,10 @@ Create flashcards from these exact lesson notes. Attempt ${attempt} of ${LOCAL_S
   item.title
 }" in "${options.title}".
 Shape:
-{"flashcards":[{"question":"...","answer":"..."},{"question":"...","answer":"..."}]}
-Rules: JSON only. No notes field. No prose outside JSON. Ask for 2 flashcards, but usable output matters more than exact counts.
+{"flashcards":[{"question":"...","answer":"..."}]}
+Rules: JSON only. No notes field. No prose outside JSON. Ask for ${
+  attempt === 1 ? '2 flashcards' : '1 flashcard'
+}; smaller valid output is better than broken JSON.
 Practice must be answerable from the notes. Do not merge multiple flashcards into one object; each flashcard must have exactly one question and one answer.
 ${localStudyPathPracticePromptBase(options, outline, item, notes)}`
 
@@ -1441,7 +1443,9 @@ Create quizzes from these exact lesson notes. Attempt ${attempt} of ${LOCAL_STUD
 }" in "${options.title}".
 Shape:
 {"quizzes":[{"question":"...","options":["...","...","..."],"correctIndex":0}]}
-Rules: JSON only. No notes field. No prose outside JSON. Ask for 1-2 quizzes, but usable output matters more than exact counts.
+Rules: JSON only. No notes field. No prose outside JSON. Ask for ${
+  attempt === 1 ? '1-2 quizzes' : '1 quiz'
+}; smaller valid output is better than broken JSON.
 Practice must be answerable from the notes.
 Quiz options must be real answer choices, not A/B/C placeholders. Avoid duplicate options. correctIndex must point to the right option.
 ${localStudyPathPracticePromptBase(options, outline, item, notes)}`
@@ -2052,7 +2056,10 @@ const normalizePlannerSections = (
         ? { title: title || goal, goal: goal || title, focus }
         : null
     })
-    .filter((section): section is LocalStudyPathPlanSection => Boolean(section))
+    .filter(
+      (section): section is { title: string; goal: string; focus: string } =>
+        Boolean(section),
+    )
     .slice(0, 2)
 
   const legacyTopics = fallback.topics.map((topic, index) => ({
@@ -2484,12 +2491,15 @@ interface LocalStudyPathPracticeResult {
   record: Record<string, unknown> | null
   rawResponse?: string
   failedAttempts: LocalAiGenerationFailureDebug[]
+  repairEvents: string[]
   error?: LocalAiGenerationError
   warnings: string[]
 }
 
 type LocalDashboardProgressState = {
   status: 'pending' | 'running' | 'complete' | 'failed'
+  threadId?: number
+  threadCount?: number
   attempt?: number
   attemptCount?: number
   percent?: number
@@ -2567,6 +2577,7 @@ type LocalStudyPathPipelineStep = {
   percent: number
   budgetMs: number
   baseBudgetMs: number
+  threadId?: number
   dashboardIndex?: number
   studyPathStep?: LocalAiProgressEvent['studyPathStep']
 }
@@ -2651,37 +2662,66 @@ const createLocalStudyPathPipelineTracker = (
     )
   }
 
-  const estimateRemainingMs = (): number => {
+  const remainingForStep = (step: LocalStudyPathPipelineStep): number =>
+    step.status === 'complete'
+      ? 0
+      : step.budgetMs * (1 - Math.max(0, step.percent) / 100)
+
+  const baseRemainingForStep = (step: LocalStudyPathPipelineStep): number =>
+    step.status === 'complete' ? 0 : step.baseBudgetMs
+
+  const estimateLaneRemainingMs = (useBaseBudget: boolean): number => {
     const planner = steps[0]
     const plannerRemaining =
       planner.status === 'complete'
         ? 0
-        : planner.budgetMs * (1 - Math.max(0, planner.percent) / 100)
-    const dashboardRemaining = steps.slice(1).reduce((total, step) => {
-      if (step.status === 'complete') {
-        return total
+        : useBaseBudget
+          ? planner.baseBudgetMs
+          : remainingForStep(planner)
+    const lanes = Array.from({ length: Math.max(1, concurrency) }, () => 0)
+
+    Array.from({ length: dashboardCount }, (_value, index) => {
+      const dashboardIndex = index + 1
+      const dashboardSteps = steps.filter(
+        (step) => step.dashboardIndex === dashboardIndex,
+      )
+      const dashboardRemaining = dashboardSteps.reduce(
+        (total, step) =>
+          total +
+          (useBaseBudget ? baseRemainingForStep(step) : remainingForStep(step)),
+        0,
+      )
+      if (dashboardRemaining <= 0) {
+        return
       }
 
-      return total + step.budgetMs * (1 - Math.max(0, step.percent) / 100)
-    }, 0)
+      const assignedThread = dashboardSteps.find(
+        (step) => step.threadId,
+      )?.threadId
+      const laneIndex =
+        assignedThread && assignedThread > 0
+          ? Math.min(lanes.length - 1, assignedThread - 1)
+          : lanes.indexOf(Math.min(...lanes))
+      lanes[laneIndex] += dashboardRemaining
+    })
 
-    return Math.round(plannerRemaining + dashboardRemaining / concurrency)
+    return Math.round(plannerRemaining + Math.max(...lanes))
   }
 
   const decorate = (event: LocalAiProgressEvent): LocalAiProgressEvent => {
-    const totalBudget = steps.reduce((total, step) => total + step.budgetMs, 0)
-    const completedBudget = steps.reduce((total, step) => {
-      if (step.status === 'complete') {
-        return total + step.budgetMs
-      }
-
-      return total + step.budgetMs * (Math.max(0, step.percent) / 100)
-    }, 0)
+    const initialLaneBudget = estimateLaneRemainingMs(true)
+    const remainingBudget = estimateLaneRemainingMs(false)
     const percent =
-      totalBudget > 0
+      initialLaneBudget > 0
         ? Math.max(
             0,
-            Math.min(100, Math.round((completedBudget / totalBudget) * 100)),
+            Math.min(
+              100,
+              Math.round(
+                ((initialLaneBudget - remainingBudget) / initialLaneBudget) *
+                  100,
+              ),
+            ),
           )
         : 0
 
@@ -2689,7 +2729,7 @@ const createLocalStudyPathPipelineTracker = (
       ...event,
       studyPathPipeline: {
         percent,
-        estimatedRemainingMs: estimateRemainingMs(),
+        estimatedRemainingMs: remainingBudget,
         label: 'Study Path pipeline',
         steps: steps.map((step) => ({
           id: step.id,
@@ -2723,6 +2763,9 @@ const createLocalStudyPathPipelineTracker = (
       } else if (event.phase === 'generation') {
         step.status = 'running'
         step.percent = event.percent
+      }
+      if (event.threadId) {
+        step.threadId = event.threadId
       }
 
       return decorate(event)
@@ -2777,6 +2820,8 @@ const createLocalDashboardProgressTracker = (
         attempt: state.attempt,
         attemptCount: state.attemptCount,
         studyPathStep: state.step,
+        threadId: state.threadId,
+        threadCount: state.threadCount,
       })),
     })
   }
@@ -2784,29 +2829,42 @@ const createLocalDashboardProgressTracker = (
   return {
     handleDashboardProgress: (
       index: number,
+      threadId: number,
+      threadCount: number,
       event: LocalAiProgressEvent,
     ): void => {
+      const eventWithThread = { ...event, threadId, threadCount }
       if (event.phase !== 'generation') {
-        onProgress?.(event)
+        onProgress?.(eventWithThread)
         return
       }
 
       states[index] = {
         status: 'running',
+        threadId,
+        threadCount,
         attempt: event.attempt,
         attemptCount: event.attemptCount,
         percent: event.percent,
         step: event.studyPathStep,
       }
-      onProgress?.(event)
+      onProgress?.(eventWithThread)
       emit(event.timeoutMs)
     },
     markFinished: (
       index: number,
+      threadId: number,
+      threadCount: number,
       status: 'complete' | 'failed',
       timeoutMs?: number,
     ): void => {
-      states[index] = { ...states[index], status, percent: 100 }
+      states[index] = {
+        ...states[index],
+        threadId,
+        threadCount,
+        status,
+        percent: 100,
+      }
       emit(timeoutMs)
     },
   }
@@ -2827,6 +2885,267 @@ const parseLocalStudyPathObject = (
   return parsed && typeof parsed === 'object'
     ? (parsed as Record<string, unknown>)
     : {}
+}
+
+type LocalPracticeKind = 'flashcards' | 'quizzes'
+
+const localPracticeKnownKeys = [
+  'flashcards',
+  'flashcard',
+  'quizzes',
+  'quiz',
+  'question',
+  'answer',
+  'front',
+  'back',
+  'prompt',
+  'options',
+  'correctIndex',
+  'correctOptionIndex',
+  'explanation',
+]
+
+const localPracticeCandidateText = (text: string): string => {
+  const trimmed = text.trim()
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
+
+  return (fenced || trimmed)
+    .replace(/\\(?!["\\/bfnrtu])/g, '')
+    .replace(/\u201c|\u201d/g, '"')
+    .replace(/\u2018|\u2019/g, "'")
+}
+
+const quoteLocalPracticeKeys = (value: string): string =>
+  localPracticeKnownKeys.reduce(
+    (current, key) =>
+      current.replace(
+        new RegExp(`([\\{,]\\s*)${key}\\s*:`, 'g'),
+        `$1"${key}":`,
+      ),
+    value,
+  )
+
+const localPracticeObjectLooksUsable = (
+  value: Record<string, unknown>,
+  kind: LocalPracticeKind,
+): boolean => {
+  const question =
+    stringValue(value.question) ||
+    stringValue(value.front) ||
+    stringValue(value.prompt)
+  if (!question) {
+    return false
+  }
+
+  if (kind === 'flashcards') {
+    return Boolean(
+      stringValue(value.answer) ||
+        stringValue(value.back) ||
+        stringValue(value.definition),
+    )
+  }
+
+  return Boolean(
+    Array.isArray(value.options) ||
+      typeof value.options === 'string' ||
+      stringValue(value.answer) ||
+      typeof value.correctIndex === 'number' ||
+      typeof value.correctOptionIndex === 'number',
+  )
+}
+
+const collectLocalPracticeItems = (
+  parsed: unknown,
+  kind: LocalPracticeKind,
+): unknown[] => {
+  if (Array.isArray(parsed)) {
+    return parsed
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return []
+  }
+
+  const record = parsed as Record<string, unknown>
+  const fallbackKey = kind === 'flashcards' ? 'flashcard' : 'quiz'
+  const explicitItems: unknown[] = Array.isArray(record[kind])
+    ? record[kind]
+    : Array.isArray(record[fallbackKey])
+      ? record[fallbackKey]
+      : []
+
+  return localPracticeObjectLooksUsable(record, kind)
+    ? [record, ...explicitItems]
+    : explicitItems
+}
+
+const dedupeLocalPracticeItems = (
+  items: unknown[],
+  kind: LocalPracticeKind,
+  events: string[],
+): unknown[] => {
+  const seen = new Set<string>()
+  const uniqueItems: unknown[] = []
+
+  items.forEach((item) => {
+    const record =
+      item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+    const question = normalizeKey(
+      stringValue(record.question) ||
+        stringValue(record.front) ||
+        stringValue(record.prompt),
+    )
+
+    if (!question) {
+      uniqueItems.push(item)
+      return
+    }
+
+    if (seen.has(question)) {
+      events.push(`Repaired ${kind}: dropped duplicate question.`)
+      return
+    }
+
+    seen.add(question)
+    uniqueItems.push(item)
+  })
+
+  return uniqueItems
+}
+
+const parseLocalPracticeCandidate = (value: string): unknown => {
+  const candidate = quoteLocalPracticeKeys(value)
+
+  try {
+    return parseLocalAiJson(candidate)
+  } catch {
+    return JSON.parse(candidate)
+  }
+}
+
+const localPracticeObjectCandidates = (value: string): string[] => {
+  const candidates: string[] = []
+  const seen = new Set<string>()
+
+  for (let outerIndex = 0; outerIndex < value.length; outerIndex += 1) {
+    if (value[outerIndex] !== '{') {
+      continue
+    }
+
+    let inString = false
+    let escaping = false
+    let depth = 0
+
+    for (
+      let innerIndex = outerIndex;
+      innerIndex < value.length;
+      innerIndex += 1
+    ) {
+      const char = value[innerIndex]
+
+      if (inString) {
+        if (escaping) {
+          escaping = false
+          continue
+        }
+
+        if (char === '\\') {
+          escaping = true
+          continue
+        }
+
+        if (char === '"') {
+          inString = false
+        }
+
+        continue
+      }
+
+      if (char === '"') {
+        inString = true
+        continue
+      }
+
+      if (char === '{') {
+        depth += 1
+        continue
+      }
+
+      if (char === '}') {
+        depth -= 1
+      }
+
+      if (depth === 0) {
+        const candidate = value.slice(outerIndex, innerIndex + 1)
+        if (!seen.has(candidate)) {
+          seen.add(candidate)
+          candidates.push(candidate)
+        }
+        break
+      }
+    }
+  }
+
+  return candidates
+}
+
+const parseLocalStudyPathPracticeObject = (
+  text: string,
+  kind: LocalPracticeKind,
+  debug: LocalAiGenerationFailureDebug,
+): Record<string, unknown> => {
+  const events: string[] = []
+  const candidate = localPracticeCandidateText(text)
+  const collectParsed = (parsed: unknown): unknown[] =>
+    collectLocalPracticeItems(parsed, kind)
+
+  try {
+    const parsed = parseLocalPracticeCandidate(candidate)
+    const items = collectParsed(parsed)
+
+    if (items.length > 0) {
+      if (candidate !== text.trim()) {
+        events.push(`Repaired ${kind}: stripped code fence or invalid escapes.`)
+      }
+
+      const record = { [kind]: dedupeLocalPracticeItems(items, kind, events) }
+      debug.parsedJson = record
+      debug.droppedOrRepairedItems = [
+        ...(debug.droppedOrRepairedItems || []),
+        ...events,
+      ]
+      return record
+    }
+  } catch {
+    // Fall through to standalone object recovery.
+  }
+
+  const items = localPracticeObjectCandidates(candidate)
+    .flatMap((objectCandidate) => {
+      try {
+        return collectParsed(parseLocalPracticeCandidate(objectCandidate))
+      } catch {
+        return []
+      }
+    })
+    .filter((item) =>
+      item && typeof item === 'object'
+        ? localPracticeObjectLooksUsable(item as Record<string, unknown>, kind)
+        : false,
+    )
+
+  if (items.length > 0) {
+    events.push(`Repaired ${kind}: recovered standalone practice objects.`)
+    const record = { [kind]: dedupeLocalPracticeItems(items, kind, events) }
+    debug.parsedJson = record
+    debug.droppedOrRepairedItems = [
+      ...(debug.droppedOrRepairedItems || []),
+      ...events,
+    ]
+    return record
+  }
+
+  return parseLocalStudyPathObject(text, debug)
 }
 
 const localStudyPathMarkdownWordBounds = (attempt: number): { min: number } => {
@@ -3038,6 +3357,7 @@ const generateLocalStudyPathPractice = async (
   localOptions: LocalGenerationOptions,
 ): Promise<LocalStudyPathPracticeResult> => {
   const plannerItem = plan.dashboards[index]
+  const repairEvents: string[] = []
   const runPracticeCall = async (
     kind: 'flashcards' | 'quizzes',
   ): Promise<{
@@ -3092,7 +3412,8 @@ const generateLocalStudyPathPractice = async (
           studyPathStep: kind,
         })
         debug.rawResponse = text
-        const record = parseLocalStudyPathObject(text, debug)
+        const record = parseLocalStudyPathPracticeObject(text, kind, debug)
+        repairEvents.push(...(debug.droppedOrRepairedItems || []))
 
         if (kind === 'flashcards') {
           const flashcards = Array.isArray(record.flashcards)
@@ -3225,6 +3546,7 @@ const generateLocalStudyPathPractice = async (
       ...flashcardResult.failedAttempts,
       ...quizResult.failedAttempts,
     ],
+    repairEvents,
     error: flashcardResult.error || quizResult.error,
     warnings,
   }
@@ -3311,6 +3633,13 @@ const generateLocalStudyPathDashboard = async (
       ]
     }
 
+    if (practiceResult.repairEvents.length > 0 && mappedDashboard.debugTrace) {
+      mappedDashboard.debugTrace.droppedOrRepairedItems = [
+        ...(mappedDashboard.debugTrace.droppedOrRepairedItems || []),
+        ...practiceResult.repairEvents,
+      ]
+    }
+
     const failedAttempts = [
       ...notesResult.failedAttempts,
       ...practiceResult.failedAttempts,
@@ -3372,16 +3701,25 @@ const runLocalDashboardJobs = async (
   const results: LocalDashboardGenerationResult[] = []
   let nextIndex = 0
 
-  const worker = async () => {
+  const worker = async (workerIndex: number) => {
+    const threadId = workerIndex + 1
+    const threadCount = Math.min(concurrency, expectedCount)
     while (nextIndex < expectedCount) {
       const index = nextIndex
       nextIndex += 1
       const result = await runJob(index, (event) =>
-        progressTracker.handleDashboardProgress(index, event),
+        progressTracker.handleDashboardProgress(
+          index,
+          threadId,
+          threadCount,
+          event,
+        ),
       )
       results.push(result)
       progressTracker.markFinished(
         index,
+        threadId,
+        threadCount,
         result.dashboard ? 'complete' : 'failed',
         LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS,
       )
@@ -3389,8 +3727,9 @@ const runLocalDashboardJobs = async (
   }
 
   await Promise.all(
-    Array.from({ length: Math.min(concurrency, expectedCount) }, () =>
-      worker(),
+    Array.from(
+      { length: Math.min(concurrency, expectedCount) },
+      (_value, index) => worker(index),
     ),
   )
 

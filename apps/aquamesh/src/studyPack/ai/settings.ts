@@ -7,6 +7,8 @@ export interface StudyPackAiSettings {
 }
 
 export const STUDY_PACK_AI_SETTINGS_KEY = 'aquamesh-study-pack-ai-settings-v1'
+export const STUDY_PACK_AI_SETTINGS_CHANGED_EVENT =
+  'aquamesh-study-pack-ai-settings-changed'
 
 export const DEFAULT_STUDY_PACK_AI_MODEL = 'gemini-2.5-flash'
 
@@ -71,6 +73,7 @@ export const saveStudyPackAiSettings = (
       model: settings.model.trim() || DEFAULT_STUDY_PACK_AI_MODEL,
     }),
   )
+  window.dispatchEvent(new CustomEvent(STUDY_PACK_AI_SETTINGS_CHANGED_EVENT))
 }
 
 export const clearStudyPackAiToken = (): void => {
