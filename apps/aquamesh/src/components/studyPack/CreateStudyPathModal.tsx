@@ -102,19 +102,31 @@ const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Generating dashboards with Google Local AI...'
     : provider === 'gemini'
-      ? 'Generating ordered dashboards with Gemini...'
-      : provider === 'basic'
-        ? 'Generating ordered dashboards with Basic fallback...'
-        : 'Checking hosted AI configuration...'
+    ? 'Generating ordered dashboards with Gemini...'
+    : provider === 'basic'
+    ? 'Generating ordered dashboards with Basic fallback...'
+    : 'Checking hosted AI configuration...'
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Local AI is running on your device. AquaMesh plans the path first, then generates each lesson dashboard with its own estimated timer.'
     : provider === 'gemini'
-      ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
-      : provider === 'basic'
-        ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
-        : 'Hosted AI is not configured yet.'
+    ? 'AquaMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
+    : provider === 'basic'
+    ? 'AquaMesh is using local parsing and practice generation without AI API calls.'
+    : 'Hosted AI is not configured yet.'
+
+const formatPipelineRemaining = (remainingMs: number): string => {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  if (minutes <= 0) {
+    return `~${seconds}s remaining`
+  }
+
+  return `~${minutes}m ${String(seconds).padStart(2, '0')}s remaining`
+}
 
 const getGenerationAmountHelper = (
   option: (typeof generationAmountOptions)[number],
@@ -611,6 +623,67 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           variant="determinate"
                           value={localAiProgress.percent}
                         />
+                        {localAiProgress.studyPathPipeline ? (
+                          <Box sx={{ mt: 1 }}>
+                            <Stack
+                              direction="row"
+                              justifyContent="space-between"
+                              spacing={1}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                fontWeight={700}
+                              >
+                                {localAiProgress.studyPathPipeline.label}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {formatPipelineRemaining(
+                                  localAiProgress.studyPathPipeline
+                                    .estimatedRemainingMs,
+                                )}
+                              </Typography>
+                            </Stack>
+                            <LinearProgress
+                              variant="determinate"
+                              value={localAiProgress.studyPathPipeline.percent}
+                            />
+                            <Stack
+                              direction="row"
+                              spacing={0.75}
+                              useFlexGap
+                              flexWrap="wrap"
+                              sx={{ mt: 1 }}
+                            >
+                              {localAiProgress.studyPathPipeline.steps.map(
+                                (pipelineStep) => (
+                                  <Chip
+                                    key={pipelineStep.id}
+                                    size="small"
+                                    label={`${pipelineStep.label} ${pipelineStep.percent}%`}
+                                    color={
+                                      pipelineStep.status === 'failed'
+                                        ? 'error'
+                                        : pipelineStep.status === 'complete'
+                                        ? 'success'
+                                        : pipelineStep.status === 'running'
+                                        ? 'primary'
+                                        : 'default'
+                                    }
+                                    variant={
+                                      pipelineStep.status === 'pending'
+                                        ? 'outlined'
+                                        : 'filled'
+                                    }
+                                  />
+                                ),
+                              )}
+                            </Stack>
+                          </Box>
+                        ) : null}
                         {localAiProgress.dashboardProgress &&
                           localAiProgress.dashboardProgress.length > 0 && (
                             <Stack spacing={1} sx={{ mt: 0.5 }}>
@@ -642,8 +715,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                                         thread.status === 'failed'
                                           ? 'error'
                                           : thread.status === 'complete'
-                                            ? 'success'
-                                            : 'primary'
+                                          ? 'success'
+                                          : 'primary'
                                       }
                                     />
                                   </Box>

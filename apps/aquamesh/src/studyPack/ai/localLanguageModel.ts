@@ -77,6 +77,8 @@ export type LocalAiStudyPathStep =
   | 'markdown1'
   | 'markdown2'
   | 'practice'
+  | 'flashcards'
+  | 'quizzes'
 
 export interface LocalAiProgressEvent {
   phase: 'download' | 'smoke' | 'generation' | 'complete' | 'timeout'
@@ -88,6 +90,17 @@ export interface LocalAiProgressEvent {
   attemptCount?: number
   timeoutMs?: number
   studyPathStep?: LocalAiStudyPathStep
+  studyPathPipeline?: {
+    percent: number
+    estimatedRemainingMs: number
+    label: string
+    steps: Array<{
+      id: string
+      label: string
+      status: 'pending' | 'running' | 'complete' | 'failed'
+      percent: number
+    }>
+  }
   dashboardProgress?: Array<{
     dashboardIndex: number
     dashboardCount: number
@@ -350,7 +363,7 @@ export const callLocalLanguageModel = async (
   const availability = await getLocalLanguageModelAvailability(
     outputLanguage,
     expectedInputs,
-    expectedOutputs
+    expectedOutputs,
   )
   if (availability === 'unavailable') {
     throw new Error(
@@ -528,8 +541,9 @@ export const extractNotesFromImageWithLocalLanguageModel = async (
   } = {},
 ): Promise<string> => {
   const outputLanguage = options.outputLanguage || 'en'
-  const availability =
-    await getLocalLanguageModelImageAvailability(outputLanguage)
+  const availability = await getLocalLanguageModelImageAvailability(
+    outputLanguage,
+  )
   if (availability === 'unavailable') {
     throw new Error(
       'Google Local AI image input is unavailable in this browser or model.',
