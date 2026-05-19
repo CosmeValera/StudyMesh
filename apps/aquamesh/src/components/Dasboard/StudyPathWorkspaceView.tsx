@@ -11,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -313,6 +314,29 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     aria-label="Previous lesson"
                     disabled={!canGoPrevious}
                     onClick={() => selectLesson(selectedIndex - 1)}
+                    sx={(theme) => ({
+                      width: 30,
+                      height: 30,
+                      mx: 0.25,
+                      color:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.light
+                          : theme.palette.primary.dark,
+                      bgcolor: alpha(
+                        theme.palette.primary.main,
+                        theme.palette.mode === 'dark' ? 0.2 : 0.12,
+                      ),
+                      '&:hover': {
+                        bgcolor: alpha(
+                          theme.palette.primary.main,
+                          theme.palette.mode === 'dark' ? 0.32 : 0.2,
+                        ),
+                      },
+                      '&.Mui-disabled': {
+                        color: 'text.disabled',
+                        bgcolor: 'transparent',
+                      },
+                    })}
                   >
                     <ChevronLeftIcon fontSize="small" />
                   </IconButton>
@@ -325,6 +349,29 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     aria-label="Next lesson"
                     disabled={!canGoNext}
                     onClick={() => selectLesson(selectedIndex + 1)}
+                    sx={(theme) => ({
+                      width: 30,
+                      height: 30,
+                      mx: 0.25,
+                      color:
+                        theme.palette.mode === 'dark'
+                          ? theme.palette.primary.light
+                          : theme.palette.primary.dark,
+                      bgcolor: alpha(
+                        theme.palette.primary.main,
+                        theme.palette.mode === 'dark' ? 0.2 : 0.12,
+                      ),
+                      '&:hover': {
+                        bgcolor: alpha(
+                          theme.palette.primary.main,
+                          theme.palette.mode === 'dark' ? 0.32 : 0.2,
+                        ),
+                      },
+                      '&.Mui-disabled': {
+                        color: 'text.disabled',
+                        bgcolor: 'transparent',
+                      },
+                    })}
                   >
                     <ChevronRightIcon fontSize="small" />
                   </IconButton>
@@ -407,6 +454,22 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     size="small"
                     aria-label="Collapse Course navigator"
                     onClick={() => setNavigatorOpen(false)}
+                    sx={(theme) => ({
+                      width: 30,
+                      height: 30,
+                      color: 'text.primary',
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor:
+                        theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.common.white, 0.08)
+                          : 'action.hover',
+                      '&:hover': {
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                        bgcolor: alpha(theme.palette.primary.main, 0.16),
+                      },
+                    })}
                   >
                     <CloseIcon fontSize="small" />
                   </IconButton>
@@ -484,6 +547,22 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     textTransform: 'none',
                     fontSize: { xs: '0.72rem', sm: '0.8125rem' },
                     py: { xs: 0.35, sm: 0.5 },
+                    color: 'text.primary',
+                    borderColor: 'divider',
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.common.white, 0.06)
+                        : 'background.paper',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.16),
+                    },
+                    '&.Mui-disabled': {
+                      color: 'text.disabled',
+                      borderColor: 'divider',
+                      bgcolor: 'transparent',
+                    },
                   }}
                 >
                   Previous
@@ -499,6 +578,26 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     textTransform: 'none',
                     fontSize: { xs: '0.72rem', sm: '0.8125rem' },
                     py: { xs: 0.35, sm: 0.5 },
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    boxShadow: (theme) =>
+                      theme.palette.mode === 'dark'
+                        ? `0 0 0 1px ${alpha(
+                            theme.palette.common.white,
+                            0.16,
+                          )}, 0 8px 18px ${alpha(
+                            theme.palette.primary.main,
+                            0.22,
+                          )}`
+                        : undefined,
+                    '&:hover': {
+                      bgcolor: 'primary.dark',
+                    },
+                    '&.Mui-disabled': {
+                      color: 'text.disabled',
+                      bgcolor: 'action.disabledBackground',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   Next
