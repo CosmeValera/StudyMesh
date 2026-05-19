@@ -74,7 +74,6 @@ export interface TestLocalLanguageModelResult {
 
 export type LocalAiStudyPathStep =
   | 'planner'
-  | 'concept'
   | 'markdown1'
   | 'markdown2'
   | 'practice'

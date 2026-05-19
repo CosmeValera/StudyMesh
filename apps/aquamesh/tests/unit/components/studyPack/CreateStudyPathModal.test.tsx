@@ -391,15 +391,15 @@ describe('CreateStudyPathModal role enforcement', () => {
     )
 
     expect(
-      await screen.findByText(/Local AI returned malformed JSON/i),
+      await screen.findByText(/could not map it into widgets/i),
     ).toBeInTheDocument()
     expect(screen.getByText('Local AI failure debug')).toBeInTheDocument()
     expect(
       screen.getByTestId('local-ai-failure-debug-raw-dashboard-response'),
     ).toHaveTextContent('{"title":"Broken final",')
     expect(
-      screen.getByTestId('local-ai-failure-debug-parse-error'),
-    ).toHaveTextContent(/JSON|Unexpected/i)
+      screen.getByTestId('local-ai-failure-debug-mapping-error'),
+    ).toHaveTextContent(/JSON instead of Markdown notes/i)
     expect(
       screen.getByTestId('local-ai-failure-debug-failed-attempts'),
     ).toHaveTextContent('Broken')
@@ -418,52 +418,6 @@ describe('CreateStudyPathModal role enforcement', () => {
       tokenSource: 'none',
     })
     const onCreatePath = vi.fn()
-    const conceptDraft = (firstSection: string, secondSection: string) =>
-      JSON.stringify([
-        {
-          section: firstSection,
-          name: 'Routine phrase',
-          explanation: 'A routine phrase describes repeated daily action.',
-          example: 'jeden Morgen',
-          commonMistake: 'Do not use yesterday words for habits.',
-        },
-        {
-          section: firstSection,
-          name: 'Time marker',
-          explanation: 'A time marker says when the action happens.',
-          example: 'am Abend',
-          commonMistake: '',
-        },
-        {
-          section: firstSection,
-          name: 'Verb position',
-          explanation: 'Verb position keeps the German sentence clear.',
-          example: 'Ich stehe frueh auf.',
-          commonMistake: 'Do not leave separable prefixes in the middle.',
-        },
-        {
-          section: secondSection,
-          name: 'Travel request',
-          explanation: 'A travel request asks for help politely.',
-          example: 'Eine Fahrkarte, bitte.',
-          commonMistake: '',
-        },
-        {
-          section: secondSection,
-          name: 'Direction phrase',
-          explanation: 'A direction phrase helps find a place.',
-          example: 'Wo ist der Bahnhof?',
-          commonMistake:
-            'Do not use long sentences when a short request works.',
-        },
-        {
-          section: secondSection,
-          name: 'Polite form',
-          explanation: 'A polite form makes basic requests sound respectful.',
-          example: 'Koennen Sie mir helfen?',
-          commonMistake: '',
-        },
-      ])
     const sectionMarkdown = (heading: string, focus: string) => `## ${heading}
 
 ### Core meanings
@@ -515,7 +469,6 @@ describe('CreateStudyPathModal role enforcement', () => {
           ],
         }),
       )
-      .mockResolvedValueOnce(conceptDraft('Time phrases', 'Separable verbs'))
       .mockResolvedValueOnce(
         sectionMarkdown(
           'Time phrases',
@@ -546,7 +499,6 @@ describe('CreateStudyPathModal role enforcement', () => {
           ],
         }),
       )
-      .mockResolvedValueOnce(conceptDraft('Tickets', 'Directions'))
       .mockResolvedValueOnce(
         sectionMarkdown('Tickets', 'German A2 travel uses ticket requests'),
       )
