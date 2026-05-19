@@ -253,8 +253,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           height: '100%',
           minHeight: 0,
           overflow: 'visible',
-          p: { xs: 0.5, md: 1 },
-          boxSizing: 'border-box',
         }}
       >
         <DashboardLayoutView

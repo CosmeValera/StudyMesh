@@ -223,7 +223,6 @@ describe('Interactive Study Path UX', () => {
     })
     expect(screen.getByTestId('study-path-dashboard-content')).toHaveStyle({
       overflow: 'visible',
-      boxSizing: 'border-box',
     })
 
     const overlay = screen.getByTestId('study-path-navigator-overlay')
