@@ -10,12 +10,16 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
+  ListItemText,
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import EditIcon from '@mui/icons-material/Edit'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
-import { DashboardLayout } from '../../state/store'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import { DashboardLayout, StudyPathContainerState } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import {
   ensureStarterDashboards,
@@ -26,15 +30,16 @@ import {
   normalizeFolderColor,
   normalizeFolderName,
 } from './folderColors'
+import {
+  createStudyPathContainerState,
+  getDashboardCreatedTime,
+} from './studyPathContainer'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 const MAX_MENU_ITEMS_PER_FOLDER = 15
-
-const getDashboardCreatedTime = (dashboard: SavedDashboard): number => {
-  const timestamp = Date.parse(dashboard.createdAt || dashboard.updatedAt || '')
-  return Number.isNaN(timestamp) ? 0 : timestamp
-}
+const STUDY_PATH_EXPANDED_STORAGE_KEY =
+  'aquamesh-study-path-menu-expanded-folders-v1'
 
 // Define saved dashboard type
 interface SavedDashboard {
@@ -48,6 +53,12 @@ interface SavedDashboard {
   isPublic?: boolean
   createdAt: string
   updatedAt: string
+}
+
+interface StudyPathMenuGroup {
+  folderName: string
+  dashboards: SavedDashboard[]
+  studyPath: StudyPathContainerState
 }
 
 // Button with label component
@@ -111,15 +122,21 @@ const DashboardOptionsMenu: React.FC = () => {
   const [expandedDashboardFolders, setExpandedDashboardFolders] = useState<
     string[]
   >([])
+  const [expandedStudyPathFolders, setExpandedStudyPathFolders] = useState<
+    string[]
+  >([])
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
   const {
     addDashboard,
     addDashboards,
+    addStudyPathContainer,
     openDashboards,
     replaceDashboard,
     selectedDashboard,
+    setSelectedDashboard,
+    updateStudyPathContainer,
   } = useDashboards()
 
   const theme = useTheme()
@@ -138,7 +155,28 @@ const DashboardOptionsMenu: React.FC = () => {
   // Load saved dashboards from localStorage on component mount
   useEffect(() => {
     loadSavedDashboards()
+    try {
+      const storedExpandedFolders = localStorage.getItem(
+        STUDY_PATH_EXPANDED_STORAGE_KEY,
+      )
+      if (storedExpandedFolders) {
+        setExpandedStudyPathFolders(JSON.parse(storedExpandedFolders))
+      }
+    } catch (error) {
+      console.error('Failed to load Study Path menu state', error)
+    }
   }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STUDY_PATH_EXPANDED_STORAGE_KEY,
+        JSON.stringify(expandedStudyPathFolders),
+      )
+    } catch (error) {
+      console.error('Failed to save Study Path menu state', error)
+    }
+  }, [expandedStudyPathFolders])
 
   // Determine if current user is admin
   useEffect(() => {
@@ -204,7 +242,7 @@ const DashboardOptionsMenu: React.FC = () => {
 
   const studyPackDashboards =
     visibleCustomDashboards.filter(isStudyPackDashboard)
-  const studyPackFolders = Object.entries(
+  const rawStudyPackFolders = Object.entries(
     studyPackDashboards.reduce<Record<string, SavedDashboard[]>>(
       (folders, dashboard) => {
         const folderName = normalizeFolderName(dashboard.folder)
@@ -214,6 +252,26 @@ const DashboardOptionsMenu: React.FC = () => {
       },
       {},
     ),
+  )
+  const studyPathGroups: StudyPathMenuGroup[] = rawStudyPackFolders
+    .map(([folderName, dashboards]) => {
+      const orderedDashboards = [...dashboards].sort(
+        (firstDashboard, secondDashboard) =>
+          getDashboardCreatedTime(firstDashboard) -
+          getDashboardCreatedTime(secondDashboard),
+      )
+      const studyPath = createStudyPathContainerState(orderedDashboards)
+
+      return studyPath
+        ? { folderName, dashboards: orderedDashboards, studyPath }
+        : null
+    })
+    .filter((group): group is StudyPathMenuGroup => Boolean(group))
+  const studyPathFolderNames = new Set(
+    studyPathGroups.map((group) => group.folderName),
+  )
+  const studyPackFolders = rawStudyPackFolders.filter(
+    ([folderName]) => !studyPathFolderNames.has(folderName),
   )
   const customDashboardFolders = Object.entries(dashboardsByFolder).filter(
     ([folderName, dashboards]) =>
@@ -251,7 +309,11 @@ const DashboardOptionsMenu: React.FC = () => {
   ) => {
     const focusedDashboard = openDashboards[selectedDashboard]
 
-    if (focusedDashboard && !hasDashboardContent(focusedDashboard.layout)) {
+    if (
+      focusedDashboard &&
+      focusedDashboard.kind !== 'studyPathContainer' &&
+      !hasDashboardContent(focusedDashboard.layout)
+    ) {
       replaceDashboard(selectedDashboard, {
         name: dashboardName,
         layout,
@@ -283,6 +345,23 @@ const DashboardOptionsMenu: React.FC = () => {
         getDashboardCreatedTime(firstDashboard) -
         getDashboardCreatedTime(secondDashboard),
     )
+    const studyPath = createStudyPathContainerState(orderedDashboards)
+
+    if (studyPath) {
+      addStudyPathContainer(studyPath)
+
+      orderedDashboards.forEach((dashboard) => {
+        dispatchWorkspaceOnboardingEvent({
+          type: 'saved-dashboard-opened',
+          dashboardId: dashboard.id,
+          dashboardName: dashboard.name,
+        })
+      })
+
+      handleClose()
+      return
+    }
+
     addDashboards(
       orderedDashboards.map((dashboard) => ({
         name: dashboard.name,
@@ -300,6 +379,67 @@ const DashboardOptionsMenu: React.FC = () => {
     })
 
     handleClose()
+  }
+
+  const openStudyPathGroup = (group: StudyPathMenuGroup, selectedIndex = 0) => {
+    const normalizedIndex = Math.min(
+      Math.max(selectedIndex, 0),
+      Math.max(group.studyPath.dashboards.length - 1, 0),
+    )
+    const openStudyPathIndex = openDashboards.findIndex(
+      (dashboard) =>
+        dashboard.kind === 'studyPathContainer' &&
+        dashboard.studyPath?.pathId === group.studyPath.pathId,
+    )
+
+    if (openStudyPathIndex >= 0) {
+      const openStudyPathDashboard = openDashboards[openStudyPathIndex]
+      updateStudyPathContainer(openStudyPathDashboard.id, (studyPath) => ({
+        ...studyPath,
+        selectedIndex: normalizedIndex,
+      }))
+      setSelectedDashboard(openStudyPathIndex)
+    } else {
+      addStudyPathContainer({
+        ...group.studyPath,
+        selectedIndex: normalizedIndex,
+      })
+    }
+
+    group.dashboards.forEach((dashboard) => {
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-dashboard-opened',
+        dashboardId: dashboard.id,
+        dashboardName: dashboard.name,
+      })
+    })
+
+    handleClose()
+  }
+
+  const openStudyPathLessonInNewTab = (
+    group: StudyPathMenuGroup,
+    lessonIndex: number,
+  ) => {
+    const lesson = group.studyPath.dashboards[lessonIndex]
+    if (!lesson) {
+      return
+    }
+
+    createDashboardWithLayout(lesson.name, lesson.layout)
+    handleClose()
+  }
+
+  const toggleStudyPathExpanded = (
+    event: React.MouseEvent<HTMLElement>,
+    folderName: string,
+  ) => {
+    event.stopPropagation()
+    setExpandedStudyPathFolders((currentFolders) =>
+      currentFolders.includes(folderName)
+        ? currentFolders.filter((currentFolder) => currentFolder !== folderName)
+        : [...currentFolders, folderName],
+    )
   }
 
   const openSavedDashboardsForFolder = (
@@ -332,7 +472,7 @@ const DashboardOptionsMenu: React.FC = () => {
       {isPhone || isTablet ? (
         <ButtonWithLabel
           icon={<AutoStoriesIcon />}
-          label={'Study Packs'}
+          label={'Study Paths'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
           data-onboarding-id="topnav-dashboards"
@@ -353,7 +493,7 @@ const DashboardOptionsMenu: React.FC = () => {
           data-tutorial-id="dashboards-button"
           data-onboarding-id="topnav-dashboards"
         >
-          Study Packs
+          Study Paths
         </Button>
       )}
 
@@ -372,6 +512,183 @@ const DashboardOptionsMenu: React.FC = () => {
           },
         }}
       >
+        {studyPathGroups.length > 0 && (
+          <>
+            <Typography
+              component="div"
+              sx={{
+                px: 2,
+                py: 0.7,
+                fontWeight: 800,
+                mt: 0.5,
+                color: studyPackHeaderColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                bgcolor: studyPackHeaderBackground,
+                borderLeft: '4px solid',
+                borderLeftColor: studyPackHeaderColor,
+              }}
+            >
+              <AutoStoriesIcon
+                fontSize="small"
+                sx={{ color: studyPackHeaderColor }}
+              />
+              <Box
+                component="span"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Study Paths
+              </Box>
+            </Typography>
+            {studyPathGroups.map((group) => {
+              const { folderName, dashboards, studyPath } = group
+              const folderColor = getFolderColor(folderName, dashboards)
+              const isExpanded = expandedStudyPathFolders.includes(folderName)
+
+              return (
+                <React.Fragment key={folderName}>
+                  <Box
+                    component="div"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openStudyPathGroup(group)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        openStudyPathGroup(group)
+                      }
+                    }}
+                    sx={{
+                      px: 1,
+                      py: 0.65,
+                      fontWeight: 'bold',
+                      mt: 0.75,
+                      color: 'text.primary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      bgcolor: `${folderColor}24`,
+                      borderLeft: '4px solid',
+                      borderLeftColor: folderColor,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: `${folderColor}30`,
+                      },
+                    }}
+                  >
+                    <Tooltip
+                      title={isExpanded ? 'Collapse lessons' : 'Expand lessons'}
+                    >
+                      <IconButton
+                        size="small"
+                        aria-label={`${
+                          isExpanded ? 'Collapse' : 'Expand'
+                        } ${folderName} lessons`}
+                        onClick={(event) =>
+                          toggleStudyPathExpanded(event, folderName)
+                        }
+                        sx={{ color: folderColor, p: 0.25 }}
+                      >
+                        {isExpanded ? (
+                          <ExpandMoreIcon fontSize="small" />
+                        ) : (
+                          <ChevronRightIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                    <AutoStoriesIcon
+                      fontSize="small"
+                      sx={{
+                        color: folderColor,
+                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))',
+                      }}
+                    />
+                    <Box
+                      component="span"
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {studyPath.title || folderName}
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', lineHeight: 1.1 }}
+                      >
+                        {studyPath.dashboards.length} lessons
+                      </Typography>
+                    </Box>
+                    <Tooltip title={`Manage ${folderName} in Library`}>
+                      <IconButton
+                        size="small"
+                        aria-label={`Manage ${folderName} in Library`}
+                        onClick={(event) =>
+                          openSavedDashboardsForFolder(event, folderName)
+                        }
+                        sx={{ color: folderColor, p: 0.5 }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  {isExpanded &&
+                    studyPath.dashboards.map((lesson, index) => (
+                      <MenuItem
+                        key={lesson.dashboardKey}
+                        onClick={() => openStudyPathGroup(group, index)}
+                        sx={{
+                          py: 1,
+                          pl: 5.5,
+                          pr: 1,
+                          bgcolor: getFolderItemBackground(folderColor),
+                          '&:hover': {
+                            bgcolor: getFolderItemHoverBackground(folderColor),
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          primary={`${String(index + 1).padStart(2, '0')} ${
+                            lesson.name
+                          }`}
+                          primaryTypographyProps={{
+                            variant: 'body2',
+                            noWrap: true,
+                          }}
+                        />
+                        <Tooltip title="Open lesson in new tab">
+                          <IconButton
+                            size="small"
+                            aria-label={`Open ${lesson.name} in new tab`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openStudyPathLessonInNewTab(group, index)
+                            }}
+                            sx={{ ml: 0.5 }}
+                          >
+                            <OpenInNewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </MenuItem>
+                    ))}
+                  <Divider sx={{ borderColor: 'divider' }} />
+                </React.Fragment>
+              )
+            })}
+          </>
+        )}
+
         {studyPackFolders.length > 0 && (
           <>
             <Typography
@@ -404,7 +721,7 @@ const DashboardOptionsMenu: React.FC = () => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                Study Packs
+                Study Paths
               </Box>
             </Typography>
             {studyPackFolders.map(([folderName, dashboards]) => {

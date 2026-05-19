@@ -63,8 +63,8 @@
   }
 
   &:has(.flexlayout__tabset-selected) {
-    outline: 2px solid var(--primary-main);
-    // outline-offset: -1px;
+     outline: 2px solid var(--primary-main);
+    outline-offset: 0px;
   }
 }
 

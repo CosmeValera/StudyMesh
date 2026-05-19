@@ -11,6 +11,7 @@ import {
 } from '../components/WidgetEditor/constants/starterWidgetTemplates'
 import { DashboardLayout } from '../state/store'
 import { normalizeFolderColor } from '../components/Dasboard/folderColors'
+import { createStudyPathContainerState } from '../components/Dasboard/studyPathContainer'
 import {
   createStudyPackDashboardLayout,
   StudyPackDashboardLayoutMode,
@@ -43,8 +44,13 @@ interface SavedDashboardRecord {
 }
 
 const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v12'
+export const STARTER_STUDY_PATH_FOLDER_NAME = 'AquaMesh Starter Study Path'
+const STARTER_STUDY_PATH_ID = 'aquamesh-starter-study-path'
 
 const STARTER_DASHBOARD_NAMES = [
+  'AquaMesh Starter 1 - Learn the Workspace',
+  'AquaMesh Starter 2 - Practice Interactivity',
+  'AquaMesh Starter 3 - Build Your Own',
   'Mathematics 1 - Derivatives',
   'AquaMesh Tutorial',
   'AquaMesh Interactivity',
@@ -70,6 +76,50 @@ const createLayoutWithComponent = (
           config: componentConfig.customProps
             ? { customProps: componentConfig.customProps }
             : undefined,
+        },
+      ],
+    },
+  ],
+})
+
+const createStarterStudyPathLayout = ({
+  dashboardName,
+  dashboardKey,
+  dashboardIndex,
+  dashboardCount,
+  components,
+}: {
+  dashboardName: string
+  dashboardKey: string
+  dashboardIndex: number
+  dashboardCount: number
+  components: ComponentData[]
+}): DashboardLayout => ({
+  type: 'row',
+  weight: 100,
+  children: [
+    {
+      type: 'tabset',
+      weight: 100,
+      active: true,
+      children: [
+        {
+          type: 'tab',
+          name: dashboardName,
+          component: 'CustomWidget',
+          config: {
+            customProps: {
+              widgetId: dashboardKey,
+              studyPathId: STARTER_STUDY_PATH_ID,
+              studyPathTitle: 'AquaMesh Starter Study Path',
+              studyPathDashboardKey: dashboardKey,
+              studyPathDashboardName: dashboardName,
+              studyPathDashboardIndex: dashboardIndex,
+              studyPathDashboardCount: dashboardCount,
+              studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
+              components,
+            },
+          },
         },
       ],
     },
@@ -362,6 +412,166 @@ export const ensureStarterDashboards = () => {
     return
   }
 
+  const starterStudyPathDashboards = [
+    {
+      name: 'AquaMesh Starter 1 - Learn the Workspace',
+      key: `${STARTER_STUDY_PATH_ID}-lesson-1`,
+      components: [
+        {
+          id: 'starter-path-1-title',
+          type: 'Label',
+          props: {
+            text: 'Welcome to your AquaMesh Study Path',
+            variant: 'h4',
+            fontWeight: 800,
+            gutterBottom: true,
+          },
+        },
+        {
+          id: 'starter-path-1-summary',
+          type: 'ListBlock',
+          props: {
+            __blockType: 'ListBlock',
+            title: 'What this guided course shows',
+            items:
+              'Study Paths keep multiple lesson dashboards in one workspace tab.\nUse the floating Course helper to move between lessons.\nEach lesson can still be opened standalone from the Study Paths menu.',
+            ordered: false,
+            interactiveChecklist: false,
+          },
+        },
+        {
+          id: 'starter-path-1-progress',
+          type: 'StudyPathProgressBlock',
+          props: {
+            studyPathId: STARTER_STUDY_PATH_ID,
+            studyPathTitle: 'AquaMesh Starter Study Path',
+            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-1`,
+            studyPathDashboardName: 'AquaMesh Starter 1 - Learn the Workspace',
+            studyPathDashboardIndex: 1,
+            studyPathDashboardCount: 3,
+            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
+          },
+        },
+      ],
+    },
+    {
+      name: 'AquaMesh Starter 2 - Practice Interactivity',
+      key: `${STARTER_STUDY_PATH_ID}-lesson-2`,
+      components: [
+        {
+          id: 'starter-path-2-title',
+          type: 'Label',
+          props: {
+            text: 'Try interactive study blocks',
+            variant: 'h4',
+            fontWeight: 800,
+            gutterBottom: true,
+          },
+        },
+        {
+          id: 'starter-path-2-quiz',
+          type: 'QuizBlock',
+          props: {
+            __blockType: 'QuizBlock',
+            studyPathId: STARTER_STUDY_PATH_ID,
+            studyPathTitle: 'AquaMesh Starter Study Path',
+            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-2`,
+            studyPathDashboardName:
+              'AquaMesh Starter 2 - Practice Interactivity',
+            studyPathDashboardIndex: 2,
+            studyPathDashboardCount: 3,
+            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
+            quizMode: 'multipleChoice',
+            question: 'What should the Course helper do in a Study Path?',
+            options: [
+              'Open every lesson as a top-level tab',
+              'Navigate lessons inside one Study Path tab',
+              'Hide the dashboard content',
+            ],
+            correctIndex: 1,
+            answer: 'Navigate lessons inside one Study Path tab',
+            explanation:
+              'The Study Path is a guided course mode: one top-level tab, internal lesson navigation.',
+          },
+        },
+        {
+          id: 'starter-path-2-progress',
+          type: 'StudyPathProgressBlock',
+          props: {
+            studyPathId: STARTER_STUDY_PATH_ID,
+            studyPathTitle: 'AquaMesh Starter Study Path',
+            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-2`,
+            studyPathDashboardName:
+              'AquaMesh Starter 2 - Practice Interactivity',
+            studyPathDashboardIndex: 2,
+            studyPathDashboardCount: 3,
+            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
+          },
+        },
+      ],
+    },
+    {
+      name: 'AquaMesh Starter 3 - Build Your Own',
+      key: `${STARTER_STUDY_PATH_ID}-lesson-3`,
+      components: [
+        {
+          id: 'starter-path-3-title',
+          type: 'Label',
+          props: {
+            text: 'Create your own Study Path next',
+            variant: 'h4',
+            fontWeight: 800,
+            gutterBottom: true,
+          },
+        },
+        {
+          id: 'starter-path-3-steps',
+          type: 'ListBlock',
+          props: {
+            __blockType: 'ListBlock',
+            title: 'Next steps',
+            items:
+              'Open the Study Path creator from the top bar.\nPaste notes, a topic, or a learning prompt.\nGenerate a multi-lesson course and refine it in Library / Manage.',
+            ordered: true,
+            interactiveChecklist: true,
+          },
+        },
+        {
+          id: 'starter-path-3-progress',
+          type: 'StudyPathProgressBlock',
+          props: {
+            studyPathId: STARTER_STUDY_PATH_ID,
+            studyPathTitle: 'AquaMesh Starter Study Path',
+            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-3`,
+            studyPathDashboardName: 'AquaMesh Starter 3 - Build Your Own',
+            studyPathDashboardIndex: 3,
+            studyPathDashboardCount: 3,
+            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
+          },
+        },
+      ],
+    },
+  ]
+
+  starterStudyPathDashboards.forEach((dashboard, index) => {
+    saveStarterDashboard({
+      name: dashboard.name,
+      folder: STARTER_STUDY_PATH_FOLDER_NAME,
+      folderColor: '#007C66',
+      layout: createStarterStudyPathLayout({
+        dashboardName: dashboard.name,
+        dashboardKey: dashboard.key,
+        dashboardIndex: index + 1,
+        dashboardCount: starterStudyPathDashboards.length,
+        components: dashboard.components,
+      }),
+      description:
+        'A default guided Study Path that demonstrates the AquaMesh course experience.',
+      tags: ['study-pack', 'study-path', 'starter'],
+      isPublic: true,
+    })
+  })
+
   const mathWidgets = [
     saveTemplateWidget({
       widgetName: 'Mathematics 1 - Chart',
@@ -508,6 +718,7 @@ export const useWorkspaceActions = () => {
   const {
     addDashboard,
     addDashboards,
+    addStudyPathContainer,
     openDashboards,
     selectedDashboard,
     updateDashboardLayout,
@@ -663,18 +874,24 @@ export const useWorkspaceActions = () => {
       })
 
       if (openInWorkspace) {
-        addDashboards(
-          savedDashboards.map((dashboard) => ({
-            name: dashboard.name,
-            layout: dashboard.layout,
-          })),
-          { replaceEmptySelected: true },
-        )
+        const studyPath = createStudyPathContainerState(savedDashboards)
+
+        if (studyPath) {
+          addStudyPathContainer(studyPath)
+        } else {
+          addDashboards(
+            savedDashboards.map((dashboard) => ({
+              name: dashboard.name,
+              layout: dashboard.layout,
+            })),
+            { replaceEmptySelected: true },
+          )
+        }
       }
 
       return savedDashboards
     },
-    [addDashboards],
+    [addDashboards, addStudyPathContainer],
   )
 
   const openTemplateDashboard = useCallback(
