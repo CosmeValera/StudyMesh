@@ -261,7 +261,7 @@ describe('Interactive Study Path UX', () => {
       </>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /study paths/i }))
+    fireEvent.click(screen.getByRole('button', { name: /library/i }))
 
     expect(await screen.findByText('German B1 Grammar')).toBeInTheDocument()
     expect(screen.getByText('5 lessons')).toBeInTheDocument()
@@ -288,7 +288,7 @@ describe('Interactive Study Path UX', () => {
       'studyPathContainer',
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /study paths/i }))
+    fireEvent.click(screen.getByRole('button', { name: /library/i }))
     const expandForNavigation = screen.queryByLabelText(
       'Expand German B1 Grammar lessons',
     )
@@ -302,7 +302,7 @@ describe('Interactive Study Path UX', () => {
       expect(screen.getByTestId('selected-lesson')).toHaveTextContent('2')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /study paths/i }))
+    fireEvent.click(screen.getByRole('button', { name: /library/i }))
     const expandForStandalone = screen.queryByLabelText(
       'Expand German B1 Grammar lessons',
     )

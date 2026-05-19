@@ -32,7 +32,9 @@ vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
 vi.mock('../../../../src/components/Dasboard/DashboardOptionsMenu', () => ({
   __esModule: true,
   default: () => (
-    <div data-testid="dashboard-options-menu">Study Packs</div>
+    <button type="button" data-testid="dashboard-options-menu">
+      Library
+    </button>
   ),
 }))
 
@@ -189,7 +191,10 @@ describe('TopNavBar Component', () => {
     expect(screen.getByTestId('logo')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-options-menu')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create study pack/i }),
+      screen.getByRole('button', { name: /create from notes/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create study path/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /advanced/i }),
@@ -204,6 +209,28 @@ describe('TopNavBar Component', () => {
     expect(
       screen.queryByTitle('Frequently Asked Questions'),
     ).not.toBeInTheDocument()
+
+    const libraryButton = screen.getByTestId('dashboard-options-menu')
+    const createStudyPathButton = screen.getByRole('button', {
+      name: /create study path/i,
+    })
+    const createFromNotesButton = screen.getByRole('button', {
+      name: /create from notes/i,
+    })
+    const advancedButton = screen.getByRole('button', { name: /advanced/i })
+
+    expect(
+      libraryButton.compareDocumentPosition(createStudyPathButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      createStudyPathButton.compareDocumentPosition(createFromNotesButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      createFromNotesButton.compareDocumentPosition(advancedButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('renders the AquaMesh logo', () => {
@@ -254,7 +281,11 @@ describe('TopNavBar Component', () => {
 
   it('disables Advanced for viewers without opening its menu', () => {
     localStorage.getItem.mockReturnValue(
-      JSON.stringify({ id: 'viewer', name: 'Viewer User', role: 'VIEWER_ROLE' }),
+      JSON.stringify({
+        id: 'viewer',
+        name: 'Viewer User',
+        role: 'VIEWER_ROLE',
+      }),
     )
 
     render(
@@ -271,7 +302,7 @@ describe('TopNavBar Component', () => {
     expect(screen.queryByText('Create Widget')).not.toBeInTheDocument()
   })
 
-  it('opens Create Study Pack without opening Widget or Dashboard', async () => {
+  it('opens Create From Notes without opening Widget or Dashboard', async () => {
     const dashboardEditorListener = vi.fn()
     const studyPackListener = vi.fn()
     window.addEventListener(
@@ -286,7 +317,7 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /create study pack/i }))
+    fireEvent.click(screen.getByRole('button', { name: /create from notes/i }))
 
     expect(studyPackListener).toHaveBeenCalledTimes(1)
     expect(dashboardEditorListener).not.toHaveBeenCalled()

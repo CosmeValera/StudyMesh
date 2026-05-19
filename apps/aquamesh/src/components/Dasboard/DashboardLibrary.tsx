@@ -705,7 +705,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                     color: 'text.primary',
                   }}
                 >
-                  Library
+                  Library items
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Study Paths and custom dashboards.

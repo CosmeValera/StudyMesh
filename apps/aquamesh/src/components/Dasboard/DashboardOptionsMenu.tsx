@@ -285,8 +285,8 @@ const DashboardOptionsMenu: React.FC = () => {
         (folderName === 'Mathematics'
           ? '#1976D2'
           : folderName === 'Tutorial'
-            ? DEFAULT_FOLDER_COLOR
-            : undefined),
+          ? DEFAULT_FOLDER_COLOR
+          : undefined),
     )
 
   // Handle opening and closing dropdown
@@ -472,7 +472,7 @@ const DashboardOptionsMenu: React.FC = () => {
       {isPhone || isTablet ? (
         <ButtonWithLabel
           icon={<AutoStoriesIcon />}
-          label={'Study Paths'}
+          label={'Library'}
           onClick={handleMenuOpen}
           data-tutorial-id="dashboards-button"
           data-onboarding-id="topnav-dashboards"
@@ -493,7 +493,7 @@ const DashboardOptionsMenu: React.FC = () => {
           data-tutorial-id="dashboards-button"
           data-onboarding-id="topnav-dashboards"
         >
-          Study Paths
+          Library
         </Button>
       )}
 

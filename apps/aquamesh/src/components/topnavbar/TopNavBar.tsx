@@ -146,8 +146,9 @@ const useStoredBoolean = (key: string, defaultValue: boolean) => {
 const TopNavBar: React.FC<TopNavBarProps> = () => {
   // State for different dropdown menus
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
-  const [advancedAnchorEl, setAdvancedAnchorEl] =
-    useState<null | HTMLElement>(null)
+  const [advancedAnchorEl, setAdvancedAnchorEl] = useState<null | HTMLElement>(
+    null,
+  )
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [studyPackOpen, setStudyPackOpen] = useState(false)
@@ -356,51 +357,17 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
 
           {/* Main Navigation Items */}
           <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
-            {/* Study Pack Options Menu */}
+            {/* Library */}
             {isPhone || isTablet ? (
               <DashboardOptionsMenu />
             ) : (
               <DashboardOptionsMenu />
-            )}
-
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={<AutoStoriesIcon />}
-                label="Create Study Pack"
-                onClick={() => openCreateStudyPack()}
-                data-tutorial-id="create-study-pack-button"
-                disabled={!isAdmin}
-                title={
-                  isAdmin
-                    ? 'Create Study Pack'
-                    : 'Viewer mode cannot create study packs'
-                }
-                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
-              />
-            ) : (
-              <Button
-                onClick={() => openCreateStudyPack()}
-                disabled={!isAdmin}
-                sx={{
-                  color: 'foreground.contrastPrimary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: 'auto',
-                  mx: 1,
-                  px: 2,
-                  opacity: isAdmin ? 1 : 0.45,
-                }}
-                startIcon={<AutoStoriesIcon />}
-                data-tutorial-id="create-study-pack-button"
-              >
-                Create Study Pack
-              </Button>
             )}
 
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<RouteIcon />}
-                label="Study Path"
+                label="Create Study Path"
                 onClick={() => setStudyPathOpen(true)}
                 disabled={!isAdmin}
                 title={
@@ -425,7 +392,41 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 }}
                 startIcon={<RouteIcon />}
               >
-                Study Path
+                Create Study Path
+              </Button>
+            )}
+
+            {isPhone || isTablet ? (
+              <ButtonWithLabel
+                icon={<AutoStoriesIcon />}
+                label="Create From Notes"
+                onClick={() => openCreateStudyPack()}
+                data-tutorial-id="create-study-pack-button"
+                disabled={!isAdmin}
+                title={
+                  isAdmin
+                    ? 'Create From Notes'
+                    : 'Viewer mode cannot create from notes'
+                }
+                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
+              />
+            ) : (
+              <Button
+                onClick={() => openCreateStudyPack()}
+                disabled={!isAdmin}
+                sx={{
+                  color: 'foreground.contrastPrimary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: 'auto',
+                  mx: 1,
+                  px: 2,
+                  opacity: isAdmin ? 1 : 0.45,
+                }}
+                startIcon={<AutoStoriesIcon />}
+                data-tutorial-id="create-study-pack-button"
+              >
+                Create From Notes
               </Button>
             )}
 
@@ -810,7 +811,9 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
           </Box>
           <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <WidgetEditor
-              key={`${widgetEditorOpen}-${widgetEditorPayload?.loadWidget?.id || 'new'}`}
+              key={`${widgetEditorOpen}-${
+                widgetEditorPayload?.loadWidget?.id || 'new'
+              }`}
               customProps={widgetEditorPayload || undefined}
             />
           </Box>
