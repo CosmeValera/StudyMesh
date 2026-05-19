@@ -559,11 +559,11 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                         px: { xs: 0.75, sm: 1 },
                         border: 1,
                         borderColor: active ? 'primary.main' : 'transparent',
-                        bgcolor: active ? 'primary.main' : 'transparent',
-                        color: active ? 'primary.contrastText' : 'text.primary',
+                        bgcolor: active ? 'action.selected' : 'transparent',
+                        color: 'text.primary',
                         boxShadow: active ? 1 : 0,
                         '&:hover': {
-                          bgcolor: active ? 'primary.dark' : 'action.hover',
+                          bgcolor: active ? 'action.selected' : 'action.hover',
                         },
                       }}
                     >
@@ -578,9 +578,14 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                             flex: '0 0 auto',
                             fontSize: { xs: 11, sm: 12 },
                             fontWeight: 900,
+                            color: active ? 'primary.main' : 'text.secondary',
                             bgcolor: active
-                              ? 'rgba(255,255,255,0.2)'
+                              ? 'background.paper'
                               : 'action.hover',
+                            border: 1,
+                            borderColor: active
+                              ? 'primary.main'
+                              : 'transparent',
                           }}
                         >
                           {progress?.completedAt ? (

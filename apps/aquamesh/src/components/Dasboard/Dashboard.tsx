@@ -1691,7 +1691,7 @@ const Dashboards = () => {
                     position: 'relative',
                     flex: 1,
                     minHeight: 0,
-                    overflow: isStudyPathContainer ? 'hidden' : 'visible',
+                    overflow:  'visible',
                   }}
                 >
                   {isStudyPathContainer && dashboard.studyPath ? (
