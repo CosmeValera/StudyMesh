@@ -15,7 +15,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import PushPinIcon from '@mui/icons-material/PushPin'
+import CloseIcon from '@mui/icons-material/Close'
 import DashboardLayoutView from '../Layout/Layout'
 import {
   DashboardLayout,
@@ -24,15 +24,15 @@ import {
 } from '../../state/store'
 import { getStudyPathDashboardProgress } from '../../studyPack/progress'
 
-const STUDY_PATH_NAV_COLLAPSED_STORAGE_KEY =
-  'aquamesh-study-path-navigator-collapsed-v1'
-const NAVIGATOR_EXPANDED_WIDTH = 340
-const NAVIGATOR_COLLAPSED_WIDTH = 72
+const STUDY_PATH_NAV_OPEN_STORAGE_KEY = 'aquamesh-study-path-navigator-open-v2'
+const STUDY_PATH_NAV_DOCK_STORAGE_KEY = 'aquamesh-study-path-navigator-dock-v1'
+const NAVIGATOR_PANEL_WIDTH = 318
+
+type NavigatorDock = 'left' | 'right'
 
 interface StudyPathWorkspaceViewProps {
   studyPath: StudyPathContainerState
   onStudyPathChange: (studyPath: StudyPathContainerState) => void
-  onOpenAll: () => void
 }
 
 const getProgressForLesson = (
@@ -126,15 +126,14 @@ const sanitizeStudentLayout = (
 const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   studyPath,
   onStudyPathChange,
-  onOpenAll,
 }) => {
-  const [navigatorCollapsed, setNavigatorCollapsed] = useState(false)
+  const [navigatorOpen, setNavigatorOpen] = useState(false)
+  const [navigatorDock, setNavigatorDock] = useState<NavigatorDock>('left')
   const selectedIndex = Math.min(
     Math.max(studyPath.selectedIndex || 0, 0),
     Math.max(studyPath.dashboards.length - 1, 0),
   )
   const currentLesson = studyPath.dashboards[selectedIndex]
-  const pinnedDashboardKeys = studyPath.pinnedDashboardKeys || []
   const progressByKey = useMemo(
     () =>
       Object.fromEntries(
@@ -155,10 +154,17 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
 
   useEffect(() => {
     try {
-      const storedState = localStorage.getItem(
-        `${STUDY_PATH_NAV_COLLAPSED_STORAGE_KEY}:${studyPath.pathId}`,
+      const storedOpenState = localStorage.getItem(
+        `${STUDY_PATH_NAV_OPEN_STORAGE_KEY}:${studyPath.pathId}`,
       )
-      setNavigatorCollapsed(storedState === 'true')
+      const storedDock = localStorage.getItem(
+        `${STUDY_PATH_NAV_DOCK_STORAGE_KEY}:${studyPath.pathId}`,
+      )
+
+      setNavigatorOpen(storedOpenState === 'true')
+      if (storedDock === 'left' || storedDock === 'right') {
+        setNavigatorDock(storedDock)
+      }
     } catch (error) {
       console.error('Failed to load Study Path navigator state', error)
     }
@@ -167,13 +173,24 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   useEffect(() => {
     try {
       localStorage.setItem(
-        `${STUDY_PATH_NAV_COLLAPSED_STORAGE_KEY}:${studyPath.pathId}`,
-        String(navigatorCollapsed),
+        `${STUDY_PATH_NAV_OPEN_STORAGE_KEY}:${studyPath.pathId}`,
+        String(navigatorOpen),
       )
     } catch (error) {
       console.error('Failed to save Study Path navigator state', error)
     }
-  }, [navigatorCollapsed, studyPath.pathId])
+  }, [navigatorOpen, studyPath.pathId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        `${STUDY_PATH_NAV_DOCK_STORAGE_KEY}:${studyPath.pathId}`,
+        navigatorDock,
+      )
+    } catch (error) {
+      console.error('Failed to save Study Path navigator dock', error)
+    }
+  }, [navigatorDock, studyPath.pathId])
 
   const selectLesson = (index: number) => {
     onStudyPathChange({ ...studyPath, selectedIndex: index })
@@ -190,10 +207,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
         index === selectedIndex ? { ...lesson, layout } : lesson,
       ),
     })
-  }
-
-  const toggleNavigatorCollapsed = () => {
-    setNavigatorCollapsed((currentState) => !currentState)
   }
 
   if (!currentLesson) {
@@ -213,110 +226,86 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     studyPath.dashboards.length > 0
       ? Math.round((completedCount / studyPath.dashboards.length) * 100)
       : 0
-  const navigatorWidth = navigatorCollapsed
-    ? NAVIGATOR_COLLAPSED_WIDTH
-    : NAVIGATOR_EXPANDED_WIDTH
+  const panelHorizontalSx =
+    navigatorDock === 'left'
+      ? { left: { xs: 8, md: 14 } }
+      : { right: { xs: 8, md: 14 } }
+  const pillHorizontalSx =
+    navigatorDock === 'left'
+      ? { left: { xs: 10, md: 16 } }
+      : { right: { xs: 10, md: 16 } }
 
   return (
     <Box
+      data-testid="study-path-workspace"
       sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', lg: 'row' },
-        alignItems: 'stretch',
-        width: '100%',
-        maxWidth: '100%',
-        '& > .study-path-navigator': {
-          width: { xs: '100%', lg: navigatorWidth },
-          flex: { xs: '0 0 auto', lg: `0 0 ${navigatorWidth}px` },
-          maxWidth: { xs: '100%', lg: navigatorWidth },
-          height: { xs: 'auto', lg: '100%' },
-          maxHeight: { xs: 'none', lg: '100%' },
-          minHeight: 0,
-          boxSizing: 'border-box',
-        },
-        '& > .study-path-content': {
-          width: { xs: '100%', lg: `calc(100% - ${navigatorWidth}px)` },
-          flex: { xs: '1 1 auto', lg: '1 1 auto' },
-          maxWidth: { xs: '100%', lg: `calc(100% - ${navigatorWidth}px)` },
-          minHeight: 0,
-        },
         height: '100%',
-        maxHeight: '100%',
         minHeight: 0,
-        overflow: 'hidden',
-        boxSizing: 'border-box',
-        background:
-          'linear-gradient(135deg, rgba(0,124,102,0.12), rgba(25,118,210,0.08))',
-        border: 1,
-        borderColor: 'primary.main',
-        borderRadius: { xs: 0, md: 2 },
+        width: '100%',
+        position: 'relative',
+        overflow: 'visible',
+        backgroundColor: 'background.default',
       }}
     >
-      <Paper
-        className="study-path-navigator"
-        square
-        elevation={0}
+      <Box
+        data-testid="study-path-dashboard-content"
         sx={{
-          borderRight: { lg: 1 },
-          borderBottom: { xs: 1, lg: 0 },
-          borderColor: 'divider',
-          background:
-            'linear-gradient(180deg, rgba(0,124,102,0.18), rgba(0,16,38,0.02)), var(--background-paper)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          position: 'relative',
-          zIndex: 2,
-          p: navigatorCollapsed ? 1 : 2.25,
+          height: '100%',
+          minHeight: 0,
+          overflow: 'visible',
         }}
       >
-        {navigatorCollapsed ? (
-          <Stack
-            spacing={1.5}
-            alignItems="center"
-            sx={{ height: '100%', minHeight: { lg: 0 } }}
+        <DashboardLayoutView
+          key={currentLesson.dashboardKey}
+          layout={studentLayout}
+          readOnly
+          updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
+        />
+      </Box>
+
+      <Box
+        aria-label="Study Path navigator overlay"
+        data-testid="study-path-navigator-overlay"
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 8,
+          pointerEvents: 'none',
+        }}
+      >
+        {!navigatorOpen && (
+          <Paper
+            data-testid="study-path-navigator-pill"
+            elevation={3}
+            sx={{
+              position: 'absolute',
+              top: { xs: 10, md: 14 },
+              ...pillHorizontalSx,
+              pointerEvents: 'auto',
+              borderRadius: 999,
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              overflow: 'hidden',
+            }}
           >
-            <Tooltip title="Expand Course navigator">
-              <IconButton
-                aria-label="Expand Course navigator"
-                onClick={toggleNavigatorCollapsed}
-                color="primary"
-                sx={{
-                  bgcolor: 'background.paper',
-                  color: 'primary.main',
-                  border: 1,
-                  borderColor: 'divider',
-                  boxShadow: 1,
-                  '&:hover': {
-                    bgcolor: 'action.hover',
-                  },
-                }}
-              >
-                <ChevronRightIcon />
-              </IconButton>
-            </Tooltip>
-            <AutoStoriesIcon color="primary" />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 900,
-                writingMode: { xs: 'horizontal-tb', lg: 'vertical-rl' },
-                transform: { lg: 'rotate(180deg)' },
-                textAlign: 'center',
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-                color: 'text.secondary',
-              }}
-            >
-              Course navigator
-            </Typography>
-            <Chip
-              size="small"
-              color="primary"
-              label={`${selectedIndex + 1}/${studyPath.dashboards.length}`}
-              sx={{ mt: 'auto' }}
-            />
-            <Stack spacing={1} alignItems="center">
+            <Stack direction="row" alignItems="center" spacing={0.25}>
+              <Tooltip title="Open Course navigator">
+                <Button
+                  size="small"
+                  onClick={() => setNavigatorOpen(true)}
+                  startIcon={<AutoStoriesIcon fontSize="small" />}
+                  sx={{
+                    px: 1.25,
+                    minHeight: 34,
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontWeight: 800,
+                  }}
+                >
+                  {selectedIndex + 1}/{studyPath.dashboards.length}
+                </Button>
+              </Tooltip>
               <Tooltip title="Previous lesson">
                 <span>
                   <IconButton
@@ -324,11 +313,6 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     aria-label="Previous lesson"
                     disabled={!canGoPrevious}
                     onClick={() => selectLesson(selectedIndex - 1)}
-                    sx={{
-                      bgcolor: 'background.paper',
-                      border: 1,
-                      borderColor: 'divider',
-                    }}
                   >
                     <ChevronLeftIcon fontSize="small" />
                   </IconButton>
@@ -341,227 +325,303 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                     aria-label="Next lesson"
                     disabled={!canGoNext}
                     onClick={() => selectLesson(selectedIndex + 1)}
-                    sx={{
-                      bgcolor: 'background.paper',
-                      border: 1,
-                      borderColor: 'divider',
-                    }}
                   >
                     <ChevronRightIcon fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
             </Stack>
-          </Stack>
-        ) : (
-          <Stack
-            spacing={2.25}
-            sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}
+          </Paper>
+        )}
+
+        {navigatorOpen && (
+          <Paper
+            data-testid="study-path-navigator-panel"
+            elevation={8}
+            sx={{
+              position: 'absolute',
+              top: { xs: 8, md: 14 },
+              bottom: { xs: 'auto', md: 14 },
+              ...panelHorizontalSx,
+              width: {
+                xs: 'min(288px, calc(100% - 20px))',
+                sm: NAVIGATOR_PANEL_WIDTH,
+              },
+              maxWidth: { xs: 288, sm: NAVIGATOR_PANEL_WIDTH },
+              maxHeight: { xs: 'calc(100% - 16px)', md: 'none' },
+              pointerEvents: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              borderRadius: 3,
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 16px 44px rgba(0, 0, 0, 0.22)',
+            }}
           >
-            <Stack direction="row" spacing={1.25} alignItems="flex-start">
-              <Box
-                sx={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 2,
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: 'primary.contrastText',
-                  bgcolor: 'primary.main',
-                  boxShadow: 2,
-                  flex: '0 0 auto',
-                }}
-              >
-                <AutoStoriesIcon />
-              </Box>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  justifyContent="space-between"
+            <Stack
+              spacing={{ xs: 0.75, sm: 1.25 }}
+              sx={{ p: { xs: 1, sm: 1.5 }, pb: { xs: 0.75, sm: 1.25 } }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box
+                  sx={{
+                    width: { xs: 28, sm: 34 },
+                    height: { xs: 28, sm: 34 },
+                    borderRadius: { xs: 1.5, sm: 2 },
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: 'primary.contrastText',
+                    bgcolor: 'primary.main',
+                    flex: '0 0 auto',
+                  }}
                 >
+                  <AutoStoriesIcon fontSize="small" />
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography
                     variant="overline"
                     color="primary.main"
-                    sx={{ fontWeight: 900, letterSpacing: '.08em' }}
+                    sx={{
+                      fontWeight: 900,
+                      letterSpacing: '.08em',
+                      fontSize: { xs: '0.62rem', sm: '0.75rem' },
+                      lineHeight: 1.1,
+                    }}
                   >
-                    Course navigator
+                    Course helper
                   </Typography>
-                  <Tooltip title="Collapse Course navigator">
-                    <IconButton
-                      size="small"
-                      aria-label="Collapse Course navigator"
-                      onClick={toggleNavigatorCollapsed}
-                      sx={{
-                        bgcolor: 'background.paper',
-                        color: 'primary.main',
-                        border: 1,
-                        borderColor: 'divider',
-                        boxShadow: 1,
-                        '&:hover': {
-                          bgcolor: 'action.hover',
-                        },
-                      }}
-                    >
-                      <ChevronLeftIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-                <Typography variant="h6" sx={{ lineHeight: 1.18 }}>
-                  {studyPath.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  One Study Path tab · switch lessons below
-                </Typography>
-              </Box>
-            </Stack>
+                  <Typography
+                    variant="subtitle2"
+                    noWrap
+                    fontWeight={800}
+                    sx={{ fontSize: { xs: '0.82rem', sm: '0.875rem' } }}
+                  >
+                    {studyPath.title}
+                  </Typography>
+                </Box>
+                <Tooltip title="Collapse Course navigator">
+                  <IconButton
+                    size="small"
+                    aria-label="Collapse Course navigator"
+                    onClick={() => setNavigatorOpen(false)}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
 
-            <Paper
-              variant="outlined"
-              sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default' }}
-            >
-              <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
-                Step {selectedIndex + 1}/{studyPath.dashboards.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {currentLesson.name}
-              </Typography>
-            </Paper>
-
-            <Box>
-              <Stack direction="row" justifyContent="space-between" spacing={1}>
-                <Typography variant="caption" color="text.secondary">
+              <Stack
+                direction="row"
+                spacing={{ xs: 0.5, sm: 0.75 }}
+                alignItems="center"
+              >
+                <Chip
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{
+                    height: { xs: 22, sm: 24 },
+                    fontSize: { xs: '0.68rem', sm: '0.75rem' },
+                  }}
+                  label={`Lesson ${selectedIndex + 1}/${
+                    studyPath.dashboards.length
+                  }`}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  noWrap
+                  sx={{ fontSize: { xs: '0.68rem', sm: '0.75rem' } }}
+                >
                   {completedCount}/{studyPath.dashboards.length} completed
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {completionPercent}%
-                </Typography>
               </Stack>
+
               <LinearProgress
                 variant="determinate"
                 value={completionPercent}
-                sx={{ mt: 0.75, borderRadius: 999 }}
+                sx={{ borderRadius: 999, height: { xs: 4, sm: 5 } }}
               />
-            </Box>
 
-            <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-              Lessons
-            </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  px: { xs: 1, sm: 1.25 },
+                  py: { xs: 0.65, sm: 1 },
+                  borderRadius: 2,
+                  bgcolor: 'action.hover',
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.68rem', sm: '0.75rem' } }}
+                >
+                  Current lesson
+                </Typography>
+                <Typography
+                  variant="body2"
+                  fontWeight={800}
+                  noWrap
+                  sx={{ fontSize: { xs: '0.78rem', sm: '0.875rem' } }}
+                >
+                  {currentLesson.name}
+                </Typography>
+              </Paper>
 
-            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5 }}>
-              <Stack spacing={1.1}>
+              <Stack direction="row" spacing={0.75}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!canGoPrevious}
+                  onClick={() => selectLesson(selectedIndex - 1)}
+                  startIcon={<ChevronLeftIcon fontSize="small" />}
+                  sx={{
+                    flex: 1,
+                    textTransform: 'none',
+                    fontSize: { xs: '0.72rem', sm: '0.8125rem' },
+                    py: { xs: 0.35, sm: 0.5 },
+                  }}
+                >
+                  Previous
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={!canGoNext}
+                  onClick={() => selectLesson(selectedIndex + 1)}
+                  endIcon={<ChevronRightIcon fontSize="small" />}
+                  sx={{
+                    flex: 1,
+                    textTransform: 'none',
+                    fontSize: { xs: '0.72rem', sm: '0.8125rem' },
+                    py: { xs: 0.35, sm: 0.5 },
+                  }}
+                >
+                  Next
+                </Button>
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={0.75}
+                sx={{ display: { xs: 'none', sm: 'flex' } }}
+              >
+                <Button
+                  size="small"
+                  variant={navigatorDock === 'left' ? 'contained' : 'text'}
+                  onClick={() => setNavigatorDock('left')}
+                  sx={{ flex: 1, textTransform: 'none' }}
+                >
+                  Dock left
+                </Button>
+                <Button
+                  size="small"
+                  variant={navigatorDock === 'right' ? 'contained' : 'text'}
+                  onClick={() => setNavigatorDock('right')}
+                  sx={{ flex: 1, textTransform: 'none' }}
+                >
+                  Dock right
+                </Button>
+              </Stack>
+            </Stack>
+
+            <Divider />
+
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                p: { xs: 0.75, sm: 1 },
+              }}
+            >
+              <Stack spacing={{ xs: 0.4, sm: 0.65 }}>
                 {studyPath.dashboards.map((lesson, index) => {
                   const progress = progressByKey[lesson.dashboardKey]
                   const active = index === selectedIndex
-                  const pinned = pinnedDashboardKeys.includes(
-                    lesson.dashboardKey,
-                  )
 
                   return (
                     <Button
                       key={lesson.dashboardKey}
                       onClick={() => selectLesson(index)}
-                      variant={active ? 'contained' : 'text'}
-                      color={active ? 'primary' : 'inherit'}
+                      variant="text"
+                      color="inherit"
                       sx={{
                         justifyContent: 'flex-start',
                         textAlign: 'left',
-                        alignItems: 'stretch',
-                        borderRadius: 2.5,
-                        py: 1.15,
-                        px: 1.25,
+                        alignItems: 'center',
+                        borderRadius: 2,
+                        py: { xs: 0.5, sm: 0.75 },
+                        px: { xs: 0.75, sm: 1 },
                         border: 1,
-                        borderColor: active ? 'primary.main' : 'divider',
-                        bgcolor: active ? 'primary.main' : 'background.paper',
-                        boxShadow: active ? 2 : 0,
+                        borderColor: active ? 'primary.main' : 'transparent',
+                        bgcolor: active ? 'primary.main' : 'transparent',
+                        color: active ? 'primary.contrastText' : 'text.primary',
+                        boxShadow: active ? 1 : 0,
                         '&:hover': {
                           bgcolor: active ? 'primary.dark' : 'action.hover',
                         },
                       }}
                     >
-                      <Stack
-                        direction="row"
-                        spacing={1.2}
-                        sx={{ width: '100%' }}
-                      >
+                      <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
                         <Box
                           sx={{
-                            width: 32,
-                            height: 32,
+                            width: { xs: 22, sm: 26 },
+                            height: { xs: 22, sm: 26 },
                             borderRadius: '50%',
                             display: 'grid',
                             placeItems: 'center',
                             flex: '0 0 auto',
+                            fontSize: { xs: 11, sm: 12 },
                             fontWeight: 900,
                             bgcolor: active
-                              ? 'rgba(255,255,255,0.22)'
+                              ? 'rgba(255,255,255,0.2)'
                               : 'action.hover',
                           }}
                         >
-                          {String(index + 1).padStart(2, '0')}
+                          {progress?.completedAt ? (
+                            <CheckCircleIcon sx={{ fontSize: 16 }} />
+                          ) : (
+                            index + 1
+                          )}
                         </Box>
-                        <Stack spacing={0.3} sx={{ minWidth: 0, flex: 1 }}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={800}
+                            noWrap
+                            sx={{
+                              fontSize: { xs: '0.76rem', sm: '0.875rem' },
+                            }}
                           >
-                            <Typography variant="body2" fontWeight={700} noWrap>
-                              {lesson.name}
-                            </Typography>
-                            {pinned && <PushPinIcon sx={{ fontSize: 14 }} />}
-                            {progress?.completedAt && (
-                              <CheckCircleIcon sx={{ fontSize: 15 }} />
-                            )}
-                          </Stack>
-                          <Typography variant="caption" sx={{ opacity: 0.78 }}>
+                            {lesson.name}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              opacity: active ? 0.84 : 0.66,
+                              fontSize: { xs: '0.66rem', sm: '0.75rem' },
+                            }}
+                            noWrap
+                          >
                             Step {lesson.dashboardIndex}/{lesson.dashboardCount}
                             {progress?.score
                               ? ` · Score ${progress.score}%`
                               : ''}
                           </Typography>
-                        </Stack>
+                        </Box>
                       </Stack>
                     </Button>
                   )
                 })}
               </Stack>
             </Box>
-
-            <Divider />
-
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={onOpenAll}
-              fullWidth
-            >
-              Open all dashboards
-            </Button>
-          </Stack>
+          </Paper>
         )}
-      </Paper>
-
-      <Box
-        className="study-path-content"
-        sx={{
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          position: 'relative',
-          p: { xs: 1, md: 1.5 },
-        }}
-      >
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <DashboardLayoutView
-            key={`${currentLesson.dashboardKey}-${navigatorWidth}`}
-            layout={studentLayout}
-            readOnly
-            updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
-          />
-        </Box>
       </Box>
     </Box>
   )

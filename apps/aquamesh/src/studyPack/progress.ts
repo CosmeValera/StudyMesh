@@ -314,6 +314,13 @@ const createReviewDashboard = (
             config: {
               customProps: {
                 widgetId: `${reviewDashboardId}-widget`,
+                studyPathId: path.pathId,
+                studyPathTitle: path.title,
+                studyPathDashboardKey: reviewDashboardId,
+                studyPathDashboardName: 'Review missed exercises',
+                studyPathDashboardIndex: path.dashboardCount + 1,
+                studyPathDashboardCount: path.dashboardCount + 1,
+                studyPathFolderName: path.folderName,
                 components,
               },
             },

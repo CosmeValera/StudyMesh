@@ -10,7 +10,6 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
-  ListItemIcon,
   ListItemText,
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
@@ -19,9 +18,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import EditIcon from '@mui/icons-material/Edit'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import ViewListIcon from '@mui/icons-material/ViewList'
 import { DashboardLayout, StudyPathContainerState } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import {
@@ -63,10 +60,6 @@ interface StudyPathMenuGroup {
   dashboards: SavedDashboard[]
   studyPath: StudyPathContainerState
 }
-
-type PowerMenuTarget =
-  | { type: 'studyPath'; group: StudyPathMenuGroup }
-  | { type: 'lesson'; group: StudyPathMenuGroup; lessonIndex: number }
 
 // Button with label component
 interface ButtonWithLabelProps {
@@ -132,10 +125,6 @@ const DashboardOptionsMenu: React.FC = () => {
   const [expandedStudyPathFolders, setExpandedStudyPathFolders] = useState<
     string[]
   >([])
-  const [powerMenuAnchorEl, setPowerMenuAnchorEl] =
-    useState<null | HTMLElement>(null)
-  const [powerMenuTarget, setPowerMenuTarget] =
-    useState<PowerMenuTarget | null>(null)
   // Track admin status to filter dashboards
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -296,8 +285,8 @@ const DashboardOptionsMenu: React.FC = () => {
         (folderName === 'Mathematics'
           ? '#1976D2'
           : folderName === 'Tutorial'
-          ? DEFAULT_FOLDER_COLOR
-          : undefined),
+            ? DEFAULT_FOLDER_COLOR
+            : undefined),
     )
 
   // Handle opening and closing dropdown
@@ -311,13 +300,6 @@ const DashboardOptionsMenu: React.FC = () => {
   const handleClose = () => {
     setAnchorEl(null)
     setExpandedDashboardFolders([])
-    setPowerMenuAnchorEl(null)
-    setPowerMenuTarget(null)
-  }
-
-  const closePowerMenu = () => {
-    setPowerMenuAnchorEl(null)
-    setPowerMenuTarget(null)
   }
 
   // Create a dashboard with predefined layout
@@ -327,7 +309,11 @@ const DashboardOptionsMenu: React.FC = () => {
   ) => {
     const focusedDashboard = openDashboards[selectedDashboard]
 
-    if (focusedDashboard && !hasDashboardContent(focusedDashboard.layout)) {
+    if (
+      focusedDashboard &&
+      focusedDashboard.kind !== 'studyPathContainer' &&
+      !hasDashboardContent(focusedDashboard.layout)
+    ) {
       replaceDashboard(selectedDashboard, {
         name: dashboardName,
         layout,
@@ -441,26 +427,7 @@ const DashboardOptionsMenu: React.FC = () => {
     }
 
     createDashboardWithLayout(lesson.name, lesson.layout)
-  }
-
-  const openAllStudyPathDashboards = (group: StudyPathMenuGroup) => {
-    addDashboards(
-      group.studyPath.dashboards.map((lesson) => ({
-        name: lesson.name,
-        layout: lesson.layout,
-      })),
-      { replaceEmptySelected: true },
-    )
     handleClose()
-  }
-
-  const openStudyPathInLibrary = (folderName: string) => {
-    handleClose()
-    window.dispatchEvent(
-      new CustomEvent(OPEN_SAVED_DASHBOARDS_EVENT, {
-        detail: { folderFilter: folderName },
-      }),
-    )
   }
 
   const toggleStudyPathExpanded = (
@@ -473,15 +440,6 @@ const DashboardOptionsMenu: React.FC = () => {
         ? currentFolders.filter((currentFolder) => currentFolder !== folderName)
         : [...currentFolders, folderName],
     )
-  }
-
-  const openPowerMenu = (
-    event: React.MouseEvent<HTMLElement>,
-    target: PowerMenuTarget,
-  ) => {
-    event.stopPropagation()
-    setPowerMenuAnchorEl(event.currentTarget)
-    setPowerMenuTarget(target)
   }
 
   const openSavedDashboardsForFolder = (
@@ -672,16 +630,16 @@ const DashboardOptionsMenu: React.FC = () => {
                         {studyPath.dashboards.length} lessons
                       </Typography>
                     </Box>
-                    <Tooltip title="Study Path actions">
+                    <Tooltip title={`Manage ${folderName} in Library`}>
                       <IconButton
                         size="small"
-                        aria-label={`${folderName} Study Path actions`}
+                        aria-label={`Manage ${folderName} in Library`}
                         onClick={(event) =>
-                          openPowerMenu(event, { type: 'studyPath', group })
+                          openSavedDashboardsForFolder(event, folderName)
                         }
                         sx={{ color: folderColor, p: 0.5 }}
                       >
-                        <MoreVertIcon fontSize="small" />
+                        <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
                   </Box>
@@ -720,22 +678,6 @@ const DashboardOptionsMenu: React.FC = () => {
                             sx={{ ml: 0.5 }}
                           >
                             <OpenInNewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Lesson actions">
-                          <IconButton
-                            size="small"
-                            aria-label={`${lesson.name} actions`}
-                            onClick={(event) =>
-                              openPowerMenu(event, {
-                                type: 'lesson',
-                                group,
-                                lessonIndex: index,
-                              })
-                            }
-                            sx={{ ml: 0.25 }}
-                          >
-                            <MoreVertIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </MenuItem>
@@ -1073,78 +1015,6 @@ const DashboardOptionsMenu: React.FC = () => {
           >
             No study packs or dashboards yet
           </MenuItem>
-        )}
-      </Menu>
-
-      <Menu
-        anchorEl={powerMenuAnchorEl}
-        open={Boolean(powerMenuAnchorEl)}
-        onClose={closePowerMenu}
-        PaperProps={{
-          sx: {
-            bgcolor: 'background.paper',
-            color: 'text.primary',
-            minWidth: 220,
-          },
-        }}
-      >
-        {powerMenuTarget && (
-          <>
-            <MenuItem
-              onClick={() => {
-                openStudyPathGroup(
-                  powerMenuTarget.group,
-                  powerMenuTarget.type === 'lesson'
-                    ? powerMenuTarget.lessonIndex
-                    : 0,
-                )
-              }}
-            >
-              <ListItemIcon>
-                <AutoStoriesIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText
-                primary={
-                  powerMenuTarget.type === 'lesson'
-                    ? 'Open lesson in Study Path'
-                    : 'Open Study Path'
-                }
-              />
-            </MenuItem>
-            {powerMenuTarget.type === 'lesson' && (
-              <MenuItem
-                onClick={() =>
-                  openStudyPathLessonInNewTab(
-                    powerMenuTarget.group,
-                    powerMenuTarget.lessonIndex,
-                  )
-                }
-              >
-                <ListItemIcon>
-                  <OpenInNewIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Open lesson in new tab" />
-              </MenuItem>
-            )}
-            <MenuItem
-              onClick={() => openAllStudyPathDashboards(powerMenuTarget.group)}
-            >
-              <ListItemIcon>
-                <ViewListIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Open all dashboards" />
-            </MenuItem>
-            <MenuItem
-              onClick={() =>
-                openStudyPathInLibrary(powerMenuTarget.group.folderName)
-              }
-            >
-              <ListItemIcon>
-                <EditIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Open in Library / Manage" />
-            </MenuItem>
-          </>
         )}
       </Menu>
     </>

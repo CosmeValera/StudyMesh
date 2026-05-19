@@ -64,7 +64,9 @@
 
   &:has(.flexlayout__tabset-selected) {
     outline: 2px solid var(--primary-main);
-    // outline-offset: -1px;
+    outline-offset: 0;
+    position: relative;
+    z-index: 1;
   }
 }
 

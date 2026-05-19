@@ -78,6 +78,17 @@ describe('study path progress', () => {
       folder: 'French B1',
       tags: ['study-pack', 'study-path', 'review-mistakes'],
     })
+    expect(
+      dashboards[0].layout.children[0].children[0].config.customProps,
+    ).toMatchObject({
+      studyPathId: 'french-b1',
+      studyPathTitle: 'French B1',
+      studyPathDashboardKey: 'study-path-review-french-b1',
+      studyPathDashboardName: 'Review missed exercises',
+      studyPathDashboardIndex: 8,
+      studyPathDashboardCount: 8,
+      studyPathFolderName: 'French B1',
+    })
     expect(JSON.stringify(dashboards[0].layout)).toContain(
       'When is the subjunctive used?',
     )

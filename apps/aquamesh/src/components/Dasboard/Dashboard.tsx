@@ -36,13 +36,18 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
-import { DashboardLayout, StudyPathDashboardItem } from '../../state/store'
+import { DashboardLayout } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import StudyPathWorkspaceView from './StudyPathWorkspaceView'
+import {
+  createStudyPathContainerState,
+  getStudyPathMetaFromLayout,
+} from './studyPathContainer'
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
+  STARTER_STUDY_PATH_FOLDER_NAME,
   OPEN_DASHBOARD_EDITOR_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
 } from '../../customHooks/useWorkspaceActions'
@@ -101,6 +106,7 @@ interface SavedDashboard {
 }
 
 const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+const DEFAULT_STUDY_PATH_OPENED_KEY = 'aquamesh-default-study-path-opened-v1'
 const USER_ROLE_CHANGED_EVENT = 'aquamesh-user-role-changed'
 const OPEN_SAVED_DASHBOARDS_EVENT = 'aquamesh-open-saved-dashboards'
 
@@ -465,6 +471,7 @@ const Dashboards = () => {
     reorderDashboard,
     addDashboard,
     addDashboards,
+    addStudyPathContainer,
     updateStudyPathContainer,
     replaceDashboard,
     updateLayout,
@@ -657,15 +664,6 @@ const Dashboards = () => {
       dashboardId: dashboard.id,
       dashboardName: dashboard.name,
     })
-  }
-
-  const openAllStudyPathLessons = (lessons: StudyPathDashboardItem[]) => {
-    addDashboards(
-      lessons.map((lesson) => ({
-        name: lesson.name,
-        layout: lesson.layout,
-      })),
-    )
   }
 
   const openSavedDashboardFromLibrary = (dashboard: SavedDashboard) => {
@@ -873,6 +871,48 @@ const Dashboards = () => {
   }, [])
 
   useEffect(() => {
+    if (openDashboards.length === 0) {
+      return
+    }
+
+    if (window.localStorage.getItem(DEFAULT_STUDY_PATH_OPENED_KEY) === 'true') {
+      return
+    }
+
+    if (
+      openDashboards.some(
+        (dashboard) => dashboard.kind === 'studyPathContainer',
+      )
+    ) {
+      window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
+      return
+    }
+
+    const selectedDashboardRecord = openDashboards[selectedDashboard]
+    if (
+      !selectedDashboardRecord ||
+      hasDashboardContent(selectedDashboardRecord.layout)
+    ) {
+      window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
+      return
+    }
+
+    ensureStarterDashboards()
+    const starterStudyPathDashboards = DashboardStorage.getAll().filter(
+      (dashboard) => dashboard.folder === STARTER_STUDY_PATH_FOLDER_NAME,
+    )
+    const studyPath = createStudyPathContainerState(starterStudyPathDashboards)
+
+    if (!studyPath) {
+      return
+    }
+
+    addStudyPathContainer(studyPath)
+    window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
+    loadDashboardOptions()
+  }, [addStudyPathContainer, openDashboards, selectedDashboard])
+
+  useEffect(() => {
     if (!isEditingDashboardEditorTitle) {
       setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
     }
@@ -937,6 +977,58 @@ const Dashboards = () => {
       }
 
       loadDashboardOptions()
+
+      const reviewMeta = getStudyPathMetaFromLayout(dashboard.layout)
+      const openStudyPathIndex = reviewMeta
+        ? openDashboards.findIndex(
+            (openDashboard) =>
+              openDashboard.kind === 'studyPathContainer' &&
+              openDashboard.studyPath?.pathId === reviewMeta.studyPathId,
+          )
+        : -1
+
+      if (reviewMeta && openStudyPathIndex >= 0) {
+        const openStudyPathDashboard = openDashboards[openStudyPathIndex]
+
+        updateStudyPathContainer(openStudyPathDashboard.id, (studyPath) => {
+          const reviewItem = {
+            id: dashboard.id,
+            name: dashboard.name,
+            layout: dashboard.layout,
+            dashboardKey: reviewMeta.dashboardKey,
+            dashboardIndex: reviewMeta.dashboardIndex,
+            dashboardCount: reviewMeta.dashboardCount,
+            folderName: reviewMeta.folderName,
+          }
+          const existingReviewIndex = studyPath.dashboards.findIndex(
+            (lesson) => lesson.dashboardKey === reviewItem.dashboardKey,
+          )
+          const nextDashboards =
+            existingReviewIndex >= 0
+              ? studyPath.dashboards.map((lesson, index) =>
+                  index === existingReviewIndex ? reviewItem : lesson,
+                )
+              : [...studyPath.dashboards, reviewItem]
+          const orderedDashboards = [...nextDashboards].sort(
+            (first, second) => first.dashboardIndex - second.dashboardIndex,
+          )
+          const selectedIndex = Math.max(
+            0,
+            orderedDashboards.findIndex(
+              (lesson) => lesson.dashboardKey === reviewItem.dashboardKey,
+            ),
+          )
+
+          return {
+            ...studyPath,
+            dashboards: orderedDashboards,
+            selectedIndex,
+          }
+        })
+        setSelectedDashboard(openStudyPathIndex)
+        return
+      }
+
       addDashboard({
         name: dashboard.name,
         layout: dashboard.layout,
@@ -954,7 +1046,12 @@ const Dashboards = () => {
         handleOpenStudyPathReviewDashboard,
       )
     }
-  }, [addDashboard])
+  }, [
+    addDashboard,
+    openDashboards,
+    setSelectedDashboard,
+    updateStudyPathContainer,
+  ])
 
   // Check if current dashboards have changes compared to saved dashboards
   useEffect(() => {
@@ -1437,7 +1534,9 @@ const Dashboards = () => {
   return (
     <Box>
       <Tabs
-        className={`react-tabs ${selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''}`.trim()}
+        className={`react-tabs ${
+          selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''
+        }`.trim()}
         selectedIndex={selectedDashboard}
         onSelect={(index) => setSelectedDashboard(index)}
         style={{ position: 'relative' }}
@@ -1600,11 +1699,6 @@ const Dashboards = () => {
                       studyPath={dashboard.studyPath}
                       onStudyPathChange={(studyPath) =>
                         updateStudyPathContainer(dashboard.id, () => studyPath)
-                      }
-                      onOpenAll={() =>
-                        openAllStudyPathLessons(
-                          dashboard.studyPath?.dashboards || [],
-                        )
                       }
                     />
                   ) : isEmptyDashboard ? (

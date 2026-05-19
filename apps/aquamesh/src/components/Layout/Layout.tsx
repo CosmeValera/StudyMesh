@@ -104,7 +104,7 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
         width: '100%',
         minWidth: 0,
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       <Layout
