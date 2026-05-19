@@ -250,7 +250,7 @@ describe('Interactive Study Path UX', () => {
     expect(screen.getByTestId('study-path-navigator-pill')).toBeInTheDocument()
   })
 
-  it('keeps Study Paths dropdown actions focused and preserves standalone lesson opening', async () => {
+  it('keeps Study Paths dropdown actions focused and opens lessons as standalone tabs', async () => {
     const storage = createMemoryStorage()
     seedStudyPathDashboards(storage)
 
@@ -278,8 +278,8 @@ describe('Interactive Study Path UX', () => {
 
     expect(await screen.findByText('01 Lesson 1')).toBeInTheDocument()
     expect(
-      screen.getByLabelText('Open Lesson 1 in new tab'),
-    ).toBeInTheDocument()
+      screen.queryByLabelText('Open Lesson 1 in new tab'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Lesson actions/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('German B1 Grammar'))
@@ -298,23 +298,9 @@ describe('Interactive Study Path UX', () => {
     fireEvent.click(await screen.findByText('03 Lesson 3'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('dashboard-count')).toHaveTextContent('2')
-      expect(screen.getByTestId('selected-lesson')).toHaveTextContent('2')
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /library/i }))
-    const expandForStandalone = screen.queryByLabelText(
-      'Expand German B1 Grammar lessons',
-    )
-    if (expandForStandalone) {
-      fireEvent.click(expandForStandalone)
-    }
-    fireEvent.click(await screen.findByLabelText('Open Lesson 2 in new tab'))
-
-    await waitFor(() => {
       expect(screen.getByTestId('dashboard-count')).toHaveTextContent('3')
       expect(screen.getByTestId('dashboard-names')).toHaveTextContent(
-        'Existing dashboard|German B1 Grammar|Lesson 2',
+        'Existing dashboard|German B1 Grammar|Lesson 3',
       )
     })
   })

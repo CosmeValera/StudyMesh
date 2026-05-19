@@ -63,6 +63,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
         />
         <Typography
           variant={isMobile ? 'subtitle1' : 'h6'}
+          component="span"
           sx={{
             fontWeight: 500,
             color: 'white',

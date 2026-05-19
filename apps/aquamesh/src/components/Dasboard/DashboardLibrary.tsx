@@ -134,6 +134,7 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   const [dashboardToDelete, setDashboardToDelete] = useState<string | null>(
     null,
   )
+  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false)
 
   // Access dashboards context
   const { addDashboard } = useDashboards()
@@ -364,6 +365,38 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     } catch (error) {
       console.error('Failed to delete dashboard', error)
     }
+  }
+
+  const handleDeleteAllDashboards = () => {
+    if (!isAdmin || dashboards.length === 0) {
+      return
+    }
+
+    setDeleteAllConfirmOpen(true)
+  }
+
+  const confirmDeleteAllDashboards = () => {
+    if (!isAdmin) {
+      return
+    }
+
+    try {
+      setDashboards([])
+      setSearchTerm('')
+      setFolderFilter('')
+      setShowPublicOnly(false)
+      setMenuAnchorEl(null)
+      setMenuDashboard(null)
+      localStorage.setItem('customDashboards', JSON.stringify([]))
+    } catch (error) {
+      console.error('Failed to delete all dashboards', error)
+    } finally {
+      setDeleteAllConfirmOpen(false)
+    }
+  }
+
+  const cancelDeleteAllDashboards = () => {
+    setDeleteAllConfirmOpen(false)
   }
 
   // Confirm dashboard deletion
@@ -907,18 +940,71 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
             </Grid>
           </Grid>
 
-          {/* Results count and non-admin message */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              {sortedDashboards.length === 0
-                ? 'No Study Paths found'
-                : `Showing ${sortedDashboards.length} item${
-                    sortedDashboards.length !== 1 ? 's' : ''
-                  }`}
-              {searchTerm && ` matching "${searchTerm}"`}
-              {folderFilter && ` in "${folderFilter}"`}
-              {!isAdmin && ' (only showing public library items)'}
-            </Typography>
+          <Box
+            sx={{
+              mb: 2,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+              justifyContent: 'space-between',
+              gap: 1.5,
+            }}
+          >
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                {sortedDashboards.length === 0
+                  ? 'No Study Paths found'
+                  : `Showing ${sortedDashboards.length} item${
+                      sortedDashboards.length !== 1 ? 's' : ''
+                    }`}
+                {searchTerm && ` matching "${searchTerm}"`}
+                {folderFilter && ` in "${folderFilter}"`}
+                {!isAdmin && ' (only showing public library items)'}
+              </Typography>
+              {isAdmin && dashboards.length > sortedDashboards.length && (
+                <Typography variant="caption" color="text.secondary">
+                  Delete all removes every saved library item, including hidden
+                  by filters.
+                </Typography>
+              )}
+            </Box>
+            {isAdmin && (
+              <Tooltip
+                title={
+                  dashboards.length === 0
+                    ? 'No library items to delete'
+                    : 'Delete every saved Study Path and dashboard'
+                }
+              >
+                <span>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    startIcon={<DeleteIcon />}
+                    disabled={dashboards.length === 0}
+                    onClick={handleDeleteAllDashboards}
+                    sx={{
+                      alignSelf: { xs: 'flex-start', sm: 'center' },
+                      borderColor: 'error.main',
+                      color: 'error.main',
+                      bgcolor: 'background.paper',
+                      fontWeight: 700,
+                      '&:hover': {
+                        bgcolor: 'error.main',
+                        color: 'error.contrastText',
+                        borderColor: 'error.main',
+                      },
+                      '&.Mui-disabled': {
+                        bgcolor: 'transparent',
+                      },
+                    }}
+                  >
+                    Delete all
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
           </Box>
 
           {/* Dashboards list */}
@@ -1518,6 +1604,14 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         content="Are you sure you want to delete this Study Path or workspace? Export first if you need a backup. This action cannot be undone."
         onConfirm={confirmDeleteDashboard}
         onCancel={cancelDeleteDashboard}
+      />
+
+      <DeleteConfirmationDialog
+        open={deleteAllConfirmOpen}
+        title="Delete all library items"
+        content={`Are you sure you want to delete all ${dashboards.length} saved Study Paths and dashboards from the Library? Export first if you need a backup.`}
+        onConfirm={confirmDeleteAllDashboards}
+        onCancel={cancelDeleteAllDashboards}
       />
 
       {/* Edit Dashboard Dialog */}

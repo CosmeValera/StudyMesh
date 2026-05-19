@@ -18,7 +18,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import EditIcon from '@mui/icons-material/Edit'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
-import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { DashboardLayout, StudyPathContainerState } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import {
@@ -647,11 +646,13 @@ const DashboardOptionsMenu: React.FC = () => {
                     studyPath.dashboards.map((lesson, index) => (
                       <MenuItem
                         key={lesson.dashboardKey}
-                        onClick={() => openStudyPathGroup(group, index)}
+                        onClick={() =>
+                          openStudyPathLessonInNewTab(group, index)
+                        }
                         sx={{
                           py: 1,
                           pl: 5.5,
-                          pr: 1,
+                          pr: 2,
                           bgcolor: getFolderItemBackground(folderColor),
                           '&:hover': {
                             bgcolor: getFolderItemHoverBackground(folderColor),
@@ -667,19 +668,6 @@ const DashboardOptionsMenu: React.FC = () => {
                             noWrap: true,
                           }}
                         />
-                        <Tooltip title="Open lesson in new tab">
-                          <IconButton
-                            size="small"
-                            aria-label={`Open ${lesson.name} in new tab`}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openStudyPathLessonInNewTab(group, index)
-                            }}
-                            sx={{ ml: 0.5 }}
-                          >
-                            <OpenInNewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
                       </MenuItem>
                     ))}
                   <Divider sx={{ borderColor: 'divider' }} />

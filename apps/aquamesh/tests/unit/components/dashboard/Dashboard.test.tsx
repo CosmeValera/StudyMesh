@@ -50,7 +50,9 @@ vi.mock('../../../../src/icons/add.svg', () => ({
 }))
 
 vi.mock('../../../../src/icons/close.svg', () => ({
-  ReactComponent: () => <svg data-testid="close-icon" />,
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="close-icon" {...props} />
+  ),
 }))
 
 const navigateMock = vi.fn()
@@ -409,6 +411,45 @@ describe('Dashboards', () => {
       name: 'French B1 - Review missed exercises',
       dashboardIndex: 6,
     })
+  })
+
+  it('allows a single Study Path tab to close so the provider can restore the empty workspace', () => {
+    const removeDashboard = vi.fn()
+
+    mockDashboardProvider({
+      removeDashboard,
+      openDashboards: [
+        {
+          id: 'study-path-tab',
+          name: 'French B1',
+          kind: 'studyPathContainer',
+          studyPath: {
+            pathId: 'french-b1',
+            title: 'French B1',
+            folderName: 'French B1',
+            selectedIndex: 0,
+            dashboards: [
+              {
+                id: 'lesson-1',
+                name: 'Lesson 1',
+                layout: { type: 'row', children: [] },
+                dashboardKey: 'french-b1-1',
+                dashboardIndex: 1,
+                dashboardCount: 1,
+                folderName: 'French B1',
+              },
+            ],
+          },
+        },
+      ],
+      selectedDashboard: 0,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(screen.getByTestId('close-icon'))
+
+    expect(removeDashboard).toHaveBeenCalledWith('study-path-tab')
   })
 
   it('disables Update in Create Dashboard when the saved dashboard has no changes', () => {

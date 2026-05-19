@@ -1548,6 +1548,7 @@ const Dashboards = () => {
           {openDashboards.map((dashboard, index) => {
             const isOnlyEmptyDashboard =
               openDashboards.length === 1 &&
+              dashboard.kind !== 'studyPathContainer' &&
               !hasDashboardContent(dashboard.layout)
 
             return (
@@ -1691,7 +1692,7 @@ const Dashboards = () => {
                     position: 'relative',
                     flex: 1,
                     minHeight: 0,
-                    overflow:  'visible',
+                    overflow: 'visible',
                   }}
                 >
                   {isStudyPathContainer && dashboard.studyPath ? (
