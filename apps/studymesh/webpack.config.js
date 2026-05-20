@@ -134,6 +134,14 @@ module.exports = (_, argv) => ({
           to: './config/',
           noErrorOnMissing: true,
         },
+        {
+          from: path.resolve(
+            __dirname,
+            '../../node_modules/pdfjs-dist/build/pdf.worker.min.js',
+          ),
+          to: './pdf.worker.min.js',
+          noErrorOnMissing: true,
+        },
       ],
     }),
     new CleanWebpackPlugin(),

@@ -21,6 +21,9 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ImageIcon from '@mui/icons-material/Image'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import SlideshowIcon from '@mui/icons-material/Slideshow'
+import DeleteIcon from '@mui/icons-material/Delete'
 import {
   createStudyPackOrchestratorWidgets,
   createStudyPackSmartWidgetGroups,
@@ -44,6 +47,10 @@ import {
   resolveStudyPackAiCredentials,
   StudyPackAiProvider,
 } from '../../studyPack/ai'
+import {
+  extractTextFromPdf,
+  extractTextFromPptx,
+} from '../../studyPack/documentExtraction'
 
 type ReviewType =
   | 'flashcard'
@@ -58,7 +65,7 @@ type ReviewType =
   | 'reveal'
   | 'sequence'
   | 'ignore'
-type SourceInputType = 'text' | 'image'
+type SourceInputType = 'text' | 'image' | 'pdf' | 'powerpoint'
 type GenerationAmount = 'few' | 'medium' | 'many'
 
 interface GeminiTimedProgress {
@@ -96,7 +103,9 @@ const sourceOptions: Array<{
   value: SourceInputType
 }> = [
   { label: 'Text notes / files', value: 'text' },
-  { label: 'Image', value: 'image' },
+  { label: 'Images', value: 'image' },
+  { label: 'PDF', value: 'pdf' },
+  { label: 'PowerPoint', value: 'powerpoint' },
 ]
 
 const supportedImageExtensions = [
@@ -274,6 +283,51 @@ const isSupportedImageFile = (file: File) => {
     supportedImageMimeTypes.includes(file.type)
   )
 }
+
+const getSourceOptionIcon = (value: SourceInputType) => {
+  switch (value) {
+    case 'image':
+      return ImageIcon
+    case 'pdf':
+      return PictureAsPdfIcon
+    case 'powerpoint':
+      return SlideshowIcon
+    case 'text':
+    default:
+      return AutoStoriesIcon
+  }
+}
+
+const getSourceOptionTitle = (value: SourceInputType) => {
+  switch (value) {
+    case 'image':
+      return 'Image notes'
+    case 'pdf':
+      return 'PDF notes'
+    case 'powerpoint':
+      return 'PowerPoint notes'
+    case 'text':
+    default:
+      return 'Text notes'
+  }
+}
+
+const getSourceOptionDescription = (value: SourceInputType) => {
+  switch (value) {
+    case 'image':
+      return 'Upload screenshots, slides, or photos.'
+    case 'pdf':
+      return 'Extract selectable PDF text.'
+    case 'powerpoint':
+      return 'Extract PPTX slide text.'
+    case 'text':
+    default:
+      return 'Paste notes or upload text files.'
+  }
+}
+
+const appendSourceText = (current: string, next: string) =>
+  [current.trim(), next.trim()].filter(Boolean).join('\n\n---\n\n')
 
 const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
   objects
@@ -456,10 +510,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [sourceText, setSourceText] = useState('')
   const [sourceFormat, setSourceFormat] =
     useState<StudyPackSourceFormat>('text')
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<
+    Array<{ name: string; url: string }>
+  >([])
+  const [extractedImageCount, setExtractedImageCount] = useState(0)
   const [imageTextExtracted, setImageTextExtracted] = useState(false)
   const [isExtractingImage, setIsExtractingImage] = useState(false)
+  const [isExtractingDocument, setIsExtractingDocument] = useState(false)
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [aiProgressLabel, setAiProgressLabel] = useState('')
   const [aiGenerationProgress, setAiGenerationProgress] = useState(0)
@@ -525,26 +583,33 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }, [aiProvider, geminiProgress, isGeneratingAi])
 
   useEffect(() => {
-    if (!imageFile) {
-      setImagePreviewUrl('')
+    if (imageFiles.length === 0) {
+      setImagePreviewUrls([])
       return undefined
     }
 
-    const previewUrl = URL.createObjectURL(imageFile)
-    setImagePreviewUrl(previewUrl)
+    const previewUrls = imageFiles.map((file) => ({
+      name: file.name,
+      url: URL.createObjectURL(file),
+    }))
+    setImagePreviewUrls(previewUrls)
 
-    return () => URL.revokeObjectURL(previewUrl)
-  }, [imageFile])
+    return () => {
+      previewUrls.forEach(({ url }) => URL.revokeObjectURL(url))
+    }
+  }, [imageFiles])
 
   const reset = () => {
     setStep('source')
     setSourceInputType('text')
     setSourceText('')
     setSourceFormat('text')
-    setImageFile(null)
-    setImagePreviewUrl('')
+    setImageFiles([])
+    setImagePreviewUrls([])
+    setExtractedImageCount(0)
     setImageTextExtracted(false)
     setIsExtractingImage(false)
+    setIsExtractingDocument(false)
     setIsGeneratingAi(false)
     setAiProgressLabel('')
     setAiGenerationProgress(0)
@@ -582,24 +647,30 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setSourceInputType(value)
     setSourceText('')
     setSourceFormat('text')
-    setImageFile(null)
+    setImageFiles([])
+    setExtractedImageCount(0)
     setImageTextExtracted(false)
     setOcrProgress(0)
     setOcrStatus('')
     setError('')
   }
 
-  const selectImageFile = (file: File) => {
-    if (!isSupportedImageFile(file)) {
+  const selectImageFiles = (files: File[]) => {
+    const unsupportedFile = files.find((file) => !isSupportedImageFile(file))
+    if (unsupportedFile) {
       setError('Use a PNG, JPG, WebP, GIF, BMP, or PBM image.')
-      setImageFile(null)
       setImageTextExtracted(false)
       return
     }
 
-    setImageFile(file)
-    setPackTitle(getFileTitle(file))
-    setSourceText('')
+    setImageFiles((current) => [...current, ...files])
+    setPackTitle((currentTitle) =>
+      currentTitle === 'Notes Dashboard' && files.length > 0
+        ? files.length === 1
+          ? getFileTitle(files[0])
+          : `${getFileTitle(files[0])} Dashboard`
+        : currentTitle,
+    )
     setImageTextExtracted(false)
     setOcrProgress(0)
     setOcrStatus('')
@@ -758,8 +829,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const extractImageNotes = async () => {
-    if (!imageFile) {
-      setError('Add an image before extracting notes.')
+    if (imageFiles.length === 0) {
+      setError('Add one or more images before extracting notes.')
       return
     }
 
@@ -796,45 +867,67 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           )
         }, 700)
       }
-      let text = ''
-      if (aiProvider === 'gemini') {
-        text = await extractRawNotesWithAi({
-          apiToken: credentials.apiToken,
-          model: credentials.model,
-          image: imageFile,
-        })
-      } else if (aiProvider === 'local') {
-        try {
-          setOcrStatus('Extracting notes with Google Local AI')
-          text = await extractNotesFromImageWithLocalLanguageModel(imageFile, {
-            timeoutMs: 90 * 1000,
-            onProgress: (progress) => {
-              setOcrProgress(progress)
-              setOcrStatus(`Downloading local model ${progress}%`)
-            },
+      const pendingImageFiles = imageFiles.slice(extractedImageCount)
+      if (pendingImageFiles.length === 0) {
+        setImageTextExtracted(Boolean(sourceText.trim()))
+        return
+      }
+      const extractedTexts: string[] = []
+      for (let index = 0; index < pendingImageFiles.length; index += 1) {
+        const imageFile = pendingImageFiles[index]
+        const imageNumber = extractedImageCount + index + 1
+        setOcrStatus(
+          pendingImageFiles.length > 1 || imageFiles.length > 1
+            ? `Extracting ${imageFile.name} (${imageNumber}/${imageFiles.length})`
+            : ocrStatus,
+        )
+        let text = ''
+        if (aiProvider === 'gemini') {
+          text = await extractRawNotesWithAi({
+            apiToken: credentials.apiToken,
+            model: credentials.model,
+            image: imageFile,
           })
-        } catch {
-          setOcrStatus('Local AI image input unavailable; using OCR')
+        } else if (aiProvider === 'local') {
+          try {
+            setOcrStatus('Extracting notes with Google Local AI')
+            text = await extractNotesFromImageWithLocalLanguageModel(imageFile, {
+              timeoutMs: 90 * 1000,
+              onProgress: (progress) => {
+                setOcrProgress(progress)
+                setOcrStatus(`Downloading local model ${progress}%`)
+              },
+            })
+          } catch {
+            setOcrStatus('Local AI image input unavailable; using OCR')
+            text = await extractRawNotesFromImage(imageFile, (progress) => {
+              setOcrProgress(Math.round(progress.progress * 100))
+              setOcrStatus(progress.status)
+            })
+          }
+        } else {
           text = await extractRawNotesFromImage(imageFile, (progress) => {
             setOcrProgress(Math.round(progress.progress * 100))
             setOcrStatus(progress.status)
           })
         }
-      } else {
-        text = await extractRawNotesFromImage(imageFile, (progress) => {
-          setOcrProgress(Math.round(progress.progress * 100))
-          setOcrStatus(progress.status)
-        })
+
+        if (text.trim()) {
+          extractedTexts.push(`# ${getFileTitle(imageFile)}\n\n${text.trim()}`)
+        }
       }
 
-      if (!text.trim()) {
+      if (extractedTexts.length === 0) {
         setSourceText('')
         setImageTextExtracted(false)
-        setError('No text was detected in this image.')
+        setError('No text was detected in these images.')
         return
       }
 
-      setSourceText(text)
+      setSourceText((current) =>
+        appendSourceText(current, extractedTexts.join('\n\n---\n\n')),
+      )
+      setExtractedImageCount(imageFiles.length)
       setImageTextExtracted(true)
       setOcrProgress(100)
       setOcrStatus(
@@ -907,35 +1000,173 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const text = fileTexts
       .map(({ name, text }) => `# ${getFileTitle({ name } as File)}\n\n${text}`)
       .join('\n\n---\n\n')
-    setSourceText(text)
-    setPackTitle(
-      files.length === 1
-        ? getFileTitle(files[0])
-        : `${getFileTitle(files[0])} Dashboard`,
+    setSourceText((current) => appendSourceText(current, text))
+    setPackTitle((currentTitle) =>
+      currentTitle === 'Notes Dashboard'
+        ? files.length === 1
+          ? getFileTitle(files[0])
+          : `${getFileTitle(files[0])} Dashboard`
+        : currentTitle,
     )
     setSourceFormat('text')
     setError('')
     event.target.value = ''
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
+  const handlePdfUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) {
       return
     }
 
-    selectImageFile(file)
+    const unsupportedFile = files.find(
+      (file) => !file.name.toLowerCase().endsWith('.pdf'),
+    )
+    if (unsupportedFile) {
+      setError('Use PDF files in the PDF tab.')
+      event.target.value = ''
+      return
+    }
+
+    setIsExtractingDocument(true)
+    setOcrStatus('Extracting PDF text')
+    setError('')
+
+    try {
+      const extracted = await Promise.all(
+        files.map((file) => extractTextFromPdf(file)),
+      )
+      const text = extracted
+        .map((item) => item.text)
+        .filter(Boolean)
+        .join('\n\n---\n\n')
+      const warnings = extracted.flatMap((item) => item.warnings)
+
+      if (!text.trim()) {
+        setError(
+          'No selectable PDF text was found. Scanned PDFs need OCR in a later iteration.',
+        )
+        return
+      }
+
+      setSourceText((current) => appendSourceText(current, text))
+      setPackTitle((currentTitle) =>
+        currentTitle === 'Notes Dashboard'
+          ? files.length === 1
+            ? getFileTitle(files[0])
+            : `${getFileTitle(files[0])} Dashboard`
+          : currentTitle,
+      )
+      setSourceFormat('text')
+      setError(warnings[0] || '')
+    } catch {
+      setError('Could not extract text from this PDF.')
+    } finally {
+      setIsExtractingDocument(false)
+      setOcrStatus('')
+      event.target.value = ''
+    }
+  }
+
+  const handlePowerPointUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) {
+      return
+    }
+
+    const legacyFile = files.find((file) =>
+      file.name.toLowerCase().endsWith('.ppt'),
+    )
+    if (legacyFile) {
+      setError('Legacy .ppt files are not supported. Export to .pptx or PDF.')
+      event.target.value = ''
+      return
+    }
+
+    const unsupportedFile = files.find(
+      (file) => !file.name.toLowerCase().endsWith('.pptx'),
+    )
+    if (unsupportedFile) {
+      setError('Use .pptx files in the PowerPoint tab.')
+      event.target.value = ''
+      return
+    }
+
+    setIsExtractingDocument(true)
+    setOcrStatus('Extracting PowerPoint text')
+    setError('')
+
+    try {
+      const extracted = await Promise.all(
+        files.map((file) => extractTextFromPptx(file)),
+      )
+      const text = extracted
+        .map((item) => item.text)
+        .filter(Boolean)
+        .join('\n\n---\n\n')
+      const warnings = extracted.flatMap((item) => item.warnings)
+
+      if (!text.trim()) {
+        setError('No extractable slide text was found.')
+        return
+      }
+
+      setSourceText((current) => appendSourceText(current, text))
+      setPackTitle((currentTitle) =>
+        currentTitle === 'Notes Dashboard'
+          ? files.length === 1
+            ? getFileTitle(files[0])
+            : `${getFileTitle(files[0])} Dashboard`
+          : currentTitle,
+      )
+      setSourceFormat('text')
+      setError(warnings[0] || '')
+    } catch {
+      setError('Could not extract text from this PowerPoint file.')
+    } finally {
+      setIsExtractingDocument(false)
+      setOcrStatus('')
+      event.target.value = ''
+    }
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) {
+      return
+    }
+
+    selectImageFiles(files)
     event.target.value = ''
   }
 
   const handleImageDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    const file = event.dataTransfer.files?.[0]
-    if (!file) {
+    const files = Array.from(event.dataTransfer.files || [])
+    if (files.length === 0) {
       return
     }
 
-    selectImageFile(file)
+    selectImageFiles(files)
+  }
+
+  const removeImageFile = (indexToRemove: number) => {
+    setImageFiles((current) =>
+      current.filter((_, index) => index !== indexToRemove),
+    )
+    setExtractedImageCount((current) =>
+      indexToRemove < current ? Math.max(0, current - 1) : current,
+    )
+    setImageTextExtracted((current) =>
+      indexToRemove >= extractedImageCount ? false : current,
+    )
+    setOcrProgress(0)
+    setOcrStatus('')
+    setError('')
   }
 
   const createPack = () => {
@@ -1061,8 +1292,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               {sourceOptions.map((option) => {
                 const selected = sourceInputType === option.value
-                const Icon =
-                  option.value === 'image' ? ImageIcon : AutoStoriesIcon
+                const Icon = getSourceOptionIcon(option.value)
                 return (
                   <Paper
                     key={option.value}
@@ -1088,14 +1318,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       <Icon color={selected ? 'primary' : 'action'} />
                       <Box>
                         <Typography variant="subtitle2" fontWeight={900}>
-                          {option.value === 'text'
-                            ? 'Text notes'
-                            : 'Image notes'}
+                          {getSourceOptionTitle(option.value)}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {option.value === 'text'
-                            ? 'Paste notes or upload text files.'
-                            : 'Upload a screenshot, slide, or photo.'}
+                          {getSourceOptionDescription(option.value)}
                         </Typography>
                       </Box>
                     </Stack>
@@ -1104,7 +1330,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               })}
             </Stack>
 
-            {sourceInputType === 'text' ? (
+            {sourceInputType === 'text' && (
               <Stack spacing={1.25}>
                 <TextField
                   label="Paste notes"
@@ -1126,22 +1352,23 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     startIcon={<UploadFileIcon />}
                     sx={{ alignSelf: { sm: 'flex-start' } }}
                   >
-                    Upload text file
+                    Upload text files
                     <input
                       hidden
                       type="file"
                       multiple
-                      accept=".md,.txt,.csv,.pdf,text/markdown,text/plain,text/csv,application/pdf"
+                      accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
                       onChange={handleFileUpload}
                     />
                   </Button>
                   <Typography variant="caption" color="text.secondary">
-                    Supports .md, .txt, and .csv. For PDFs, paste exported text
-                    for now.
+                    Supports multiple .md, .txt, and .csv files.
                   </Typography>
                 </Stack>
               </Stack>
-            ) : (
+            )}
+
+            {sourceInputType === 'image' && (
               <Stack spacing={1.5}>
                 <Paper
                   elevation={0}
@@ -1150,7 +1377,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   sx={{
                     p: 3,
                     border: 1,
-                    borderColor: imageFile ? 'primary.main' : 'divider',
+                    borderColor:
+                      imageFiles.length > 0 ? 'primary.main' : 'divider',
                     bgcolor: 'background.paper',
                     minHeight: 220,
                     display: 'flex',
@@ -1160,24 +1388,71 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   }}
                 >
                   <Stack spacing={1.5} alignItems="center" textAlign="center">
-                    {imagePreviewUrl ? (
-                      <Box
-                        component="img"
-                        src={imagePreviewUrl}
-                        alt={imageFile?.name || 'Selected study notes image'}
-                        sx={{
-                          maxWidth: '100%',
-                          maxHeight: 180,
-                          borderRadius: 1,
-                          objectFit: 'contain',
-                        }}
-                      />
+                    {imagePreviewUrls.length > 0 ? (
+                      <Stack
+                        direction="row"
+                        gap={1}
+                        flexWrap="wrap"
+                        justifyContent="center"
+                      >
+                        {imagePreviewUrls.map((preview, index) => (
+                          <Paper
+                            key={`${preview.name}-${preview.url}`}
+                            elevation={0}
+                            sx={{
+                              width: 116,
+                              p: 0.75,
+                              border: 1,
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              position: 'relative',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={preview.url}
+                              alt={preview.name}
+                              sx={{
+                                width: '100%',
+                                height: 72,
+                                borderRadius: 0.75,
+                                objectFit: 'cover',
+                              }}
+                            />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              noWrap
+                              sx={{ display: 'block', mt: 0.5 }}
+                            >
+                              {preview.name}
+                            </Typography>
+                            <IconButton
+                              aria-label={`Remove ${preview.name}`}
+                              size="small"
+                              onClick={() => removeImageFile(index)}
+                              sx={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                bgcolor: 'background.paper',
+                              }}
+                            >
+                              <DeleteIcon fontSize="inherit" />
+                            </IconButton>
+                          </Paper>
+                        ))}
+                      </Stack>
                     ) : (
                       <ImageIcon color="primary" sx={{ fontSize: 48 }} />
                     )}
                     <Box>
                       <Typography variant="subtitle1" fontWeight={900}>
-                        {imageFile?.name || 'Drop an image here'}
+                        {imageFiles.length > 0
+                          ? `${imageFiles.length} image${
+                              imageFiles.length === 1 ? '' : 's'
+                            } selected`
+                          : 'Drop images here'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         PNG, JPG, WebP, GIF, BMP, or PBM.
@@ -1188,10 +1463,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
                     >
-                      Select image
+                      Select images
                       <input
                         hidden
                         type="file"
+                        multiple
                         accept={imageAcceptValue}
                         onChange={handleImageUpload}
                       />
@@ -1236,6 +1512,134 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   minRows={8}
                   disabled={isExtractingImage}
                   placeholder="Extracted notes will appear here. You can edit them before creating the dashboard."
+                />
+              </Stack>
+            )}
+
+            {sourceInputType === 'pdf' && (
+              <Stack spacing={1.25}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    border: 1,
+                    borderColor: sourceText ? 'primary.main' : 'divider',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Stack spacing={1.5} alignItems="center" textAlign="center">
+                    <PictureAsPdfIcon color="primary" sx={{ fontSize: 48 }} />
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={900}>
+                        Upload PDF notes
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Selectable text only. Scanned pages need OCR later.
+                      </Typography>
+                    </Box>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                      disabled={isExtractingDocument}
+                    >
+                      Select PDFs
+                      <input
+                        hidden
+                        type="file"
+                        multiple
+                        accept=".pdf,application/pdf"
+                        onChange={handlePdfUpload}
+                      />
+                    </Button>
+                  </Stack>
+                </Paper>
+                {isExtractingDocument && (
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 0.75 }}
+                    >
+                      {ocrStatus || 'Extracting document text'}
+                    </Typography>
+                    <LinearProgress />
+                  </Box>
+                )}
+                <TextField
+                  label="Extracted notes"
+                  value={sourceText}
+                  onChange={(event) => setSourceText(event.target.value)}
+                  fullWidth
+                  multiline
+                  minRows={10}
+                  disabled={isExtractingDocument}
+                  placeholder="Extracted PDF notes will appear here. You can edit them before creating the dashboard."
+                />
+              </Stack>
+            )}
+
+            {sourceInputType === 'powerpoint' && (
+              <Stack spacing={1.25}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    border: 1,
+                    borderColor: sourceText ? 'primary.main' : 'divider',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Stack spacing={1.5} alignItems="center" textAlign="center">
+                    <SlideshowIcon color="primary" sx={{ fontSize: 48 }} />
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={900}>
+                        Upload PowerPoint notes
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Supports .pptx slide text and speaker notes.
+                      </Typography>
+                    </Box>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                      disabled={isExtractingDocument}
+                    >
+                      Select PPTX files
+                      <input
+                        hidden
+                        type="file"
+                        multiple
+                        accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        onChange={handlePowerPointUpload}
+                      />
+                    </Button>
+                  </Stack>
+                </Paper>
+                {isExtractingDocument && (
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 0.75 }}
+                    >
+                      {ocrStatus || 'Extracting document text'}
+                    </Typography>
+                    <LinearProgress />
+                  </Box>
+                )}
+                <TextField
+                  label="Extracted notes"
+                  value={sourceText}
+                  onChange={(event) => setSourceText(event.target.value)}
+                  fullWidth
+                  multiline
+                  minRows={10}
+                  disabled={isExtractingDocument}
+                  placeholder="Extracted PowerPoint notes will appear here. You can edit them before creating the dashboard."
                 />
               </Stack>
             )}
@@ -1415,7 +1819,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           <Button
             variant="contained"
             onClick={parseCurrentSource}
-            disabled={isExtractingImage || isGeneratingAi}
+            disabled={isExtractingImage || isGeneratingAi || isExtractingDocument}
           >
             {isGeneratingAi
               ? 'Creating...'

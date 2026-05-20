@@ -16,6 +16,10 @@ import {
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
 } from '../../../../src/studyPack/ai'
+import {
+  extractTextFromPdf,
+  extractTextFromPptx,
+} from '../../../../src/studyPack/documentExtraction'
 
 vi.mock('../../../../src/studyPack/imageOcr', () => ({
   extractRawNotesFromImage: vi.fn(),
@@ -36,6 +40,11 @@ vi.mock('../../../../src/studyPack/ai', () => ({
     model: 'gemini-test',
     tokenSource: 'none',
   })),
+}))
+
+vi.mock('../../../../src/studyPack/documentExtraction', () => ({
+  extractTextFromPdf: vi.fn(),
+  extractTextFromPptx: vi.fn(),
 }))
 
 vi.mock('../../../../src/studyPack', async () => {
@@ -184,6 +193,14 @@ describe('CreateStudyPackModal create from notes flow', () => {
     vi.mocked(extractRawNotesFromImage).mockResolvedValue(
       'Quiz:: What is OCR? | Image text extraction',
     )
+    vi.mocked(extractTextFromPdf).mockResolvedValue({
+      text: '# PDF Notes\n\n## Page 1\n\nQuiz:: PDF? | Selectable text',
+      warnings: [],
+    })
+    vi.mocked(extractTextFromPptx).mockResolvedValue({
+      text: '# Slide Notes\n\n## Slide 1\n\nQuiz:: PPTX? | Slide text',
+      warnings: [],
+    })
     URL.createObjectURL = vi.fn(() => 'blob:study-notes')
     URL.revokeObjectURL = vi.fn()
   })
@@ -203,6 +220,29 @@ describe('CreateStudyPackModal create from notes flow', () => {
       'input[type="file"][accept*=".png"]',
     ) as HTMLInputElement
 
+  const getTextFileInput = () =>
+    document.querySelector(
+      'input[type="file"][accept*=".txt"]',
+    ) as HTMLInputElement
+
+  const getPdfFileInput = () =>
+    document.querySelector(
+      'input[type="file"][accept*=".pdf"]',
+    ) as HTMLInputElement
+
+  const getPowerPointFileInput = () =>
+    document.querySelector(
+      'input[type="file"][accept*=".pptx"]',
+    ) as HTMLInputElement
+
+  const makeTextFile = (contents: string, name: string, type: string) => {
+    const file = new File([contents], name, { type })
+    Object.defineProperty(file, 'text', {
+      value: vi.fn().mockResolvedValue(contents),
+    })
+    return file
+  }
+
   it('presents a simple Create from notes source choice and no AI Tutor controls', () => {
     render(
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
@@ -214,6 +254,12 @@ describe('CreateStudyPackModal create from notes flow', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /image notes/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /pdf notes/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /powerpoint notes/i }),
     ).toBeInTheDocument()
     expect(screen.queryByText(/AI Tutor/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Target amount/i)).not.toBeInTheDocument()
@@ -301,6 +347,46 @@ describe('CreateStudyPackModal create from notes flow', () => {
     ).toBeInTheDocument()
   })
 
+  it('combines multiple uploaded text files', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    const first = makeTextFile(
+      'Quiz:: One? | First answer',
+      'one.md',
+      'text/markdown',
+    )
+    const second = makeTextFile(
+      'Quiz:: Two? | Second answer',
+      'two.txt',
+      'text/plain',
+    )
+    fireEvent.change(getTextFileInput(), {
+      target: { files: [first, second] },
+    })
+
+    expect(await screen.findByDisplayValue(/# one/i)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(/# one[\s\S]*# two/i)).toBeInTheDocument()
+  })
+
+  it('appends text files uploaded in separate batches', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    const first = makeTextFile('Quiz:: One? | A', 'one.md', 'text/markdown')
+    const second = makeTextFile('Quiz:: Two? | B', 'two.md', 'text/markdown')
+    fireEvent.change(getTextFileInput(), { target: { files: [first] } })
+    await screen.findByDisplayValue(/# one/i)
+
+    fireEvent.change(getTextFileInput(), { target: { files: [second] } })
+
+    expect(
+      await screen.findByDisplayValue(/# one[\s\S]*---[\s\S]*# two/i),
+    ).toBeInTheDocument()
+  })
+
   it('shows Gemini elapsed and estimated Create from notes timing capped at 99%', async () => {
     vi.useFakeTimers()
     vi.mocked(readStudyPackAiSettings).mockReturnValue({
@@ -345,7 +431,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     selectImageSource()
-    expect(screen.getByText(/drop an image here/i)).toBeInTheDocument()
+    expect(screen.getByText(/drop images here/i)).toBeInTheDocument()
 
     const image = new File(['image-bytes'], 'lecture.png', {
       type: 'image/png',
@@ -361,10 +447,61 @@ describe('CreateStudyPackModal create from notes flow', () => {
     })
     expect(parseStudyPack).not.toHaveBeenCalled()
     expect(
-      await screen.findByDisplayValue(
-        'Quiz:: What is OCR? | Image text extraction',
-      ),
+      await screen.findByDisplayValue(/# lecture[\s\S]*Quiz:: What is OCR/i),
     ).toBeInTheDocument()
+  })
+
+  it('extracts multiple images and allows removing thumbnails', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    selectImageSource()
+    const first = new File(['first-image'], 'first.png', {
+      type: 'image/png',
+    })
+    const second = new File(['second-image'], 'second.png', {
+      type: 'image/png',
+    })
+    fireEvent.change(getImageFileInput(), {
+      target: { files: [first, second] },
+    })
+
+    expect(screen.getByAltText('first.png')).toBeInTheDocument()
+    expect(screen.getByAltText('second.png')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /remove first.png/i }))
+    fireEvent.click(screen.getByRole('button', { name: /extract notes/i }))
+
+    await waitFor(() => {
+      expect(extractRawNotesFromImage).toHaveBeenCalledTimes(1)
+      expect(extractRawNotesFromImage).toHaveBeenCalledWith(
+        second,
+        expect.any(Function),
+      )
+    })
+    expect(
+      await screen.findByDisplayValue(/# second[\s\S]*Quiz:: What is OCR/i),
+    ).toBeInTheDocument()
+  })
+
+  it('accumulates images selected in separate batches', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    selectImageSource()
+    const first = new File(['first-image'], 'first.png', {
+      type: 'image/png',
+    })
+    const second = new File(['second-image'], 'second.png', {
+      type: 'image/png',
+    })
+    fireEvent.change(getImageFileInput(), { target: { files: [first] } })
+    fireEvent.change(getImageFileInput(), { target: { files: [second] } })
+
+    expect(screen.getByAltText('first.png')).toBeInTheDocument()
+    expect(screen.getByAltText('second.png')).toBeInTheDocument()
   })
 
   it('uses Gemini image extraction when configured', async () => {
@@ -402,7 +539,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     })
     expect(extractRawNotesFromImage).not.toHaveBeenCalled()
     expect(
-      await screen.findByDisplayValue('AI extracted handwritten notes'),
+      await screen.findByDisplayValue(/# handwritten[\s\S]*AI extracted/i),
     ).toBeInTheDocument()
   })
 
@@ -421,6 +558,131 @@ describe('CreateStudyPackModal create from notes flow', () => {
       await screen.findByText(/use a png, jpg, webp, gif, bmp, or pbm image/i),
     ).toBeInTheDocument()
     expect(extractRawNotesFromImage).not.toHaveBeenCalled()
+  })
+
+  it('extracts selectable text from multiple PDFs', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /pdf notes/i }))
+    const first = new File(['pdf-1'], 'chapter-one.pdf', {
+      type: 'application/pdf',
+    })
+    const second = new File(['pdf-2'], 'chapter-two.pdf', {
+      type: 'application/pdf',
+    })
+    vi.mocked(extractTextFromPdf)
+      .mockResolvedValueOnce({
+        text: '# Chapter One\n\n## Page 1\n\nQuiz:: One? | A',
+        warnings: [],
+      })
+      .mockResolvedValueOnce({
+        text: '# Chapter Two\n\n## Page 1\n\nQuiz:: Two? | B',
+        warnings: [],
+      })
+
+    fireEvent.change(getPdfFileInput(), {
+      target: { files: [first, second] },
+    })
+
+    await waitFor(() => {
+      expect(extractTextFromPdf).toHaveBeenCalledWith(first)
+      expect(extractTextFromPdf).toHaveBeenCalledWith(second)
+    })
+    expect(
+      await screen.findByDisplayValue(/# Chapter One[\s\S]*# Chapter Two/i),
+    ).toBeInTheDocument()
+  })
+
+  it('appends PDFs uploaded in separate batches', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /pdf notes/i }))
+    const first = new File(['pdf-1'], 'one.pdf', { type: 'application/pdf' })
+    const second = new File(['pdf-2'], 'two.pdf', { type: 'application/pdf' })
+    vi.mocked(extractTextFromPdf)
+      .mockResolvedValueOnce({
+        text: '# One\n\n## Page 1\n\nQuiz:: One? | A',
+        warnings: [],
+      })
+      .mockResolvedValueOnce({
+        text: '# Two\n\n## Page 1\n\nQuiz:: Two? | B',
+        warnings: [],
+      })
+
+    fireEvent.change(getPdfFileInput(), { target: { files: [first] } })
+    await screen.findByDisplayValue(/# One/i)
+    fireEvent.change(getPdfFileInput(), { target: { files: [second] } })
+
+    expect(
+      await screen.findByDisplayValue(/# One[\s\S]*---[\s\S]*# Two/i),
+    ).toBeInTheDocument()
+  })
+
+  it('extracts slide text from PPTX and rejects legacy PPT', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /powerpoint notes/i }))
+    const ppt = new File(['legacy'], 'lecture.ppt', {
+      type: 'application/vnd.ms-powerpoint',
+    })
+    fireEvent.change(getPowerPointFileInput(), { target: { files: [ppt] } })
+
+    expect(
+      await screen.findByText(/legacy \.ppt files are not supported/i),
+    ).toBeInTheDocument()
+
+    const pptx = new File(['pptx'], 'lecture.pptx', {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    })
+    fireEvent.change(getPowerPointFileInput(), { target: { files: [pptx] } })
+
+    await waitFor(() => {
+      expect(extractTextFromPptx).toHaveBeenCalledWith(pptx)
+    })
+    expect(
+      await screen.findByDisplayValue(/# Slide Notes[\s\S]*Quiz:: PPTX/i),
+    ).toBeInTheDocument()
+  })
+
+  it('appends PPTX files uploaded in separate batches', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /powerpoint notes/i }))
+    const first = new File(['pptx-1'], 'one.pptx', {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    })
+    const second = new File(['pptx-2'], 'two.pptx', {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    })
+    vi.mocked(extractTextFromPptx)
+      .mockResolvedValueOnce({
+        text: '# One Slides\n\n## Slide 1\n\nQuiz:: One? | A',
+        warnings: [],
+      })
+      .mockResolvedValueOnce({
+        text: '# Two Slides\n\n## Slide 1\n\nQuiz:: Two? | B',
+        warnings: [],
+      })
+
+    fireEvent.change(getPowerPointFileInput(), { target: { files: [first] } })
+    await screen.findByDisplayValue(/# One Slides/i)
+    fireEvent.change(getPowerPointFileInput(), {
+      target: { files: [second] },
+    })
+
+    expect(
+      await screen.findByDisplayValue(
+        /# One Slides[\s\S]*---[\s\S]*# Two Slides/i,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('previews CSV sources as a source table dashboard', async () => {
