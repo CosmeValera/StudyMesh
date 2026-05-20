@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Command Wrapper
+
+Always prefix shell commands with `rtk`. For PowerShell built-ins or syntax that are not standalone executables, run them through PowerShell under the wrapper, for example `rtk powershell -NoProfile -Command "Get-ChildItem -Force"`.
+
 ## Project Structure & Module Organization
 
 StudyMesh is an npm/Turborepo monorepo. Application code lives in `apps/`: `apps/StudyMesh` is the main dashboard builder, `apps/control-flow` and `apps/system-lens` are federated React apps (not used). Shared packages live in `packages/` (not used). Theme and PrimeReact SCSS sources are under `style/`. Documentation images and tutorials are in `readme_docs/`. Git hook utilities are in `tools/git-hooks/`.
