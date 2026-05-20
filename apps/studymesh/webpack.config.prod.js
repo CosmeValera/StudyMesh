@@ -104,6 +104,7 @@ module.exports = (_, argv) => ({
           noErrorOnMissing: true,
         },
         { from: 'public/logo.svg', to: './logo.svg', noErrorOnMissing: true },
+        { from: 'public/logo.png', to: './logo.png', noErrorOnMissing: true },
         { from: 'public/logo.ico', to: './logo.ico', noErrorOnMissing: true },
         {
           from: 'public/logo192.png',

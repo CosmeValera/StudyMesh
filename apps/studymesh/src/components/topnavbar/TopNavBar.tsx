@@ -31,7 +31,6 @@ import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
 import RouteIcon from '@mui/icons-material/Route'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
-import { ReactComponent as Logo } from '../../../public/logo.svg'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
 import {
   OPEN_STUDY_PATH_EVENT,
@@ -414,10 +413,16 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               px: isPhone ? 0.5 : 0,
             }}
           >
-            <Logo
-              height={isPhone ? '28px' : '32px'}
-              width={isPhone ? '28px' : '32px'}
-              style={{ marginRight: isDesktop ? '12px' : '0' }}
+            <Box
+              component="img"
+              src="/logo.png"
+              alt=""
+              sx={{
+                width: isPhone ? 28 : 32,
+                height: isPhone ? 28 : 32,
+                display: 'block',
+                mr: isDesktop ? 1.5 : 0,
+              }}
             />
             {isDesktop && 'StudyMesh'}
           </Box>

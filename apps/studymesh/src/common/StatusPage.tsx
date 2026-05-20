@@ -1,6 +1,5 @@
 import React from 'react'
 import './status.scss'
-import { ReactComponent as Logo } from '../../public/logo.svg'
 
 interface ErrorMessageProps {
   icon: string
@@ -47,9 +46,14 @@ const LoadingMessage: React.FC<LoadingMessageProps> = ({
   height,
 }) => (
   <div className={`centered loader ${height}`}>
-    <Logo
-      height={componentLine ? '5hw' : '20dvh'}
-      width={componentLine ? '5vw' : '20vw'}
+    <img
+      src="/logo.png"
+      alt="StudyMesh logo"
+      style={{
+        height: componentLine ? '5vw' : '20dvh',
+        width: componentLine ? '5vw' : '20vw',
+        objectFit: 'contain',
+      }}
     />
     {componentLine && (
       <p>

@@ -21,8 +21,6 @@ import SchoolIcon from '@mui/icons-material/School'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import RouteIcon from '@mui/icons-material/Route'
 
-import { ReactComponent as Logo } from '../../../public/logo.svg'
-
 const workflow = [
   {
     title: 'Create a study path',
@@ -136,7 +134,12 @@ const StudyMeshLanding = () => {
           }}
         >
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <Logo height="36px" width="36px" />
+            <Box
+              component="img"
+              src="/logo.png"
+              alt="StudyMesh logo"
+              sx={{ width: 36, height: 36, display: 'block' }}
+            />
             <Typography variant="h6" fontWeight={800}>
               StudyMesh
             </Typography>

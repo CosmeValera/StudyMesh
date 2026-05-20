@@ -125,6 +125,11 @@ module.exports = (_, argv) => ({
     new CopyWebpackPlugin({
       patterns: [
         {
+          from: 'public/logo.png',
+          to: './logo.png',
+          noErrorOnMissing: true,
+        },
+        {
           from: 'public/config/widgets.json',
           to: './config/',
           noErrorOnMissing: true,
