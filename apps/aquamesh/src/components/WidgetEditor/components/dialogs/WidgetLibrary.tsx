@@ -22,7 +22,7 @@ import {
   Grid,
   Fade,
   CircularProgress,
-  useTheme,
+  Checkbox,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import WidgetsIcon from '@mui/icons-material/Widgets'
@@ -31,7 +31,6 @@ import SortIcon from '@mui/icons-material/Sort'
 import CloseIcon from '@mui/icons-material/Close'
 import { CustomWidget } from '../../WidgetStorage'
 import DeleteConfirmationDialog from './DeleteConfirmationDialog'
-import useMediaQuery from '@mui/material/useMediaQuery'
 
 // Sorting options
 type SortOption =
@@ -70,12 +69,10 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null)
-  // Delete all confirmation state
-  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false)
-
-  // Phone breakpoint detection for responsive sizing
-  const theme = useTheme()
-  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkDeleteSelectedIds, setBulkDeleteSelectedIds] = useState<string[]>(
+    [],
+  )
 
   // Clear search when dialog opens/closes
   useEffect(() => {
@@ -132,18 +129,50 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
 
   // Handle delete all button click
   const handleDeleteAllClick = () => {
-    setDeleteAllConfirmOpen(true)
+    setBulkDeleteSelectedIds(widgets.map((widget) => widget.id))
+    setBulkDeleteOpen(true)
   }
 
-  // Confirm deletion of all widgets
-  const confirmDeleteAll = () => {
-    sortedWidgets.forEach((widget) => onDelete(widget.id))
-    setDeleteAllConfirmOpen(false)
+  const confirmBulkDelete = () => {
+    bulkDeleteSelectedIds.forEach((widgetId) => onDelete(widgetId))
+    setBulkDeleteOpen(false)
+    setBulkDeleteSelectedIds([])
   }
 
-  // Cancel deletion of all widgets
-  const cancelDeleteAll = () => {
-    setDeleteAllConfirmOpen(false)
+  const cancelBulkDelete = () => {
+    setBulkDeleteOpen(false)
+    setBulkDeleteSelectedIds([])
+  }
+
+  const toggleBulkDeleteWidget = (widgetId: string) => {
+    setBulkDeleteSelectedIds((selectedIds) =>
+      selectedIds.includes(widgetId)
+        ? selectedIds.filter((id) => id !== widgetId)
+        : [...selectedIds, widgetId],
+    )
+  }
+
+  const setBulkDeleteCategorySelected = (
+    categoryName: string,
+    selected: boolean,
+  ) => {
+    const categoryWidgetIds = widgets
+      .filter((widget) => (widget.category || 'Other') === categoryName)
+      .map((widget) => widget.id)
+
+    setBulkDeleteSelectedIds((selectedIds) => {
+      const nextIds = new Set(selectedIds)
+
+      categoryWidgetIds.forEach((id) => {
+        if (selected) {
+          nextIds.add(id)
+        } else {
+          nextIds.delete(id)
+        }
+      })
+
+      return Array.from(nextIds)
+    })
   }
 
   // Handle search input change
@@ -191,6 +220,24 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
       }
     })
   }, [filteredWidgets, sortBy])
+
+  const bulkDeleteGroups = useMemo(() => {
+    const groups = new Map<string, CustomWidget[]>()
+
+    widgets.forEach((widget) => {
+      const categoryName = widget.category || 'Other'
+      groups.set(categoryName, [...(groups.get(categoryName) || []), widget])
+    })
+
+    return Array.from(groups.entries())
+      .map(([categoryName, categoryWidgets]) => ({
+        categoryName,
+        widgets: [...categoryWidgets].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        ),
+      }))
+      .sort((a, b) => a.categoryName.localeCompare(b.categoryName))
+  }, [widgets])
 
   // Format date to human-readable format
   const formatDate = (dateString: string): string => {
@@ -391,7 +438,7 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
                   size="small"
                   color="error"
                   onClick={handleDeleteAllClick}
-                  disabled={isLoading}
+                  disabled={isLoading || widgets.length === 0}
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -627,18 +674,164 @@ const WidgetManagementModal: React.FC<WidgetManagementModalProps> = ({
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />
-      {/* Delete All Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteAllConfirmOpen}
-        title="Delete All Saved Widgets"
-        content={
-          sortedWidgets.length === 1
-            ? 'Are you sure you want to delete this saved widget?'
-            : `Are you sure you want to delete all ${sortedWidgets.length} saved widgets? \n Export your widgets first if you need a backup.`
-        }
-        onConfirm={confirmDeleteAll}
-        onCancel={cancelDeleteAll}
-      />
+      <Dialog
+        open={bulkDeleteOpen}
+        onClose={cancelBulkDelete}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden',
+            bgcolor: 'background.paper',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <DeleteIcon color="error" />
+            <Box>
+              <Typography variant="h6" fontWeight={800}>
+                Delete All Saved Widgets
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Select the exact widgets to delete.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'background.default', p: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {bulkDeleteSelectedIds.length} of {widgets.length} widget
+            {widgets.length === 1 ? '' : 's'} selected.
+          </Typography>
+          <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
+            {bulkDeleteGroups.map(({ categoryName, widgets }) => {
+              const categoryIds = widgets.map((widget) => widget.id)
+              const selectedInCategory = categoryIds.filter((id) =>
+                bulkDeleteSelectedIds.includes(id),
+              )
+              const categoryChecked =
+                selectedInCategory.length === widgets.length
+              const categoryIndeterminate =
+                selectedInCategory.length > 0 &&
+                selectedInCategory.length < widgets.length
+
+              return (
+                <Paper
+                  key={categoryName}
+                  elevation={0}
+                  sx={{
+                    mb: 1.5,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1.5,
+                    overflow: 'hidden',
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 1,
+                      bgcolor: 'rgba(0, 124, 102, 0.08)',
+                    }}
+                  >
+                    <Checkbox
+                      checked={categoryChecked}
+                      indeterminate={categoryIndeterminate}
+                      onChange={(event) =>
+                        setBulkDeleteCategorySelected(
+                          categoryName,
+                          event.target.checked,
+                        )
+                      }
+                      inputProps={{
+                        'aria-label': `Select ${categoryName} category widgets`,
+                      }}
+                    />
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography fontWeight={800}>{categoryName}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {widgets.length} widget{widgets.length === 1 ? '' : 's'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {widgets.map((widget) => (
+                    <Box
+                      key={widget.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.5,
+                        py: 1,
+                        borderTop: 1,
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Checkbox
+                        checked={bulkDeleteSelectedIds.includes(widget.id)}
+                        onChange={() => toggleBulkDeleteWidget(widget.id)}
+                        inputProps={{
+                          'aria-label': `Select ${widget.name}`,
+                        }}
+                      />
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          variant="body2"
+                          fontWeight={700}
+                          sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {widget.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {widget.components.length} block
+                          {widget.components.length === 1 ? '' : 's'} · Updated{' '}
+                          {formatDate(widget.updatedAt)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Paper>
+              )
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions
+          sx={{
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
+            px: 2,
+            py: 1.5,
+          }}
+        >
+          <Button onClick={cancelBulkDelete}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={bulkDeleteSelectedIds.length === 0}
+            onClick={confirmBulkDelete}
+            startIcon={<DeleteIcon />}
+          >
+            Delete selected
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }

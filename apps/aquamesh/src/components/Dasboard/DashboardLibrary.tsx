@@ -27,6 +27,7 @@ import {
   Autocomplete,
   useTheme,
   useMediaQuery,
+  Checkbox,
 } from '@mui/material'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -134,7 +135,14 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
   const [dashboardToDelete, setDashboardToDelete] = useState<string | null>(
     null,
   )
-  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkDeleteTitle, setBulkDeleteTitle] = useState('Delete library items')
+  const [bulkDeleteCandidates, setBulkDeleteCandidates] = useState<
+    SavedDashboard[]
+  >([])
+  const [bulkDeleteSelectedIds, setBulkDeleteSelectedIds] = useState<string[]>(
+    [],
+  )
 
   // Access dashboards context
   const { addDashboard } = useDashboards()
@@ -372,31 +380,83 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
       return
     }
 
-    setDeleteAllConfirmOpen(true)
+    openBulkDeleteDialog('Delete all library items', dashboards)
   }
 
-  const confirmDeleteAllDashboards = () => {
+  const openBulkDeleteDialog = (
+    title: string,
+    candidates: SavedDashboard[],
+  ) => {
+    setBulkDeleteTitle(title)
+    setBulkDeleteCandidates(candidates)
+    setBulkDeleteSelectedIds(candidates.map((dashboard) => dashboard.id))
+    setBulkDeleteOpen(true)
+  }
+
+  const confirmBulkDeleteDashboards = () => {
     if (!isAdmin) {
       return
     }
 
     try {
-      setDashboards([])
-      setSearchTerm('')
-      setFolderFilter('')
-      setShowPublicOnly(false)
+      const selectedIds = new Set(bulkDeleteSelectedIds)
+      const updatedDashboards = dashboards.filter(
+        (dashboard) => !selectedIds.has(dashboard.id),
+      )
+
+      setDashboards(updatedDashboards)
       setMenuAnchorEl(null)
       setMenuDashboard(null)
-      localStorage.setItem('customDashboards', JSON.stringify([]))
+      localStorage.setItem(
+        'customDashboards',
+        JSON.stringify(updatedDashboards),
+      )
     } catch (error) {
-      console.error('Failed to delete all dashboards', error)
+      console.error('Failed to delete selected dashboards', error)
     } finally {
-      setDeleteAllConfirmOpen(false)
+      setBulkDeleteOpen(false)
+      setBulkDeleteCandidates([])
+      setBulkDeleteSelectedIds([])
     }
   }
 
-  const cancelDeleteAllDashboards = () => {
-    setDeleteAllConfirmOpen(false)
+  const cancelBulkDeleteDashboards = () => {
+    setBulkDeleteOpen(false)
+    setBulkDeleteCandidates([])
+    setBulkDeleteSelectedIds([])
+  }
+
+  const toggleBulkDeleteDashboard = (dashboardId: string) => {
+    setBulkDeleteSelectedIds((selectedIds) =>
+      selectedIds.includes(dashboardId)
+        ? selectedIds.filter((id) => id !== dashboardId)
+        : [...selectedIds, dashboardId],
+    )
+  }
+
+  const setBulkDeleteFolderSelected = (
+    folderName: string,
+    selected: boolean,
+  ) => {
+    const folderDashboardIds = bulkDeleteCandidates
+      .filter(
+        (dashboard) => normalizeFolderName(dashboard.folder) === folderName,
+      )
+      .map((dashboard) => dashboard.id)
+
+    setBulkDeleteSelectedIds((selectedIds) => {
+      const nextIds = new Set(selectedIds)
+
+      folderDashboardIds.forEach((id) => {
+        if (selected) {
+          nextIds.add(id)
+        } else {
+          nextIds.delete(id)
+        }
+      })
+
+      return Array.from(nextIds)
+    })
   }
 
   // Confirm dashboard deletion
@@ -616,6 +676,25 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         }
       })
   }, [filteredDashboards, sortBy])
+
+  const bulkDeleteGroups = useMemo(() => {
+    const groups = new Map<string, SavedDashboard[]>()
+
+    bulkDeleteCandidates.forEach((dashboard) => {
+      const folderName = normalizeFolderName(dashboard.folder)
+      groups.set(folderName, [...(groups.get(folderName) || []), dashboard])
+    })
+
+    return Array.from(groups.entries())
+      .map(([folderName, folderDashboards]) => ({
+        folderName,
+        dashboards: [...folderDashboards].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        ),
+        folderColor: normalizeFolderColor(folderDashboards[0]?.folderColor),
+      }))
+      .sort((a, b) => a.folderName.localeCompare(b.folderName))
+  }, [bulkDeleteCandidates])
 
   const handleStudyAction = (
     action: 'generate-exercises' | 'practice-again' | 'create-quiz',
@@ -1031,17 +1110,17 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 {searchTerm
                   ? 'No Matching Study Paths'
                   : folderFilter
-                  ? 'No Study Paths In Subject'
-                  : 'No Study Paths Available'}
+                    ? 'No Study Paths In Subject'
+                    : 'No Study Paths Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
                   : folderFilter
-                  ? 'Select a different subject or clear the filter'
-                  : !isAdmin
-                  ? 'No public Study Paths are currently available'
-                  : 'Create a Study Path from notes to start your library'}
+                    ? 'Select a different subject or clear the filter'
+                    : !isAdmin
+                      ? 'No public Study Paths are currently available'
+                      : 'Create a Study Path from notes to start your library'}
               </Typography>
             </Paper>
           ) : (
@@ -1606,13 +1685,166 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
         onCancel={cancelDeleteDashboard}
       />
 
-      <DeleteConfirmationDialog
-        open={deleteAllConfirmOpen}
-        title="Delete all library items"
-        content={`Are you sure you want to delete all ${dashboards.length} saved Study Paths and dashboards from the Library? Export first if you need a backup.`}
-        onConfirm={confirmDeleteAllDashboards}
-        onCancel={cancelDeleteAllDashboards}
-      />
+      <Dialog
+        open={bulkDeleteOpen}
+        onClose={cancelBulkDeleteDashboards}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden',
+            bgcolor: 'background.paper',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <DeleteIcon color="error" />
+            <Box>
+              <Typography variant="h6" fontWeight={800}>
+                {bulkDeleteTitle}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Select the exact library items to delete.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'background.default', p: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {bulkDeleteSelectedIds.length} of {bulkDeleteCandidates.length} item
+            {bulkDeleteCandidates.length === 1 ? '' : 's'} selected.
+          </Typography>
+          <Box sx={{ maxHeight: 420, overflowY: 'auto' }}>
+            {bulkDeleteGroups.map(({ folderName, dashboards, folderColor }) => {
+              const folderIds = dashboards.map((dashboard) => dashboard.id)
+              const selectedInFolder = folderIds.filter((id) =>
+                bulkDeleteSelectedIds.includes(id),
+              )
+              const folderChecked =
+                selectedInFolder.length === dashboards.length
+              const folderIndeterminate =
+                selectedInFolder.length > 0 &&
+                selectedInFolder.length < dashboards.length
+
+              return (
+                <Paper
+                  key={folderName}
+                  elevation={0}
+                  sx={{
+                    mb: 1.5,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1.5,
+                    overflow: 'hidden',
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 1,
+                      borderLeft: '4px solid',
+                      borderLeftColor: folderColor,
+                      bgcolor: `${folderColor}10`,
+                    }}
+                  >
+                    <Checkbox
+                      checked={folderChecked}
+                      indeterminate={folderIndeterminate}
+                      onChange={(event) =>
+                        setBulkDeleteFolderSelected(
+                          folderName,
+                          event.target.checked,
+                        )
+                      }
+                      inputProps={{
+                        'aria-label': `Select ${folderName} folder items`,
+                      }}
+                    />
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography fontWeight={800}>{folderName}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {dashboards.length} item
+                        {dashboards.length === 1 ? '' : 's'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {dashboards.map((dashboard) => (
+                    <Box
+                      key={dashboard.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.5,
+                        py: 1,
+                        borderTop: 1,
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Checkbox
+                        checked={bulkDeleteSelectedIds.includes(dashboard.id)}
+                        onChange={() => toggleBulkDeleteDashboard(dashboard.id)}
+                        inputProps={{
+                          'aria-label': `Select ${dashboard.name}`,
+                        }}
+                      />
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          variant="body2"
+                          fontWeight={700}
+                          sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {dashboard.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Updated{' '}
+                          {new Date(dashboard.updatedAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Paper>
+              )
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions
+          sx={{
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
+            px: 2,
+            py: 1.5,
+          }}
+        >
+          <Button onClick={cancelBulkDeleteDashboards}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={bulkDeleteSelectedIds.length === 0}
+            onClick={confirmBulkDeleteDashboards}
+            startIcon={<DeleteIcon />}
+          >
+            Delete selected
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit Dashboard Dialog */}
       <EditDashboardDialog

@@ -1,5 +1,11 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import SavedDashboardsDialog from '../../../../src/components/Dasboard/DashboardLibrary'
@@ -14,10 +20,10 @@ vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   ensureStarterDashboards: vi.fn(),
 }))
 
-const createDashboard = (id: string, name: string) => ({
+const createDashboard = (id: string, name: string, folder = 'Biology') => ({
   id,
   name,
-  folder: 'Biology',
+  folder,
   layout: {
     type: 'row',
     children: [
@@ -64,7 +70,7 @@ describe('DashboardLibrary bulk actions', () => {
     vi.clearAllMocks()
   })
 
-  it('lets admins delete every saved library item from one integrated action', async () => {
+  it('lets admins choose which items delete all removes', async () => {
     const storage = createMemoryStorage()
     storage.set(
       'userData',
@@ -88,13 +94,54 @@ describe('DashboardLibrary bulk actions', () => {
     expect(
       await screen.findByText('Delete all library items'),
     ).toBeInTheDocument()
+    const deleteDialog = screen.getByRole('dialog', {
+      name: /delete all library items/i,
+    })
+    expect(within(deleteDialog).getByText('Cell Structure')).toBeInTheDocument()
+    expect(
+      within(deleteDialog).getByText('Genetics Review'),
+    ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    fireEvent.click(
+      within(deleteDialog).getByRole('checkbox', { name: /select genetics/i }),
+    )
+    fireEvent.click(
+      within(deleteDialog).getByRole('button', { name: /delete selected/i }),
+    )
 
     await waitFor(() => {
       expect(screen.queryByText('Cell Structure')).not.toBeInTheDocument()
     })
-    expect(screen.getByText('No Study Paths Available')).toBeInTheDocument()
-    expect(JSON.parse(storage.get('customDashboards') || 'null')).toEqual([])
+    expect(screen.getByText('Genetics Review')).toBeInTheDocument()
+    expect(JSON.parse(storage.get('customDashboards') || 'null')).toEqual([
+      expect.objectContaining({ id: 'biology-2', name: 'Genetics Review' }),
+    ])
+  })
+
+  it('does not show separate per-folder delete actions', async () => {
+    const storage = createMemoryStorage()
+    storage.set(
+      'userData',
+      JSON.stringify({ id: 'admin', name: 'Admin', role: 'ADMIN_ROLE' }),
+    )
+    storage.set(
+      'customDashboards',
+      JSON.stringify([
+        createDashboard('biology-1', 'Cell Structure', 'Biology'),
+        createDashboard('biology-2', 'Genetics Review', 'Biology'),
+        createDashboard('history-1', 'Roman Empire', 'History'),
+      ]),
+    )
+
+    render(<SavedDashboardsDialog open onClose={vi.fn()} />)
+
+    expect(await screen.findByText('Cell Structure')).toBeInTheDocument()
+    expect(screen.getByText('Roman Empire')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /delete every item in biology/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /delete every item in history/i }),
+    ).not.toBeInTheDocument()
   })
 })
