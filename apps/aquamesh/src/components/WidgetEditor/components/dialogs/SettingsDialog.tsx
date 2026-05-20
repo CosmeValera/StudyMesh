@@ -427,9 +427,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Create from notes, Create Study Path, and Create From
-                    Context use the configured provider. API keys are optional
-                    advanced settings and stay in this browser.
+                    Create from notes and Create Study Path use the configured
+                    provider. API keys are optional advanced settings and stay
+                    in this browser.
                   </Typography>
                   <TextField
                     select
@@ -441,7 +441,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     fullWidth
                     size="small"
                     sx={{ mb: 1.5 }}
-                    helperText="This provider is used by Create from notes, Create Study Path, and Create From Context."
+                    helperText="This provider is used by Create from notes and Create Study Path."
                   >
                     <MenuItem value="basic">Basic fallback</MenuItem>
                     <MenuItem value="local">
