@@ -5,6 +5,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -19,6 +20,7 @@ import {
 } from '@mui/material'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import RouteIcon from '@mui/icons-material/Route'
+import TuneIcon from '@mui/icons-material/Tune'
 import {
   createStudyPackOrchestratorWidgets,
   StudyObject,
@@ -34,6 +36,7 @@ import {
   isLocalAiGenerationError,
   LocalAiGenerationFailureDebug,
   LocalAiProgressEvent,
+  normalizeStudyPathGenerationAmount,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   StudyPackAiProvider,
@@ -97,7 +100,10 @@ const LOCAL_AI_ESTIMATE_COPY =
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
 const DEFAULT_STUDY_PATH_PROMPT = 'I want to learn Spanish vocabulary level B2'
-const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<GenerationAmount, number> = {
+const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
+  ReturnType<typeof normalizeStudyPathGenerationAmount>,
+  number
+> = {
   superSmall: 30 * 1000,
   compact: 40 * 1000,
   average: 60 * 1000,
@@ -116,19 +122,19 @@ const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Generating dashboards with Google Local AI...'
     : provider === 'gemini'
-    ? 'Generating ordered dashboards with Gemini...'
-    : provider === 'basic'
-    ? 'Generating ordered dashboards with Basic fallback...'
-    : 'Checking hosted AI configuration...'
+      ? 'Generating ordered dashboards with Gemini...'
+      : provider === 'basic'
+        ? 'Generating ordered dashboards with Basic fallback...'
+        : 'Checking hosted AI configuration...'
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Local AI is running on your device. StudyMesh plans the path first, then generates each lesson dashboard with its own estimated timer.'
     : provider === 'gemini'
-    ? 'StudyMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
-    : provider === 'basic'
-    ? 'StudyMesh is using local parsing and practice generation without AI API calls.'
-    : 'Hosted AI is not configured yet.'
+      ? 'StudyMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
+      : provider === 'basic'
+        ? 'StudyMesh is using local parsing and practice generation without AI API calls.'
+        : 'Hosted AI is not configured yet.'
 
 const formatPipelineRemaining = (remainingMs: number): string => {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
@@ -198,10 +204,10 @@ const statusColor = (status: LocalPipelineStep['status']) =>
   status === 'failed'
     ? 'error'
     : status === 'complete'
-    ? 'success'
-    : status === 'running'
-    ? 'primary'
-    : 'default'
+      ? 'success'
+      : status === 'running'
+        ? 'primary'
+        : 'default'
 
 const aggregatePipelineSteps = (
   steps: LocalPipelineStep[],
@@ -225,10 +231,10 @@ const aggregatePipelineSteps = (
       )
         ? 'failed'
         : groupSteps.some((step) => step.status === 'running')
-        ? 'running'
-        : completeCount === groupSteps.length
-        ? 'complete'
-        : 'pending'
+          ? 'running'
+          : completeCount === groupSteps.length
+            ? 'complete'
+            : 'pending'
       const percent = Math.round(
         groupSteps.reduce((total, step) => total + step.percent, 0) /
           groupSteps.length,
@@ -282,7 +288,9 @@ const localThreadLanes = (
       entries.find((item) => item.status === 'running') ||
       entries
         .filter((item) => item.status !== 'pending')
-        .sort((first, second) => second.dashboardIndex - first.dashboardIndex)[0]
+        .sort(
+          (first, second) => second.dashboardIndex - first.dashboardIndex,
+        )[0]
 
     return {
       threadId,
@@ -470,6 +478,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [mustInclude, setMustInclude] = useState('')
+  const [avoidTopics, setAvoidTopics] = useState('')
   const [localAiDashboardConcurrency, setLocalAiDashboardConcurrency] =
     useState<LocalAiDashboardConcurrency>(2)
   const [draft, setDraft] = useState<AiStudyPathDraft | null>(null)
@@ -516,6 +527,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     setStep('prompt')
     setPrompt(DEFAULT_STUDY_PATH_PROMPT)
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
+    setAdvancedOpen(false)
+    setMustInclude('')
+    setAvoidTopics('')
     setLocalAiDashboardConcurrency(2)
     setDraft(null)
     setReviewFolderName('')
@@ -559,7 +573,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       aiProvider === 'gemini'
         ? makeGeminiTimedProgress(
             Date.now(),
-            GEMINI_STUDY_PATH_ESTIMATES_MS[generationAmount],
+            GEMINI_STUDY_PATH_ESTIMATES_MS[
+              normalizeStudyPathGenerationAmount(generationAmount)
+            ],
           )
         : null,
     )
@@ -574,6 +590,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         title: 'Study Path',
         folderName: '',
         prompt,
+        mustInclude: mustInclude.trim() || undefined,
+        avoidTopics: avoidTopics.trim() || undefined,
         generationAmount,
         localAiDashboardConcurrency:
           aiProvider === 'local' ? localAiDashboardConcurrency : undefined,
@@ -709,66 +727,119 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           {error && <Alert severity="error">{error}</Alert>}
           {step === 'prompt' ? (
             <>
-              <TextField
-                label="What should StudyMesh teach?"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                placeholder="Example: Teach me Spanish vocabulary level B2."
-                multiline
-                minRows={5}
-                fullWidth
-              />
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                }}
               >
-                <TextField
-                  select
-                  label="Path depth"
-                  value={generationAmount}
-                  onChange={(event) =>
-                    setGenerationAmount(event.target.value as GenerationAmount)
-                  }
-                  sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
-                >
-                  {generationAmountOptions.map((option) => (
-                    <MenuItem
-                      key={option.value}
-                      value={option.value}
-                      disabled={
-                        aiProvider === 'local' && option.value === 'deep'
-                      }
-                    >
-                      {option.label} -{' '}
-                      {getGenerationAmountHelper(option, aiProvider)}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                {aiProvider === 'local' && (
+                <Stack spacing={2}>
                   <TextField
-                    select
-                    label="Local AI concurrency"
-                    value={localAiDashboardConcurrency}
-                    onChange={(event) =>
-                      setLocalAiDashboardConcurrency(
-                        Number(
-                          event.target.value,
-                        ) as LocalAiDashboardConcurrency,
-                      )
-                    }
-                    helperText="How many lesson dashboards Local AI tries to generate at once."
-                    sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
+                    label="What should StudyMesh teach?"
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    placeholder="Example: Teach me Spanish vocabulary level B2."
+                    multiline
+                    minRows={5}
+                    fullWidth
+                  />
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={2}
+                    alignItems={{ xs: 'stretch', sm: 'flex-start' }}
                   >
-                    {[1, 2, 3, 5].map((value) => (
-                      <MenuItem key={value} value={value}>
-                        {value} dashboard{value === 1 ? '' : 's'} at once
-                        {value === 2 ? ' (default)' : ''}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              </Stack>
+                    <TextField
+                      select
+                      label="Path depth"
+                      value={generationAmount}
+                      onChange={(event) =>
+                        setGenerationAmount(
+                          event.target.value as GenerationAmount,
+                        )
+                      }
+                      sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
+                    >
+                      {generationAmountOptions.map((option) => (
+                        <MenuItem
+                          key={option.value}
+                          value={option.value}
+                          disabled={
+                            aiProvider === 'local' && option.value === 'deep'
+                          }
+                        >
+                          {option.label} -{' '}
+                          {getGenerationAmountHelper(option, aiProvider)}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    {aiProvider === 'local' && (
+                      <TextField
+                        select
+                        label="Local AI concurrency"
+                        value={localAiDashboardConcurrency}
+                        onChange={(event) =>
+                          setLocalAiDashboardConcurrency(
+                            Number(
+                              event.target.value,
+                            ) as LocalAiDashboardConcurrency,
+                          )
+                        }
+                        helperText="How many lesson dashboards Local AI tries to generate at once."
+                        sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
+                      >
+                        {[1, 2, 3, 5].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value} dashboard{value === 1 ? '' : 's'} at once
+                            {value === 2 ? ' (default)' : ''}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    )}
+                  </Stack>
+                  <Box>
+                    <Button
+                      size="small"
+                      startIcon={<TuneIcon />}
+                      onClick={() => setAdvancedOpen((current) => !current)}
+                    >
+                      {advancedOpen
+                        ? 'Hide advanced options'
+                        : 'Advanced options'}
+                    </Button>
+                    <Collapse in={advancedOpen} unmountOnExit>
+                      <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                        <TextField
+                          label="Must include / I want to learn"
+                          value={mustInclude}
+                          onChange={(event) =>
+                            setMustInclude(event.target.value)
+                          }
+                          placeholder="Example: include irregular verbs, common mistakes, exam-style examples..."
+                          helperText="Optional. StudyMesh will prioritize these in the planner."
+                          multiline
+                          minRows={3}
+                          fullWidth
+                        />
+                        <TextField
+                          label="Avoid / I already know"
+                          value={avoidTopics}
+                          onChange={(event) =>
+                            setAvoidTopics(event.target.value)
+                          }
+                          placeholder="Example: skip basic greetings, avoid beginner grammar, no PDF resources..."
+                          helperText="Optional. StudyMesh will avoid making these the focus when planning."
+                          multiline
+                          minRows={3}
+                          fullWidth
+                        />
+                      </Stack>
+                    </Collapse>
+                  </Box>
+                </Stack>
+              </Paper>
               <Alert severity="info">
                 Study Path uses the AI provider selected in Settings. The next
                 screen previews each dashboard before saving anything.
@@ -922,8 +993,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                                           lane.active?.status === 'failed'
                                             ? 'error'
                                             : lane.active?.status === 'complete'
-                                            ? 'success'
-                                            : 'primary'
+                                              ? 'success'
+                                              : 'primary'
                                         }
                                       />
                                       {lane.steps.length > 0 ? (
@@ -963,7 +1034,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                       <Stack spacing={1}>
                         <Stack direction="row" justifyContent="space-between">
                           <Typography variant="caption" color="text.secondary">
-                            Elapsed {formatGeminiDuration(geminiProgress.elapsedMs)}
+                            Elapsed{' '}
+                            {formatGeminiDuration(geminiProgress.elapsedMs)}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {geminiProgress.percent}%

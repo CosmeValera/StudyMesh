@@ -492,17 +492,17 @@ const repairLocalQuiz = (
   const rawOptions = Array.isArray(input.options)
     ? input.options.map(stringValue).filter(Boolean)
     : typeof input.options === 'string'
-    ? input.options
-        .split(/\r?\n|;|,(?=\s+\S)/)
-        .map(stringValue)
-        .filter(Boolean)
-    : []
+      ? input.options
+          .split(/\r?\n|;|,(?=\s+\S)/)
+          .map(stringValue)
+          .filter(Boolean)
+      : []
   const rawCorrectIndex =
     typeof input.correctIndex === 'number'
       ? input.correctIndex
       : typeof input.correctOptionIndex === 'number'
-      ? input.correctOptionIndex
-      : 0
+        ? input.correctOptionIndex
+        : 0
   const originalAnswer =
     stringValue(input.answer) ||
     (rawCorrectIndex >= 0 && rawCorrectIndex < rawOptions.length
@@ -1150,8 +1150,8 @@ export const normalizeLocalAiStudyPackDraft = (
   const rawObjects = Array.isArray(record.objects)
     ? record.objects
     : Array.isArray(record.studyObjects)
-    ? record.studyObjects
-    : []
+      ? record.studyObjects
+      : []
   const looseObjects = rawObjects
     .map((item, index) =>
       item && typeof item === 'object'
@@ -1267,11 +1267,31 @@ Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }
 
+const localStudyPathAdvancedPromptGuidance = (
+  options: GenerateStudyPathWithAiOptions,
+): string => {
+  const include = options.mustInclude?.replace(/\s+/g, ' ').trim().slice(0, 500)
+  const avoid = options.avoidTopics?.replace(/\s+/g, ' ').trim().slice(0, 500)
+
+  if (!include && !avoid) {
+    return ''
+  }
+
+  return [
+    include ? `Must include/learn: ${include}` : '',
+    avoid ? `Avoid/already known: ${avoid}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
 const localStudyPathPlannerPrompt = (
-  { title, prompt }: GenerateStudyPathWithAiOptions,
+  options: GenerateStudyPathWithAiOptions,
   count: number,
 ): string => {
+  const { title, prompt } = options
   const compactPrompt = prompt.replace(/\s+/g, ' ').trim().slice(0, 800)
+  const advancedGuidance = localStudyPathAdvancedPromptGuidance(options)
 
   return `Return JSON only. Start with { and end with }.
 
@@ -1282,6 +1302,7 @@ Shape:
 
 Topic:
 ${compactPrompt}
+${advancedGuidance ? `\nAdvanced user guidance:\n${advancedGuidance}\n` : ''}
 
 Rules:
 - Return exactly one JSON object.
@@ -1297,6 +1318,7 @@ Rules:
 - No markdown.
 - No code fences.
 - No explanations outside JSON.
+- Respect advanced user guidance when choosing dashboard goals, section focus, and avoid fields.
 - Use short strings.`
 }
 
@@ -1321,6 +1343,7 @@ const localStudyPathMarkdownSectionPrompt = (
   attempt: number,
 ): string => {
   const compactPrompt = options.prompt.replace(/\s+/g, ' ').trim().slice(0, 900)
+  const advancedGuidance = localStudyPathAdvancedPromptGuidance(options)
   const outlineTitles = outline.map((entry) => entry.title).join(' | ')
   const wordTarget = localStudyPathMarkdownWordTarget(attempt)
   const role =
@@ -1356,8 +1379,8 @@ const localStudyPathMarkdownSectionPrompt = (
     attempt === 1
       ? 'Use full structured Markdown with short bullets.'
       : attempt === 2
-      ? 'Use simpler structured Markdown with fewer bullets.'
-      : 'Survival mode: write the shortest usable structured Markdown.'
+        ? 'Use simpler structured Markdown with fewer bullets.'
+        : 'Survival mode: write the shortest usable structured Markdown.'
 
   return `Return Markdown only.
 No JSON. No code fences.
@@ -1385,6 +1408,7 @@ Rules:
 ${structure}
 
 Study path topic: ${compactPrompt}
+${advancedGuidance ? `Advanced user guidance: ${advancedGuidance}\n` : ''}
 Outline titles: ${outlineTitles}
 Current page goal: ${item.goal}
 Current section title: ${section.title}
@@ -1401,10 +1425,12 @@ const localStudyPathPracticePromptBase = (
   notes: string,
 ): string => {
   const compactPrompt = options.prompt.replace(/\s+/g, ' ').trim().slice(0, 900)
+  const advancedGuidance = localStudyPathAdvancedPromptGuidance(options)
   const outlineTitles = outline.map((entry) => entry.title).join(' | ')
   const compactNotes = notes.replace(/\s+/g, ' ').trim().slice(0, 1800)
 
   return `Topic: ${compactPrompt}
+${advancedGuidance ? `Advanced user guidance: ${advancedGuidance}\n` : ''}
 Outline titles: ${outlineTitles}
 Goal: ${item.goal}
 Topics: ${item.topics.join(', ')}
@@ -1724,8 +1750,8 @@ const flatDashboardObjects = (
     typeof record.quizCorrectIndex === 'number'
       ? record.quizCorrectIndex
       : typeof record.correctIndex === 'number'
-      ? record.correctIndex
-      : 0
+        ? record.correctIndex
+        : 0
   const quizAnswer =
     quizCorrectIndex >= 0 && quizCorrectIndex < quizOptions.length
       ? quizOptions[quizCorrectIndex]
@@ -2106,12 +2132,12 @@ const normalizePlannerItem = (
       stringArrayValue(record.avoid).length > 0
         ? stringArrayValue(record.avoid).slice(0, 5)
         : stringValue(record.avoid)
-        ? stringValue(record.avoid)
-            .split(';')
-            .map((item) => item.trim())
-            .filter(Boolean)
-            .slice(0, 5)
-        : fallback.avoid,
+          ? stringValue(record.avoid)
+              .split(';')
+              .map((item) => item.trim())
+              .filter(Boolean)
+              .slice(0, 5)
+          : fallback.avoid,
   }
 }
 
@@ -3853,15 +3879,15 @@ export const generateStudyPathWithBasicFallback = ({
     normalizeStudyPathGenerationAmount(generationAmount) === 'deep'
       ? 'many'
       : normalizeStudyPathGenerationAmount(generationAmount) === 'average'
-      ? 'medium'
-      : 'few'
+        ? 'medium'
+        : 'few'
   const dashboards = roles.map((role, index) => {
     const dashboardTitle = `${String(index + 1).padStart(2, '0')} - ${
       role === 'summary'
         ? 'Summary'
         : role === 'exercises'
-        ? 'Exercises'
-        : `Lesson ${index + 1}`
+          ? 'Exercises'
+          : `Lesson ${index + 1}`
     }`
     const rawNotes = fallbackPromptForDashboard(
       prompt,
