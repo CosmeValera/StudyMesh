@@ -109,6 +109,8 @@ export interface GenerateStudyPathWithAiOptions {
   folderName: string
   generationAmount?: StudyPathGenerationAmount
   localAiDashboardConcurrency?: 1 | 2 | 3 | 5
+  mustInclude?: string
+  avoidTopics?: string
 }
 
 export const normalizeStudyPathGenerationAmount = (
@@ -139,16 +141,16 @@ export const getStudyPathDashboardRoles = (
     : normalized === 'compact'
       ? ['normal', 'normal', 'exercises']
       : normalized === 'deep'
-      ? [
-          'normal',
-          'normal',
-          'normal',
-          'normal',
-          'normal',
-          'summary',
-          'exercises',
-        ]
-      : ['normal', 'normal', 'normal', 'summary', 'exercises']
+        ? [
+            'normal',
+            'normal',
+            'normal',
+            'normal',
+            'normal',
+            'summary',
+            'exercises',
+          ]
+        : ['normal', 'normal', 'normal', 'summary', 'exercises']
 }
 
 const getStudyPathStepNames = (
@@ -1115,6 +1117,29 @@ The previous response failed JSON formatting. Retry with a simpler response:
   }
 }
 
+const studyPathAdvancedPromptGuidance = (
+  mustInclude?: string,
+  avoidTopics?: string,
+): string => {
+  const include = mustInclude?.trim()
+  const avoid = avoidTopics?.trim()
+
+  if (!include && !avoid) {
+    return ''
+  }
+
+  return [
+    include
+      ? `User says these topics/details must be included or learned if relevant:\n${include}`
+      : '',
+    avoid
+      ? `User says these topics/details should be avoided, skipped, or treated as already known:\n${avoid}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 export const generateStudyPathWithAi = async ({
   apiToken,
   model,
@@ -1122,6 +1147,8 @@ export const generateStudyPathWithAi = async ({
   prompt,
   folderName,
   generationAmount = 'medium',
+  mustInclude,
+  avoidTopics,
 }: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
   const dashboardRoles = getStudyPathDashboardRoles(generationAmount)
   const stepNames = getStudyPathStepNames(generationAmount)
@@ -1137,6 +1164,10 @@ export const generateStudyPathWithAi = async ({
     'quizzes',
     'exercises',
   ])
+  const advancedGuidance = studyPathAdvancedPromptGuidance(
+    mustInclude,
+    avoidTopics,
+  )
   const promptText = `Create a Study Path JSON object. A Study Path is NOT one dashboard. It is a folder containing multiple ordered dashboards/study packs.
 
 Return exactly this structure:
@@ -1195,8 +1226,12 @@ Rules:
 - Aim for about ${practiceProfile.minTotal}-${
     practiceProfile.maxTotal
   } reviewable items across the whole path.
-
-Path title fallback: ${title}
+${
+  advancedGuidance
+    ? `- Respect the user's advanced guidance below when planning lessons, rawNotes, examples, and practice. Do not make avoided/already-known topics a focus unless needed for context.\n`
+    : ''
+}
+${advancedGuidance ? `Advanced user guidance:\n${advancedGuidance}\n\n` : ''}Path title fallback: ${title}
 Folder name fallback if you cannot infer a better one: ${
     folderName || 'Study Path'
   }
