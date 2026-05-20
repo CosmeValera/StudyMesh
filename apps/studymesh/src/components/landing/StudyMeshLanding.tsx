@@ -6,12 +6,6 @@ import {
   Grid,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -137,38 +131,6 @@ const aiPricing = [
     body: 'Start with 5-10 free tries. If you need more, make a one-time 2€ payment for greater hourly limits.',
     icon: <CloudQueueIcon />,
     features: ['5-10 free tries', 'One-time payment', 'Higher hourly limits'],
-    highlighted: true,
-  },
-]
-
-const aiPricingComparison = [
-  {
-    mode: 'Fallback mode',
-    price: '0€',
-    setup: 'No setup',
-    bestFor: 'Quick notes and basic practice',
-    limits: 'Always available, simpler output',
-  },
-  {
-    mode: 'Local Gemini Nano',
-    price: '0€',
-    setup: 'Compatible browser/device',
-    bestFor: 'Private on-device generation',
-    limits: 'Slower and depends on local AI support',
-  },
-  {
-    mode: 'BYOK Gemini',
-    price: '0€',
-    setup: 'Your Gemini API key',
-    bestFor: 'Full AI quality with your own quota',
-    limits: 'You manage key, quota, and billing',
-  },
-  {
-    mode: 'Hosted API tokens',
-    price: '5-10 free tries, then 2€ one-time',
-    setup: 'No API key needed',
-    bestFor: 'The easiest managed AI experience',
-    limits: 'Higher hourly limits after payment',
     highlighted: true,
   },
 ]
@@ -555,113 +517,171 @@ const StudyMeshLanding = () => {
               Pricing option B
             </Typography>
             <Typography variant="h4" component="h2" fontWeight={900}>
-              Compare AI modes side by side
+              Free by default, hosted when you want less setup
             </Typography>
             <Typography
               variant="body1"
               color="text.secondary"
               sx={{ maxWidth: 760 }}
             >
-              A more direct plans-style view: start free, stay free if you want,
-              or use hosted tokens when you prefer StudyMesh to handle the API
-              key and limits for you.
+              A simpler pricing layout: most AI modes stay grouped under one big
+              0€ option, while hosted tokens are highlighted for users who do
+              not want to manage API keys.
             </Typography>
           </Stack>
 
-          <TableContainer
-            component={Paper}
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider',
-              overflow: 'hidden',
-              boxShadow:
-                theme.palette.mode === 'dark'
-                  ? `0 18px 52px ${alpha(theme.palette.common.black, 0.28)}`
-                  : `0 18px 52px ${alpha(theme.palette.primary.dark, 0.1)}`,
-            }}
-          >
-            <Table
-              sx={{ minWidth: 760 }}
-              aria-label="StudyMesh AI pricing comparison"
-            >
-              <TableHead>
-                <TableRow
-                  sx={{
-                    bgcolor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.primary.main, 0.14)
-                        : alpha(theme.palette.primary.light, 0.16),
-                    '& th': {
-                      py: 2,
-                      color: 'text.primary',
-                      fontWeight: 900,
-                      borderColor: alpha(theme.palette.divider, 0.8),
-                    },
-                  }}
-                >
-                  <TableCell>Plan</TableCell>
-                  <TableCell>Price</TableCell>
-                  <TableCell>Setup</TableCell>
-                  <TableCell>Best for</TableCell>
-                  <TableCell>Limits</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {aiPricingComparison.map((plan) => (
-                  <TableRow
-                    key={plan.mode}
+          <Grid container spacing={2} alignItems="stretch">
+            <Grid item xs={12} md={9}>
+              <Paper
+                elevation={0}
+                sx={{
+                  height: '100%',
+                  p: { xs: 2.5, md: 3 },
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
+                }}
+              >
+                <Stack spacing={2.5} height="100%">
+                  <Box>
+                    <Typography
+                      variant="overline"
+                      color="text.secondary"
+                      fontWeight={900}
+                    >
+                      Free AI modes
+                    </Typography>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'flex-start', sm: 'end' }}
+                    >
+                      <Typography variant="h2" fontWeight={950} lineHeight={1}>
+                        0€
+                      </Typography>
+                      <Typography
+                        color="text.secondary"
+                        sx={{ pb: { sm: 0.75 } }}
+                      >
+                        Use StudyMesh without paying for hosted tokens.
+                      </Typography>
+                    </Stack>
+                  </Box>
+
+                  <Grid container spacing={1.5} sx={{ mt: 'auto' }}>
+                    {aiPricing
+                      .filter((plan) => !plan.highlighted)
+                      .map((plan) => (
+                        <Grid item xs={12} sm={4} key={plan.title}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              height: '100%',
+                              p: 2,
+                              borderRadius: 2,
+                              border: '1px solid',
+                              borderColor: alpha(theme.palette.divider, 0.9),
+                              bgcolor: alpha(theme.palette.primary.main, 0.04),
+                            }}
+                          >
+                            <Stack spacing={1}>
+                              <Box
+                                sx={{ color: 'primary.main', display: 'flex' }}
+                              >
+                                {plan.icon}
+                              </Box>
+                              <Typography fontWeight={900}>
+                                {plan.title}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {plan.label}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {plan.body}
+                              </Typography>
+                            </Stack>
+                          </Paper>
+                        </Grid>
+                      ))}
+                  </Grid>
+                </Stack>
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              {aiPricing
+                .filter((plan) => plan.highlighted)
+                .map((plan) => (
+                  <Paper
+                    key={plan.title}
+                    elevation={0}
                     sx={{
-                      bgcolor: plan.highlighted
-                        ? alpha(theme.palette.primary.main, 0.08)
-                        : 'background.paper',
-                      '& td': {
-                        py: 2,
-                        borderColor: alpha(theme.palette.divider, 0.8),
-                      },
+                      height: '100%',
+                      p: 2.5,
+                      borderRadius: 3,
+                      color: 'primary.contrastText',
+                      bgcolor: 'primary.dark',
+                      background: `linear-gradient(160deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
+                      boxShadow: `0 20px 54px ${alpha(
+                        theme.palette.primary.main,
+                        0.3,
+                      )}`,
                     }}
                   >
-                    <TableCell>
-                      <Stack spacing={0.75}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography fontWeight={900}>{plan.mode}</Typography>
-                          {plan.highlighted && (
-                            <Box
-                              component="span"
-                              sx={{
-                                px: 1,
-                                py: 0.25,
-                                borderRadius: 999,
-                                bgcolor: 'primary.main',
-                                color: 'primary.contrastText',
-                                fontSize: '0.7rem',
-                                fontWeight: 900,
-                                lineHeight: 1.5,
-                              }}
-                            >
-                              easiest
-                            </Box>
-                          )}
-                        </Stack>
-                        {plan.highlighted && (
-                          <Typography variant="caption" color="text.secondary">
-                            No API keys, no quota setup, no provider dashboard.
-                          </Typography>
-                        )}
+                    <Stack spacing={1.5} height="100%">
+                      <Box sx={{ display: 'flex' }}>{plan.icon}</Box>
+                      <Box>
+                        <Typography
+                          variant="overline"
+                          fontWeight={900}
+                          sx={{ opacity: 0.82 }}
+                        >
+                          Highlighted
+                        </Typography>
+                        <Typography variant="h6" fontWeight={950}>
+                          {plan.title}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="h2"
+                          fontWeight={950}
+                          lineHeight={1}
+                        >
+                          {plan.price}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.82 }}>
+                          one-time after 5-10 free tries
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        {plan.body}
+                      </Typography>
+                      <Stack spacing={0.75} sx={{ mt: 'auto' }}>
+                        {plan.features.map((feature) => (
+                          <Stack
+                            key={feature}
+                            direction="row"
+                            spacing={0.75}
+                            alignItems="center"
+                          >
+                            <CheckCircleIcon fontSize="small" />
+                            <Typography variant="body2">{feature}</Typography>
+                          </Stack>
+                        ))}
                       </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Typography fontWeight={900}>{plan.price}</Typography>
-                    </TableCell>
-                    <TableCell>{plan.setup}</TableCell>
-                    <TableCell>{plan.bestFor}</TableCell>
-                    <TableCell>{plan.limits}</TableCell>
-                  </TableRow>
+                    </Stack>
+                  </Paper>
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            </Grid>
+          </Grid>
         </Box>
 
         <Box sx={{ py: 5 }}>
