@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import React from 'react'
+import { act, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  default as WorkspaceOnboarding,
   reduceWorkspaceOnboardingState,
   WorkspaceOnboardingState,
   countDashboardNodes,
 } from '../../../../src/components/onboarding/WorkspaceOnboarding'
+import { dispatchWorkspaceOnboardingNotice } from '../../../../src/components/onboarding/onboardingEvents'
 
 const activeState = (
   stepId: WorkspaceOnboardingState['stepId'],
@@ -118,5 +122,44 @@ describe('WorkspaceOnboarding reducer', () => {
         ],
       }),
     ).toEqual({ tabCount: 2, tabsetCount: 2 })
+  })
+})
+
+describe('WorkspaceOnboarding display', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(localStorage.getItem).mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      return null
+    })
+  })
+
+  it('does not show the onboarding coach for a first-time user by default', () => {
+    render(React.createElement(WorkspaceOnboarding))
+
+    expect(
+      screen.queryByTestId('workspace-onboarding-coach'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows onboarding-style notices', async () => {
+    render(React.createElement(WorkspaceOnboarding))
+
+    act(() => {
+      dispatchWorkspaceOnboardingNotice('AI mode changed to Google Local AI.')
+    })
+
+    expect(
+      await screen.findByTestId('workspace-onboarding-notice'),
+    ).toHaveTextContent('AI settings saved')
+    expect(
+      screen.getByText('AI mode changed to Google Local AI.'),
+    ).toBeInTheDocument()
   })
 })

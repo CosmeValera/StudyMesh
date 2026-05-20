@@ -2,6 +2,7 @@ import React from 'react'
 import { Box, Button, Paper, Stack, Typography } from '@mui/material'
 import {
   STUDYMESH_ONBOARDING_EVENT,
+  STUDYMESH_ONBOARDING_NOTICE_EVENT,
   STUDYMESH_ONBOARDING_RESET_EVENT,
   WorkspaceOnboardingEventDetail,
 } from './onboardingEvents'
@@ -75,7 +76,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'create-widget',
     targetId: 'dashboard-widget-create',
     progress: 'Step 1 of 3: Create a widget',
-    instruction: () => 'Click Create Widget from the top menu.'
+    instruction: () => 'Click Create Widget from the top menu.',
   },
   'add-group': {
     id: 'add-group',
@@ -107,8 +108,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'save-widget',
     targetId: 'widget-editor-save',
     progress: 'Step 1 of 3: Create a widget',
-    instruction: () =>
-      'Save the widget so it can be reused in dashboards.',
+    instruction: () => 'Save the widget so it can be reused in dashboards.',
   },
   'close-widget': {
     id: 'close-widget',
@@ -127,7 +127,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     id: 'create-dashboard',
     targetId: 'create-dashboard',
     progress: 'Step 2 of 3: Create a dashboard',
-    instruction: () => 'Click Create Dashboard from the top menu.'
+    instruction: () => 'Click Create Dashboard from the top menu.',
   },
   'open-widgets': {
     id: 'open-widgets',
@@ -141,9 +141,7 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
     targetId: 'dashboard-widget-saved',
     progress: 'Step 2 of 3: Create a dashboard',
     instruction: (state) =>
-      `Add ${
-        state.createdWidgetName || 'your saved widget'
-      } to the dashboard.`
+      `Add ${state.createdWidgetName || 'your saved widget'} to the dashboard.`,
   },
   'add-second-widget': {
     id: 'add-second-widget',
@@ -202,17 +200,22 @@ const stepDefinitions: Record<WorkspaceOnboardingStepId, StepDefinition> = {
   },
 }
 
-const defaultState: WorkspaceOnboardingState = {
+const activeDefaultState: WorkspaceOnboardingState = {
   status: 'active',
   stepId: 'create-widget',
 }
 
+const dismissedDefaultState: WorkspaceOnboardingState = {
+  status: 'dismissed',
+  stepId: 'create-widget',
+}
+
 export const createInitialWorkspaceOnboardingState =
-  (): WorkspaceOnboardingState => defaultState
+  (): WorkspaceOnboardingState => activeDefaultState
 
 const readStoredState = (): WorkspaceOnboardingState => {
   if (typeof window === 'undefined') {
-    return defaultState
+    return dismissedDefaultState
   }
 
   try {
@@ -220,17 +223,17 @@ const readStoredState = (): WorkspaceOnboardingState => {
       window.localStorage.getItem(WORKSPACE_ONBOARDING_KEY) ||
       window.localStorage.getItem(LEGACY_WORKSPACE_ONBOARDING_KEY)
     if (saved) {
-      return { ...defaultState, ...JSON.parse(saved) }
+      return { ...activeDefaultState, ...JSON.parse(saved) }
     }
 
     if (window.localStorage.getItem(OLD_DASHBOARD_ONBOARDING_KEY) === 'done') {
-      return { ...defaultState, status: 'done', stepId: 'done' }
+      return { ...activeDefaultState, status: 'done', stepId: 'done' }
     }
   } catch (error) {
     console.error('Failed to read workspace onboarding state', error)
   }
 
-  return defaultState
+  return dismissedDefaultState
 }
 
 const getNextStep = (stepId: WorkspaceOnboardingStepId) =>
@@ -357,13 +360,17 @@ const getTarget = (targetId?: string, state?: WorkspaceOnboardingState) => {
 
   if (targetId === 'topnav-saved-dashboard') {
     return document.querySelector(
-      `[data-onboarding-id="${targetId}"][data-dashboard-id="${state?.savedDashboardId || ''}"]`,
+      `[data-onboarding-id="${targetId}"][data-dashboard-id="${
+        state?.savedDashboardId || ''
+      }"]`,
     ) as HTMLElement | null
   }
 
   if (targetId === 'dashboard-widget-saved') {
     return document.querySelector(
-      `[data-onboarding-id="${targetId}"][data-widget-id="${state?.createdWidgetId || ''}"]`,
+      `[data-onboarding-id="${targetId}"][data-widget-id="${
+        state?.createdWidgetId || ''
+      }"]`,
     ) as HTMLElement | null
   }
 
@@ -380,9 +387,26 @@ const getTarget = (targetId?: string, state?: WorkspaceOnboardingState) => {
   ) as HTMLElement | null
 }
 
+const coachPaperSx = {
+  position: 'fixed',
+  top: { xs: 'auto', sm: 88 },
+  bottom: { xs: 12, sm: 'auto' },
+  right: { xs: 12, sm: 16 },
+  left: { xs: 12, sm: 'auto' },
+  width: { xs: 'auto', sm: 360 },
+  zIndex: 1500,
+  p: 1.5,
+  borderRadius: 1,
+  border: '1px solid',
+  borderColor: 'primary.light',
+  bgcolor: 'background.paper',
+  color: 'text.primary',
+} as const
+
 const WorkspaceOnboarding = () => {
   const [state, setState] = React.useState(readStoredState)
   const [showSettingsHint, setShowSettingsHint] = React.useState(false)
+  const [noticeMessage, setNoticeMessage] = React.useState<string | null>(null)
   const [doneStep, setDoneStep] = React.useState<1 | 2>(1)
 
   React.useEffect(() => {
@@ -406,7 +430,12 @@ const WorkspaceOnboarding = () => {
     const handleReset = () => {
       setDoneStep(1)
       setShowSettingsHint(false)
+      setNoticeMessage(null)
       setState(createInitialWorkspaceOnboardingState())
+    }
+    const handleNotice = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>
+      setNoticeMessage(customEvent.detail?.message || null)
     }
     const handleWidgetStorageEvent = (event: Event) => {
       const customEvent = event as CustomEvent<{
@@ -432,10 +461,15 @@ const WorkspaceOnboarding = () => {
     }
 
     window.addEventListener(STUDYMESH_ONBOARDING_EVENT, handleEvent)
+    window.addEventListener(STUDYMESH_ONBOARDING_NOTICE_EVENT, handleNotice)
     window.addEventListener(STUDYMESH_ONBOARDING_RESET_EVENT, handleReset)
     document.addEventListener('widgetStorageUpdated', handleWidgetStorageEvent)
     return () => {
       window.removeEventListener(STUDYMESH_ONBOARDING_EVENT, handleEvent)
+      window.removeEventListener(
+        STUDYMESH_ONBOARDING_NOTICE_EVENT,
+        handleNotice,
+      )
       window.removeEventListener(STUDYMESH_ONBOARDING_RESET_EVENT, handleReset)
       document.removeEventListener(
         'widgetStorageUpdated',
@@ -443,6 +477,18 @@ const WorkspaceOnboarding = () => {
       )
     }
   }, [])
+
+  React.useEffect(() => {
+    if (!noticeMessage) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => setNoticeMessage(null), 2500)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [noticeMessage])
 
   React.useEffect(() => {
     if (state.status !== 'active') return
@@ -522,6 +568,41 @@ const WorkspaceOnboarding = () => {
     }
   }, [])
 
+  if (noticeMessage) {
+    return (
+      <Paper
+        elevation={8}
+        aria-live="polite"
+        data-testid="workspace-onboarding-notice"
+        sx={coachPaperSx}
+      >
+        <Stack spacing={1}>
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{ color: 'text.secondary', fontWeight: 700 }}
+            >
+              AI settings saved
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.25 }}>
+              {noticeMessage}
+            </Typography>
+          </Box>
+
+          <Stack direction="row" justifyContent="flex-end">
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setNoticeMessage(null)}
+            >
+              Got it
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+    )
+  }
+
   if (!userIsBuilder) {
     return null
   }
@@ -532,25 +613,7 @@ const WorkspaceOnboarding = () => {
 
   if (showSettingsHint) {
     return (
-      <Paper
-        elevation={8}
-        aria-live="polite"
-        sx={{
-          position: 'fixed',
-          top: { xs: 'auto', sm: 88 },
-          bottom: { xs: 12, sm: 'auto' },
-          right: { xs: 12, sm: 16 },
-          left: { xs: 12, sm: 'auto' },
-          width: { xs: 'auto', sm: 360 },
-          zIndex: 1500,
-          p: 1.5,
-          borderRadius: 1,
-          border: '1px solid',
-          borderColor: 'primary.light',
-          bgcolor: 'background.paper',
-          color: 'text.primary',
-        }}
-      >
+      <Paper elevation={8} aria-live="polite" sx={coachPaperSx}>
         <Stack spacing={1}>
           <Typography variant="body2">
             You can replay the tutorial in settings whenever you want.
@@ -605,21 +668,7 @@ const WorkspaceOnboarding = () => {
       elevation={8}
       aria-live="polite"
       data-testid="workspace-onboarding-coach"
-      sx={{
-        position: 'fixed',
-        top: { xs: 'auto', sm: 88 },
-        bottom: { xs: 12, sm: 'auto' },
-        right: { xs: 12, sm: 16 },
-        left: { xs: 12, sm: 'auto' },
-        width: { xs: 'auto', sm: 360 },
-        zIndex: 1301,
-        p: 1.5,
-        borderRadius: 1,
-        border: '1px solid',
-        borderColor: 'primary.light',
-        bgcolor: 'background.paper',
-        color: 'text.primary',
-      }}
+      sx={{ ...coachPaperSx, zIndex: 1301 }}
     >
       <Stack spacing={1}>
         <Box>
@@ -640,7 +689,11 @@ const WorkspaceOnboarding = () => {
                 Next
               </Button>
             ) : (
-              <Button size="small" variant="contained" onClick={handleDoneGotIt}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleDoneGotIt}
+              >
                 Got it
               </Button>
             )

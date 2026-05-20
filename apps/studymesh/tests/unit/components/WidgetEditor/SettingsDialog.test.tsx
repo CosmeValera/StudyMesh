@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import SettingsDialog from '../../../../src/components/WidgetEditor/components/dialogs/SettingsDialog'
+import { STUDYMESH_ONBOARDING_NOTICE_EVENT } from '../../../../src/components/onboarding/onboardingEvents'
 
 vi.mock('../../../../src/studyPack/ai', () => ({
   DEFAULT_STUDY_PACK_AI_MODEL: 'gemini-test-model',
@@ -131,5 +132,25 @@ describe('SettingsDialog study library export', () => {
     expect(payload.dashboards).toEqual([
       { id: 'bio-1', name: 'Cells', folder: 'Biology' },
     ])
+  })
+
+  it('announces the selected AI mode after saving AI settings', () => {
+    const noticeListener = vi.fn()
+    window.addEventListener(STUDYMESH_ONBOARDING_NOTICE_EVENT, noticeListener)
+
+    render(<SettingsDialog open onClose={vi.fn()} scope="global" />)
+
+    fireEvent.click(screen.getByRole('button', { name: /save ai settings/i }))
+
+    expect(noticeListener).toHaveBeenCalledTimes(1)
+    expect(
+      (noticeListener.mock.calls[0][0] as CustomEvent<{ message: string }>)
+        .detail.message,
+    ).toBe('AI mode changed to Basic fallback.')
+
+    window.removeEventListener(
+      STUDYMESH_ONBOARDING_NOTICE_EVENT,
+      noticeListener,
+    )
   })
 })

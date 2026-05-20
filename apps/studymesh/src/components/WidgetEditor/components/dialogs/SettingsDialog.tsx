@@ -34,7 +34,10 @@ import SearchIcon from '@mui/icons-material/Search'
 import ReplayIcon from '@mui/icons-material/Replay'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 
-import { STUDYMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
+import {
+  STUDYMESH_ONBOARDING_RESET_EVENT,
+  dispatchWorkspaceOnboardingNotice,
+} from '../../../onboarding/onboardingEvents'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
   StudyPackAiProvider,
@@ -48,6 +51,12 @@ import { seedStudyMeshGuideStudyPath } from '../../../../studyPack/studyMeshGuid
 const WORKSPACE_ONBOARDING_KEY = 'studymesh-workspace-onboarding-v1'
 const LOCAL_AI_ESTIMATE_COPY =
   'Local AI runs on your device and can be slow. Performance depends on your hardware but it may take around 10 mins for each prompt.'
+const aiProviderLabels: Record<StudyPackAiProvider, string> = {
+  basic: 'Basic fallback',
+  local: 'Google Local AI',
+  gemini: 'Own Gemini API token',
+  hosted: 'Hosted AI tokens',
+}
 const normalizeExportFolderName = (folder?: unknown) =>
   typeof folder === 'string' && folder.trim() ? folder.trim() : 'Default'
 
@@ -203,8 +212,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         typeof record.name === 'string' && record.name.trim()
           ? record.name.trim()
           : typeof record.title === 'string' && record.title.trim()
-            ? record.title.trim()
-            : `Dashboard ${index + 1}`
+          ? record.title.trim()
+          : `Dashboard ${index + 1}`
       const items = groups.get(folderName) || []
 
       items.push({ dashboard, index, folderName, name })
@@ -283,6 +292,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
       apiToken: aiApiToken,
       model: aiModel,
     })
+    dispatchWorkspaceOnboardingNotice(
+      `AI mode changed to ${aiProviderLabels[aiProvider]}.`,
+    )
   }
 
   const handleClearAiToken = () => {
@@ -635,8 +647,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         aiApiToken.trim()
                           ? 'Settings key active'
                           : hasEnvToken
-                            ? '.env key available'
-                            : 'No key configured'
+                          ? '.env key available'
+                          : 'No key configured'
                       }
                       color={
                         aiApiToken.trim() || hasEnvToken ? 'primary' : 'default'
@@ -1204,7 +1216,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
             Choose which saved dashboards to include in this backup.
           </Typography>
           {exportDashboardGroups.length === 0 ? (
-            <Alert severity="info">There are no saved dashboards to export.</Alert>
+            <Alert severity="info">
+              There are no saved dashboards to export.
+            </Alert>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {exportDashboardGroups.map((group) => {

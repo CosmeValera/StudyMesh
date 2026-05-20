@@ -1,6 +1,8 @@
 export const STUDYMESH_ONBOARDING_EVENT = 'studymesh-workspace-onboarding-event'
 export const STUDYMESH_ONBOARDING_RESET_EVENT =
   'studymesh-workspace-onboarding-reset'
+export const STUDYMESH_ONBOARDING_NOTICE_EVENT =
+  'studymesh-workspace-onboarding-notice'
 export const AQUAMESH_ONBOARDING_EVENT = STUDYMESH_ONBOARDING_EVENT
 export const AQUAMESH_ONBOARDING_RESET_EVENT = STUDYMESH_ONBOARDING_RESET_EVENT
 
@@ -40,8 +42,23 @@ export const dispatchWorkspaceOnboardingEvent = (
   }
 
   window.dispatchEvent(
-    new CustomEvent<WorkspaceOnboardingEventDetail>(STUDYMESH_ONBOARDING_EVENT, {
-      detail,
+    new CustomEvent<WorkspaceOnboardingEventDetail>(
+      STUDYMESH_ONBOARDING_EVENT,
+      {
+        detail,
+      },
+    ),
+  )
+}
+
+export const dispatchWorkspaceOnboardingNotice = (message: string) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<{ message: string }>(STUDYMESH_ONBOARDING_NOTICE_EVENT, {
+      detail: { message },
     }),
   )
 }
