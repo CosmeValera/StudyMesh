@@ -30,11 +30,9 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import SettingsIcon from '@mui/icons-material/Settings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
-import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ReplayIcon from '@mui/icons-material/Replay'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 
-import AccentColorPicker from '../../../../theme/AccentColorPicker'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
@@ -44,6 +42,7 @@ import {
   saveStudyPackAiSettings,
   testLocalLanguageModel,
 } from '../../../../studyPack/ai'
+import { seedAquaMeshGuideStudyPath } from '../../../../studyPack/aquameshGuideSeed'
 
 const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
 const LOCAL_AI_ESTIMATE_COPY =
@@ -346,6 +345,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
   }
 
+  const handleAddAquaMeshGuide = () => {
+    const added = seedAquaMeshGuideStudyPath({ force: true })
+    window.dispatchEvent(new CustomEvent('dashboardStorageUpdated'))
+    setLibraryTransferStatus(
+      added
+        ? 'AquaMesh Guide Study Path added.'
+        : 'AquaMesh Guide Study Path is already available.',
+    )
+  }
+
   return (
     <Dialog
       open={open}
@@ -418,7 +427,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Create Study Path and Create From Context use the configured provider. API keys are optional advanced settings and stay in this browser.
+                    Create Study Path and Create From Context use the configured
+                    provider. API keys are optional advanced settings and stay
+                    in this browser.
                   </Typography>
                   <TextField
                     select
@@ -605,6 +616,13 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         accept="application/json,.json"
                         onChange={handleImportLibrary}
                       />
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleAddAquaMeshGuide}
+                    >
+                      Add AquaMesh Guide Study Path
                     </Button>
                     {libraryTransferStatus && (
                       <Typography variant="caption" color="text.secondary">

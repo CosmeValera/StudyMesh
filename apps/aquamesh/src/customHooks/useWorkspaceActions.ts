@@ -5,23 +5,25 @@ import { useDashboards } from '../components/Dasboard/DashboardProvider'
 import { useLayout } from '../components/Layout/LayoutProvider'
 import WidgetStorage from '../components/WidgetEditor/WidgetStorage'
 import { cloneTemplate } from '../components/WidgetEditor/constants/templateWidgets'
-import {
-  STARTER_WIDGET_NAMES,
-  STARTER_WIDGET_TEMPLATES,
-} from '../components/WidgetEditor/constants/starterWidgetTemplates'
 import { DashboardLayout } from '../state/store'
-import { normalizeFolderColor } from '../components/Dasboard/folderColors'
 import { createStudyPathContainerState } from '../components/Dasboard/studyPathContainer'
 import {
   createStudyPackDashboardLayout,
   StudyPackDashboardLayoutMode,
 } from '../studyPack'
 import { ComponentData } from '../components/WidgetEditor/types/types'
+import {
+  AQUAMESH_GUIDE_FOLDER_NAME,
+  ensureStarterDashboards,
+} from '../studyPack/aquameshGuideSeed'
+
+export { ensureStarterDashboards } from '../studyPack/aquameshGuideSeed'
 
 export const OPEN_WIDGET_EDITOR_EVENT = 'aquamesh-open-widget-editor'
 export const OPEN_DASHBOARD_EDITOR_EVENT = 'aquamesh-open-dashboard-editor'
 export const OPEN_SAVED_DASHBOARDS_EVENT = 'aquamesh-open-saved-dashboards'
 export const OPEN_STUDY_PACK_EVENT = 'aquamesh-open-study-pack'
+export const STARTER_STUDY_PATH_FOLDER_NAME = AQUAMESH_GUIDE_FOLDER_NAME
 
 export interface WorkspaceComponentConfig {
   id?: string
@@ -42,21 +44,6 @@ interface SavedDashboardRecord {
   createdAt: string
   updatedAt: string
 }
-
-const STARTER_DASHBOARDS_SEEDED_KEY = 'aquamesh-starter-dashboards-seeded-v12'
-export const STARTER_STUDY_PATH_FOLDER_NAME = 'AquaMesh Starter Study Path'
-const STARTER_STUDY_PATH_ID = 'aquamesh-starter-study-path'
-
-const STARTER_DASHBOARD_NAMES = [
-  'AquaMesh Starter 1 - Learn the Workspace',
-  'AquaMesh Starter 2 - Practice Interactivity',
-  'AquaMesh Starter 3 - Build Your Own',
-  'Mathematics 1 - Derivatives',
-  'AquaMesh Tutorial',
-  'AquaMesh Interactivity',
-  'Content Load Reference Pack',
-  'Grouping Layout Tutorial',
-]
 
 const createLayoutWithComponent = (
   componentConfig: WorkspaceComponentConfig,
@@ -80,158 +67,6 @@ const createLayoutWithComponent = (
       ],
     },
   ],
-})
-
-const createStarterStudyPathLayout = ({
-  dashboardName,
-  dashboardKey,
-  dashboardIndex,
-  dashboardCount,
-  components,
-}: {
-  dashboardName: string
-  dashboardKey: string
-  dashboardIndex: number
-  dashboardCount: number
-  components: ComponentData[]
-}): DashboardLayout => ({
-  type: 'row',
-  weight: 100,
-  children: [
-    {
-      type: 'tabset',
-      weight: 100,
-      active: true,
-      children: [
-        {
-          type: 'tab',
-          name: dashboardName,
-          component: 'CustomWidget',
-          config: {
-            customProps: {
-              widgetId: dashboardKey,
-              studyPathId: STARTER_STUDY_PATH_ID,
-              studyPathTitle: 'AquaMesh Starter Study Path',
-              studyPathDashboardKey: dashboardKey,
-              studyPathDashboardName: dashboardName,
-              studyPathDashboardIndex: dashboardIndex,
-              studyPathDashboardCount: dashboardCount,
-              studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
-              components,
-            },
-          },
-        },
-      ],
-    },
-  ],
-})
-
-const createMathStarterLayout = (
-  componentConfigs: WorkspaceComponentConfig[],
-): DashboardLayout => {
-  const [chart, example, theory] = componentConfigs
-
-  const createTab = (componentConfig: WorkspaceComponentConfig) => ({
-    type: 'tab',
-    name: componentConfig.name,
-    component: componentConfig.component,
-    config: componentConfig.customProps
-      ? { customProps: componentConfig.customProps }
-      : undefined,
-  })
-
-  return {
-    type: 'row',
-    weight: 100,
-    children: [
-      {
-        type: 'tabset',
-        weight: 43,
-        active: true,
-        children: [createTab(chart)],
-      },
-      {
-        type: 'row',
-        weight: 57,
-        children: [
-          {
-            type: 'tabset',
-            weight: 50,
-            children: [createTab(example)],
-          },
-          {
-            type: 'tabset',
-            weight: 50,
-            children: [createTab(theory)],
-          },
-        ],
-      },
-    ],
-  }
-}
-
-const saveTemplateWidget = ({
-  widgetName,
-  templateId,
-  description,
-  category = 'Knowledge Workspace',
-  tags,
-  refreshExisting = false,
-}: {
-  widgetName: string
-  templateId: string
-  description: string
-  category?: string
-  tags: string[]
-  refreshExisting?: boolean
-}) => {
-  const savedWidgets = WidgetStorage.getAllWidgets()
-  const matchingWidgets = savedWidgets.filter(
-    (savedWidget) => savedWidget.name === widgetName,
-  )
-  let widget = matchingWidgets[matchingWidgets.length - 1]
-  const template = cloneTemplate(templateId)
-
-  if (template) {
-    if (!widget) {
-      widget = WidgetStorage.saveWidget({
-        name: widgetName,
-        description,
-        category,
-        tags,
-        components: template.components,
-        version: '1.0',
-        author: 'AquaMesh',
-      })
-    } else if (refreshExisting) {
-      matchingWidgets.forEach((matchingWidget) => {
-        const updatedWidget = WidgetStorage.updateWidget(matchingWidget.id, {
-          description,
-          category,
-          tags,
-          components: template.components,
-          author: 'AquaMesh',
-        })
-
-        if (matchingWidget.id === widget?.id && updatedWidget) {
-          widget = updatedWidget
-        }
-      })
-    }
-  }
-
-  return widget
-}
-
-const createCustomWidgetConfig = (
-  widget: NonNullable<ReturnType<typeof saveTemplateWidget>>,
-) => ({
-  name: widget.name,
-  component: 'CustomWidget',
-  customProps: {
-    widgetId: widget.id,
-    components: widget.components,
-  },
 })
 
 const getSavedDashboards = (): SavedDashboardRecord[] => {
@@ -340,377 +175,6 @@ const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   }
 
   return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
-}
-
-const getStarterDashboardId = (name: string) =>
-  `dashboard-starter-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-
-const saveStarterDashboard = (
-  dashboard: Omit<SavedDashboardRecord, 'id' | 'createdAt' | 'updatedAt'>,
-) => {
-  const dashboards = getSavedDashboards()
-  const now = new Date().toISOString()
-  const starterId = getStarterDashboardId(dashboard.name)
-  const existingIndex = dashboards.findIndex(
-    (savedDashboard) =>
-      savedDashboard.name === dashboard.name || savedDashboard.id === starterId,
-  )
-
-  if (existingIndex >= 0) {
-    dashboards[existingIndex] = {
-      ...dashboards[existingIndex],
-      ...dashboard,
-      folderColor: normalizeFolderColor(dashboard.folderColor),
-      updatedAt: now,
-    }
-  } else {
-    dashboards.push({
-      id: starterId,
-      ...dashboard,
-      folderColor: normalizeFolderColor(dashboard.folderColor),
-      createdAt: now,
-      updatedAt: now,
-    })
-  }
-
-  window.localStorage.setItem('customDashboards', JSON.stringify(dashboards))
-}
-
-export const ensureStarterDashboards = () => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const savedDashboards = getSavedDashboards()
-  const startersArePresent = STARTER_DASHBOARD_NAMES.every((name) => {
-    const savedDashboard = savedDashboards.find(
-      (dashboard) => dashboard.name === name,
-    )
-
-    return hasDashboardContent(savedDashboard?.layout)
-  })
-  const starterWidgetsArePresent = STARTER_WIDGET_NAMES.every((name) => {
-    const savedWidgets = WidgetStorage.getAllWidgets().filter(
-      (widget) => widget.name === name,
-    )
-    const expectedBlocks = STARTER_WIDGET_TEMPLATES[name]?.minBlocks || 1
-
-    return (
-      savedWidgets.length > 0 &&
-      savedWidgets.every(
-        (savedWidget) =>
-          countWidgetComponents(savedWidget.components) >= expectedBlocks,
-      )
-    )
-  })
-
-  if (
-    window.localStorage.getItem(STARTER_DASHBOARDS_SEEDED_KEY) === 'true' &&
-    startersArePresent &&
-    starterWidgetsArePresent
-  ) {
-    return
-  }
-
-  const starterStudyPathDashboards = [
-    {
-      name: 'AquaMesh Starter 1 - Learn the Workspace',
-      key: `${STARTER_STUDY_PATH_ID}-lesson-1`,
-      components: [
-        {
-          id: 'starter-path-1-title',
-          type: 'Label',
-          props: {
-            text: 'Welcome to your AquaMesh Study Path',
-            variant: 'h4',
-            fontWeight: 800,
-            gutterBottom: true,
-          },
-        },
-        {
-          id: 'starter-path-1-summary',
-          type: 'ListBlock',
-          props: {
-            __blockType: 'ListBlock',
-            title: 'What this guided course shows',
-            items:
-              'Study Paths keep multiple lesson dashboards in one workspace tab.\nUse the floating Course helper to move between lessons.\nEach lesson can still be opened standalone from the Study Paths menu.',
-            ordered: false,
-            interactiveChecklist: false,
-          },
-        },
-        {
-          id: 'starter-path-1-progress',
-          type: 'StudyPathProgressBlock',
-          props: {
-            studyPathId: STARTER_STUDY_PATH_ID,
-            studyPathTitle: 'AquaMesh Starter Study Path',
-            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-1`,
-            studyPathDashboardName: 'AquaMesh Starter 1 - Learn the Workspace',
-            studyPathDashboardIndex: 1,
-            studyPathDashboardCount: 3,
-            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
-          },
-        },
-      ],
-    },
-    {
-      name: 'AquaMesh Starter 2 - Practice Interactivity',
-      key: `${STARTER_STUDY_PATH_ID}-lesson-2`,
-      components: [
-        {
-          id: 'starter-path-2-title',
-          type: 'Label',
-          props: {
-            text: 'Try interactive study blocks',
-            variant: 'h4',
-            fontWeight: 800,
-            gutterBottom: true,
-          },
-        },
-        {
-          id: 'starter-path-2-quiz',
-          type: 'QuizBlock',
-          props: {
-            __blockType: 'QuizBlock',
-            studyPathId: STARTER_STUDY_PATH_ID,
-            studyPathTitle: 'AquaMesh Starter Study Path',
-            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-2`,
-            studyPathDashboardName:
-              'AquaMesh Starter 2 - Practice Interactivity',
-            studyPathDashboardIndex: 2,
-            studyPathDashboardCount: 3,
-            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
-            quizMode: 'multipleChoice',
-            question: 'What should the Course helper do in a Study Path?',
-            options: [
-              'Open every lesson as a top-level tab',
-              'Navigate lessons inside one Study Path tab',
-              'Hide the dashboard content',
-            ],
-            correctIndex: 1,
-            answer: 'Navigate lessons inside one Study Path tab',
-            explanation:
-              'The Study Path is a guided course mode: one top-level tab, internal lesson navigation.',
-          },
-        },
-        {
-          id: 'starter-path-2-progress',
-          type: 'StudyPathProgressBlock',
-          props: {
-            studyPathId: STARTER_STUDY_PATH_ID,
-            studyPathTitle: 'AquaMesh Starter Study Path',
-            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-2`,
-            studyPathDashboardName:
-              'AquaMesh Starter 2 - Practice Interactivity',
-            studyPathDashboardIndex: 2,
-            studyPathDashboardCount: 3,
-            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
-          },
-        },
-      ],
-    },
-    {
-      name: 'AquaMesh Starter 3 - Build Your Own',
-      key: `${STARTER_STUDY_PATH_ID}-lesson-3`,
-      components: [
-        {
-          id: 'starter-path-3-title',
-          type: 'Label',
-          props: {
-            text: 'Create your own Study Path next',
-            variant: 'h4',
-            fontWeight: 800,
-            gutterBottom: true,
-          },
-        },
-        {
-          id: 'starter-path-3-steps',
-          type: 'ListBlock',
-          props: {
-            __blockType: 'ListBlock',
-            title: 'Next steps',
-            items:
-              'Open the Study Path creator from the top bar.\nPaste notes, a topic, or a learning prompt.\nGenerate a multi-lesson course and refine it in Library / Manage.',
-            ordered: true,
-            interactiveChecklist: true,
-          },
-        },
-        {
-          id: 'starter-path-3-progress',
-          type: 'StudyPathProgressBlock',
-          props: {
-            studyPathId: STARTER_STUDY_PATH_ID,
-            studyPathTitle: 'AquaMesh Starter Study Path',
-            studyPathDashboardKey: `${STARTER_STUDY_PATH_ID}-lesson-3`,
-            studyPathDashboardName: 'AquaMesh Starter 3 - Build Your Own',
-            studyPathDashboardIndex: 3,
-            studyPathDashboardCount: 3,
-            studyPathFolderName: STARTER_STUDY_PATH_FOLDER_NAME,
-          },
-        },
-      ],
-    },
-  ]
-
-  starterStudyPathDashboards.forEach((dashboard, index) => {
-    saveStarterDashboard({
-      name: dashboard.name,
-      folder: STARTER_STUDY_PATH_FOLDER_NAME,
-      folderColor: '#007C66',
-      layout: createStarterStudyPathLayout({
-        dashboardName: dashboard.name,
-        dashboardKey: dashboard.key,
-        dashboardIndex: index + 1,
-        dashboardCount: starterStudyPathDashboards.length,
-        components: dashboard.components,
-      }),
-      description:
-        'A default guided Study Path that demonstrates the AquaMesh course experience.',
-      tags: ['study-pack', 'study-path', 'starter'],
-      isPublic: true,
-    })
-  })
-
-  const mathWidgets = [
-    saveTemplateWidget({
-      widgetName: 'Mathematics 1 - Chart',
-      templateId: 'template-math-derivatives-chart',
-      description:
-        'Practice-progress chart for the derivatives study dashboard.',
-      tags: ['mathematics', 'derivatives', 'chart'],
-      refreshExisting: true,
-    }),
-    saveTemplateWidget({
-      widgetName: 'Mathematics 1 - Derivatives Example',
-      templateId: 'template-math-derivatives-example',
-      description:
-        'Worked derivative examples and a question input for the study dashboard.',
-      tags: ['mathematics', 'derivatives', 'example'],
-      refreshExisting: true,
-    }),
-    saveTemplateWidget({
-      widgetName: 'Mathematics 1 - Theory Derivatives',
-      templateId: 'template-math-derivatives-theory',
-      description:
-        'Core derivative theory and formulas for the study dashboard.',
-      tags: ['mathematics', 'derivatives', 'theory'],
-      refreshExisting: true,
-    }),
-  ].filter(Boolean)
-
-  if (mathWidgets.length === 3) {
-    saveStarterDashboard({
-      name: 'Mathematics 1 - Derivatives',
-      folder: 'Mathematics',
-      folderColor: '#1976D2',
-      layout: createMathStarterLayout(
-        mathWidgets.map((widget) => createCustomWidgetConfig(widget!)),
-      ),
-      description:
-        'A starter mathematics dashboard with theory, examples, and a chart.',
-      tags: ['mathematics', 'derivatives', 'starter'],
-      isPublic: true,
-    })
-  }
-
-  const tutorialWidget = saveTemplateWidget({
-    widgetName: 'AquaMesh Tutorial',
-    templateId: 'template-knowledge-tutorial',
-    description:
-      'A simple dashboard that explains widgets, dashboards, and blocks with visual examples.',
-    tags: ['tutorial', 'knowledge wiki', 'dashboard', 'blocks'],
-    refreshExisting: true,
-  })
-
-  if (tutorialWidget) {
-    saveStarterDashboard({
-      name: 'AquaMesh Tutorial',
-      folder: 'Tutorial',
-      folderColor: '#007C66',
-      layout: createLayoutWithComponent(
-        createCustomWidgetConfig(tutorialWidget),
-      ),
-      description:
-        'A starter dashboard that explains the basic AquaMesh concepts.',
-      tags: ['tutorial', 'widgets', 'dashboards', 'blocks'],
-      isPublic: true,
-    })
-  }
-
-  const interactivityWidget = saveTemplateWidget({
-    widgetName: 'AquaMesh Interactivity',
-    templateId: 'template-aquamesh-interactivity',
-    description:
-      'A hands-on tutorial dashboard for buttons, checklists, answer boxes, and chart updates.',
-    tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
-    refreshExisting: true,
-  })
-
-  if (interactivityWidget) {
-    saveStarterDashboard({
-      name: 'AquaMesh Interactivity',
-      folder: 'Tutorial',
-      folderColor: '#007C66',
-      layout: createLayoutWithComponent(
-        createCustomWidgetConfig(interactivityWidget),
-      ),
-      description:
-        'A starter dashboard that demonstrates AquaMesh widget interactivity.',
-      tags: ['tutorial', 'interactivity', 'buttons', 'charts', 'tasks'],
-      isPublic: true,
-    })
-  }
-
-  const contentLoadWidget = saveTemplateWidget({
-    widgetName: 'Content Load Reference Pack',
-    templateId: 'template-content-load-reference-pack',
-    description:
-      'A heavier dashboard example with an embedded PDF, image, long text, and checklist content.',
-    tags: ['content', 'pdf', 'image', 'long text', 'reference'],
-    refreshExisting: true,
-  })
-
-  if (contentLoadWidget) {
-    saveStarterDashboard({
-      name: 'Content Load Reference Pack',
-      folder: 'Examples',
-      folderColor: '#D81B60',
-      layout: createLayoutWithComponent(
-        createCustomWidgetConfig(contentLoadWidget),
-      ),
-      description:
-        'A heavier starter dashboard with PDF, image, long text, and mixed content blocks.',
-      tags: ['content', 'pdf', 'image', 'long text', 'reference'],
-      isPublic: true,
-    })
-  }
-
-  const groupingWidget = saveTemplateWidget({
-    widgetName: 'Grouping Layout Tutorial',
-    templateId: 'template-grouping-layout-tutorial',
-    description:
-      'Explains when to use FieldSet, FlexBox, and GridBox layout groups.',
-    tags: ['tutorial', 'grouping', 'fieldset', 'flex', 'grid'],
-    refreshExisting: true,
-  })
-
-  if (groupingWidget) {
-    saveStarterDashboard({
-      name: 'Grouping Layout Tutorial',
-      folder: 'Tutorial',
-      folderColor: '#007C66',
-      layout: createLayoutWithComponent(
-        createCustomWidgetConfig(groupingWidget),
-      ),
-      description:
-        'A starter dashboard for understanding FieldSet, FlexBox, and GridBox groupings.',
-      tags: ['tutorial', 'grouping', 'layout', 'fieldset', 'flex', 'grid'],
-      isPublic: true,
-    })
-  }
-
-  window.localStorage.setItem(STARTER_DASHBOARDS_SEEDED_KEY, 'true')
 }
 
 export const useWorkspaceActions = () => {
@@ -953,33 +417,20 @@ export const useWorkspaceActions = () => {
     })
   }, [openTemplateDashboard])
 
-  const openMathExample = useCallback(() => {
+  const openAquaMeshGuide = useCallback(() => {
     ensureStarterDashboards()
-    const mathDashboard = getSavedDashboards().find(
-      (dashboard) => dashboard.name === 'Mathematics 1 - Derivatives',
+    const guideDashboards = getSavedDashboards().filter(
+      (dashboard) => dashboard.folder === AQUAMESH_GUIDE_FOLDER_NAME,
     )
+    const studyPath = createStudyPathContainerState(guideDashboards)
 
-    if (mathDashboard) {
-      addDashboard({
-        name: mathDashboard.name,
-        layout: mathDashboard.layout,
-      })
+    if (studyPath) {
+      addStudyPathContainer(studyPath)
     }
-  }, [addDashboard])
+  }, [addStudyPathContainer])
 
-  const openTutorialExample = useCallback(() => {
-    ensureStarterDashboards()
-    const tutorialDashboard = getSavedDashboards().find(
-      (dashboard) => dashboard.name === 'AquaMesh Tutorial',
-    )
-
-    if (tutorialDashboard) {
-      addDashboard({
-        name: tutorialDashboard.name,
-        layout: tutorialDashboard.layout,
-      })
-    }
-  }, [addDashboard])
+  const openMathExample = openAquaMeshGuide
+  const openTutorialExample = openAquaMeshGuide
 
   return {
     ensureDashboardAndAddComponent,
