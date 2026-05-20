@@ -17,7 +17,7 @@ vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   OPEN_DASHBOARD_EDITOR_EVENT: 'aquamesh-open-dashboard-editor',
   OPEN_WIDGET_EDITOR_EVENT: 'aquamesh-open-widget-editor',
   OPEN_STUDY_PACK_EVENT: 'aquamesh-open-study-pack',
-  STARTER_STUDY_PATH_FOLDER_NAME: 'AquaMesh Starter Study Path',
+  STARTER_STUDY_PATH_FOLDER_NAME: 'AquaMesh Guide',
   ensureStarterDashboards: vi.fn(),
   useWorkspaceActions: vi.fn(),
 }))
@@ -62,9 +62,9 @@ const openOperationsExampleMock = vi.fn()
 const openWidgetMenuMock = vi.fn()
 
 const createStarterStudyPathDashboard = (index: number) => ({
-  id: `starter-lesson-${index}`,
-  name: `AquaMesh Starter ${index}`,
-  folder: 'AquaMesh Starter Study Path',
+  id: `aquamesh-guide-dashboard-${index}`,
+  name: `0${index} - AquaMesh Guide ${index}`,
+  folder: 'AquaMesh Guide',
   layout: {
     type: 'row',
     children: [
@@ -73,7 +73,7 @@ const createStarterStudyPathDashboard = (index: number) => ({
         children: [
           {
             type: 'tab',
-            name: `AquaMesh Starter ${index}`,
+            name: `0${index} - AquaMesh Guide ${index}`,
             component: 'CustomWidget',
             config: {
               customProps: {
@@ -82,13 +82,15 @@ const createStarterStudyPathDashboard = (index: number) => ({
                     id: `starter-progress-${index}`,
                     type: 'StudyPathProgressBlock',
                     props: {
-                      studyPathId: 'aquamesh-starter-study-path',
-                      studyPathTitle: 'AquaMesh Starter Study Path',
-                      studyPathDashboardKey: `starter-${index}`,
-                      studyPathDashboardName: `AquaMesh Starter ${index}`,
+                      studyPathId:
+                        'aquamesh-student-knowledge-wiki-a-beginner-s-guide',
+                      studyPathTitle:
+                        "AquaMesh Student Knowledge Wiki: A Beginner's Guide",
+                      studyPathDashboardKey: `aquamesh-guide-${index}`,
+                      studyPathDashboardName: `0${index} - AquaMesh Guide ${index}`,
                       studyPathDashboardIndex: index,
                       studyPathDashboardCount: 2,
-                      studyPathFolderName: 'AquaMesh Starter Study Path',
+                      studyPathFolderName: 'AquaMesh Guide',
                     },
                   },
                 ],
@@ -265,11 +267,11 @@ describe('Dashboards', () => {
     await waitFor(() => expect(addStudyPathContainer).toHaveBeenCalled())
     expect(addStudyPathContainer).toHaveBeenCalledWith(
       expect.objectContaining({
-        pathId: 'aquamesh-starter-study-path',
-        title: 'AquaMesh Starter Study Path',
+        pathId: 'aquamesh-student-knowledge-wiki-a-beginner-s-guide',
+        title: "AquaMesh Student Knowledge Wiki: A Beginner's Guide",
         dashboards: expect.arrayContaining([
-          expect.objectContaining({ name: 'AquaMesh Starter 1' }),
-          expect.objectContaining({ name: 'AquaMesh Starter 2' }),
+          expect.objectContaining({ name: '01 - AquaMesh Guide 1' }),
+          expect.objectContaining({ name: '02 - AquaMesh Guide 2' }),
         ]),
       }),
     )

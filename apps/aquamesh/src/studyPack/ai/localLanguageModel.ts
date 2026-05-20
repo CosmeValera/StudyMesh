@@ -77,6 +77,8 @@ export type LocalAiStudyPathStep =
   | 'markdown1'
   | 'markdown2'
   | 'practice'
+  | 'flashcards'
+  | 'quizzes'
 
 export interface LocalAiProgressEvent {
   phase: 'download' | 'smoke' | 'generation' | 'complete' | 'timeout'
@@ -84,16 +86,31 @@ export interface LocalAiProgressEvent {
   label: string
   dashboardIndex?: number
   dashboardCount?: number
+  threadId?: number
+  threadCount?: number
   attempt?: number
   attemptCount?: number
   timeoutMs?: number
   studyPathStep?: LocalAiStudyPathStep
+  studyPathPipeline?: {
+    percent: number
+    estimatedRemainingMs: number
+    label: string
+    steps: Array<{
+      id: string
+      label: string
+      status: 'pending' | 'running' | 'complete' | 'failed'
+      percent: number
+    }>
+  }
   dashboardProgress?: Array<{
     dashboardIndex: number
     dashboardCount: number
     status: 'pending' | 'running' | 'complete' | 'failed'
     label: string
     percent: number
+    threadId?: number
+    threadCount?: number
     attempt?: number
     attemptCount?: number
     studyPathStep?: LocalAiStudyPathStep
@@ -275,6 +292,8 @@ const createPromptProgressTimer = (
     | 'attempt'
     | 'attemptCount'
     | 'studyPathStep'
+    | 'threadId'
+    | 'threadCount'
   > = {},
 ): (() => void) => {
   if (!onProgress) {
@@ -329,6 +348,8 @@ export const callLocalLanguageModel = async (
     attempt?: number
     attemptCount?: number
     studyPathStep?: LocalAiStudyPathStep
+    threadId?: number
+    threadCount?: number
   } = {},
 ): Promise<string> => {
   assertLocalAiIsReady()
@@ -350,7 +371,7 @@ export const callLocalLanguageModel = async (
   const availability = await getLocalLanguageModelAvailability(
     outputLanguage,
     expectedInputs,
-    expectedOutputs
+    expectedOutputs,
   )
   if (availability === 'unavailable') {
     throw new Error(
@@ -380,6 +401,8 @@ export const callLocalLanguageModel = async (
               attempt: options.attempt,
               attemptCount: options.attemptCount,
               studyPathStep: options.studyPathStep,
+              threadId: options.threadId,
+              threadCount: options.threadCount,
             })
           }
         })
@@ -439,6 +462,8 @@ export const callLocalLanguageModel = async (
         attempt: options.attempt,
         attemptCount: options.attemptCount,
         studyPathStep: options.studyPathStep,
+        threadId: options.threadId,
+        threadCount: options.threadCount,
       },
     )
     const result = await withTimeout(
@@ -464,6 +489,8 @@ export const callLocalLanguageModel = async (
           attempt: options.attempt,
           attemptCount: options.attemptCount,
           studyPathStep: options.studyPathStep,
+          threadId: options.threadId,
+          threadCount: options.threadCount,
         })
         session?.destroy?.()
         session = null
@@ -486,6 +513,8 @@ export const callLocalLanguageModel = async (
       attempt: options.attempt,
       attemptCount: options.attemptCount,
       studyPathStep: options.studyPathStep,
+      threadId: options.threadId,
+      threadCount: options.threadCount,
     })
     debugLocalAi('prompt:end', {
       durationMs: Math.round(performance.now() - promptStartedAt),
@@ -528,8 +557,9 @@ export const extractNotesFromImageWithLocalLanguageModel = async (
   } = {},
 ): Promise<string> => {
   const outputLanguage = options.outputLanguage || 'en'
-  const availability =
-    await getLocalLanguageModelImageAvailability(outputLanguage)
+  const availability = await getLocalLanguageModelImageAvailability(
+    outputLanguage,
+  )
   if (availability === 'unavailable') {
     throw new Error(
       'Google Local AI image input is unavailable in this browser or model.',

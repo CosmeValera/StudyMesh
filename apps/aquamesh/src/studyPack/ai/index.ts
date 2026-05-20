@@ -1,5 +1,6 @@
 export {
   DEFAULT_STUDY_PACK_AI_MODEL,
+  STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   STUDY_PACK_AI_SETTINGS_KEY,
   clearStudyPackAiToken,
   getEnvGeminiApiKey,

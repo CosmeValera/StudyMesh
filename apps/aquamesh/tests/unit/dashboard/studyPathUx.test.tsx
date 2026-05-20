@@ -236,6 +236,8 @@ describe('Interactive Study Path UX', () => {
     expect(screen.getByText('Course helper')).toBeInTheDocument()
     expect(screen.getByText('0/5 completed')).toBeInTheDocument()
     expect(screen.getByText('Lesson 1/5')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dock left/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dock right/i })).toBeInTheDocument()
     expect(
       screen.getByTestId('mock-selected-widget-border'),
     ).toBeInTheDocument()

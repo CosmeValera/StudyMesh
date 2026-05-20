@@ -490,6 +490,10 @@ describe('CreateStudyPathModal role enforcement', () => {
               answer: 'To the end in simple present main clauses.',
             },
           ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
           quizzes: [
             {
               question: 'Which phrase means every morning?',
@@ -517,6 +521,10 @@ describe('CreateStudyPathModal role enforcement', () => {
               answer: 'Tickets and directions.',
             },
           ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
           quizzes: [
             {
               question: 'What is useful in travel situations?',

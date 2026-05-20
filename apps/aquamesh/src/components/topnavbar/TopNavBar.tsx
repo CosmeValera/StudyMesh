@@ -46,6 +46,11 @@ import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import CreateStudyPackModal from '../studyPack/CreateStudyPackModal'
 import CreateStudyPathModal from '../studyPack/CreateStudyPathModal'
+import {
+  readStudyPackAiSettings,
+  STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+  StudyPackAiProvider,
+} from '../../studyPack/ai'
 
 // Define user data type
 interface UserData {
@@ -153,6 +158,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [studyPackOpen, setStudyPackOpen] = useState(false)
   const [studyPathOpen, setStudyPathOpen] = useState(false)
+  const [studyPackAiProvider, setStudyPackAiProvider] =
+    useState<StudyPackAiProvider>(
+      () => readStudyPackAiSettings().provider || 'basic',
+    )
   const [widgetEditorOpen, setWidgetEditorOpen] = useState(false)
   const [widgetEditorPayload, setWidgetEditorPayload] = useState<{
     loadWidget?: CustomWidget
@@ -180,6 +189,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     useStoredBoolean('widget-editor-delete-template-confirmation', true)
   const [userData, setUserData] = useState<UserData>(adminUser)
   const isAdmin = userData.id === 'admin' && userData.role === 'ADMIN_ROLE'
+  const hostedAiUnavailable = studyPackAiProvider === 'hosted'
+  const canCreateStudyPath =
+    isAdmin && studyPackAiProvider !== 'basic' && !hostedAiUnavailable
+  const canCreateFromNotes = isAdmin && !hostedAiUnavailable
   const userModeLabel = isAdmin ? 'Builder mode' : 'Viewer mode'
 
   const {
@@ -207,6 +220,26 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       } catch (error) {
         console.error('Failed to parse user data from localStorage', error)
       }
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshAiProvider = () => {
+      setStudyPackAiProvider(readStudyPackAiSettings().provider || 'basic')
+    }
+
+    window.addEventListener(
+      STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+      refreshAiProvider,
+    )
+    window.addEventListener('storage', refreshAiProvider)
+
+    return () => {
+      window.removeEventListener(
+        STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+        refreshAiProvider,
+      )
+      window.removeEventListener('storage', refreshAiProvider)
     }
   }, [])
 
@@ -369,18 +402,26 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 icon={<RouteIcon />}
                 label="Create Study Path"
                 onClick={() => setStudyPathOpen(true)}
-                disabled={!isAdmin}
+                disabled={!canCreateStudyPath}
                 title={
-                  isAdmin
-                    ? 'Create Study Path'
-                    : 'Viewer mode cannot create study paths'
+                  !isAdmin
+                    ? 'Viewer mode cannot create study paths'
+                    : hostedAiUnavailable
+                    ? 'Hosted AI tokens are not available yet'
+                    : studyPackAiProvider === 'basic'
+                    ? 'Create Study Path is disabled in Basic fallback mode'
+                    : 'Create Study Path'
                 }
-                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
+                sx={
+                  !canCreateStudyPath
+                    ? { opacity: 0.45, pointerEvents: 'none' }
+                    : {}
+                }
               />
             ) : (
               <Button
                 onClick={() => setStudyPathOpen(true)}
-                disabled={!isAdmin}
+                disabled={!canCreateStudyPath}
                 sx={{
                   color: 'foreground.contrastPrimary',
                   display: 'flex',
@@ -388,9 +429,18 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   minWidth: 'auto',
                   mx: 1,
                   px: 2,
-                  opacity: isAdmin ? 1 : 0.45,
+                  opacity: canCreateStudyPath ? 1 : 0.45,
                 }}
                 startIcon={<RouteIcon />}
+                title={
+                  !isAdmin
+                    ? 'Viewer mode cannot create study paths'
+                    : hostedAiUnavailable
+                    ? 'Hosted AI tokens are not available yet'
+                    : studyPackAiProvider === 'basic'
+                    ? 'Create Study Path is disabled in Basic fallback mode'
+                    : 'Create Study Path'
+                }
               >
                 Create Study Path
               </Button>
@@ -402,18 +452,24 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 label="Create From Notes"
                 onClick={() => openCreateStudyPack()}
                 data-tutorial-id="create-study-pack-button"
-                disabled={!isAdmin}
+                disabled={!canCreateFromNotes}
                 title={
-                  isAdmin
-                    ? 'Create From Notes'
-                    : 'Viewer mode cannot create from notes'
+                  !isAdmin
+                    ? 'Viewer mode cannot create from notes'
+                    : hostedAiUnavailable
+                    ? 'Hosted AI tokens are not available yet'
+                    : 'Create From Notes'
                 }
-                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
+                sx={
+                  !canCreateFromNotes
+                    ? { opacity: 0.45, pointerEvents: 'none' }
+                    : {}
+                }
               />
             ) : (
               <Button
                 onClick={() => openCreateStudyPack()}
-                disabled={!isAdmin}
+                disabled={!canCreateFromNotes}
                 sx={{
                   color: 'foreground.contrastPrimary',
                   display: 'flex',
@@ -421,10 +477,17 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                   minWidth: 'auto',
                   mx: 1,
                   px: 2,
-                  opacity: isAdmin ? 1 : 0.45,
+                  opacity: canCreateFromNotes ? 1 : 0.45,
                 }}
                 startIcon={<AutoStoriesIcon />}
                 data-tutorial-id="create-study-pack-button"
+                title={
+                  !isAdmin
+                    ? 'Viewer mode cannot create from notes'
+                    : hostedAiUnavailable
+                    ? 'Hosted AI tokens are not available yet'
+                    : 'Create From Notes'
+                }
               >
                 Create From Notes
               </Button>

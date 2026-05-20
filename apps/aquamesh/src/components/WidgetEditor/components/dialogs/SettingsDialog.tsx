@@ -30,11 +30,9 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import SettingsIcon from '@mui/icons-material/Settings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
-import ColorLensIcon from '@mui/icons-material/ColorLens'
 import ReplayIcon from '@mui/icons-material/Replay'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 
-import AccentColorPicker from '../../../../theme/AccentColorPicker'
 import { AQUAMESH_ONBOARDING_RESET_EVENT } from '../../../onboarding/onboardingEvents'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
@@ -44,10 +42,11 @@ import {
   saveStudyPackAiSettings,
   testLocalLanguageModel,
 } from '../../../../studyPack/ai'
+import { seedAquaMeshGuideStudyPath } from '../../../../studyPack/aquameshGuideSeed'
 
 const WORKSPACE_ONBOARDING_KEY = 'aquamesh-workspace-onboarding-v1'
 const LOCAL_AI_ESTIMATE_COPY =
-  'Local AI runs on your device and can be slow. Super small usually takes 1-2 min, Compact 2-3 min, Average 3-5 min. For faster/deeper paths, use Own Gemini token.'
+  'Local AI runs on your device and can be slow. Performance depends on your hardware but it may take around 10 mins for each prompt.'
 
 interface SettingsDialogProps {
   open: boolean
@@ -346,6 +345,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
   }
 
+  const handleAddAquaMeshGuide = () => {
+    const added = seedAquaMeshGuideStudyPath({ force: true })
+    window.dispatchEvent(new CustomEvent('dashboardStorageUpdated'))
+    setLibraryTransferStatus(
+      added
+        ? 'AquaMesh Guide Study Path added.'
+        : 'AquaMesh Guide Study Path is already available.',
+    )
+  }
+
   return (
     <Dialog
       open={open}
@@ -411,16 +420,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <AutoAwesomeIcon sx={{ mr: 1.5, color: 'primary.main' }} />
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography fontWeight="medium" color="text.primary">
-                    Advanced AI Provider Settings
+                    AI Provider Settings
                   </Typography>
                   <Typography
                     variant="body2"
                     color="text.secondary"
                     sx={{ mb: 2 }}
                   >
-                    Create from notes can use the configured provider to turn
-                    notes into a dashboard. API keys are optional advanced
-                    settings and stay in this browser.
+                    Create from notes, Create Study Path, and Create From
+                    Context use the configured provider. API keys are optional
+                    advanced settings and stay in this browser.
                   </Typography>
                   <TextField
                     select
@@ -432,7 +441,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     fullWidth
                     size="small"
                     sx={{ mb: 1.5 }}
-                    helperText="This provider is used by Create from notes and Create Study Path."
+                    helperText="This provider is used by Create from notes, Create Study Path, and Create From Context."
                   >
                     <MenuItem value="basic">Basic fallback</MenuItem>
                     <MenuItem value="local">
@@ -442,7 +451,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     <MenuItem value="hosted">Hosted AI tokens</MenuItem>
                   </TextField>
                   {aiProvider === 'local' && (
-                    <Alert severity="warning" sx={{ mb: 1.5 }}>
+                    <Alert severity="info" sx={{ mb: 1.5 }}>
                       {LOCAL_AI_ESTIMATE_COPY}
                     </Alert>
                   )}
@@ -607,6 +616,13 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         accept="application/json,.json"
                         onChange={handleImportLibrary}
                       />
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleAddAquaMeshGuide}
+                    >
+                      Add AquaMesh Guide Study Path
                     </Button>
                     {libraryTransferStatus && (
                       <Typography variant="caption" color="text.secondary">

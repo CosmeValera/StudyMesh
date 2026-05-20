@@ -987,7 +987,7 @@ const DashboardOptionsMenu: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            No study packs or dashboards yet
+            No study paths or dashboards yet
           </MenuItem>
         )}
         {!isPhone && visibleCustomDashboards.length === 0 && (
@@ -1001,7 +1001,7 @@ const DashboardOptionsMenu: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            No study packs or dashboards yet
+            No study paths or dashboards yet
           </MenuItem>
         )}
       </Menu>

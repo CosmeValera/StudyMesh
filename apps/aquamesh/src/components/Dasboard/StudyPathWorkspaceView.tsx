@@ -607,7 +607,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               <Stack
                 direction="row"
                 spacing={0.75}
-                sx={{ display: { xs: 'none', sm: 'flex' } }}
+                sx={{ display: 'flex' }}
               >
                 <Button
                   size="small"
