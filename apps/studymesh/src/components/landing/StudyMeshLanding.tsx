@@ -6,6 +6,12 @@ import {
   Grid,
   Paper,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -131,6 +137,38 @@ const aiPricing = [
     body: 'Start with 5-10 free tries. If you need more, make a one-time 2€ payment for greater hourly limits.',
     icon: <CloudQueueIcon />,
     features: ['5-10 free tries', 'One-time payment', 'Higher hourly limits'],
+    highlighted: true,
+  },
+]
+
+const aiPricingComparison = [
+  {
+    mode: 'Fallback mode',
+    price: '0€',
+    setup: 'No setup',
+    bestFor: 'Quick notes and basic practice',
+    limits: 'Always available, simpler output',
+  },
+  {
+    mode: 'Local Gemini Nano',
+    price: '0€',
+    setup: 'Compatible browser/device',
+    bestFor: 'Private on-device generation',
+    limits: 'Slower and depends on local AI support',
+  },
+  {
+    mode: 'BYOK Gemini',
+    price: '0€',
+    setup: 'Your Gemini API key',
+    bestFor: 'Full AI quality with your own quota',
+    limits: 'You manage key, quota, and billing',
+  },
+  {
+    mode: 'Hosted API tokens',
+    price: '5-10 free tries, then 2€ one-time',
+    setup: 'No API key needed',
+    bestFor: 'The easiest managed AI experience',
+    limits: 'Higher hourly limits after payment',
     highlighted: true,
   },
 ]
@@ -505,6 +543,125 @@ const StudyMeshLanding = () => {
               ))}
             </Grid>
           </Paper>
+        </Box>
+
+        <Box sx={{ py: 5 }}>
+          <Stack spacing={1} mb={3}>
+            <Typography
+              variant="overline"
+              fontWeight={900}
+              color="primary.main"
+            >
+              Pricing option B
+            </Typography>
+            <Typography variant="h4" component="h2" fontWeight={900}>
+              Compare AI modes side by side
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ maxWidth: 760 }}
+            >
+              A more direct plans-style view: start free, stay free if you want,
+              or use hosted tokens when you prefer StudyMesh to handle the API
+              key and limits for you.
+            </Typography>
+          </Stack>
+
+          <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              overflow: 'hidden',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? `0 18px 52px ${alpha(theme.palette.common.black, 0.28)}`
+                  : `0 18px 52px ${alpha(theme.palette.primary.dark, 0.1)}`,
+            }}
+          >
+            <Table
+              sx={{ minWidth: 760 }}
+              aria-label="StudyMesh AI pricing comparison"
+            >
+              <TableHead>
+                <TableRow
+                  sx={{
+                    bgcolor:
+                      theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.primary.main, 0.14)
+                        : alpha(theme.palette.primary.light, 0.16),
+                    '& th': {
+                      py: 2,
+                      color: 'text.primary',
+                      fontWeight: 900,
+                      borderColor: alpha(theme.palette.divider, 0.8),
+                    },
+                  }}
+                >
+                  <TableCell>Plan</TableCell>
+                  <TableCell>Price</TableCell>
+                  <TableCell>Setup</TableCell>
+                  <TableCell>Best for</TableCell>
+                  <TableCell>Limits</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {aiPricingComparison.map((plan) => (
+                  <TableRow
+                    key={plan.mode}
+                    sx={{
+                      bgcolor: plan.highlighted
+                        ? alpha(theme.palette.primary.main, 0.08)
+                        : 'background.paper',
+                      '& td': {
+                        py: 2,
+                        borderColor: alpha(theme.palette.divider, 0.8),
+                      },
+                    }}
+                  >
+                    <TableCell>
+                      <Stack spacing={0.75}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography fontWeight={900}>{plan.mode}</Typography>
+                          {plan.highlighted && (
+                            <Box
+                              component="span"
+                              sx={{
+                                px: 1,
+                                py: 0.25,
+                                borderRadius: 999,
+                                bgcolor: 'primary.main',
+                                color: 'primary.contrastText',
+                                fontSize: '0.7rem',
+                                fontWeight: 900,
+                                lineHeight: 1.5,
+                              }}
+                            >
+                              easiest
+                            </Box>
+                          )}
+                        </Stack>
+                        {plan.highlighted && (
+                          <Typography variant="caption" color="text.secondary">
+                            No API keys, no quota setup, no provider dashboard.
+                          </Typography>
+                        )}
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Typography fontWeight={900}>{plan.price}</Typography>
+                    </TableCell>
+                    <TableCell>{plan.setup}</TableCell>
+                    <TableCell>{plan.bestFor}</TableCell>
+                    <TableCell>{plan.limits}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Box>
 
         <Box sx={{ py: 5 }}>
