@@ -3,20 +3,16 @@ import {
   Alert,
   Box,
   Button,
-  Checkbox,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
-  FormControlLabel,
   IconButton,
   LinearProgress,
-  MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -39,7 +35,6 @@ import {
 } from '../../studyPack'
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import {
-  AiGenerationDebugTrace,
   AiSourceSummary,
   extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
@@ -59,11 +54,12 @@ type ReviewType =
   | 'list'
   | 'table'
   | 'reviewPrompt'
+  | 'note'
+  | 'reveal'
+  | 'sequence'
   | 'ignore'
 type SourceInputType = 'text' | 'image'
 type GenerationAmount = 'few' | 'medium' | 'many'
-type StudyTaskMode = 'importNotes' | 'aiPrompt'
-type LearningOutputMode = 'studyPack' | 'studyPath'
 
 interface ReviewItem {
   object: StudyObject
@@ -95,88 +91,6 @@ const sourceOptions: Array<{
   { label: 'Image', value: 'image' },
 ]
 
-const studyTaskModeOptions: Array<{
-  label: string
-  value: StudyTaskMode
-  helper: string
-}> = [
-  {
-    label: 'Import notes',
-    value: 'importNotes',
-    helper: 'Turn pasted notes, files, or images into study material.',
-  },
-  {
-    label: 'AI Tutor',
-    value: 'aiPrompt',
-    helper: 'Ask AquaMesh to teach a topic and create the notes plus practice.',
-  },
-]
-
-const generationTargetGroups = [
-  {
-    label: 'Practice',
-    options: [
-      { key: 'quizzes', label: 'Quizzes' },
-      { key: 'flashcards', label: 'Flashcards' },
-    ],
-  },
-  {
-    label: 'Support',
-    options: [
-      { key: 'summaries', label: 'Summaries' },
-      { key: 'definitions', label: 'Definitions' },
-      { key: 'reviewPrompts', label: 'Review prompts' },
-    ],
-  },
-  {
-    label: 'Structured',
-    options: [
-      { key: 'lists', label: 'Lists / steps' },
-      { key: 'tables', label: 'Tables' },
-      { key: 'comparisons', label: 'Comparisons' },
-      { key: 'code', label: 'Code notes' },
-    ],
-  },
-]
-
-const generationAmountOptions: Array<{
-  label: string
-  value: GenerationAmount
-  helper: string
-}> = [
-  { label: 'Few', value: 'few', helper: '6 target, 4 minimum' },
-  { label: 'Medium', value: 'medium', helper: '11 target, 8 minimum' },
-  { label: 'Many', value: 'many', helper: '18 target, 14 minimum' },
-]
-
-const providerLabels: Record<StudyPackAiProvider, string> = {
-  basic: 'Basic fallback',
-  local: 'Google Local AI',
-  gemini: 'Own Gemini API token',
-  hosted: 'Hosted AI tokens',
-}
-
-const LOCAL_AI_ESTIMATE_COPY =
-  'Local AI runs on your device and can be slow. Super small usually takes 6-8 min, Compact 8-10 min, Average 10-15 min. For faster/deeper paths, use Own Gemini API token.'
-
-const getProviderWorkDescription = (
-  provider: StudyPackAiProvider,
-): string => {
-  if (provider === 'local') {
-    return 'Local AI is running on your device. This progress is estimated from the configured generation time budget.'
-  }
-
-  if (provider === 'gemini') {
-    return 'AquaMesh is sending your notes to Gemini with your API token, waiting for a structured response, then converting it into editable study materials.'
-  }
-
-  if (provider === 'hosted') {
-    return 'Hosted AI is not configured yet.'
-  }
-
-  return 'AquaMesh is using local parsing and grounded practice generation without AI API calls.'
-}
-
 const supportedImageExtensions = [
   'bmp',
   'jpg',
@@ -205,21 +119,6 @@ const imageAcceptValue = [
   '.webp',
   ...supportedImageMimeTypes,
 ].join(',')
-
-const reviewTypeOptions: Array<{
-  label: string
-  value: ReviewType
-}> = [
-  { label: 'Flashcard', value: 'flashcard' },
-  { label: 'Quiz', value: 'quiz' },
-  { label: 'Definition', value: 'term' },
-  { label: 'Code note', value: 'code' },
-  { label: 'Comparison', value: 'comparison' },
-  { label: 'Review prompt', value: 'reviewPrompt' },
-  { label: 'Checklist / list', value: 'list' },
-  { label: 'Table', value: 'table' },
-  { label: 'Ignore', value: 'ignore' },
-]
 
 const getObjectTitle = (object: StudyObject) => {
   if (object.title) {
@@ -313,17 +212,8 @@ const getReviewType = (object: StudyObject): ReviewType => {
   return 'ignore'
 }
 
-const getCounts = (items: ReviewItem[]) =>
-  items.reduce<Record<string, number>>((counts, item) => {
-    if (item.type !== 'ignore') {
-      counts[item.type] = (counts[item.type] || 0) + 1
-    }
-
-    return counts
-  }, {})
-
 const getFileTitle = (file: File) =>
-  file.name.replace(/\.[^.]+$/, '') || 'Study Pack'
+  file.name.replace(/\.[^.]+$/, '') || 'Notes Dashboard'
 
 const getPackId = (title: string) =>
   title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-pack'
@@ -365,98 +255,6 @@ const createPreviewWidgetGroups = (
     name: group.name,
     objectIds: group.objects.map((object) => object.id),
   }))
-
-const studyPathStepNames = [
-  '1. Introduction',
-  '2. Theory',
-  '3. Examples',
-  '4. Practice',
-  '5. Final Review',
-]
-
-const getStudyPathStepIndex = (object: StudyObject, index: number): number => {
-  if (
-    object.kind === 'quiz' ||
-    object.kind === 'qa' ||
-    object.kind === 'reveal'
-  ) {
-    return 3
-  }
-
-  if (object.kind === 'reviewPrompt') {
-    return 4
-  }
-
-  if (
-    object.kind === 'comparison' ||
-    object.kind === 'sequence' ||
-    object.kind === 'table'
-  ) {
-    return 2
-  }
-
-  if (
-    object.kind === 'term' ||
-    object.kind === 'note' ||
-    object.kind === 'markdown'
-  ) {
-    return index < 2 ? 0 : 1
-  }
-
-  return Math.min(
-    index % studyPathStepNames.length,
-    studyPathStepNames.length - 1,
-  )
-}
-
-const createStudyPathPreviewGroups = (
-  objects: StudyObject[],
-): PreviewWidgetGroup[] => {
-  const groups = studyPathStepNames.map((name, index) => ({
-    id: `study-path-step-${index + 1}`,
-    name,
-    objectIds: [] as string[],
-  }))
-
-  objects.forEach((object, index) => {
-    groups[getStudyPathStepIndex(object, index)].objectIds.push(object.id)
-  })
-
-  return groups.filter((group) => group.objectIds.length > 0)
-}
-
-const createGeneratedSourceNotes = (
-  title: string,
-  prompt: string,
-  objects: StudyObject[],
-): string => {
-  const sourceSections = objects
-    .filter((object) =>
-      [
-        'markdown',
-        'note',
-        'term',
-        'list',
-        'comparison',
-        'sequence',
-        'table',
-        'code',
-      ].includes(object.kind),
-    )
-    .slice(0, 10)
-    .map(
-      (object) => `## ${getObjectTitle(object)}\n\n${getObjectPreview(object)}`,
-    )
-    .join('\n\n')
-
-  return `# ${title}\n\nGenerated from AI prompt: ${prompt.trim()}\n\n${
-    sourceSections ||
-    'AquaMesh generated practice-first study material from this learning prompt.'
-  }`
-}
-
-const formatDebugValue = (value: unknown): string =>
-  typeof value === 'string' ? value : JSON.stringify(value, null, 2)
 
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
@@ -605,10 +403,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
-  const [studyTaskMode, setStudyTaskMode] =
-    useState<StudyTaskMode>('importNotes')
-  const [learningOutputMode, setLearningOutputMode] =
-    useState<LearningOutputMode>('studyPack')
   const [sourceInputType, setSourceInputType] =
     useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
@@ -621,17 +415,16 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [aiProgressLabel, setAiProgressLabel] = useState('')
   const [aiGenerationProgress, setAiGenerationProgress] = useState(0)
-  const [aiGenerationProgressPhase, setAiGenerationProgressPhase] =
-    useState<LocalAiProgressEvent['phase'] | ''>('')
+  const [aiGenerationProgressPhase, setAiGenerationProgressPhase] = useState<
+    LocalAiProgressEvent['phase'] | ''
+  >('')
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrStatus, setOcrStatus] = useState('')
-  const [packTitle, setPackTitle] = useState('Study Pack')
+  const [packTitle, setPackTitle] = useState('Notes Dashboard')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
   const [aiSourceSummary, setAiSourceSummary] =
     useState<AiSourceSummary | null>(null)
-  const [aiDebugTrace, setAiDebugTrace] =
-    useState<AiGenerationDebugTrace | null>(null)
   const [includeSourceWidget, setIncludeSourceWidget] = useState(true)
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('orchestrator')
@@ -650,7 +443,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<GenerationAmount>('medium')
   const [error, setError] = useState('')
 
-  const counts = useMemo(() => getCounts(reviewItems), [reviewItems])
   const practiceProfile = useMemo(
     () => createStudyPackPracticeProfile(generationAmount, generationTargets),
     [generationAmount, generationTargets],
@@ -680,8 +472,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
   const reset = () => {
     setStep('source')
-    setStudyTaskMode('importNotes')
-    setLearningOutputMode('studyPack')
     setSourceInputType('text')
     setSourceText('')
     setSourceFormat('text')
@@ -695,11 +485,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setAiGenerationProgressPhase('')
     setOcrProgress(0)
     setOcrStatus('')
-    setPackTitle('Study Pack')
+    setPackTitle('Notes Dashboard')
     setReviewItems([])
     setWidgetGroups([])
     setAiSourceSummary(null)
-    setAiDebugTrace(null)
     setIncludeSourceWidget(true)
     setLayoutMode('orchestrator')
     setGenerationTargets([
@@ -764,20 +553,16 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
     })
     const reviewableItems = toReviewItems(augmented.objects)
-    setPackTitle(parsed.title)
+    const nextTitle = packTitle.trim() || parsed.title
+    setPackTitle(nextTitle)
     setSourceFormat(parsed.sourceFormat)
     setReviewItems(reviewableItems)
     setAiSourceSummary(null)
-    setAiDebugTrace(null)
     setWidgetGroups(
-      learningOutputMode === 'studyPath'
-        ? createStudyPathPreviewGroups(
-            reviewableItems.map((item) => item.object),
-          )
-        : createPreviewWidgetGroups(
-            reviewableItems.map((item) => item.object),
-            parsed.title,
-          ),
+      createPreviewWidgetGroups(
+        reviewableItems.map((item) => item.object),
+        nextTitle,
+      ),
     )
     setError(parsed.warnings[0] || augmented.warnings[0] || '')
     setStep('review')
@@ -835,16 +620,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         provider: aiProvider,
         apiToken: credentials.apiToken,
         model: credentials.model,
-        title: packTitle.trim() || 'Study Pack',
-        rawNotes:
-          studyTaskMode === 'aiPrompt'
-            ? `AI Tutor request: ${sourceText}`
-            : sourceText,
+        title: packTitle.trim() || 'Notes Dashboard',
+        rawNotes: sourceText,
         packId: getPackId(packTitle),
         generationTargets,
         generationAmount,
-        promptMode: studyTaskMode === 'aiPrompt',
-        studyPathMode: learningOutputMode === 'studyPath',
+        promptMode: false,
+        studyPathMode: false,
         onProgress: (event) => {
           setAiGenerationProgress(event.percent)
           setAiGenerationProgressPhase(event.phase)
@@ -860,10 +642,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       const augmented = augmentStudyPackPracticeObjects(draft.objects, {
         packId: getPackId(nextTitle),
         title: nextTitle,
-        rawNotes:
-          studyTaskMode === 'aiPrompt'
-            ? createGeneratedSourceNotes(nextTitle, sourceText, draft.objects)
-            : sourceText,
+        rawNotes: sourceText,
         generationTargets,
         generationAmount,
         visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
@@ -873,16 +652,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setSourceFormat(draft.sourceFormat || 'text')
       setReviewItems(reviewableItems)
       setAiSourceSummary(draft.sourceSummary || null)
-      setAiDebugTrace(draft.debugTrace || null)
       setWidgetGroups(
-        learningOutputMode === 'studyPath'
-          ? createStudyPathPreviewGroups(
-              reviewableItems.map((item) => item.object),
-            )
-          : createPreviewWidgetGroups(
-              reviewableItems.map((item) => item.object),
-              nextTitle,
-            ),
+        createPreviewWidgetGroups(
+          reviewableItems.map((item) => item.object),
+          nextTitle,
+        ),
       )
       setError(
         draft.warnings[0] ||
@@ -1014,11 +788,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
 
     if (!sourceText.trim()) {
-      setError(
-        studyTaskMode === 'aiPrompt'
-          ? 'Describe what you want to learn before continuing.'
-          : 'Add notes before continuing.',
-      )
+      setError('Add notes before continuing.')
       return
     }
 
@@ -1065,21 +835,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setPackTitle(
       files.length === 1
         ? getFileTitle(files[0])
-        : `${getFileTitle(files[0])} Study Pack`,
+        : `${getFileTitle(files[0])} Dashboard`,
     )
     setSourceFormat('text')
     setError('')
     event.target.value = ''
-  }
-
-  const toggleGenerationTarget = (target: string) => {
-    setGenerationTargets((current) =>
-      current.includes(target)
-        ? current.length > 1
-          ? current.filter((item) => item !== target)
-          : current
-        : [...current, target],
-    )
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1101,81 +861,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
     selectImageFile(file)
   }
-
-  const updateReviewItem = (index: number, updates: Partial<ReviewItem>) => {
-    setReviewItems((items) =>
-      items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...updates } : item,
-      ),
-    )
-  }
-
-  const removeReviewItem = (index: number) => {
-    const objectId = reviewItems[index]?.object.id
-    setReviewItems((items) =>
-      items.filter((_, itemIndex) => itemIndex !== index),
-    )
-    if (objectId) {
-      setWidgetGroups((groups) =>
-        groups.map((group) => ({
-          ...group,
-          objectIds: group.objectIds.filter(
-            (currentId) => currentId !== objectId,
-          ),
-        })),
-      )
-    }
-  }
-
-  const moveReviewItem = (index: number, direction: -1 | 1) => {
-    setReviewItems((items) => {
-      const nextIndex = index + direction
-      if (nextIndex < 0 || nextIndex >= items.length) {
-        return items
-      }
-
-      const nextItems = [...items]
-      const [item] = nextItems.splice(index, 1)
-      nextItems.splice(nextIndex, 0, item)
-      return nextItems
-    })
-  }
-
-  const addWidgetGroup = () => {
-    setWidgetGroups((groups) => [
-      ...groups,
-      {
-        id: `preview-widget-${Date.now()}-${groups.length + 1}`,
-        name: `${packTitle} ${groups.length + 1}`,
-        objectIds: [],
-      },
-    ])
-  }
-
-  const updateWidgetGroupName = (groupId: string, name: string) => {
-    setWidgetGroups((groups) =>
-      groups.map((group) =>
-        group.id === groupId ? { ...group, name } : group,
-      ),
-    )
-  }
-
-  const moveItemToWidgetGroup = (objectId: string, groupId: string) => {
-    setWidgetGroups((groups) =>
-      groups.map((group) => ({
-        ...group,
-        objectIds:
-          group.id === groupId
-            ? Array.from(new Set([...group.objectIds, objectId]))
-            : group.objectIds.filter((currentId) => currentId !== objectId),
-      })),
-    )
-  }
-
-  const getItemWidgetGroupId = (objectId: string): string =>
-    widgetGroups.find((group) => group.objectIds.includes(objectId))?.id ||
-    widgetGroups[0]?.id ||
-    ''
 
   const createPack = () => {
     const objects = reviewItems
@@ -1200,7 +885,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
     const pack = {
       id: packTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      title: packTitle.trim() || 'Study Pack',
+      title: packTitle.trim() || 'Notes Dashboard',
       sourceFormat,
       objects,
       warnings: [],
@@ -1209,18 +894,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     const widgets = createStudyPackOrchestratorWidgets(pack, {
       includeSourceWidget,
       includeSummaryChart: false,
-      rawSource:
-        studyTaskMode === 'aiPrompt'
-          ? createGeneratedSourceNotes(pack.title, sourceText, objects)
-          : sourceText,
+      rawSource: sourceText,
       widgetGroups: groups,
     })
 
     onCreatePack({
-      name:
-        learningOutputMode === 'studyPath'
-          ? `${packTitle.trim() || 'Study Pack'} Study Path`
-          : packTitle.trim() || 'Study Pack',
+      name: packTitle.trim() || 'Notes Dashboard',
       widgets,
       layoutMode:
         includeSourceWidget || layoutMode !== 'orchestrator'
@@ -1234,36 +913,50 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     <Dialog
       open={open}
       onClose={handleClose}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
           bgcolor: 'background.paper',
-          borderRadius: 2,
-          minHeight: { xs: '100dvh', md: 680 },
+          borderRadius: 3,
+          minHeight: { xs: '100dvh', md: 620 },
         },
       }}
     >
-      <DialogTitle sx={{ pb: 1 }}>
+      <DialogTitle sx={{ pb: 1.5 }}>
         <Stack
           direction="row"
           alignItems="center"
           justifyContent="space-between"
+          gap={2}
         >
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <AutoStoriesIcon color="primary" />
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                flex: '0 0 auto',
+              }}
+            >
+              <AutoStoriesIcon />
+            </Box>
             <Box>
-              <Typography variant="h6" fontWeight={800}>
-                Create Study Pack
+              <Typography variant="h6" fontWeight={900}>
+                Create from notes
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Upload messy notes and turn them into an interactive study
-                workspace.
+                Paste notes or start from an image. AquaMesh will build a
+                ready-to-use dashboard.
               </Typography>
             </Box>
           </Stack>
           <IconButton
-            aria-label="Close Create study pack"
+            aria-label="Close Create from notes"
             onClick={handleClose}
           >
             <CloseIcon />
@@ -1271,7 +964,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         </Stack>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ bgcolor: 'background.default' }}>
+      <DialogContent
+        sx={{ bgcolor: 'background.default', p: { xs: 2, md: 3 } }}
+      >
         {error && (
           <Alert severity={step === 'review' ? 'info' : 'error'} sx={{ mb: 2 }}>
             {error}
@@ -1279,214 +974,99 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         )}
 
         {step === 'source' ? (
-          <Stack spacing={2}>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                label="Pack title"
-                value={packTitle}
-                onChange={(event) => setPackTitle(event.target.value)}
-                fullWidth
-              />
-              <TextField
-                select
-                label="Study task"
-                value={studyTaskMode}
-                onChange={(event) => {
-                  const value = event.target.value as StudyTaskMode
-                  setStudyTaskMode(value)
-                  if (value === 'aiPrompt') {
-                    setSourceInputType('text')
-                  }
-                }}
-                sx={{ minWidth: { md: 190 } }}
-              >
-                {studyTaskModeOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Source type"
-                value={sourceInputType}
-                disabled={studyTaskMode === 'aiPrompt'}
-                onChange={(event) =>
-                  handleSourceInputTypeChange(
-                    event.target.value as SourceInputType,
-                  )
-                }
-                sx={{ minWidth: { md: 220 } }}
-              >
-                {sourceOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+          <Stack spacing={2.5}>
+            <TextField
+              label="Dashboard name"
+              value={packTitle}
+              onChange={(event) => setPackTitle(event.target.value)}
+              fullWidth
+            />
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              {sourceOptions.map((option) => {
+                const selected = sourceInputType === option.value
+                const Icon =
+                  option.value === 'image' ? ImageIcon : AutoStoriesIcon
+                return (
+                  <Paper
+                    key={option.value}
+                    component="button"
+                    type="button"
+                    onClick={() => handleSourceInputTypeChange(option.value)}
+                    elevation={0}
+                    sx={{
+                      flex: 1,
+                      p: 2,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      border: 1,
+                      borderColor: selected ? 'primary.main' : 'divider',
+                      bgcolor: selected ? 'primary.50' : 'background.paper',
+                      borderRadius: 2,
+                      color: 'text.primary',
+                      boxShadow: selected ? 1 : 0,
+                      '&:hover': { borderColor: 'primary.main' },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Icon color={selected ? 'primary' : 'action'} />
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={900}>
+                          {option.value === 'text'
+                            ? 'Text notes'
+                            : 'Image notes'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {option.value === 'text'
+                            ? 'Paste notes or upload text files.'
+                            : 'Upload a screenshot, slide, or photo.'}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                )
+              })}
             </Stack>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                border: 1,
-                borderColor: aiProvider !== 'basic' ? 'primary.main' : 'divider',
-                bgcolor: 'background.paper',
-              }}
-            >
-              <Stack spacing={1.5}>
-                <Alert severity="info">
-                  {studyTaskMode === 'aiPrompt'
-                    ? 'AI Prompt mode lets you say what you want to learn. AquaMesh writes the source notes first, then builds exercises from that generated lesson.'
-                    : 'Import Notes mode keeps generation grounded in your pasted notes, uploaded text, or extracted image text.'}{' '}
-                  {learningOutputMode === 'studyPath'
-                    ? 'Study Path output organizes the pack as an ordered learning journey instead of one mixed dashboard.'
-                    : 'Single Study Pack output keeps everything in one compact workspace.'}
-                </Alert>
-                {aiProvider === 'local' && (
-                  <Alert severity="warning">
-                    {LOCAL_AI_ESTIMATE_COPY}
-                  </Alert>
-                )}
-                {aiProvider === 'hosted' && (
-                  <Alert severity="warning">
-                    Hosted AI is not configured yet.
-                  </Alert>
-                )}
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <AutoAwesomeIcon
-                    color={aiProvider !== 'basic' ? 'primary' : 'action'}
-                    fontSize="small"
-                  />
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight={800}>
-                      {providerLabels[aiProvider]}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {aiProvider !== 'basic'
-                        ? studyTaskMode === 'aiPrompt'
-                          ? 'Describe a learning goal like “Teach me French passé composé”; AquaMesh creates lesson notes, practice, flashcards, and review steps.'
-                          : 'Default path for Study Packs. AquaMesh can read notes and generate summaries, flashcards, quizzes, and practice prompts from grounded source material.'
-                        : 'No AI API calls. AquaMesh uses local parsing and grounded practice generation from the notes you provide.'}
-                    </Typography>
-                  </Box>
-                </Stack>
-                <Stack direction={{ xs: 'column', md: 'row' }} gap={2}>
-                  {generationTargetGroups.map((group) => (
-                    <Box key={group.label} sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        fontWeight={800}
-                        sx={{ display: 'block', mb: 0.5 }}
-                      >
-                        {group.label}
-                      </Typography>
-                      <Stack direction="row" gap={1} flexWrap="wrap">
-                        {group.options.map((option) => (
-                          <FormControlLabel
-                            key={option.key}
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={generationTargets.includes(option.key)}
-                                onChange={() =>
-                                  toggleGenerationTarget(option.key)
-                                }
-                              />
-                            }
-                            label={option.label}
-                            sx={{
-                              mr: 0.5,
-                              '& .MuiFormControlLabel-label': {
-                                fontSize: '0.875rem',
-                              },
-                            }}
-                          />
-                        ))}
-                      </Stack>
-                    </Box>
-                  ))}
-                </Stack>
-                <TextField
-                  select
-                  label="Target amount"
-                  value={generationAmount}
-                  onChange={(event) =>
-                    setGenerationAmount(event.target.value as GenerationAmount)
-                  }
-                  size="small"
-                  sx={{ maxWidth: 320 }}
-                >
-                  {generationAmountOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label} - {option.helper}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-            </Paper>
+
             {sourceInputType === 'text' ? (
-              <>
+              <Stack spacing={1.25}>
                 <TextField
-                  label={
-                    studyTaskMode === 'aiPrompt'
-                      ? 'What do you want to learn?'
-                      : 'Paste notes'
-                  }
+                  label="Paste notes"
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
                   fullWidth
                   multiline
-                  minRows={16}
-                  placeholder={
-                    studyTaskMode === 'aiPrompt'
-                      ? 'Teach me French passé composé for a beginner. Put the explanation on the left and exercises on the right.'
-                      : `# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)\n\n- [ ] I can explain what a derivative means`
-                  }
+                  minRows={14}
+                  placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
                 />
-                {studyTaskMode === 'importNotes' && (
-                  <>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<UploadFileIcon />}
-                      sx={{ alignSelf: 'flex-start' }}
-                    >
-                      Upload notes
-                      <input
-                        hidden
-                        type="file"
-                        multiple
-                        accept=".md,.txt,.csv,.pdf,text/markdown,text/plain,text/csv,application/pdf"
-                        onChange={handleFileUpload}
-                      />
-                    </Button>
-                    <Typography variant="caption" color="text.secondary">
-                      Supports multiple .md, .txt, or .csv files. PDF parsing is
-                      a planned upgrade; paste exported PDF text for now.
-                    </Typography>
-                  </>
-                )}
-                {studyTaskMode === 'aiPrompt' && (
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1}
+                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                >
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<UploadFileIcon />}
+                    sx={{ alignSelf: { sm: 'flex-start' } }}
+                  >
+                    Upload text file
+                    <input
+                      hidden
+                      type="file"
+                      multiple
+                      accept=".md,.txt,.csv,.pdf,text/markdown,text/plain,text/csv,application/pdf"
+                      onChange={handleFileUpload}
+                    />
+                  </Button>
                   <Typography variant="caption" color="text.secondary">
-                    AquaMesh will not create heavy PDF/image resources unless
-                    you explicitly ask for them. It will prefer text, quizzes,
-                    flashcards, tables, and review prompts.
+                    Supports .md, .txt, and .csv. For PDFs, paste exported text
+                    for now.
                   </Typography>
-                )}
-              </>
+                </Stack>
+              </Stack>
             ) : (
-              <>
-                <Alert severity="info">
-                  <b>
-                    {aiProvider === 'gemini'
-                      ? 'Gemini image reading can handle harder text, handwriting, and messy photos better than Basic OCR, but extracted notes still need review.'
-                      : aiProvider === 'local'
-                        ? 'Local AI image reading is extra experimental. AquaMesh will try Chrome image input first and fall back to OCR if this browser or model does not support it.'
-                      : 'Text extraction works best with screenshots, slides, or exported PDFs. OCR may fail or return inaccurate text for handwritten or messy images.'}
-                  </b>
-                </Alert>
+              <Stack spacing={1.5}>
                 <Paper
                   elevation={0}
                   onDrop={handleImageDrop}
@@ -1494,12 +1074,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   sx={{
                     p: 3,
                     border: 1,
-                    borderColor: 'divider',
+                    borderColor: imageFile ? 'primary.main' : 'divider',
                     bgcolor: 'background.paper',
                     minHeight: 220,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    borderRadius: 2,
                   }}
                 >
                   <Stack spacing={1.5} alignItems="center" textAlign="center">
@@ -1516,14 +1097,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                         }}
                       />
                     ) : (
-                      <ImageIcon color="primary" sx={{ fontSize: 44 }} />
+                      <ImageIcon color="primary" sx={{ fontSize: 48 }} />
                     )}
                     <Box>
-                      <Typography variant="subtitle1" fontWeight={800}>
-                        {imageFile?.name || 'Drop an image of your notes'}
+                      <Typography variant="subtitle1" fontWeight={900}>
+                        {imageFile?.name || 'Drop an image here'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        PNG, JPG, WebP, non-animated GIF, BMP, or PBM.
+                        PNG, JPG, WebP, GIF, BMP, or PBM.
                       </Typography>
                     </Box>
                     <Button
@@ -1576,17 +1157,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   }}
                   fullWidth
                   multiline
-                  minRows={10}
+                  minRows={8}
                   disabled={isExtractingImage}
-                  placeholder="Extracted notes will appear here for review before AquaMesh creates study materials."
-                  helperText={
-                    imageTextExtracted
-                      ? 'Review and edit the extracted notes before continuing.'
-                      : 'Select an image, then extract notes.'
-                  }
+                  placeholder="Extracted notes will appear here. You can edit them before creating the dashboard."
                 />
-              </>
+              </Stack>
             )}
+
             {isGeneratingAi && (
               <Paper
                 elevation={0}
@@ -1595,18 +1172,16 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   border: 1,
                   borderColor: 'primary.main',
                   bgcolor: 'background.paper',
+                  borderRadius: 2,
                 }}
               >
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <AutoAwesomeIcon color="primary" fontSize="small" />
                     <Typography variant="subtitle2" fontWeight={800}>
-                      {aiProgressLabel || ocrStatus || 'Working with AI'}
+                      {aiProgressLabel || ocrStatus || 'Creating dashboard'}
                     </Typography>
                   </Stack>
-                  <Typography variant="body2" color="text.secondary">
-                    {getProviderWorkDescription(aiProvider)}
-                  </Typography>
                   {aiProvider === 'local' && aiGenerationProgressPhase ? (
                     <>
                       <Stack direction="row" justifyContent="space-between">
@@ -1631,345 +1206,93 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           </Stack>
         ) : (
           <Stack spacing={2}>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  flex: 1,
-                  border: 1,
-                  borderColor: 'divider',
-                }}
-              >
+            <Paper
+              elevation={0}
+              sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}
+            >
+              <Stack spacing={2}>
                 <TextField
-                  label="Pack title"
+                  label="Dashboard name"
                   value={packTitle}
                   onChange={(event) => setPackTitle(event.target.value)}
                   fullWidth
-                  sx={{ mb: 2 }}
                 />
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 1.5,
-                    mb: 2,
-                    border: 1,
-                    borderColor: 'primary.main',
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <Stack spacing={1}>
-                    <Stack
-                      direction="row"
-                      gap={1}
-                      alignItems="center"
-                      flexWrap="wrap"
-                    >
-                      <Typography variant="subtitle2" fontWeight={800}>
-                        Source notes
-                      </Typography>
-                      <Chip label="Special" color="primary" size="small" />
-                      <Chip label="Locked" size="small" />
-                    </Stack>
-                    <Stack direction="row" gap={1} flexWrap="wrap">
-                      <Chip
-                        label={
-                          sourceFormat === 'csv'
-                            ? '1 TableBlock'
-                            : '1 MarkdownBlock'
-                        }
-                        size="small"
-                      />
-                    </Stack>
-                    <Typography variant="body2" color="text.secondary">
-                      Source notes stay pinned to the left when source split
-                      layout is selected.
-                    </Typography>
-                    <Stack spacing={0.5}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={includeSourceWidget}
-                            onChange={(event) => {
-                              setIncludeSourceWidget(event.target.checked)
-                              if (
-                                !event.target.checked &&
-                                layoutMode === 'orchestrator'
-                              ) {
-                                setLayoutMode('tabs')
-                              }
-                            }}
-                          />
-                        }
-                        label={
-                          sourceFormat === 'csv'
-                            ? 'Create source table'
-                            : 'Create source notes page'
-                        }
-                      />
-                    </Stack>
-                  </Stack>
-                </Paper>
-                {widgetGroups.length > 0 && (
-                  <TextField
-                    select
-                    label="Workspace layout"
-                    value={layoutMode}
-                    onChange={(event) =>
-                      setLayoutMode(
-                        event.target.value as StudyPackDashboardLayoutMode,
-                      )
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  <Chip
+                    color="primary"
+                    label={`${reviewableCount} study blocks`}
+                  />
+                  <Chip label={`${widgetGroups.length} sections`} />
+                  <Chip
+                    label={
+                      sourceFormat === 'csv'
+                        ? 'Source table included'
+                        : 'Source notes included'
                     }
-                    fullWidth
-                    sx={{ mb: 2 }}
-                  >
-                    <MenuItem
-                      value="orchestrator"
-                      disabled={!includeSourceWidget}
-                    >
-                      Source left, study materials right
-                    </MenuItem>
-                    <MenuItem value="tabs">Single tabset</MenuItem>
-                  </TextField>
-                )}
-                {Object.keys(counts).length > 0 ? (
-                  <>
-                    <Typography variant="subtitle2" gutterBottom>
-                      AquaMesh found
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
-                    >
-                      {`${reviewableCount}/${
-                        practiceProfile.targetTotal
-                      } target study blocks: ${counts.quiz || 0} quizzes, ${
-                        counts.flashcard || 0
-                      } flashcards, ${
-                        reviewableCount -
-                        (counts.quiz || 0) -
-                        (counts.flashcard || 0)
-                      } support.`}
-                    </Typography>
-                    <Stack direction="row" gap={1} flexWrap="wrap">
-                      {Object.entries(counts).map(([kind, count]) => (
-                        <Chip key={kind} label={`${count} ${kind}`} />
-                      ))}
-                    </Stack>
-                  </>
-                ) : (
-                  <Typography variant="subtitle2" color="text.secondary">
-                    AquaMesh was not able to extract any study materials from
-                    these notes.
-                  </Typography>
-                )}
-                {widgetGroups.length > 0 && (
-                  <Stack spacing={1.25} sx={{ mt: 2 }}>
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      gap={1}
-                    >
-                      <Typography variant="subtitle2">
-                        {learningOutputMode === 'studyPath'
-                          ? 'Study Path steps'
-                          : 'Generated study sections'}
-                      </Typography>
-                      <Button size="small" onClick={addWidgetGroup}>
-                        Add section
-                      </Button>
-                    </Stack>
-                    {widgetGroups.map((group) => (
-                      <TextField
-                        key={group.id}
-                        label={`${group.objectIds.length} blocks`}
-                        value={group.name}
-                        onChange={(event) =>
-                          updateWidgetGroupName(group.id, event.target.value)
-                        }
-                        size="small"
-                        fullWidth
-                      />
-                    ))}
-                  </Stack>
-                )}
-              </Paper>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  flex: 1.6,
-                  border: 1,
-                  borderColor: 'divider',
-                  maxHeight: 500,
-                  overflow: 'auto',
-                }}
-              >
-                <Stack spacing={1.5}>
-                  {reviewItems.map((item, index) => (
-                    <Paper
-                      key={item.object.id}
-                      elevation={0}
-                      sx={{
-                        p: 1.5,
-                        border: 1,
-                        borderColor: 'divider',
-                        bgcolor: 'background.paper',
-                      }}
-                    >
-                      <Stack spacing={1}>
-                        <Stack
-                          direction={{ xs: 'column', md: 'row' }}
-                          spacing={1}
-                          alignItems={{ md: 'center' }}
-                        >
-                          <TextField
-                            label="Title"
-                            value={item.title}
-                            onChange={(event) =>
-                              updateReviewItem(index, {
-                                title: event.target.value,
-                              })
-                            }
-                            fullWidth
-                          />
-                          <TextField
-                            select
-                            label="Detected as"
-                            value={item.type}
-                            onChange={(event) =>
-                              updateReviewItem(index, {
-                                type: event.target.value as ReviewType,
-                              })
-                            }
-                            sx={{ minWidth: 190 }}
-                          >
-                            {reviewTypeOptions.map((option) => (
-                              <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                          {widgetGroups.length > 0 && (
-                            <TextField
-                              select
-                              label="Study section"
-                              value={getItemWidgetGroupId(item.object.id)}
-                              onChange={(event) =>
-                                moveItemToWidgetGroup(
-                                  item.object.id,
-                                  event.target.value,
-                                )
-                              }
-                              sx={{ minWidth: 210 }}
-                            >
-                              {widgetGroups.map((group) => (
-                                <MenuItem key={group.id} value={group.id}>
-                                  {group.name}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          )}
-                        </Stack>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {getObjectPreview(item.object)}
-                        </Typography>
-                        <Stack direction="row" spacing={1}>
-                          <Button
-                            size="small"
-                            onClick={() => moveReviewItem(index, -1)}
-                            disabled={index === 0}
-                          >
-                            Move up
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => moveReviewItem(index, 1)}
-                            disabled={index === reviewItems.length - 1}
-                          >
-                            Move down
-                          </Button>
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() => removeReviewItem(index)}
-                          >
-                            Remove
-                          </Button>
-                        </Stack>
-                      </Stack>
-                    </Paper>
-                  ))}
+                  />
                 </Stack>
-              </Paper>
-            </Stack>
-            {aiDebugTrace && (
-              <Paper
-                component="details"
-                elevation={0}
-                sx={{
-                  p: 2,
-                  border: 1,
-                  borderColor: 'divider',
-                  bgcolor: 'background.default',
-                }}
-              >
-                <Typography component="summary" variant="subtitle2">
-                  AI generation debug
+                <Typography variant="body2" color="text.secondary">
+                  Review the dashboard structure below, then create it in your
+                  workspace.
                 </Typography>
-                <Stack spacing={1.5} sx={{ mt: 1.5 }}>
-                  {[
-                    ['Raw AI response', aiDebugTrace.rawAiResponse],
-                    [
-                      'Validated contract before role filtering',
-                      aiDebugTrace.validatedContract,
-                    ],
-                    [
-                      'Role-filtered contract',
-                      aiDebugTrace.roleFilteredContract,
-                    ],
-                    [
-                      'Dropped or repaired items',
-                      aiDebugTrace.droppedOrRepairedItems,
-                    ],
-                    ['Final StudyObject mapping', aiDebugTrace.finalObjects],
-                  ].map(([label, value]) => (
-                    <Box key={String(label)}>
-                      <Typography variant="caption" fontWeight={700}>
-                        {String(label)}
-                      </Typography>
+              </Stack>
+            </Paper>
+
+            {widgetGroups.length > 0 ? (
+              <Stack spacing={1.25}>
+                {widgetGroups.map((group, index) => (
+                  <Paper
+                    key={group.id}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="center">
                       <Box
-                        component="pre"
                         sx={{
-                          m: 0,
-                          mt: 0.5,
-                          p: 1,
-                          maxHeight: 180,
-                          overflow: 'auto',
-                          bgcolor: 'background.paper',
-                          border: 1,
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                          fontSize: 12,
-                          whiteSpace: 'pre-wrap',
+                          width: 30,
+                          height: 30,
+                          borderRadius: '50%',
+                          display: 'grid',
+                          placeItems: 'center',
+                          bgcolor: 'action.hover',
+                          fontWeight: 900,
+                          flex: '0 0 auto',
                         }}
                       >
-                        {formatDebugValue(value)}
+                        {index + 1}
                       </Box>
-                    </Box>
-                  ))}
-                </Stack>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="subtitle2" fontWeight={900} noWrap>
+                          {group.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {group.objectIds.length} generated blocks
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  AquaMesh was not able to extract study materials from these
+                  notes.
+                </Typography>
               </Paper>
             )}
           </Stack>
@@ -1987,16 +1310,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             disabled={isExtractingImage || isGeneratingAi}
           >
             {isGeneratingAi
-              ? 'Generating...'
+              ? 'Creating...'
               : sourceInputType === 'image' && !imageTextExtracted
                 ? 'Extract notes'
                 : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>
-            {learningOutputMode === 'studyPath'
-              ? 'Create Study Path'
-              : 'Create pack'}
+            Create dashboard
           </Button>
         )}
       </DialogActions>
