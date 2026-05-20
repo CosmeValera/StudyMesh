@@ -20,6 +20,10 @@ import ImageIcon from '@mui/icons-material/Image'
 import SchoolIcon from '@mui/icons-material/School'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import RouteIcon from '@mui/icons-material/Route'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import KeyIcon from '@mui/icons-material/Key'
+import MemoryIcon from '@mui/icons-material/Memory'
+import CloudQueueIcon from '@mui/icons-material/CloudQueue'
 
 const workflow = [
   {
@@ -92,6 +96,42 @@ const quickAnswers = [
     question: 'How are dashboards organized?',
     answer:
       'Generated study paths, notes dashboards, and custom dashboards can be opened in the workspace and reused by folder.',
+  },
+]
+
+const aiPricing = [
+  {
+    title: 'Fallback mode',
+    price: '0€',
+    label: 'Always available',
+    body: 'Basic local parsing and practice generation when you just want a quick dashboard without configuring AI.',
+    icon: <CheckCircleIcon />,
+    features: ['No API key', 'No payment', 'Good for quick notes'],
+  },
+  {
+    title: 'BYOK Gemini',
+    price: '0€',
+    label: 'Use your own key',
+    body: 'Bring your Gemini API key and StudyMesh uses it directly for deeper study paths and notes cleanup.',
+    icon: <KeyIcon />,
+    features: ['Your quota', 'Your control', 'Great quality'],
+  },
+  {
+    title: 'Local Gemini Nano',
+    price: '0€',
+    label: 'Private on-device AI',
+    body: 'Run compatible local AI in the browser when available. Slower, but private and free to use.',
+    icon: <MemoryIcon />,
+    features: ['No server tokens', 'Runs locally', 'Best for privacy'],
+  },
+  {
+    title: 'Hosted API tokens',
+    price: '2€',
+    label: 'No API keys to manage',
+    body: 'Start with 5-10 free tries. If you need more, make a one-time 2€ payment for greater hourly limits.',
+    icon: <CloudQueueIcon />,
+    features: ['5-10 free tries', 'One-time payment', 'Higher hourly limits'],
+    highlighted: true,
   },
 ]
 
@@ -171,8 +211,7 @@ const StudyMeshLanding = () => {
                 lineHeight: 1.04,
                 mb: 2,
                 display: 'inline-block',
-                background:
-                  'linear-gradient(90deg, #2196F3, #00C49A, #2196F3)',
+                background: 'linear-gradient(90deg, #2196F3, #00C49A, #2196F3)',
                 backgroundSize: '190% auto',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
@@ -321,6 +360,151 @@ const StudyMeshLanding = () => {
               </Grid>
             ))}
           </Grid>
+        </Box>
+
+        <Box sx={{ py: 5 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, md: 4 },
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: alpha(theme.palette.primary.main, 0.22),
+              bgcolor:
+                theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.primary.dark, 0.24)
+                  : alpha(theme.palette.primary.light, 0.1),
+              background:
+                theme.palette.mode === 'dark'
+                  ? `radial-gradient(circle at top right, ${alpha(
+                      theme.palette.primary.main,
+                      0.24,
+                    )}, transparent 34%), ${alpha(
+                      theme.palette.background.paper,
+                      0.74,
+                    )}`
+                  : `radial-gradient(circle at top right, ${alpha(
+                      theme.palette.primary.light,
+                      0.38,
+                    )}, transparent 34%), linear-gradient(135deg, ${alpha(
+                      theme.palette.primary.light,
+                      0.14,
+                    )}, ${alpha(theme.palette.success.light, 0.14)})`,
+            }}
+          >
+            <Stack spacing={1} alignItems="center" textAlign="center" mb={3}>
+              <Typography
+                variant="overline"
+                fontWeight={900}
+                color="primary.main"
+              >
+                Pricing
+              </Typography>
+              <Typography variant="h4" component="h2" fontWeight={900}>
+                Choose the AI mode that fits you
+              </Typography>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ maxWidth: 720 }}
+              >
+                StudyMesh is designed to stay useful even at 0€. Use free modes,
+                bring your own Gemini key, run local AI, or choose hosted tokens
+                when you do not want to worry about API keys, quotas, or setup.
+              </Typography>
+            </Stack>
+
+            <Grid container spacing={2} alignItems="stretch">
+              {aiPricing.map((plan) => (
+                <Grid item xs={12} sm={6} md={3} key={plan.title}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      height: '100%',
+                      p: 2.25,
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: plan.highlighted
+                        ? 'primary.main'
+                        : alpha(theme.palette.divider, 0.9),
+                      bgcolor: plan.highlighted
+                        ? alpha(theme.palette.primary.main, 0.1)
+                        : alpha(theme.palette.background.paper, 0.86),
+                      boxShadow: plan.highlighted
+                        ? `0 18px 44px ${alpha(
+                            theme.palette.primary.main,
+                            0.18,
+                          )}`
+                        : 'none',
+                    }}
+                  >
+                    <Stack spacing={1.5} height="100%">
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Box
+                          sx={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: '50%',
+                            display: 'grid',
+                            placeItems: 'center',
+                            color: plan.highlighted
+                              ? 'primary.contrastText'
+                              : 'primary.main',
+                            bgcolor: plan.highlighted
+                              ? 'primary.main'
+                              : alpha(theme.palette.primary.main, 0.1),
+                          }}
+                        >
+                          {plan.icon}
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {plan.label}
+                        </Typography>
+                      </Stack>
+                      <Box>
+                        <Typography variant="h6" fontWeight={900}>
+                          {plan.title}
+                        </Typography>
+                        <Stack direction="row" spacing={0.75} alignItems="end">
+                          <Typography variant="h3" fontWeight={950}>
+                            {plan.price}
+                          </Typography>
+                          {plan.highlighted && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ pb: 0.75 }}
+                            >
+                              one-time
+                            </Typography>
+                          )}
+                        </Stack>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {plan.body}
+                      </Typography>
+                      <Stack spacing={0.75} sx={{ mt: 'auto' }}>
+                        {plan.features.map((feature) => (
+                          <Stack
+                            key={feature}
+                            direction="row"
+                            spacing={0.75}
+                            alignItems="center"
+                          >
+                            <CheckCircleIcon
+                              fontSize="small"
+                              color={plan.highlighted ? 'primary' : 'success'}
+                            />
+                            <Typography variant="body2">{feature}</Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
         </Box>
 
         <Box sx={{ py: 5 }}>
