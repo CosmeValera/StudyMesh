@@ -170,6 +170,20 @@ const StudyMeshLanding = () => {
                 fontSize: { xs: '2.35rem', md: '4rem' },
                 lineHeight: 1.04,
                 mb: 2,
+                display: 'inline-block',
+                background:
+                  'linear-gradient(90deg, #2196F3, #00C49A, #2196F3)',
+                backgroundSize: '190% auto',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+                WebkitTextFillColor: 'transparent',
+                animation: 'studyMeshHeroGradientShift 4s ease infinite',
+                '@keyframes studyMeshHeroGradientShift': {
+                  '0%': { backgroundPosition: '0% center' },
+                  '50%': { backgroundPosition: '95% center' },
+                  '100%': { backgroundPosition: '0% center' },
+                },
               }}
             >
               StudyMesh
