@@ -19,7 +19,7 @@
   },
   "packageManager": "npm@10.2.0",
   "workspaces": [
-    "apps/aquamesh"
+    "apps/studymesh"
   ],
   "dependencies": {
     "@types/uuid": "^10.0.0",

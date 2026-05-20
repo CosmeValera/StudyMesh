@@ -1,0 +1,1159 @@
+import React, { useMemo, useState } from 'react'
+import {
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  Link,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
+import {
+  completeStudyPathDashboard,
+  getStudyPathDashboardProgress,
+  OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT,
+  registerStudyPathAttempt,
+  StudyPathDashboardMeta,
+} from '../../../../studyPack/progress'
+
+interface StudyBlockViewProps {
+  type: string
+  props: Record<string, unknown>
+}
+
+const STUDY_BLOCK_TYPES = [
+  'FlashcardBlock',
+  'QuizBlock',
+  'RevealBlock',
+  'StudyNoteBlock',
+  'CodeBlock',
+  'DefinitionBlock',
+  'ComparisonBlock',
+  'ListBlock',
+  'SequenceBlock',
+  'ReviewPromptBlock',
+  'MarkdownBlock',
+  'StudyPathProgressBlock',
+]
+
+export const isStudyBlockType = (type: string) =>
+  STUDY_BLOCK_TYPES.includes(type)
+
+const normalizeAnswer = (value: string) => value.trim().toLowerCase()
+
+const getStudyPathMeta = (
+  props: Record<string, unknown>,
+): StudyPathDashboardMeta | null => {
+  const studyPathId = String(props.studyPathId || '')
+  const dashboardKey = String(props.studyPathDashboardKey || '')
+
+  if (!studyPathId || !dashboardKey) {
+    return null
+  }
+
+  return {
+    studyPathId,
+    studyPathTitle: String(props.studyPathTitle || 'Study Path'),
+    dashboardKey,
+    dashboardName: String(props.studyPathDashboardName || 'Dashboard'),
+    dashboardIndex: Number(props.studyPathDashboardIndex || 1),
+    dashboardCount: Number(props.studyPathDashboardCount || 7),
+    folderName: String(props.studyPathFolderName || 'Study Path'),
+  }
+}
+
+const getStudyPathItemId = (
+  props: Record<string, unknown>,
+  fallback: string,
+): string => String(props.studyPathItemId || fallback)
+
+const hashValue = (value: string): string => {
+  let hash = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return hash.toString(36)
+}
+
+const readStoredMode = (key: string): string => {
+  try {
+    return window.localStorage.getItem(key) || ''
+  } catch {
+    return ''
+  }
+}
+
+const writeStoredMode = (key: string, value: string): void => {
+  try {
+    if (value) {
+      window.localStorage.setItem(key, value)
+    } else {
+      window.localStorage.removeItem(key)
+    }
+  } catch {
+    // Local storage is a convenience only. Ignore private-mode failures.
+  }
+}
+
+const createFlashcardParts = (
+  title: string,
+  text: string,
+): { front: string; back: string } => {
+  const definitionMatch = text.match(/^(.+?)\s*(?:=|:|\bis\b)\s*(.+)$/i)
+
+  if (definitionMatch) {
+    return {
+      front: definitionMatch[1].trim(),
+      back: definitionMatch[2].trim(),
+    }
+  }
+
+  return {
+    front: title,
+    back: text,
+  }
+}
+
+const toStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item))
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+const toRows = (value: unknown): string[][] =>
+  Array.isArray(value)
+    ? value.map((row) => (Array.isArray(row) ? row.map(String) : [String(row)]))
+    : []
+
+const isMarkdownTableDivider = (line: string): boolean =>
+  /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line)
+
+const splitMarkdownTableRow = (line: string): string[] =>
+  line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim())
+
+const renderMarkdownInline = (value: string): React.ReactNode[] => {
+  const nodes: React.ReactNode[] = []
+  const tokenPattern =
+    /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)]+\)|\*[^*]+\*)/g
+  let cursor = 0
+  let match: RegExpExecArray | null
+
+  while ((match = tokenPattern.exec(value)) !== null) {
+    if (match.index > cursor) {
+      nodes.push(value.slice(cursor, match.index))
+    }
+
+    const token = match[0]
+    const key = `${token}-${match.index}`
+    const linkMatch = token.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/)
+
+    if (linkMatch) {
+      nodes.push(
+        <Link key={key} href={linkMatch[2]} target="_blank" rel="noreferrer">
+          {linkMatch[1]}
+        </Link>,
+      )
+    } else if (token.startsWith('**')) {
+      nodes.push(
+        <Box component="strong" key={key}>
+          {token.slice(2, -2)}
+        </Box>,
+      )
+    } else if (token.startsWith('`')) {
+      nodes.push(
+        <Box
+          component="code"
+          key={key}
+          sx={{
+            px: 0.5,
+            py: 0.1,
+            borderRadius: 0.75,
+            bgcolor: 'action.hover',
+            fontFamily: 'JetBrains Mono, Consolas, monospace',
+            fontSize: '0.9em',
+          }}
+        >
+          {token.slice(1, -1)}
+        </Box>,
+      )
+    } else {
+      nodes.push(
+        <Box component="em" key={key}>
+          {token.slice(1, -1)}
+        </Box>,
+      )
+    }
+
+    cursor = match.index + token.length
+  }
+
+  if (cursor < value.length) {
+    nodes.push(value.slice(cursor))
+  }
+
+  return nodes
+}
+
+const renderMarkdown = (markdown: string): React.ReactNode[] => {
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  const blocks: React.ReactNode[] = []
+  let index = 0
+
+  while (index < lines.length) {
+    const line = lines[index]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      index += 1
+      continue
+    }
+
+    const fenceMatch = trimmed.match(/^```([\w-]*)\s*$/)
+    if (fenceMatch) {
+      const codeLines: string[] = []
+      const language = fenceMatch[1]
+      index += 1
+
+      while (index < lines.length && !lines[index].trim().match(/^```\s*$/)) {
+        codeLines.push(lines[index])
+        index += 1
+      }
+
+      if (index < lines.length) {
+        index += 1
+      }
+
+      blocks.push(
+        <Paper
+          key={`code-${index}`}
+          variant="outlined"
+          sx={{ overflow: 'hidden', bgcolor: '#111827' }}
+        >
+          {language && (
+            <Box
+              sx={{ px: 2, py: 0.75, color: '#cbd5e1', fontSize: '0.75rem' }}
+            >
+              {language}
+            </Box>
+          )}
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 2,
+              overflowX: 'auto',
+              color: '#f9fafb',
+              fontFamily: 'JetBrains Mono, Consolas, monospace',
+              fontSize: '0.8125rem',
+              lineHeight: 1.6,
+              whiteSpace: 'pre',
+            }}
+          >
+            <Box component="code">{codeLines.join('\n')}</Box>
+          </Box>
+        </Paper>,
+      )
+      continue
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/)
+    if (headingMatch) {
+      const level = headingMatch[1].length
+      blocks.push(
+        <Typography
+          key={`heading-${index}`}
+          variant={level <= 1 ? 'h5' : level === 2 ? 'h6' : 'subtitle1'}
+          fontWeight={800}
+          sx={{ mt: blocks.length === 0 ? 0 : 1.5 }}
+        >
+          {renderMarkdownInline(headingMatch[2])}
+        </Typography>,
+      )
+      index += 1
+      continue
+    }
+
+    if (
+      line.includes('|') &&
+      lines[index + 1] &&
+      isMarkdownTableDivider(lines[index + 1])
+    ) {
+      const headers = splitMarkdownTableRow(line)
+      const rows: string[][] = []
+      index += 2
+
+      while (index < lines.length && lines[index].includes('|')) {
+        rows.push(splitMarkdownTableRow(lines[index]))
+        index += 1
+      }
+
+      blocks.push(
+        <TableContainer
+          key={`table-${index}`}
+          component={Paper}
+          variant="outlined"
+          sx={{ overflowX: 'auto' }}
+        >
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                {headers.map((header, headerIndex) => (
+                  <TableCell
+                    key={`${header}-${headerIndex}`}
+                    sx={{ fontWeight: 700 }}
+                  >
+                    {renderMarkdownInline(header)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row, rowIndex) => (
+                <TableRow key={`markdown-table-row-${rowIndex}`}>
+                  {headers.map((_header, cellIndex) => (
+                    <TableCell
+                      key={`markdown-table-cell-${rowIndex}-${cellIndex}`}
+                    >
+                      {renderMarkdownInline(row[cellIndex] || '')}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>,
+      )
+      continue
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
+    if (unorderedMatch || orderedMatch) {
+      const ordered = Boolean(orderedMatch)
+      const listItems: Array<{ text: string; checked?: boolean }> = []
+
+      while (index < lines.length) {
+        const itemTrimmed = lines[index].trim()
+        const unorderedItem = itemTrimmed.match(/^[-*]\s+(\[[ xX]\]\s+)?(.+)$/)
+        const orderedItem = itemTrimmed.match(/^\d+[.)]\s+(.+)$/)
+
+        if ((ordered && !orderedItem) || (!ordered && !unorderedItem)) {
+          break
+        }
+
+        const checkbox = unorderedItem?.[1]
+        listItems.push({
+          text: (unorderedItem?.[2] || orderedItem?.[1] || '').trim(),
+          checked: checkbox ? /\[[xX]\]/.test(checkbox) : undefined,
+        })
+        index += 1
+      }
+
+      blocks.push(
+        <Box
+          key={`list-${index}`}
+          component={ordered ? 'ol' : 'ul'}
+          sx={{
+            pl: listItems.some((item) => item.checked !== undefined) ? 0 : 3,
+            my: 0,
+          }}
+        >
+          {listItems.map((item, itemIndex) => (
+            <Typography
+              component="li"
+              variant="body2"
+              key={`${item.text}-${itemIndex}`}
+              sx={{
+                mb: 0.5,
+                display: item.checked === undefined ? 'list-item' : 'flex',
+                alignItems: 'center',
+                listStyle: item.checked === undefined ? undefined : 'none',
+              }}
+            >
+              {item.checked !== undefined && (
+                <Checkbox
+                  size="small"
+                  checked={item.checked}
+                  readOnly
+                  sx={{ p: 0.25, mr: 0.5 }}
+                />
+              )}
+              {renderMarkdownInline(item.text)}
+            </Typography>
+          ))}
+        </Box>,
+      )
+      continue
+    }
+
+    if (trimmed.startsWith('>')) {
+      const quoteLines: string[] = []
+
+      while (index < lines.length && lines[index].trim().startsWith('>')) {
+        quoteLines.push(lines[index].trim().replace(/^>\s?/, ''))
+        index += 1
+      }
+
+      blocks.push(
+        <Box
+          key={`quote-${index}`}
+          sx={{
+            borderLeft: 3,
+            borderColor: 'divider',
+            pl: 2,
+            color: 'text.secondary',
+          }}
+        >
+          <Typography variant="body2">
+            {renderMarkdownInline(quoteLines.join(' '))}
+          </Typography>
+        </Box>,
+      )
+      continue
+    }
+
+    const paragraphLines = [trimmed]
+    index += 1
+
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !/^(#{1,6}\s+|```|[-*]\s+|\d+[.)]\s+|>)/.test(lines[index].trim()) &&
+      !(
+        lines[index].includes('|') &&
+        lines[index + 1] &&
+        isMarkdownTableDivider(lines[index + 1])
+      )
+    ) {
+      paragraphLines.push(lines[index].trim())
+      index += 1
+    }
+
+    blocks.push(
+      <Typography
+        key={`paragraph-${index}`}
+        variant="body2"
+        sx={{ lineHeight: 1.7 }}
+      >
+        {renderMarkdownInline(paragraphLines.join(' '))}
+      </Typography>,
+    )
+  }
+
+  return blocks
+}
+
+const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
+  const [flipped, setFlipped] = useState(false)
+  const [selfGrade, setSelfGrade] = useState<'known' | 'missed' | ''>('')
+  const [revealed, setRevealed] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [shortAnswer, setShortAnswer] = useState('')
+  const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
+  const [definitionStudy, setDefinitionStudy] = useState(false)
+  const [reviewStatus, setReviewStatus] = useState(
+    String(props.status || 'needsReview'),
+  )
+  const noteStorageKey = `studymesh-study-note-mode-${hashValue(
+    `${String(props.title || '')}:${String(props.text || '')}`,
+  )}`
+  const [noteMode, setNoteMode] = useState(() => readStoredMode(noteStorageKey))
+  const options = useMemo(() => toStringArray(props.options), [props.options])
+  const steps = useMemo(
+    () => toStringArray(props.steps || props.items),
+    [props.steps, props.items],
+  )
+  const columns = useMemo(() => toStringArray(props.columns), [props.columns])
+  const rows = useMemo(() => toRows(props.rows), [props.rows])
+  const studyPathMeta = useMemo(() => getStudyPathMeta(props), [props])
+  const [studyPathProgress, setStudyPathProgress] = useState(() =>
+    studyPathMeta ? getStudyPathDashboardProgress(studyPathMeta) : null,
+  )
+
+  if (type === 'StudyPathProgressBlock') {
+    const isComplete = Boolean(studyPathProgress?.completedAt)
+    const completeDashboard = () => {
+      if (!studyPathMeta) {
+        return
+      }
+
+      const result = completeStudyPathDashboard(studyPathMeta)
+      setStudyPathProgress(result.dashboard)
+
+      if (result.reviewDashboard) {
+        window.dispatchEvent(
+          new CustomEvent(OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT, {
+            detail: { dashboard: result.reviewDashboard },
+          }),
+        )
+      }
+    }
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+          >
+            <Chip
+              label={`Step ${studyPathMeta?.dashboardIndex || 1}/${
+                studyPathMeta?.dashboardCount || 7
+              }`}
+              color="primary"
+              size="small"
+            />
+            <Chip
+              label={
+                isComplete
+                  ? `Score ${studyPathProgress?.score || 0}%`
+                  : 'In progress'
+              }
+              color={isComplete ? 'success' : 'default'}
+              size="small"
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {studyPathProgress?.answered || 0} answered /{' '}
+            {studyPathProgress?.correct || 0} correct /{' '}
+            {studyPathProgress?.missed || 0} missed
+          </Typography>
+          <Button
+            variant={isComplete ? 'outlined' : 'contained'}
+            size="small"
+            onClick={completeDashboard}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {isComplete ? 'Completed' : 'Complete dashboard'}
+          </Button>
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'FlashcardBlock') {
+    const front = String(props.front || 'Question')
+    const back = String(props.back || 'Answer')
+    const hint = String(props.hint || '')
+    const tag = String(props.tag || '')
+    const registerFlashcardGrade = (grade: 'known' | 'missed') => {
+      setSelfGrade(grade)
+      if (!studyPathMeta) {
+        return
+      }
+
+      registerStudyPathAttempt({
+        ...studyPathMeta,
+        itemId: getStudyPathItemId(props, hashValue(`${front}:${back}`)),
+        type: 'flashcard',
+        prompt: front,
+        answer: grade === 'known' ? 'I knew it' : "I didn't know it",
+        expectedAnswer: back,
+        correct: grade === 'known',
+      })
+    }
+
+    return (
+      <Paper
+        variant="outlined"
+        sx={{ p: 2, mb: 2, cursor: 'pointer' }}
+        onClick={() => setFlipped((current) => !current)}
+      >
+        <Stack spacing={1.25}>
+          {tag && (
+            <Chip label={tag} size="small" sx={{ alignSelf: 'flex-start' }} />
+          )}
+          <Typography variant="caption" color="text.secondary">
+            {flipped ? 'Answer' : 'Prompt'}
+          </Typography>
+          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+            {flipped ? back : front}
+          </Typography>
+          {!flipped && hint && (
+            <Typography variant="body2" color="text.secondary">
+              Hint: {hint}
+            </Typography>
+          )}
+          {flipped && Boolean(props.selfGrade) && (
+            <Stack
+              direction="row"
+              spacing={1}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Button
+                size="small"
+                variant={selfGrade === 'known' ? 'contained' : 'outlined'}
+                color="success"
+                onClick={() => registerFlashcardGrade('known')}
+              >
+                I knew it
+              </Button>
+              <Button
+                size="small"
+                variant={selfGrade === 'missed' ? 'contained' : 'outlined'}
+                color="error"
+                onClick={() => registerFlashcardGrade('missed')}
+              >
+                I didn&apos;t know it
+              </Button>
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'QuizBlock') {
+    const question = String(props.question || 'Question')
+    const quizMode = String(props.quizMode || 'multipleChoice')
+    const correctIndex = Number(props.correctIndex || 0)
+    const answer = String(props.answer || options[correctIndex] || '')
+    const explanation = String(props.explanation || '')
+    const submittedShortAnswer = Boolean(shortAnswer.trim())
+    const shortAnswerCorrect =
+      submittedShortAnswer &&
+      normalizeAnswer(shortAnswer) === normalizeAnswer(answer)
+    const registerQuizAttempt = (nextSelectedIndex: number | null) => {
+      if (!studyPathMeta) {
+        return
+      }
+
+      const isShortAnswer = quizMode === 'shortAnswer'
+      const selectedAnswer = isShortAnswer
+        ? shortAnswer
+        : options[nextSelectedIndex || 0] || ''
+      const isCorrect = isShortAnswer
+        ? normalizeAnswer(selectedAnswer) === normalizeAnswer(answer)
+        : nextSelectedIndex === correctIndex
+
+      registerStudyPathAttempt({
+        ...studyPathMeta,
+        itemId: getStudyPathItemId(props, hashValue(`${question}:${answer}`)),
+        type: 'quiz',
+        prompt: question,
+        answer: selectedAnswer,
+        expectedAnswer: answer,
+        explanation,
+        options,
+        correctIndex,
+        correct: isCorrect,
+      })
+    }
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {question}
+          </Typography>
+          {quizMode === 'shortAnswer' ? (
+            <Stack spacing={1}>
+              <TextField
+                label="Answer"
+                value={shortAnswer}
+                onChange={(event) => setShortAnswer(event.target.value)}
+                onBlur={() => {
+                  if (shortAnswer.trim()) {
+                    registerQuizAttempt(null)
+                  }
+                }}
+                size="small"
+                fullWidth
+              />
+              {submittedShortAnswer && (
+                <Typography
+                  variant="body2"
+                  color={shortAnswerCorrect ? 'success.main' : 'error.main'}
+                >
+                  {shortAnswerCorrect ? 'Correct' : `Expected: ${answer}`}
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            <Stack spacing={1}>
+              {options.map((option, index) => {
+                const isSelected = selectedIndex === index
+                const isCorrect = index === correctIndex
+                const showResult = selectedIndex !== null
+                const resultColor = isCorrect
+                  ? 'success.main'
+                  : isSelected
+                    ? 'error.main'
+                    : 'divider'
+
+                return (
+                  <Button
+                    key={`${option}-${index}`}
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => {
+                      setSelectedIndex(index)
+                      registerQuizAttempt(index)
+                    }}
+                    sx={{
+                      justifyContent: 'flex-start',
+                      color: 'text.primary',
+                      borderColor: showResult ? resultColor : 'divider',
+                      bgcolor:
+                        showResult && (isCorrect || isSelected)
+                          ? `${isCorrect ? '#2E7D32' : '#D32F2F'}14`
+                          : 'transparent',
+                      '&:hover': {
+                        borderColor: showResult ? resultColor : 'primary.main',
+                        bgcolor:
+                          showResult && (isCorrect || isSelected)
+                            ? `${isCorrect ? '#2E7D32' : '#D32F2F'}20`
+                            : 'action.hover',
+                      },
+                    }}
+                  >
+                    {option}
+                  </Button>
+                )
+              })}
+            </Stack>
+          )}
+          {(selectedIndex !== null || submittedShortAnswer) && explanation && (
+            <Typography variant="body2" color="text.secondary">
+              {explanation}
+            </Typography>
+          )}
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'RevealBlock') {
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {String(props.prompt || 'Prompt')}
+          </Typography>
+          {revealed ? (
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {String(props.hiddenText || '')}
+            </Typography>
+          ) : (
+            <Button variant="outlined" onClick={() => setRevealed(true)}>
+              {String(props.revealLabel || 'Show answer')}
+            </Button>
+          )}
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'StudyNoteBlock') {
+    const suggestions = toStringArray(props.suggestedTypes)
+    const title = String(props.title || 'Study note')
+    const text = String(props.text || '')
+    const setTemporaryMode = (mode: string) => {
+      setNoteMode(mode)
+      writeStoredMode(noteStorageKey, mode)
+    }
+
+    if (noteMode === 'flashcard') {
+      const { front, back } = createFlashcardParts(title, text)
+
+      return (
+        <Paper
+          variant="outlined"
+          sx={{ p: 2, mb: 2, cursor: 'pointer' }}
+          onClick={() => setFlipped((current) => !current)}
+        >
+          <Stack spacing={1.25}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Chip label="temporary flashcard" size="small" />
+              <Button
+                size="small"
+                variant="text"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setTemporaryMode('')
+                }}
+              >
+                Back to note
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              {flipped ? 'Answer' : 'Prompt'}
+            </Typography>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+              {flipped ? back : front}
+            </Typography>
+          </Stack>
+        </Paper>
+      )
+    }
+
+    if (noteMode === 'definition') {
+      const { front, back } = createFlashcardParts(title, text)
+
+      return (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={1.25}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Chip label="temporary definition" size="small" />
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setTemporaryMode('')}
+              >
+                Back to note
+              </Button>
+            </Stack>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {front}
+            </Typography>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {back}
+            </Typography>
+          </Stack>
+        </Paper>
+      )
+    }
+
+    if (noteMode === 'review') {
+      return (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Chip label="need review" size="small" color="warning" />
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setTemporaryMode('')}
+              >
+                Back to note
+              </Button>
+            </Stack>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {title}
+            </Typography>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {text}
+            </Typography>
+          </Stack>
+        </Paper>
+      )
+    }
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {title}
+          </Typography>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+            {text}
+          </Typography>
+          {suggestions.length > 0 && (
+            <Stack direction="row" gap={1} flexWrap="wrap">
+              {suggestions.map((suggestion) => (
+                <Chip
+                  key={suggestion}
+                  label={suggestion}
+                  size="small"
+                  clickable
+                  onClick={() => setTemporaryMode(suggestion)}
+                />
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'MarkdownBlock') {
+    const title = String(props.title || 'Markdown notes')
+    const markdown = String(props.markdown || '')
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.5}>
+          {title && (
+            <Typography variant="subtitle1" fontWeight={700}>
+              {title}
+            </Typography>
+          )}
+          <Stack spacing={1.25}>{renderMarkdown(markdown)}</Stack>
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'CodeBlock') {
+    const title = String(props.title || 'Code note')
+    const code = String(props.code || '')
+    const language = String(props.language || '')
+    const caption = String(props.caption || '')
+
+    return (
+      <Paper variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
+        <Stack spacing={0}>
+          <Box
+            sx={{ px: 2, py: 1.25, borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Typography variant="subtitle1" fontWeight={700}>
+                {title}
+              </Typography>
+              {language && <Chip label={language} size="small" />}
+            </Stack>
+            {caption && (
+              <Typography variant="caption" color="text.secondary">
+                {caption}
+              </Typography>
+            )}
+          </Box>
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 2,
+              overflowX: 'auto',
+              bgcolor: '#111827',
+              color: '#f9fafb',
+              fontFamily: 'JetBrains Mono, Consolas, monospace',
+              fontSize: '0.8125rem',
+              lineHeight: 1.6,
+              whiteSpace: 'pre',
+              tabSize: 2,
+            }}
+          >
+            <Box component="code">{code}</Box>
+          </Box>
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'DefinitionBlock') {
+    const term = String(props.term || 'Term')
+    const definition = String(props.definition || 'Definition')
+    const example = String(props.example || '')
+    const showDefinition = !Boolean(props.makeFlashcard) || definitionStudy
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {term}
+          </Typography>
+          {showDefinition ? (
+            <>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {definition}
+              </Typography>
+              {example && (
+                <Typography variant="body2" color="text.secondary">
+                  Example: {example}
+                </Typography>
+              )}
+            </>
+          ) : (
+            <Button variant="outlined" onClick={() => setDefinitionStudy(true)}>
+              Show definition
+            </Button>
+          )}
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'ComparisonBlock') {
+    const columnCount = Math.max(
+      columns.length,
+      ...rows.map((row) => row.length),
+      1,
+    )
+
+    return (
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+          {String(props.title || 'Comparison')}
+        </Typography>
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ overflowX: 'auto' }}
+        >
+          <Table size="small">
+            {columns.length > 0 && (
+              <TableHead>
+                <TableRow>
+                  {columns.map((column, index) => (
+                    <TableCell
+                      key={`${column}-${index}`}
+                      sx={{ fontWeight: 700 }}
+                    >
+                      {column}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+            )}
+            <TableBody>
+              {rows.map((row, rowIndex) => (
+                <TableRow key={`comparison-row-${rowIndex}`}>
+                  {Array.from({ length: columnCount }, (_, cellIndex) => (
+                    <TableCell key={`comparison-cell-${rowIndex}-${cellIndex}`}>
+                      {row[cellIndex] || ''}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    )
+  }
+
+  if (type === 'SequenceBlock' || type === 'ListBlock') {
+    const ordered = Boolean(props.ordered)
+    const interactive = Boolean(props.interactiveChecklist)
+    const defaultTitle = type === 'ListBlock' ? 'Study list' : 'Sequence'
+
+    return (
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+          {String(props.title || defaultTitle)}
+        </Typography>
+        <Box
+          component={ordered ? 'ol' : 'ul'}
+          sx={{ pl: interactive ? 0 : 3, my: 0 }}
+        >
+          {steps.map((step, index) => (
+            <Typography
+              component="li"
+              variant="body2"
+              key={`${step}-${index}`}
+              sx={{
+                mb: 0.5,
+                display: interactive ? 'flex' : 'list-item',
+                alignItems: 'center',
+                listStyle: interactive ? 'none' : undefined,
+                textDecoration: checkedSteps[index] ? 'line-through' : 'none',
+                color: checkedSteps[index] ? 'text.secondary' : 'text.primary',
+              }}
+            >
+              {interactive && (
+                <Checkbox
+                  size="small"
+                  checked={Boolean(checkedSteps[index])}
+                  onChange={(event) =>
+                    setCheckedSteps((current) => ({
+                      ...current,
+                      [index]: event.target.checked,
+                    }))
+                  }
+                  sx={{ mr: 0.5, p: 0.25 }}
+                />
+              )}
+              {step}
+            </Typography>
+          ))}
+        </Box>
+      </Box>
+    )
+  }
+
+  if (type === 'ReviewPromptBlock') {
+    const statusLabels: Record<string, string> = {
+      needsReview: 'need review',
+      reviewing: 'reviewing',
+      mastered: 'mastered',
+    }
+    const nextStatus = {
+      needsReview: 'reviewing',
+      reviewing: 'mastered',
+      mastered: 'needsReview',
+    }[reviewStatus]
+    const statusColor = reviewStatus === 'mastered' ? 'success' : 'warning'
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+          >
+            <Typography variant="subtitle1" fontWeight={700}>
+              {String(props.title || 'Review this')}
+            </Typography>
+            <Chip
+              label={statusLabels[reviewStatus] || reviewStatus}
+              size="small"
+              color={statusColor}
+              onClick={() => setReviewStatus(nextStatus || 'needsReview')}
+              sx={{ cursor: 'pointer' }}
+            />
+          </Stack>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+            {String(props.prompt || '')}
+          </Typography>
+          {Boolean(props.reason) && props.reason !== props.prompt && (
+            <Typography variant="body2" color="text.secondary">
+              {String(props.reason)}
+            </Typography>
+          )}
+        </Stack>
+      </Paper>
+    )
+  }
+
+  return null
+}
+
+export default StudyBlockView

@@ -36,19 +36,19 @@ function render_message() {
   fi
 
   if [[ $jiraTicket != '' ]]; then
-    echo "AquaMesh:$jiraTicket $commitMsg"
+    echo "StudyMesh:$jiraTicket $commitMsg"
   else
     echo "$commitMsg"
   fi
 }
 
-function check_AquaMesh_commit() {
+function check_StudyMesh_commit() {
   local commitMsg=$1
-  readonly COMMIT_MSG_REGEX="^AquaMesh:[\s\S]*"
+  readonly COMMIT_MSG_REGEX="^StudyMesh:[\s\S]*"
   if [[ "$commitMsg" =~ $COMMIT_MSG_REGEX || "$commitMsg" =~ $COMMIT_MSG_REGEX_DEV ]]; then
     if [[ "$DEBUG" == true ]]; then
       echo "sanitizedMsg = $sanitizedMsg"
-      echo "The commit sanitizedMsg is already a AquaMesh commit: ignoring the hook."
+      echo "The commit sanitizedMsg is already a StudyMesh commit: ignoring the hook."
     fi
 
     exit 0;
@@ -72,7 +72,7 @@ function render_result() {
 
 # Useful for local testing and debugging. Usage:
 # TEST=true .git/hooks/prepare-commit-msg "My commit message"
-# DEBUG=true TEST=true .git/hooks/prepare-commit-msg "AquaMesh:BRANCH-668 My commit message"
+# DEBUG=true TEST=true .git/hooks/prepare-commit-msg "StudyMesh:BRANCH-668 My commit message"
 [ -z "$TEST" ] && TEST=false
 [ -z "$DEBUG" ] && DEBUG=false
 
@@ -83,7 +83,7 @@ else
   ORIGINAL_MSG=$(cat "$file")
 fi
 
-check_AquaMesh_commit "$ORIGINAL_MSG"
+check_StudyMesh_commit "$ORIGINAL_MSG"
 
 GIT_BRANCH=${TEST_BRANCH:-"$(git rev-parse --abbrev-ref HEAD)"}
 JIRA_TICKET=$(normalize_ticket "$GIT_BRANCH")
