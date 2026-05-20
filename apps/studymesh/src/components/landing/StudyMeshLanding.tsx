@@ -109,20 +109,20 @@ const aiPricing = [
     features: ['No API key', 'No payment', 'Good for quick notes'],
   },
   {
-    title: 'BYOK Gemini',
-    price: '0€',
-    label: 'Use your own key',
-    body: 'Bring your Gemini API key and StudyMesh uses it directly for deeper study paths and notes cleanup.',
-    icon: <KeyIcon />,
-    features: ['Your quota', 'Your control', 'Great quality'],
-  },
-  {
     title: 'Local Gemini Nano',
     price: '0€',
     label: 'Private on-device AI',
     body: 'Run compatible local AI in the browser when available. Slower, but private and free to use.',
     icon: <MemoryIcon />,
     features: ['No server tokens', 'Runs locally', 'Best for privacy'],
+  },
+  {
+    title: 'BYOK Gemini',
+    price: '0€',
+    label: 'Use your own key',
+    body: 'Bring your Gemini API key and StudyMesh uses it directly for deeper study paths and notes cleanup.',
+    icon: <KeyIcon />,
+    features: ['Your quota', 'Your control', 'Great quality'],
   },
   {
     title: 'Hosted API tokens',
