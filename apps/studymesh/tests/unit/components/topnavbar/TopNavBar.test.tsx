@@ -429,7 +429,9 @@ describe('TopNavBar Component', () => {
     )
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Admin User Builder mode/i }),
+      screen.getByRole('button', {
+        name: /Admin User Own Gemini API token/i,
+      }),
     )
     fireEvent.click(await screen.findByText('Settings'))
     fireEvent.click(await screen.findByRole('button', { name: /^replay$/i }))
@@ -455,7 +457,7 @@ describe('TopNavBar Component', () => {
 
     // Click on the user menu button (avatar)
     const userButton = screen.getByRole('button', {
-      name: /Admin User Builder mode/i,
+      name: /Admin User Own Gemini API token/i,
     })
     fireEvent.click(userButton)
 

@@ -89,7 +89,11 @@ test('Logout', async ({ page }) => {
   await dismissActiveDialog(page)
 
   // Click on the user menu (avatar button) using a more specific selector
-  await page.getByRole('button', { name: /Admin Builder mode/ }).click()
+  await page
+    .getByRole('button', {
+      name: /Admin (Basic fallback|Google Local AI|Own Gemini API token|Hosted AI tokens)/,
+    })
+    .click()
 
   // Wait for dropdown and click logout using role
   await page.waitForSelector('[role="menu"]', { timeout: 5000 })

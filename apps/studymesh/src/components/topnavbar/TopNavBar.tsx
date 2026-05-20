@@ -100,6 +100,13 @@ const canOpenStudyPackForCurrentState = (userData: UserData) => {
   return isAdminUser(userData) && provider !== 'hosted'
 }
 
+const studyPackAiProviderLabels: Record<StudyPackAiProvider, string> = {
+  basic: 'Basic fallback',
+  local: 'Google Local AI',
+  gemini: 'Own Gemini API token',
+  hosted: 'Hosted AI tokens',
+}
+
 // Define component props interface
 interface TopNavBarProps {
   open?: boolean
@@ -220,7 +227,9 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const canCreateStudyPath =
     isAdmin && studyPackAiProvider !== 'basic' && !hostedAiUnavailable
   const canCreateFromNotes = isAdmin && !hostedAiUnavailable
-  const userModeLabel = isAdmin ? 'Builder mode' : 'Viewer mode'
+  const userModeLabel = isAdmin
+    ? studyPackAiProviderLabels[studyPackAiProvider]
+    : 'Viewer mode'
 
   const {
     openCreateWidget,
