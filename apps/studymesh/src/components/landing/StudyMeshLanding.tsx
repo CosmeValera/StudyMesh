@@ -141,22 +141,13 @@ const StudyMeshLanding = () => {
               StudyMesh
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button
-              variant="contained"
-              onClick={() => openWorkspace('create-from-notes')}
-              sx={{ borderRadius: 1, textTransform: 'none' }}
-            >
-              Create From Notes
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => openWorkspace()}
-              sx={{ borderRadius: 1, textTransform: 'none' }}
-            >
-              Enter workspace
-            </Button>
-          </Stack>
+          <Button
+            variant="outlined"
+            onClick={() => openWorkspace()}
+            sx={{ borderRadius: 1, textTransform: 'none' }}
+          >
+            Enter workspace
+          </Button>
         </Container>
       </Box>
 
