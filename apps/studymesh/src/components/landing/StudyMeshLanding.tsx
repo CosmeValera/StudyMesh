@@ -42,6 +42,21 @@ const mainUseCases = [
   },
 ]
 
+const heroHighlights = [
+  'Study paths from any topic',
+  'Dashboards from notes, PDFs, images, or slides',
+  'Practice generated next to the source material',
+]
+
+const contextFormats = [
+  'Class notes',
+  'Screenshots',
+  'PDF summaries',
+  'Slide decks',
+  'Exam topics',
+  'Self-study goals',
+]
+
 const workflow = [
   {
     title: 'Plan the learning journey',
@@ -238,6 +253,21 @@ const StudyMeshLanding = () => {
                 Create From Context
               </Button>
             </Stack>
+            <Stack spacing={1} sx={{ mt: 3 }}>
+              {heroHighlights.map((highlight) => (
+                <Stack
+                  key={highlight}
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                >
+                  <CheckCircleIcon color="success" fontSize="small" />
+                  <Typography variant="body2" color="text.secondary">
+                    {highlight}
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
           </Grid>
           <Grid item xs={12} md={6}>
             <Paper
@@ -269,6 +299,53 @@ const StudyMeshLanding = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: alpha(theme.palette.background.paper, 0.72),
+            mt: { xs: -1, md: -3 },
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900}>
+                Bring whatever study context you already have
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                StudyMesh is not a blank canvas first — it starts from the
+                material you need to understand.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {contextFormats.map((format) => (
+                <Box
+                  key={format}
+                  sx={{
+                    px: 1.25,
+                    py: 0.75,
+                    borderRadius: 999,
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    color: 'primary.dark',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {format}
+                </Box>
+              ))}
+            </Stack>
+          </Stack>
+        </Paper>
 
         <Box sx={{ py: { xs: 4, md: 6 } }}>
           <Stack spacing={1} textAlign="center" alignItems="center" mb={3}>
@@ -651,8 +728,8 @@ const StudyMeshLanding = () => {
               mb: 3,
             }}
           >
-            Start with a prompt or notes, then open the generated work in your
-            workspace.
+            Start with a learning goal or your study context, then open the
+            generated work in your workspace.
           </Typography>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
