@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Box,
   Button,
+  Chip,
   Container,
   Grid,
   Paper,
@@ -20,6 +21,8 @@ import BiotechIcon from '@mui/icons-material/Biotech'
 import ImageIcon from '@mui/icons-material/Image'
 import SchoolIcon from '@mui/icons-material/School'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
+import RouteIcon from '@mui/icons-material/Route'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
 
 import { ReactComponent as Logo } from '../../../public/logo.svg'
 
@@ -97,12 +100,46 @@ const quickAnswers = [
   },
 ]
 
+const startOptions = [
+  {
+    title: 'Create Study Path',
+    eyebrow: 'Input',
+    inputTitle: 'Example prompt',
+    input:
+      'Teach me Spanish past tenses from scratch, with examples, mistakes to avoid, and practice.',
+    outputTitle: 'Output',
+    output:
+      'A guided Study Path with lesson dashboards, source notes, flashcards, quizzes, and exercises.',
+    icon: <RouteIcon />,
+    action: 'study-path',
+  },
+  {
+    title: 'Create from notes',
+    eyebrow: 'Input',
+    inputTitle: 'Your material',
+    input: 'Two lecture screenshots + a PowerPoint deck + copied class notes.',
+    outputTitle: 'Output',
+    output:
+      'One clean study dashboard that explains the attached notes and turns them into practice.',
+    icon: <UploadFileIcon />,
+    action: 'create-study-pack',
+  },
+]
+
 const AquaMeshLanding = () => {
   const navigate = useNavigate()
   const theme = useTheme()
 
   const openWorkspace = (action?: string) => {
     navigate(action ? `/workspace?action=${action}` : '/workspace')
+  }
+
+  const miniCardSx = {
+    p: 1.5,
+    borderRadius: 2,
+    bgcolor: alpha(theme.palette.background.default, 0.86),
+    border: '1px solid',
+    borderColor: 'divider',
   }
 
   return (
@@ -226,6 +263,240 @@ const AquaMeshLanding = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        <Box sx={{ py: 5 }}>
+          <Typography variant="h4" component="h2" fontWeight={850} mb={1}>
+            Two ways to start
+          </Typography>
+          <Typography color="text.secondary" mb={3}>
+            Choose whether you want AquaMesh to teach a topic from a prompt, or
+            organize study material you already have.
+          </Typography>
+          <Grid container spacing={2.5}>
+            {startOptions.map((option) => (
+              <Grid item xs={12} md={6} key={option.title}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    height: '100%',
+                    p: { xs: 2.25, sm: 3 },
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                    boxShadow:
+                      theme.palette.mode === 'dark'
+                        ? `0 18px 48px ${alpha(theme.palette.common.black, 0.28)}`
+                        : `0 18px 48px ${alpha(theme.palette.primary.dark, 0.08)}`,
+                  }}
+                >
+                  <Stack spacing={2.25}>
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Box sx={{ color: 'primary.main', display: 'flex' }}>
+                        {option.icon}
+                      </Box>
+                      <Typography variant="h5" fontWeight={900}>
+                        {option.title}
+                      </Typography>
+                    </Stack>
+
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} sm={5}>
+                        <Paper elevation={0} sx={miniCardSx}>
+                          <Chip
+                            size="small"
+                            label={option.eyebrow}
+                            color="primary"
+                          />
+                          <Typography
+                            variant="subtitle2"
+                            fontWeight={850}
+                            mt={1}
+                          >
+                            {option.inputTitle}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            mt={0.75}
+                          >
+                            {option.input}
+                          </Typography>
+                          {option.action === 'study-path' ? (
+                            <Box
+                              sx={{
+                                mt: 1.5,
+                                p: 1.25,
+                                borderRadius: 1.5,
+                                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                fontSize: 13,
+                                fontWeight: 750,
+                              }}
+                            >
+                              “Explain like I am new, then test me.”
+                            </Box>
+                          ) : (
+                            <Stack direction="row" spacing={1} mt={1.5}>
+                              {['IMG', 'IMG', 'PPT'].map((label, index) => (
+                                <Box
+                                  key={`${label}-${index}`}
+                                  sx={{
+                                    width: 48,
+                                    height: 38,
+                                    borderRadius: 1,
+                                    display: 'grid',
+                                    placeItems: 'center',
+                                    bgcolor:
+                                      index === 2
+                                        ? 'warning.light'
+                                        : 'primary.light',
+                                    color: 'primary.contrastText',
+                                    fontSize: 11,
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {label}
+                                </Box>
+                              ))}
+                            </Stack>
+                          )}
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={7}>
+                        <Paper elevation={0} sx={miniCardSx}>
+                          <Chip
+                            size="small"
+                            label="What you get"
+                            color="success"
+                          />
+                          <Typography
+                            variant="subtitle2"
+                            fontWeight={850}
+                            mt={1}
+                          >
+                            {option.outputTitle}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            mt={0.75}
+                          >
+                            {option.output}
+                          </Typography>
+                          {option.action === 'study-path' ? (
+                            <Stack spacing={1} mt={1.5}>
+                              {[
+                                ['Lesson 1', 'Nice source notes'],
+                                ['Lesson 2', 'Guided examples'],
+                                ['Practice', 'Exercises + quiz'],
+                              ].map(([label, text]) => (
+                                <Box
+                                  key={label}
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    gap: 1,
+                                    p: 1,
+                                    borderRadius: 1.25,
+                                    bgcolor: alpha(
+                                      theme.palette.primary.main,
+                                      0.08,
+                                    ),
+                                  }}
+                                >
+                                  <Typography
+                                    variant="caption"
+                                    fontWeight={850}
+                                  >
+                                    {label}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {text}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Stack>
+                          ) : (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Box
+                                sx={{
+                                  height: 10,
+                                  borderRadius: 1,
+                                  bgcolor: 'primary.main',
+                                  mb: 1,
+                                }}
+                              />
+                              <Grid container spacing={0.75}>
+                                {[7, 5, 6, 4].map((cols, index) => (
+                                  <Grid item xs={6} key={index}>
+                                    <Box
+                                      sx={{
+                                        height: 42,
+                                        borderRadius: 1.25,
+                                        bgcolor: alpha(
+                                          theme.palette.primary.main,
+                                          0.1,
+                                        ),
+                                        p: 1,
+                                      }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          width: `${cols * 10}%`,
+                                          height: 6,
+                                          borderRadius: 1,
+                                          bgcolor: 'primary.main',
+                                          mb: 0.75,
+                                        }}
+                                      />
+                                      <Box
+                                        sx={{
+                                          width: '80%',
+                                          height: 5,
+                                          borderRadius: 1,
+                                          bgcolor: 'divider',
+                                        }}
+                                      />
+                                    </Box>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            </Box>
+                          )}
+                        </Paper>
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        <Paper
+          elevation={0}
+          sx={{
+            my: 4,
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+          }}
+        >
+          <Typography variant="h5" fontWeight={900} mb={1}>
+            Bring whatever study context you already have
+          </Typography>
+          <Typography color="text.secondary">
+            Prompts, messy notes, screenshots, slides, examples, doubts, or
+            copied references are all useful starting points. AquaMesh turns the
+            context into structured dashboards you can read, edit, and practice
+            from.
+          </Typography>
+        </Paper>
 
         <Box sx={{ py: 5 }}>
           <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
