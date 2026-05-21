@@ -49,7 +49,6 @@ import {
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
-  STARTER_STUDY_PATH_FOLDER_NAME,
   OPEN_DASHBOARD_EDITOR_EVENT,
   OPEN_STUDY_PACK_EVENT,
   OPEN_STUDY_PATH_EVENT,
@@ -110,7 +109,6 @@ interface SavedDashboard {
 }
 
 const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
-const DEFAULT_STUDY_PATH_OPENED_KEY = 'studymesh-default-study-path-opened-v1'
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 const OPEN_SAVED_DASHBOARDS_EVENT = 'studymesh-open-saved-dashboards'
 
@@ -276,21 +274,21 @@ const DashboardStorage = {
 interface DashboardEmptyStateProps {
   isAdmin: boolean
   hasDashboard: boolean
-  onCreateDashboard: () => void
   onCreateStudyPath: () => void
   onCreateFromNotes: () => void
   dashboardOptions: SavedDashboard[]
   onOpenDashboard: (dashboard: SavedDashboard) => void
+  onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
 }
 
 const DashboardEmptyState = ({
   isAdmin,
   hasDashboard,
-  onCreateDashboard,
   onCreateStudyPath,
   onCreateFromNotes,
   dashboardOptions,
   onOpenDashboard,
+  onOpenStudyGuide,
 }: DashboardEmptyStateProps) => {
   const dashboardsByFolder = dashboardOptions.reduce<
     Record<string, SavedDashboard[]>
@@ -300,6 +298,18 @@ const DashboardEmptyState = ({
     folders[folderName].push(dashboard)
     return folders
   }, {})
+  const folderEntries = Object.entries(dashboardsByFolder)
+  const hasStudyGuides = folderEntries.some(([, dashboards]) =>
+    Boolean(createStudyPathContainerState(dashboards)),
+  )
+  const hasStandaloneDashboards = folderEntries.some(
+    ([, dashboards]) => !createStudyPathContainerState(dashboards),
+  )
+  const openExistingLabel = hasStudyGuides
+    ? hasStandaloneDashboards
+      ? 'Open existing dashboard or study guide'
+      : 'Open existing study guide'
+    : 'Open existing dashboard'
 
   return (
     <Box
@@ -372,17 +382,6 @@ const DashboardEmptyState = ({
               >
                 Create From Notes
               </Button>
-              <Button
-                variant="text"
-                startIcon={<DashboardCustomizeIcon />}
-                onClick={onCreateDashboard}
-                sx={{
-                  color: 'foreground.contrastSecondary',
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                Advanced Dashboard
-              </Button>
             </>
           )}
         </Stack>
@@ -392,7 +391,7 @@ const DashboardEmptyState = ({
               variant="subtitle2"
               sx={{ color: 'foreground.contrastSecondary', mb: 1.5 }}
             >
-              Open existing dashboard
+              {openExistingLabel}
             </Typography>
             <Box
               sx={{
@@ -404,36 +403,52 @@ const DashboardEmptyState = ({
                 gap: 1.5,
               }}
             >
-              {Object.entries(dashboardsByFolder)
-                .slice(0, 3)
-                .map(([folderName, dashboards]) => {
-                  const folderColor = normalizeFolderColor(
-                    dashboards.find((dashboard) => dashboard.folderColor)
-                      ?.folderColor ||
-                      DashboardStorage.getFolderColor(folderName),
-                  )
+              {folderEntries.slice(0, 3).map(([folderName, dashboards]) => {
+                const studyGuide = createStudyPathContainerState(dashboards)
+                const folderColor = normalizeFolderColor(
+                  dashboards.find((dashboard) => dashboard.folderColor)
+                    ?.folderColor ||
+                    DashboardStorage.getFolderColor(folderName),
+                )
 
-                  return (
-                    <Box
-                      key={folderName}
+                return (
+                  <Box
+                    key={folderName}
+                    sx={{
+                      minWidth: 0,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
                       sx={{
-                        minWidth: 0,
+                        color: folderColor,
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        display: 'block',
+                        mb: 0.75,
                       }}
                     >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: folderColor,
-                          fontWeight: 800,
-                          textTransform: 'uppercase',
-                          display: 'block',
-                          mb: 0.75,
-                        }}
-                      >
-                        {folderName}
-                      </Typography>
-                      <Stack spacing={0.75}>
-                        {dashboards.slice(0, 2).map((dashboard) => (
+                      {folderName}
+                    </Typography>
+                    <Stack spacing={0.75}>
+                      {studyGuide ? (
+                        <Button
+                          variant="contained"
+                          startIcon={<RouteIcon />}
+                          onClick={() => onOpenStudyGuide(dashboards)}
+                          sx={{
+                            minHeight: 52,
+                            justifyContent: 'flex-start',
+                            textTransform: 'none',
+                            bgcolor: 'primary.dark',
+                            color: 'primary.contrastText',
+                            '&:hover': { bgcolor: 'primary.main' },
+                          }}
+                        >
+                          {studyGuide.title || studyGuide.folderName}
+                        </Button>
+                      ) : (
+                        dashboards.slice(0, 2).map((dashboard) => (
                           <Button
                             key={dashboard.id}
                             variant="outlined"
@@ -480,11 +495,12 @@ const DashboardEmptyState = ({
                               )}
                             </Box>
                           </Button>
-                        ))}
-                      </Stack>
-                    </Box>
-                  )
-                })}
+                        ))
+                      )}
+                    </Stack>
+                  </Box>
+                )
+              })}
             </Box>
           </Box>
         )}
@@ -726,6 +742,15 @@ const Dashboards = () => {
     })
   }
 
+  const openStudyGuideFromEmptyState = (dashboards: SavedDashboard[]) => {
+    const studyPath = createStudyPathContainerState(dashboards)
+
+    if (studyPath) {
+      addStudyPathContainer(studyPath)
+      dispatchWorkspaceOnboardingEvent({ type: 'saved-dashboard-opened' })
+    }
+  }
+
   const closeDashboardEditor = () => {
     if (dashboardEditorIsDraft) {
       setDraftDashboard(null)
@@ -912,48 +937,6 @@ const Dashboards = () => {
   useEffect(() => {
     loadDashboardOptions()
   }, [])
-
-  useEffect(() => {
-    if (openDashboards.length === 0) {
-      return
-    }
-
-    if (window.localStorage.getItem(DEFAULT_STUDY_PATH_OPENED_KEY) === 'true') {
-      return
-    }
-
-    if (
-      openDashboards.some(
-        (dashboard) => dashboard.kind === 'studyPathContainer',
-      )
-    ) {
-      window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
-      return
-    }
-
-    const selectedDashboardRecord = openDashboards[selectedDashboard]
-    if (
-      !selectedDashboardRecord ||
-      hasDashboardContent(selectedDashboardRecord.layout)
-    ) {
-      window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
-      return
-    }
-
-    ensureStarterDashboards()
-    const starterStudyPathDashboards = DashboardStorage.getAll().filter(
-      (dashboard) => dashboard.folder === STARTER_STUDY_PATH_FOLDER_NAME,
-    )
-    const studyPath = createStudyPathContainerState(starterStudyPathDashboards)
-
-    if (!studyPath) {
-      return
-    }
-
-    addStudyPathContainer(studyPath)
-    window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
-    loadDashboardOptions()
-  }, [addStudyPathContainer, openDashboards, selectedDashboard])
 
   useEffect(() => {
     if (!isEditingDashboardEditorTitle) {
@@ -1749,13 +1732,11 @@ const Dashboards = () => {
                     <DashboardEmptyState
                       isAdmin={isAdmin}
                       hasDashboard
-                      onCreateDashboard={() =>
-                        openDashboardEditor(dashboard.id)
-                      }
                       onCreateStudyPath={openCreateStudyPath}
                       onCreateFromNotes={openCreateFromNotes}
                       dashboardOptions={visibleDashboardOptions}
                       onOpenDashboard={openSavedDashboardInWorkspace}
+                      onOpenStudyGuide={openStudyGuideFromEmptyState}
                     />
                   ) : (
                     <DashboardLayoutView
@@ -1808,11 +1789,11 @@ const Dashboards = () => {
         <DashboardEmptyState
           isAdmin={isAdmin}
           hasDashboard={false}
-          onCreateDashboard={createDashboardInEditor}
           onCreateStudyPath={openCreateStudyPath}
           onCreateFromNotes={openCreateFromNotes}
           dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}
+          onOpenStudyGuide={openStudyGuideFromEmptyState}
         />
       )}
 
