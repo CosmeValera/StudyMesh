@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Box,
   Button,
+  Chip,
   Container,
   Grid,
   Paper,
@@ -11,7 +12,6 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router-dom'
-import SchoolIcon from '@mui/icons-material/School'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import RouteIcon from '@mui/icons-material/Route'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -29,16 +29,27 @@ const mainUseCases = [
     cta: 'Start a path',
     accent: '#2196F3',
     steps: ['Prompt a topic', 'Review the path', 'Study in order'],
+    inputLabel: 'Example prompt',
+    input:
+      'Teach me Spanish past tenses from scratch, with examples, mistakes to avoid, and practice.',
+    outputLabel: 'Generated path',
+    output:
+      'Lesson dashboards with source notes, guided explanations, flashcards, and exercises.',
   },
   {
-    title: 'Create from context',
+    title: 'Create from Notes',
     eyebrow: 'From your material',
-    body: 'Paste notes, upload documents, or bring study context and turn it into a clean dashboard with summaries and exercises.',
+    body: 'Paste notes, upload documents, or bring study notes and turn them into a clean dashboard with summaries and exercises.',
     icon: <MenuBookIcon />,
     action: 'create-from-notes',
-    cta: 'Use context',
+    cta: 'Use notes',
     accent: '#00A878',
     steps: ['Add material', 'Clean it up', 'Practice from it'],
+    inputLabel: 'Attachments',
+    input: 'Two screenshots, class notes, and a PowerPoint deck.',
+    outputLabel: 'Generated dashboard',
+    output:
+      'A clean dashboard explaining your notes, references, summaries, and practice.',
   },
 ]
 
@@ -48,30 +59,70 @@ const heroHighlights = [
   'Practice generated next to the source material',
 ]
 
-const contextFormats = [
-  'Class notes',
-  'Screenshots',
-  'PDF summaries',
-  'Slide decks',
-  'Exam topics',
-  'Self-study goals',
+const studyPathPromptExamples = [
+  {
+    prompt: 'Learn French B1 for my oral exam',
+    dashboards: [
+      ['01', 'B1 conversation warm-up', 'speaking phrases + pronunciation'],
+      ['02', 'Past and future tenses', 'grammar patterns + examples'],
+      ['03', 'Oral exam practice', 'roleplays + answer prompts'],
+      ['04', 'Final speaking review', 'mixed questions + confidence check'],
+    ],
+  },
+  {
+    prompt: 'High-school calculus: derivatives and limits',
+    dashboards: [
+      ['01', 'Limits without panic', 'intuition + visual examples'],
+      ['02', 'Derivative basics', 'rules + worked problems'],
+      ['03', 'Graph interpretation', 'slopes, tangents, and meaning'],
+      ['04', 'Exam practice set', 'mixed exercises + corrections'],
+    ],
+  },
+  {
+    prompt: "Biology photosynthesis for tomorrow's test",
+    dashboards: [
+      ['01', 'Photosynthesis big picture', 'light, water, CO₂, glucose'],
+      ['02', 'Light reactions', 'chloroplast map + key steps'],
+      ['03', 'Calvin cycle practice', 'inputs, outputs, and traps'],
+      ['04', 'Test-night review', 'flashcards + quick quiz'],
+    ],
+  },
 ]
 
-const workflow = [
+const notesAttachmentExamples = [
   {
-    title: 'Plan the learning journey',
-    body: 'Break a topic into a clear sequence instead of staring at a blank workspace.',
-    icon: <SchoolIcon />,
+    id: 'text',
+    icon: '📝',
+    label: 'Text notes',
+    lines: ['definitions', 'teacher comments'],
+    dashboards: [
+      ['Clean summary', 'organized key ideas', 92],
+      ['Flashcards', 'definitions + terms', 70],
+    ],
   },
   {
-    title: 'Clean up real context',
-    body: 'Turn notes, files, screenshots, or rough material into something structured and usable.',
-    icon: <MenuBookIcon />,
+    id: 'image',
+    icon: '📸',
+    label: 'Images',
+    lines: ['board photo', 'diagram snapshot'],
+    dashboards: [
+      ['Visual recap', 'diagrams explained', 82],
+      ['Image Q&A', 'labels + concepts', 62],
+    ],
   },
   {
-    title: 'Practice where the notes live',
-    body: 'Keep explanations, flashcards, quizzes, and review prompts together in one study view.',
-    icon: <CheckCircleIcon />,
+    id: 'slides',
+    icon: '📊',
+    label: 'Slides',
+    lines: ['unit deck', 'class examples'],
+    dashboards: [['Slide walkthrough', 'deck turned into lessons', 76]],
+  },
+  {
+    id: 'pdf',
+    icon: '📄',
+    label: 'PDF',
+    lines: ['chapter pack', 'exam guide'],
+    dashboards: [['Reading guide', 'PDF highlights', 86]],
   },
 ]
 
@@ -84,12 +135,12 @@ const quickAnswers = [
   {
     question: 'What should I do first?',
     answer:
-      'Create a Study Path from a learning goal, or use Create from Context when you already have notes, files, or screenshots.',
+      'Create a Study Path from a learning goal, or use Create from Notes when you already have notes, files, or screenshots.',
   },
   {
     question: 'How are dashboards organized?',
     answer:
-      'Generated study paths and context dashboards can be opened in the workspace and reused by folder.',
+      'Generated study paths and notes dashboards can be opened in the workspace and reused by folder.',
   },
 ]
 
@@ -132,6 +183,27 @@ const aiPricing = [
 const StudyMeshLanding = () => {
   const navigate = useNavigate()
   const theme = useTheme()
+  const [selectedStudyPathExample, setSelectedStudyPathExample] = useState(0)
+  const [selectedNotesAttachments, setSelectedNotesAttachments] = useState([
+    'text',
+    'image',
+  ])
+  const activeStudyPathExample =
+    studyPathPromptExamples[selectedStudyPathExample]
+  const activeNotesDashboards = notesAttachmentExamples
+    .filter((attachment) => selectedNotesAttachments.includes(attachment.id))
+    .flatMap((attachment) => attachment.dashboards)
+    .slice(0, 6)
+
+  const toggleNotesAttachment = (attachmentId: string) => {
+    setSelectedNotesAttachments((current) => {
+      if (current.includes(attachmentId)) {
+        return current.filter((id) => id !== attachmentId)
+      }
+
+      return [...current, attachmentId]
+    })
+  }
 
   const openWorkspace = (action?: string) => {
     navigate(action ? `/workspace?action=${action}` : '/workspace')
@@ -250,7 +322,7 @@ const StudyMeshLanding = () => {
                 onClick={() => openWorkspace('create-from-notes')}
                 sx={{ borderRadius: 1, textTransform: 'none' }}
               >
-                Create From Context
+                Create From Notes
               </Button>
             </Stack>
             <Stack spacing={1} sx={{ mt: 3 }}>
@@ -300,53 +372,6 @@ const StudyMeshLanding = () => {
           </Grid>
         </Grid>
 
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 2, md: 2.5 },
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: alpha(theme.palette.background.paper, 0.72),
-            mt: { xs: -1, md: -3 },
-          }}
-        >
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'flex-start', md: 'center' }}
-            justifyContent="space-between"
-          >
-            <Box>
-              <Typography variant="subtitle2" fontWeight={900}>
-                Bring whatever study context you already have
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                StudyMesh is not a blank canvas first — it starts from the
-                material you need to understand.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {contextFormats.map((format) => (
-                <Box
-                  key={format}
-                  sx={{
-                    px: 1.25,
-                    py: 0.75,
-                    borderRadius: 999,
-                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                    color: 'primary.dark',
-                    fontSize: '0.78rem',
-                    fontWeight: 800,
-                  }}
-                >
-                  {format}
-                </Box>
-              ))}
-            </Stack>
-          </Stack>
-        </Paper>
-
         <Box sx={{ py: { xs: 4, md: 6 } }}>
           <Stack spacing={1} textAlign="center" alignItems="center" mb={3}>
             <Typography
@@ -357,16 +382,16 @@ const StudyMeshLanding = () => {
               Two ways to start
             </Typography>
             <Typography variant="h4" component="h2" fontWeight={900}>
-              Start from a learning goal or from your context
+              Start from a learning goal or from your notes
             </Typography>
             <Typography
               variant="body1"
               color="text.secondary"
               sx={{ maxWidth: 760 }}
             >
-              StudyMesh keeps the product focused: generate a guided path when
-              you need structure, or transform existing material when you
-              already have notes, files, or screenshots.
+              First, choose the quick overview card that matches how you want to
+              start. Then use the detailed examples below to see exactly what
+              you put in and what StudyMesh gives back.
             </Typography>
           </Stack>
 
@@ -493,44 +518,425 @@ const StudyMeshLanding = () => {
               </Grid>
             ))}
           </Grid>
-        </Box>
 
-        <Box sx={{ py: 5 }}>
-          <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
-            What StudyMesh helps with
-          </Typography>
-          <Grid container spacing={2}>
-            {workflow.map((step, index) => (
-              <Grid item xs={12} md={4} key={step.title}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    height: '100%',
-                    p: 2.5,
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center" mb={1}>
-                    <Box sx={{ color: 'primary.main', display: 'flex' }}>
-                      {step.icon}
-                    </Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Step {index + 1}
-                    </Typography>
-                  </Stack>
-                  <Typography variant="h6" fontWeight={800} mb={1}>
-                    {step.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {step.body}
-                  </Typography>
-                </Paper>
+          <Stack spacing={1} sx={{ mt: 4, mb: 2 }}>
+            <Typography variant="h5" fontWeight={900}>
+              What each option looks like in practice
+            </Typography>
+          </Stack>
+
+          <Stack spacing={2.5}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2.25, md: 3 },
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: alpha('#2196F3', 0.32),
+                bgcolor: alpha('#2196F3', 0.07),
+                overflow: 'hidden',
+                position: 'relative',
+              }}
+            >
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={5}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      height: '100%',
+                      p: { xs: 2, md: 2.25 },
+                      borderRadius: 2.5,
+                      bgcolor: alpha(theme.palette.background.paper, 0.88),
+                      border: '1px solid',
+                      borderColor: alpha('#2196F3', 0.2),
+                    }}
+                  >
+                    <Stack spacing={1.5} height="100%">
+                      <Typography
+                        variant="h5"
+                        fontWeight={950}
+                        color="primary.dark"
+                      >
+                        Create Study Path
+                      </Typography>
+                      <Typography variant="h5" fontWeight={900}>
+                        Tell StudyMesh what you want to master
+                      </Typography>
+                      <Stack spacing={1}>
+                        {studyPathPromptExamples.map(
+                          (example, exampleIndex) => {
+                            const selected =
+                              exampleIndex === selectedStudyPathExample
+
+                            return (
+                              <Box
+                                key={example.prompt}
+                                component="button"
+                                type="button"
+                                onClick={() =>
+                                  setSelectedStudyPathExample(exampleIndex)
+                                }
+                                sx={{
+                                  p: 1.25,
+                                  borderRadius: 2,
+                                  bgcolor: selected
+                                    ? alpha('#2196F3', 0.16)
+                                    : alpha('#2196F3', 0.08),
+                                  border: '1px solid',
+                                  borderColor: selected
+                                    ? '#2196F3'
+                                    : alpha('#2196F3', 0.18),
+                                  boxShadow: selected
+                                    ? `0 12px 28px ${alpha('#2196F3', 0.16)}`
+                                    : 'none',
+                                  color: 'text.primary',
+                                  cursor: 'pointer',
+                                  font: 'inherit',
+                                  fontWeight: 850,
+                                  textAlign: 'left',
+                                  transition:
+                                    'background-color 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease',
+                                  '&:hover': {
+                                    borderColor: '#2196F3',
+                                    transform: 'translateY(-1px)',
+                                  },
+                                }}
+                              >
+                                “{example.prompt}”
+                              </Box>
+                            )
+                          },
+                        )}
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={1}>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: '#1565C0',
+                      fontSize: { xs: 28, md: 34 },
+                      fontWeight: 950,
+                      transform: { xs: 'rotate(90deg)', md: 'none' },
+                    }}
+                    aria-hidden="true"
+                  >
+                    →
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      height: '100%',
+                      p: 1.5,
+                      borderRadius: 2.5,
+                      bgcolor: alpha(theme.palette.background.paper, 0.88),
+                      border: '1px solid',
+                      borderColor: alpha('#2196F3', 0.2),
+                    }}
+                  >
+                    <Stack spacing={1.25}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <RouteIcon sx={{ color: '#2196F3' }} />
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={950}>
+                            Get a step-by-step study journey
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Each lesson becomes its own dashboard with notes,
+                            examples, and practice.
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Grid container spacing={1}>
+                        {activeStudyPathExample.dashboards.map(
+                          ([number, title, detail]) => (
+                            <Grid item xs={12} sm={6} key={number}>
+                              <Box
+                                sx={{
+                                  pl: 1,
+                                  paddingRight: '8px',
+                                  py: 1.25,
+                                  minHeight: 86,
+                                  borderRadius: 2,
+                                  bgcolor: alpha('#2196F3', 0.08),
+                                  border: '1px solid',
+                                  borderColor: alpha('#2196F3', 0.14),
+                                }}
+                              >
+                                <Typography
+                                  variant="caption"
+                                  fontWeight={950}
+                                  color="primary.dark"
+                                >
+                                  Dashboard {number}
+                                </Typography>
+                                <Typography fontWeight={900}>
+                                  {title}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {detail}
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          ),
+                        )}
+                      </Grid>
+                    </Stack>
+                  </Paper>
+                </Grid>
               </Grid>
-            ))}
-          </Grid>
+            </Paper>
+
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2.25, md: 3 },
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: alpha('#00A878', 0.32),
+                bgcolor: alpha('#00A878', 0.07),
+              }}
+            >
+              <Grid container spacing={2.5} alignItems="stretch">
+                <Grid item xs={12} md={5}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      height: '100%',
+                      p: { xs: 2, md: 2.25 },
+                      borderRadius: 2.5,
+                      bgcolor: alpha(theme.palette.background.paper, 0.88),
+                      border: '1px solid',
+                      borderColor: alpha('#00A878', 0.2),
+                    }}
+                  >
+                    <Stack spacing={1.5} height="100%">
+                      <Typography
+                        variant="h5"
+                        fontWeight={950}
+                        color="success.dark"
+                      >
+                        Create from Notes
+                      </Typography>
+                      <Typography variant="h5" fontWeight={900}>
+                        Drop in what your teacher gave you
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                          gap: 1,
+                        }}
+                      >
+                        {notesAttachmentExamples.map((attachment) => {
+                          const selected = selectedNotesAttachments.includes(
+                            attachment.id,
+                          )
+
+                          return (
+                            <Paper
+                              key={attachment.id}
+                              component="button"
+                              type="button"
+                              elevation={0}
+                              onClick={() =>
+                                toggleNotesAttachment(attachment.id)
+                              }
+                              sx={{
+                                p: 1,
+                                minHeight: 112,
+                                borderRadius: 2,
+                                bgcolor: selected
+                                  ? alpha('#00A878', 0.14)
+                                  : alpha(theme.palette.background.paper, 0.86),
+                                border: '1px solid',
+                                borderColor: selected
+                                  ? '#00A878'
+                                  : alpha('#00A878', 0.18),
+                                boxShadow: selected
+                                  ? `0 12px 28px ${alpha('#00A878', 0.14)}`
+                                  : 'none',
+                                color: 'text.primary',
+                                cursor: 'pointer',
+                                font: 'inherit',
+                                textAlign: 'left',
+                                transition:
+                                  'background-color 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease',
+                                '&:hover': {
+                                  borderColor: '#00A878',
+                                  transform: 'translateY(-1px)',
+                                },
+                              }}
+                            >
+                              <Typography fontSize={24}>
+                                {attachment.icon}
+                              </Typography>
+                              <Typography variant="caption" fontWeight={950}>
+                                {attachment.label}
+                              </Typography>
+                              {attachment.lines.map((line, lineIndex) => (
+                                <Box
+                                  key={line}
+                                  sx={{
+                                    mt: 0.7,
+                                    width: lineIndex === 0 ? '86%' : '64%',
+                                    height: 6,
+                                    borderRadius: 1,
+                                    bgcolor: alpha(
+                                      '#00A878',
+                                      selected
+                                        ? lineIndex === 0
+                                          ? 0.42
+                                          : 0.24
+                                        : 0.14,
+                                    ),
+                                  }}
+                                />
+                              ))}
+                            </Paper>
+                          )
+                        })}
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={7}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      height: '100%',
+                      p: 1.5,
+                      borderRadius: 2.5,
+                      bgcolor: alpha(theme.palette.background.paper, 0.88),
+                      border: '1px solid',
+                      borderColor: alpha('#00A878', 0.2),
+                    }}
+                  >
+                    <Stack spacing={1.25}>
+                      <Typography variant="subtitle1" fontWeight={950}>
+                        Get organized dashboards from messy material
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: {
+                            xs: '1fr',
+                            sm: '1.1fr 1fr 1fr',
+                          },
+                          gap: 1,
+                          alignItems: 'stretch',
+                        }}
+                      >
+                        {activeNotesDashboards.length === 0 ? (
+                          <Box
+                            sx={{
+                              gridColumn: '1 / -1',
+                              minHeight: 132,
+                              borderRadius: 2,
+                              border: '1px dashed',
+                              borderColor: alpha('#00A878', 0.32),
+                              bgcolor: alpha('#00A878', 0.06),
+                              display: 'grid',
+                              placeItems: 'center',
+                              textAlign: 'center',
+                              p: 2,
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              fontWeight={800}
+                            >
+                              Click an attachment on the left to see what
+                              dashboards would be generated.
+                            </Typography>
+                          </Box>
+                        ) : (
+                          activeNotesDashboards.map(
+                            ([title, detail, width], cardIndex) => (
+                              <Box
+                                key={title as string}
+                                sx={{
+                                  p: 1.25,
+                                  minHeight: 132,
+                                  borderRadius: 2,
+                                  bgcolor: alpha(
+                                    '#00A878',
+                                    cardIndex === 0 ? 0.12 : 0.08,
+                                  ),
+                                  border: '1px solid',
+                                  borderColor: alpha('#00A878', 0.16),
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <Typography
+                                  variant="caption"
+                                  fontWeight={950}
+                                  color="success.dark"
+                                >
+                                  Dashboard {cardIndex + 1}
+                                </Typography>
+                                <Typography fontWeight={950}>
+                                  {title as string}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {detail as string}
+                                </Typography>
+                                <Box sx={{ mt: 1.2 }}>
+                                  {[0, 1, 2].map((line) => (
+                                    <Box
+                                      key={line}
+                                      sx={{
+                                        width:
+                                          line === 0
+                                            ? `${width}%`
+                                            : line === 1
+                                              ? '74%'
+                                              : '48%',
+                                        height: 6,
+                                        borderRadius: 1,
+                                        bgcolor:
+                                          line === 0
+                                            ? '#00A878'
+                                            : alpha('#00A878', 0.22),
+                                        mb: 0.75,
+                                      }}
+                                    />
+                                  ))}
+                                </Box>
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    right: -12,
+                                    bottom: -12,
+                                    width: 56,
+                                    height: 56,
+                                    borderRadius: '50%',
+                                    bgcolor: alpha('#00A878', 0.13),
+                                  }}
+                                />
+                              </Box>
+                            ),
+                          )
+                        )}
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Stack>
         </Box>
 
         <Box sx={{ py: 5 }}>
@@ -728,7 +1134,7 @@ const StudyMeshLanding = () => {
               mb: 3,
             }}
           >
-            Start with a learning goal or your study context, then open the
+            Start with a learning goal or your study notes, then open the
             generated work in your workspace.
           </Typography>
           <Stack
@@ -765,7 +1171,7 @@ const StudyMeshLanding = () => {
                 },
               }}
             >
-              Create From Context
+              Create From Notes
             </Button>
           </Stack>
         </Paper>
