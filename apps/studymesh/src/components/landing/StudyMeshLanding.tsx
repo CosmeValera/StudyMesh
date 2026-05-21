@@ -11,12 +11,6 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router-dom'
-import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import SaveAltIcon from '@mui/icons-material/SaveAlt'
-import TaskAltIcon from '@mui/icons-material/TaskAlt'
-import SupportAgentIcon from '@mui/icons-material/SupportAgent'
-import BiotechIcon from '@mui/icons-material/Biotech'
-import ImageIcon from '@mui/icons-material/Image'
 import SchoolIcon from '@mui/icons-material/School'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import RouteIcon from '@mui/icons-material/Route'
@@ -25,59 +19,59 @@ import KeyIcon from '@mui/icons-material/Key'
 import MemoryIcon from '@mui/icons-material/Memory'
 import CloudQueueIcon from '@mui/icons-material/CloudQueue'
 
-const workflow = [
+const mainUseCases = [
   {
-    title: 'Create a study path',
-    body: 'Start with a prompt and turn it into an ordered tutorial with reusable study pages.',
-    icon: <SchoolIcon />,
+    title: 'Create Study Path',
+    eyebrow: 'From a goal',
+    body: 'Describe what you want to learn and StudyMesh creates an ordered path with lessons, recap, and practice dashboards.',
+    icon: <RouteIcon />,
+    action: 'create-study-path',
+    cta: 'Start a path',
+    accent: '#2196F3',
+    steps: ['Prompt a topic', 'Review the path', 'Study in order'],
   },
   {
-    title: 'Create from notes',
-    body: 'Paste messy notes or upload learning material, then generate a clearer study dashboard.',
+    title: 'Create from context',
+    eyebrow: 'From your material',
+    body: 'Paste notes, upload documents, or bring study context and turn it into a clean dashboard with summaries and exercises.',
     icon: <MenuBookIcon />,
-  },
-  {
-    title: 'Reuse what works',
-    body: 'Save useful notes, exercises, formulas, and dashboards as workspace views you can revisit.',
-    icon: <SaveAltIcon />,
-  },
-  {
-    title: 'Customize when needed',
-    body: 'Use advanced dashboard and widget tools only when you want full manual control.',
-    icon: <DashboardCustomizeIcon />,
+    action: 'create-from-notes',
+    cta: 'Use context',
+    accent: '#00A878',
+    steps: ['Add material', 'Clean it up', 'Practice from it'],
   },
 ]
 
-const useCases = [
+const heroHighlights = [
+  'Study paths from any topic',
+  'Dashboards from notes, PDFs, images, or slides',
+  'Practice generated next to the source material',
+]
+
+const contextFormats = [
+  'Class notes',
+  'Screenshots',
+  'PDF summaries',
+  'Slide decks',
+  'Exam topics',
+  'Self-study goals',
+]
+
+const workflow = [
   {
-    title: 'Study paths',
-    body: 'Generate guided tutorials for mathematics, science, languages, or exam revision.',
+    title: 'Plan the learning journey',
+    body: 'Break a topic into a clear sequence instead of staring at a blank workspace.',
     icon: <SchoolIcon />,
   },
   {
-    title: 'Notes cleanup',
-    body: 'Turn rough class notes into structured summaries, practice, and review dashboards.',
+    title: 'Clean up real context',
+    body: 'Turn notes, files, screenshots, or rough material into something structured and usable.',
     icon: <MenuBookIcon />,
   },
   {
-    title: 'Research board',
-    body: 'Pair images, notes, references, and observations for projects or labs.',
-    icon: <BiotechIcon />,
-  },
-  {
-    title: 'Practice workspace',
-    body: 'Keep exercises, worked examples, mistakes, and review prompts together.',
-    icon: <TaskAltIcon />,
-  },
-  {
-    title: 'Operations hub',
-    body: 'Track orders, delayed work, tickets, status, and handoffs when you need a CRM-like view.',
-    icon: <SupportAgentIcon />,
-  },
-  {
-    title: 'Image and notes board',
-    body: 'Pair visual references with structured text and controls.',
-    icon: <ImageIcon />,
+    title: 'Practice where the notes live',
+    body: 'Keep explanations, flashcards, quizzes, and review prompts together in one study view.',
+    icon: <CheckCircleIcon />,
   },
 ]
 
@@ -85,17 +79,17 @@ const quickAnswers = [
   {
     question: 'What is StudyMesh for?',
     answer:
-      'StudyMesh helps students turn prompts, notes, images, and references into tutorials, study dashboards, exercises, and reusable workspace views.',
+      'StudyMesh helps students turn learning goals, notes, images, and references into study paths, clean dashboards, exercises, and review material.',
   },
   {
     question: 'What should I do first?',
     answer:
-      'Create a Study Path from a prompt, or use Create From Notes when you already have class notes or screenshots.',
+      'Create a Study Path from a learning goal, or use Create from Context when you already have notes, files, or screenshots.',
   },
   {
     question: 'How are dashboards organized?',
     answer:
-      'Generated study paths, notes dashboards, and custom dashboards can be opened in the workspace and reused by folder.',
+      'Generated study paths and context dashboards can be opened in the workspace and reused by folder.',
   },
 ]
 
@@ -256,8 +250,23 @@ const StudyMeshLanding = () => {
                 onClick={() => openWorkspace('create-from-notes')}
                 sx={{ borderRadius: 1, textTransform: 'none' }}
               >
-                Create From Notes
+                Create From Context
               </Button>
+            </Stack>
+            <Stack spacing={1} sx={{ mt: 3 }}>
+              {heroHighlights.map((highlight) => (
+                <Stack
+                  key={highlight}
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                >
+                  <CheckCircleIcon color="success" fontSize="small" />
+                  <Typography variant="body2" color="text.secondary">
+                    {highlight}
+                  </Typography>
+                </Stack>
+              ))}
             </Stack>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -291,13 +300,208 @@ const StudyMeshLanding = () => {
           </Grid>
         </Grid>
 
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: alpha(theme.palette.background.paper, 0.72),
+            mt: { xs: -1, md: -3 },
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900}>
+                Bring whatever study context you already have
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                StudyMesh is not a blank canvas first — it starts from the
+                material you need to understand.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {contextFormats.map((format) => (
+                <Box
+                  key={format}
+                  sx={{
+                    px: 1.25,
+                    py: 0.75,
+                    borderRadius: 999,
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    color: 'primary.dark',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {format}
+                </Box>
+              ))}
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Box sx={{ py: { xs: 4, md: 6 } }}>
+          <Stack spacing={1} textAlign="center" alignItems="center" mb={3}>
+            <Typography
+              variant="overline"
+              fontWeight={900}
+              color="primary.main"
+            >
+              Two ways to start
+            </Typography>
+            <Typography variant="h4" component="h2" fontWeight={900}>
+              Start from a learning goal or from your context
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ maxWidth: 760 }}
+            >
+              StudyMesh keeps the product focused: generate a guided path when
+              you need structure, or transform existing material when you
+              already have notes, files, or screenshots.
+            </Typography>
+          </Stack>
+
+          <Grid container spacing={2.5} alignItems="stretch">
+            {mainUseCases.map((useCase, index) => (
+              <Grid item xs={12} md={6} key={useCase.title}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    height: '100%',
+                    p: { xs: 2.5, md: 3 },
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: alpha(useCase.accent, 0.28),
+                    bgcolor: alpha(useCase.accent, 0.06),
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transition:
+                      'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+                    animation: `studyMeshUseCaseFloat${index} 7s ease-in-out infinite`,
+                    '@keyframes studyMeshUseCaseFloat0': {
+                      '0%, 100%': { transform: 'translateY(0)' },
+                      '50%': { transform: 'translateY(-4px)' },
+                    },
+                    '@keyframes studyMeshUseCaseFloat1': {
+                      '0%, 100%': { transform: 'translateY(-2px)' },
+                      '50%': { transform: 'translateY(2px)' },
+                    },
+                    '&:hover': {
+                      transform: 'translateY(-6px)',
+                      borderColor: alpha(useCase.accent, 0.58),
+                      boxShadow: `0 24px 54px ${alpha(useCase.accent, 0.16)}`,
+                      animationPlayState: 'paused',
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      inset: 'auto -12% -28% auto',
+                      width: 180,
+                      height: 180,
+                      borderRadius: '50%',
+                      bgcolor: alpha(useCase.accent, 0.14),
+                    },
+                  }}
+                >
+                  <Stack spacing={2.25} height="100%" position="relative">
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 2,
+                          display: 'grid',
+                          placeItems: 'center',
+                          color: useCase.accent,
+                          bgcolor: alpha(useCase.accent, 0.12),
+                        }}
+                      >
+                        {useCase.icon}
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          fontWeight={800}
+                        >
+                          {useCase.eyebrow}
+                        </Typography>
+                        <Typography variant="h5" fontWeight={900}>
+                          {useCase.title}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Typography color="text.secondary">
+                      {useCase.body}
+                    </Typography>
+
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
+                      {useCase.steps.map((step) => (
+                        <Box
+                          key={step}
+                          sx={{
+                            px: 1.25,
+                            py: 0.75,
+                            borderRadius: 999,
+                            border: '1px solid',
+                            borderColor: alpha(useCase.accent, 0.22),
+                            bgcolor: alpha(theme.palette.background.paper, 0.7),
+                            fontSize: '0.78rem',
+                            fontWeight: 800,
+                          }}
+                        >
+                          {step}
+                        </Box>
+                      ))}
+                    </Stack>
+
+                    <Button
+                      variant={index === 0 ? 'contained' : 'outlined'}
+                      onClick={() => openWorkspace(useCase.action)}
+                      sx={{
+                        mt: 'auto',
+                        alignSelf: 'flex-start',
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        ...(index === 0
+                          ? { bgcolor: useCase.accent }
+                          : {
+                              color: useCase.accent,
+                              borderColor: alpha(useCase.accent, 0.42),
+                            }),
+                      }}
+                    >
+                      {useCase.cta}
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
         <Box sx={{ py: 5 }}>
           <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
-            Start from knowledge, then customize it
+            What StudyMesh helps with
           </Typography>
           <Grid container spacing={2}>
             {workflow.map((step, index) => (
-              <Grid item xs={12} sm={6} md={3} key={step.title}>
+              <Grid item xs={12} md={4} key={step.title}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -322,39 +526,6 @@ const StudyMeshLanding = () => {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {step.body}
-                  </Typography>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-
-        <Box sx={{ py: 5 }}>
-          <Typography variant="h4" component="h2" fontWeight={850} mb={3}>
-            Use StudyMesh as a study workspace
-          </Typography>
-          <Grid container spacing={2}>
-            {useCases.map((useCase) => (
-              <Grid item xs={12} sm={6} md={4} key={useCase.title}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    height: '100%',
-                    p: 2.5,
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
-                  }}
-                >
-                  <Box sx={{ color: 'primary.main', display: 'flex', mb: 1 }}>
-                    {useCase.icon}
-                  </Box>
-                  <Typography variant="h6" fontWeight={800} mb={0.5}>
-                    {useCase.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {useCase.body}
                   </Typography>
                 </Paper>
               </Grid>
@@ -557,8 +728,8 @@ const StudyMeshLanding = () => {
               mb: 3,
             }}
           >
-            Start with a prompt or notes, then open the generated work in your
-            workspace.
+            Start with a learning goal or your study context, then open the
+            generated work in your workspace.
           </Typography>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -594,7 +765,7 @@ const StudyMeshLanding = () => {
                 },
               }}
             >
-              Create From Notes
+              Create From Context
             </Button>
           </Stack>
         </Paper>
