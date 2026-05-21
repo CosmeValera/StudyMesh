@@ -38,6 +38,7 @@ type NavigatorDock = 'left' | 'right'
 interface StudyPathWorkspaceViewProps {
   studyPath: StudyPathContainerState
   onStudyPathChange: (studyPath: StudyPathContainerState) => void
+  mobileView?: boolean
 }
 
 const getProgressForLesson = (
@@ -131,6 +132,7 @@ const sanitizeStudentLayout = (
 const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   studyPath,
   onStudyPathChange,
+  mobileView = false,
 }) => {
   const [navigatorOpen, setNavigatorOpen] = useState(false)
   const [navigatorDock, setNavigatorDock] = useState<NavigatorDock>('right')
@@ -272,6 +274,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           key={currentLesson.dashboardKey}
           layout={studentLayout}
           readOnly
+          mobileView={mobileView}
           updateLayout={(model) => updateCurrentLayout(model.toJson().layout)}
         />
       </Box>
@@ -619,11 +622,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 </Button>
               </Stack>
 
-              <Stack
-                direction="row"
-                spacing={0.75}
-                sx={{ display: 'flex' }}
-              >
+              <Stack direction="row" spacing={0.75} sx={{ display: 'flex' }}>
                 <Button
                   size="small"
                   variant={navigatorDock === 'left' ? 'contained' : 'text'}

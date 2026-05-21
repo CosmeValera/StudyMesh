@@ -113,3 +113,37 @@
     }
   }
 }
+
+.react-tabs--mobile-dashboard {
+  margin: -48px 0 0 0;
+  background-color: var(--background-default, #f4f7f8);
+
+  .react-tabs__tab-list {
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px 8px;
+    scroll-snap-type: x proximity;
+  }
+
+  .react-tabs__tab {
+    width: auto;
+    min-width: min(72vw, 260px);
+    max-width: 82vw;
+    border: 1px solid var(--surface-border, var(--other-divider));
+    border-radius: 999px;
+    padding: 8px 10px 8px 12px;
+    scroll-snap-align: start;
+    box-shadow: none !important;
+  }
+
+  .react-tabs__tab--selected {
+    background: var(--primary-main, #00a878) !important;
+    color: var(--primary-contrast-text, #fff) !important;
+  }
+
+  .react-tabs__tab-panel {
+    height: auto;
+    min-height: calc(100dvh - 96px);
+    overflow: visible;
+  }
+}

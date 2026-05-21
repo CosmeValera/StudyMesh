@@ -63,7 +63,7 @@
   }
 
   &:has(.flexlayout__tabset-selected) {
-     outline: 2px solid var(--primary-main);
+    outline: 2px solid var(--primary-main);
     outline-offset: 0px;
   }
 }
@@ -231,5 +231,34 @@
   visibility: visible;
   svg {
     color: var(--foreground-primary);
+  }
+}
+
+.studymesh-mobile-dashboard-layout {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  overflow: visible;
+}
+
+.studymesh-mobile-widget-card {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+.studymesh-mobile-dashboard-empty {
+  min-height: 220px;
+  border-radius: 16px;
+  background: var(--surface-card, #fff);
+}
+
+@media (max-width: 768px) {
+  .studymesh-mobile-widget-card > * {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
