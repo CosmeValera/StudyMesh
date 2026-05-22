@@ -37,6 +37,13 @@ type StudioFlow = 'quick' | 'study-path' | 'from-notes'
 
 const PINNED_STORAGE_KEY = 'studymesh-workspace-studio-pinned-v1'
 const studioPanelWidth = 400
+const workspaceCanvasSx = {
+  minHeight: 0,
+  overflow: 'hidden',
+  px: '6px',
+  pb: '2px',
+  boxSizing: 'border-box',
+}
 
 const readPinnedPreference = () => {
   try {
@@ -451,7 +458,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   if (isMobile) {
     return (
       <Box sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
-        <Box sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+        <Box sx={{ height: '100%', ...workspaceCanvasSx }}>
           {children}
         </Box>
         <Drawer
@@ -501,7 +508,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           {studioContent}
         </Box>
       )}
-      <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+      <Box sx={{ flex: 1, minWidth: 0, ...workspaceCanvasSx }}>
         {children}
       </Box>
       {widgetBuilderDialog}
