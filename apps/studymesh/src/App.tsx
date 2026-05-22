@@ -14,6 +14,7 @@ import TopNavBar from './components/topnavbar/TopNavBar'
 import Main from './components/Main'
 import Dashboards from './components/Dasboard/Dashboard'
 import WorkspaceOnboarding from './components/onboarding/WorkspaceOnboarding'
+import WorkspaceStudioShell from './components/workspace/WorkspaceStudioShell'
 import DashboardProvider from './components/Dasboard/DashboardProvider'
 import LayoutProvider from './components/Layout/LayoutProvider'
 import StudyMeshLanding from './components/landing/StudyMeshLanding'
@@ -113,10 +114,33 @@ const WorkspacePage = () => {
   ])
 
   return (
-    <Box sx={{ overflowX: 'hidden', height: '100dvh' }}>
-      <TopNavBar open={menuOpen} setOpen={setMenuOpen} />
-      <Main mt={8} sx={{ position: 'relative' }}>
-        <Dashboards />
+    <Box
+      sx={{
+        height: '100dvh',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <TopNavBar
+        open={menuOpen}
+        setOpen={setMenuOpen}
+        creationHost="external"
+      />
+      <Main
+        sx={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          height: 'auto',
+          marginTop: 0,
+          overflow: 'hidden',
+          p: 0,
+        }}
+      >
+        <WorkspaceStudioShell>
+          <Dashboards />
+        </WorkspaceStudioShell>
         <WorkspaceOnboarding />
       </Main>
     </Box>

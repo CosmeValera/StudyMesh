@@ -53,6 +53,7 @@ import {
   OPEN_STUDY_PACK_EVENT,
   OPEN_STUDY_PATH_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
+  STARTER_STUDY_PATH_FOLDER_NAME,
 } from '../../customHooks/useWorkspaceActions'
 import {
   DEFAULT_FOLDER_COLOR,
@@ -109,6 +110,7 @@ interface SavedDashboard {
 }
 
 const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+const DEFAULT_STUDY_PATH_OPENED_KEY = 'studymesh-default-study-path-opened-v1'
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 const OPEN_SAVED_DASHBOARDS_EVENT = 'studymesh-open-saved-dashboards'
 
@@ -276,6 +278,7 @@ interface DashboardEmptyStateProps {
   hasDashboard: boolean
   onCreateStudyPath: () => void
   onCreateFromNotes: () => void
+  onCreateDashboard: () => void
   dashboardOptions: SavedDashboard[]
   onOpenDashboard: (dashboard: SavedDashboard) => void
   onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
@@ -286,6 +289,7 @@ const DashboardEmptyState = ({
   hasDashboard,
   onCreateStudyPath,
   onCreateFromNotes,
+  onCreateDashboard,
   dashboardOptions,
   onOpenDashboard,
   onOpenStudyGuide,
@@ -381,6 +385,22 @@ const DashboardEmptyState = ({
                 }}
               >
                 Create From Notes
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DashboardCustomizeIcon />}
+                onClick={onCreateDashboard}
+                sx={{
+                  bgcolor: 'background.default',
+                  color: 'primary.dark',
+                  borderColor: 'primary.dark',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                Advanced Dashboard
               </Button>
             </>
           )}
@@ -939,14 +959,39 @@ const Dashboards = () => {
   }, [])
 
   useEffect(() => {
+    if (window.localStorage.getItem(DEFAULT_STUDY_PATH_OPENED_KEY) === 'true') {
+      return
+    }
+
+    ensureStarterDashboards()
+
+    const starterDashboards = DashboardStorage.getAll().filter(
+      (dashboard) => dashboard.folder === STARTER_STUDY_PATH_FOLDER_NAME,
+    )
+    const studyPath = createStudyPathContainerState(starterDashboards)
+
+    if (!studyPath) {
+      return
+    }
+
+    addStudyPathContainer(studyPath)
+    window.localStorage.setItem(DEFAULT_STUDY_PATH_OPENED_KEY, 'true')
+  }, [addStudyPathContainer])
+
+  useEffect(() => {
     if (!isEditingDashboardEditorTitle) {
       setDashboardEditorTitleInput(dashboardEditorDashboard?.name || '')
     }
   }, [dashboardEditorDashboard?.name, isEditingDashboardEditorTitle])
 
   useEffect(() => {
-    const handleOpenDashboardEditor = () => {
+    const handleOpenDashboardEditor = (event: Event) => {
       if (!isAdmin) {
+        return
+      }
+
+      const customEvent = event as CustomEvent<{ host?: string }>
+      if (customEvent.detail?.host === 'studio') {
         return
       }
 
@@ -1558,7 +1603,7 @@ const Dashboards = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
       <Tabs
         className={`react-tabs ${
           selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''
@@ -1734,6 +1779,7 @@ const Dashboards = () => {
                       hasDashboard
                       onCreateStudyPath={openCreateStudyPath}
                       onCreateFromNotes={openCreateFromNotes}
+                      onCreateDashboard={createDashboardInEditor}
                       dashboardOptions={visibleDashboardOptions}
                       onOpenDashboard={openSavedDashboardInWorkspace}
                       onOpenStudyGuide={openStudyGuideFromEmptyState}
@@ -1791,6 +1837,7 @@ const Dashboards = () => {
           hasDashboard={false}
           onCreateStudyPath={openCreateStudyPath}
           onCreateFromNotes={openCreateFromNotes}
+          onCreateDashboard={createDashboardInEditor}
           dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}
           onOpenStudyGuide={openStudyGuideFromEmptyState}

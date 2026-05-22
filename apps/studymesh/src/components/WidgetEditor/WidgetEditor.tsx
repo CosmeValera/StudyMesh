@@ -25,7 +25,8 @@ const WidgetEditor: React.FC<{
     loadWidget?: CustomWidget // The widget to load
     initialEditMode?: boolean // Whether to start in edit mode
   }
-}> = ({ customProps }) => {
+  onSaveComplete?: () => void
+}> = ({ customProps, onSaveComplete }) => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const {
@@ -256,6 +257,7 @@ const WidgetEditor: React.FC<{
   // Handle saving with a custom name from the dialog
   const handleSaveWidgetWithName = (name: string) => {
     handleSaveWidget(false, name)
+    onSaveComplete?.()
   }
 
   const currentSavedWidget = React.useMemo(
@@ -279,8 +281,9 @@ const WidgetEditor: React.FC<{
       }
 
       handleSaveWidget(isMajorUpdate)
+      onSaveComplete?.()
     },
-    [handleSaveWidget, isPhone, isUpdating, widgetData.name],
+    [handleSaveWidget, isPhone, isUpdating, onSaveComplete, widgetData.name],
   )
 
   // Check if there are changes to save/update
