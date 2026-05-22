@@ -569,7 +569,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               <ButtonWithLabel
                 icon={<RouteIcon />}
                 label="Create Study Path"
-                onClick={() => openCreateStudyPath()}
+                onClick={() => openCreateStudyPath({ toggle: true })}
                 disabled={!canCreateStudyPath}
                 title={
                   !isAdmin
@@ -588,7 +588,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               />
             ) : (
               <Button
-                onClick={() => openCreateStudyPath()}
+                onClick={() => openCreateStudyPath({ toggle: true })}
                 disabled={!canCreateStudyPath}
                 sx={{
                   color: 'foreground.contrastPrimary',
@@ -618,7 +618,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               <ButtonWithLabel
                 icon={<AutoStoriesIcon />}
                 label="Create From Notes"
-                onClick={() => openCreateStudyPack()}
+                onClick={() => openCreateStudyPack({ toggle: true })}
                 data-tutorial-id="create-study-pack-button"
                 disabled={!canCreateFromNotes}
                 title={
@@ -636,7 +636,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               />
             ) : (
               <Button
-                onClick={() => openCreateStudyPack()}
+                onClick={() => openCreateStudyPack({ toggle: true })}
                 disabled={!canCreateFromNotes}
                 sx={{
                   color: 'foreground.contrastPrimary',

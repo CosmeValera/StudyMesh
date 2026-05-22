@@ -165,7 +165,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [activeFlow])
 
   useEffect(() => {
-    const activateCreation = (flow: StudioFlow) => {
+    const activateCreation = (flow: StudioFlow, toggle = false) => {
+      if (toggle && isStudioOpen && activeFlow === flow) {
+        setIsStudioOpen(false)
+        return
+      }
+
       setActiveFlow(flow)
       setIsStudioOpen(true)
     }
@@ -193,14 +198,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       }
       dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-opened' })
     }
-    const handleOpenStudyPack = () => {
+    const handleOpenStudyPack = (event: Event) => {
       if (permissions.canCreateFromNotes) {
-        activateCreation('from-notes')
+        const customEvent = event as CustomEvent<{ toggle?: boolean }>
+        activateCreation('from-notes', Boolean(customEvent.detail?.toggle))
       }
     }
-    const handleOpenStudyPath = () => {
+    const handleOpenStudyPath = (event: Event) => {
       if (permissions.canCreateStudyPath) {
-        activateCreation('study-path')
+        const customEvent = event as CustomEvent<{ toggle?: boolean }>
+        activateCreation('study-path', Boolean(customEvent.detail?.toggle))
       }
     }
     const handleOpenDashboard = () => {
@@ -226,9 +233,18 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       )
       window.removeEventListener(OPEN_STUDY_PACK_EVENT, handleOpenStudyPack)
       window.removeEventListener(OPEN_STUDY_PATH_EVENT, handleOpenStudyPath)
-      window.removeEventListener(OPEN_DASHBOARD_EDITOR_EVENT, handleOpenDashboard)
+      window.removeEventListener(
+        OPEN_DASHBOARD_EDITOR_EVENT,
+        handleOpenDashboard,
+      )
     }
-  }, [isPinned, permissions.canCreateFromNotes, permissions.canCreateStudyPath])
+  }, [
+    activeFlow,
+    isPinned,
+    isStudioOpen,
+    permissions.canCreateFromNotes,
+    permissions.canCreateStudyPath,
+  ])
 
   useEffect(() => {
     try {
@@ -383,7 +399,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           onCreatePack={createPackAndHandleComplete}
         />
       )}
-
     </Box>
   )
 
@@ -458,9 +473,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   if (isMobile) {
     return (
       <Box sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
-        <Box sx={{ height: '100%', ...workspaceCanvasSx }}>
-          {children}
-        </Box>
+        <Box sx={{ height: '100%', ...workspaceCanvasSx }}>{children}</Box>
         <Drawer
           anchor="left"
           open={isStudioOpen}
@@ -508,9 +521,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           {studioContent}
         </Box>
       )}
-      <Box sx={{ flex: 1, minWidth: 0, ...workspaceCanvasSx }}>
-        {children}
-      </Box>
+      <Box sx={{ flex: 1, minWidth: 0, ...workspaceCanvasSx }}>{children}</Box>
       {widgetBuilderDialog}
     </Box>
   )
