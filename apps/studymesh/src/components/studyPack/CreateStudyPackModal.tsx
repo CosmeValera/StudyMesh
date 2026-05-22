@@ -1427,14 +1427,23 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
                 />
                 <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
+                  direction={
+                    presentation === 'embedded'
+                      ? 'column'
+                      : { xs: 'column', sm: 'row' }
+                  }
                   spacing={1}
-                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                  alignItems={
+                    presentation === 'embedded'
+                      ? 'stretch'
+                      : { xs: 'stretch', sm: 'center' }
+                  }
                 >
                   <Button
                     component="label"
                     variant="outlined"
                     startIcon={<UploadFileIcon />}
+                    fullWidth={presentation === 'embedded'}
                     sx={{ alignSelf: { sm: 'flex-start' } }}
                   >
                     Upload text files
@@ -1486,6 +1495,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                             elevation={0}
                             sx={{
                               width: 116,
+                              maxWidth: 116,
                               p: 0.75,
                               border: 1,
                               borderColor: 'divider',
@@ -1508,7 +1518,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                               variant="caption"
                               color="text.secondary"
                               noWrap
-                              sx={{ display: 'block', mt: 0.5 }}
+                              sx={{
+                                display: 'block',
+                                mt: 0.5,
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
                             >
                               {preview.name}
                             </Typography>
@@ -1547,6 +1563,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       component="label"
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
+                      fullWidth={presentation === 'embedded'}
                     >
                       Select images
                       <input
@@ -1628,6 +1645,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
                       disabled={isExtractingDocument}
+                      fullWidth={presentation === 'embedded'}
                     >
                       Select PDFs
                       <input
@@ -1692,6 +1710,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
                       disabled={isExtractingDocument}
+                      fullWidth={presentation === 'embedded'}
                     >
                       Select PPTX files
                       <input
