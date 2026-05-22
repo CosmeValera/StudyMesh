@@ -10,8 +10,13 @@ import {
   Divider,
   Avatar,
   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   ListItemIcon,
+  Stack,
+  TextField,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -29,6 +34,9 @@ import CloseIcon from '@mui/icons-material/Close'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
 import RouteIcon from '@mui/icons-material/Route'
+import PersonIcon from '@mui/icons-material/Person'
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
@@ -52,7 +60,10 @@ import {
   StudyPackAiProvider,
 } from '../../studyPack/ai'
 import {
+  createSquareAvatarDataUrl,
   readUserAvatar,
+  removeUserAvatar,
+  saveUserAvatar,
   USER_PROFILE_AVATAR_CHANGED_EVENT,
 } from '../../userProfile'
 
@@ -195,6 +206,9 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   )
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false)
+  const [userSettingsName, setUserSettingsName] = useState('')
+  const [userSettingsAvatarStatus, setUserSettingsAvatarStatus] = useState('')
   const [studyPackOpen, setStudyPackOpen] = useState(false)
   const [studyPathOpen, setStudyPathOpen] = useState(false)
   const [studyPackAiProvider, setStudyPackAiProvider] =
@@ -439,6 +453,63 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
       new CustomEvent(USER_ROLE_CHANGED_EVENT, { detail: nextUser }),
     )
     handleClose()
+  }
+
+  const openUserSettings = () => {
+    setUserSettingsName(userData.name)
+    setUserSettingsAvatarStatus('')
+    setIsUserSettingsOpen(true)
+    handleClose()
+  }
+
+  const saveUserSettings = () => {
+    const nextUser = {
+      ...userData,
+      name: userSettingsName.trim() || userData.name,
+    }
+
+    localStorage.setItem('userData', JSON.stringify(nextUser))
+    setUserData(nextUser)
+    window.dispatchEvent(
+      new CustomEvent(USER_ROLE_CHANGED_EVENT, { detail: nextUser }),
+    )
+    setIsUserSettingsOpen(false)
+  }
+
+  const handleUserAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setUserSettingsAvatarStatus('Use a PNG, JPG, or WebP image.')
+      return
+    }
+
+    try {
+      setUserSettingsAvatarStatus('Preparing profile picture...')
+      const avatarDataUrl = await createSquareAvatarDataUrl(file)
+      saveUserAvatar(userData.id, avatarDataUrl)
+      setAvatarSrc(avatarDataUrl)
+      setUserSettingsAvatarStatus('Profile picture updated.')
+    } catch (error) {
+      setUserSettingsAvatarStatus(
+        error instanceof Error
+          ? error.message
+          : 'Could not update profile picture.',
+      )
+    }
+  }
+
+  const handleRemoveUserAvatar = () => {
+    removeUserAvatar(userData.id)
+    setAvatarSrc('')
+    setUserSettingsAvatarStatus('Profile picture removed.')
   }
 
   return (
@@ -808,6 +879,19 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               </Box>
               <Divider sx={{ borderColor: 'divider' }} />
               <MenuItem
+                onClick={openUserSettings}
+                sx={{ color: 'text.primary' }}
+              >
+                <ListItemIcon>
+                  <PersonIcon
+                    fontSize="small"
+                    sx={{ color: 'text.secondary' }}
+                  />
+                </ListItemIcon>
+                User settings
+              </MenuItem>
+              <Divider sx={{ borderColor: 'divider' }} />
+              <MenuItem
                 onClick={() => {
                   setIsSettingsOpen(true)
                   handleClose()
@@ -875,6 +959,73 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         open={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
       />
+      <Dialog
+        open={isUserSettingsOpen}
+        onClose={() => setIsUserSettingsOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>User settings</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar
+                src={avatarSrc || undefined}
+                sx={{
+                  width: 64,
+                  height: 64,
+                  bgcolor: 'primary.main',
+                  fontWeight: 800,
+                }}
+              >
+                {userData.id.substring(0, 2).toUpperCase()}
+              </Avatar>
+              <Stack spacing={1} direction="row" useFlexGap flexWrap="wrap">
+                <Button
+                  component="label"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PhotoCameraIcon />}
+                >
+                  Upload image
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleUserAvatarUpload}
+                  />
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<DeleteOutlineIcon />}
+                  onClick={handleRemoveUserAvatar}
+                  disabled={!avatarSrc}
+                >
+                  Remove
+                </Button>
+              </Stack>
+            </Stack>
+            {userSettingsAvatarStatus && (
+              <Typography variant="caption" color="text.secondary">
+                {userSettingsAvatarStatus}
+              </Typography>
+            )}
+            <TextField
+              label="User name"
+              value={userSettingsName}
+              onChange={(event) => setUserSettingsName(event.target.value)}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsUserSettingsOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={saveUserSettings}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
       <SettingsDialog
         open={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
