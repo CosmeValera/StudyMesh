@@ -532,6 +532,7 @@ const DashboardEmptyState = ({
 const Dashboards = () => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobileDashboardView = useMediaQuery('(max-width:768px)')
   const {
     openDashboards,
     selectedDashboard,
@@ -1607,14 +1608,16 @@ const Dashboards = () => {
       <Tabs
         className={`react-tabs ${
           selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''
-        }`.trim()}
+        } ${isMobileDashboardView ? 'react-tabs--mobile-dashboard' : ''}`.trim()}
         selectedIndex={selectedDashboard}
         onSelect={(index) => setSelectedDashboard(index)}
         style={{ position: 'relative' }}
       >
         <TabList
-          onDragOver={allowDashboardTabListDrop}
-          onDrop={dropDashboardTabAtEnd}
+          onDragOver={
+            isMobileDashboardView ? undefined : allowDashboardTabListDrop
+          }
+          onDrop={isMobileDashboardView ? undefined : dropDashboardTabAtEnd}
         >
           {openDashboards.map((dashboard, index) => {
             const isOnlyEmptyDashboard =
@@ -1625,13 +1628,20 @@ const Dashboards = () => {
             return (
               <Tab
                 key={dashboard.id}
-                draggable
-                onDragStart={(event) => startDashboardTabDrag(event, index)}
+                draggable={!isMobileDashboardView}
+                onDragStart={(event) =>
+                  !isMobileDashboardView && startDashboardTabDrag(event, index)
+                }
                 onDragOver={(event) => {
+                  if (isMobileDashboardView) {
+                    return
+                  }
                   event.preventDefault()
                   event.dataTransfer.dropEffect = 'move'
                 }}
-                onDrop={(event) => dropDashboardTab(event, index)}
+                onDrop={(event) =>
+                  !isMobileDashboardView && dropDashboardTab(event, index)
+                }
                 onDragEnd={() => setDraggedDashboardIndex(null)}
                 onContextMenu={(event) => openDashboardTabMenu(event, index)}
               >
@@ -1655,7 +1665,8 @@ const Dashboards = () => {
                   </Typography>
                 </TooltipStyled>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {isAdmin &&
+                  {!isMobileDashboardView &&
+                    isAdmin &&
                     dashboard.layout?.children &&
                     dashboard.layout.children.length > 0 && (
                       <TooltipStyled title="Edit Dashboard">
@@ -1754,7 +1765,8 @@ const Dashboards = () => {
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  height: '100%',
+                  height: isMobileDashboardView ? 'auto' : '100%',
+                  minHeight: isMobileDashboardView ? '100dvh' : undefined,
                   backgroundColor: 'background.default',
                 }}
               >
@@ -1772,6 +1784,7 @@ const Dashboards = () => {
                       onStudyPathChange={(studyPath) =>
                         updateStudyPathContainer(dashboard.id, () => studyPath)
                       }
+                      mobileView={isMobileDashboardView}
                     />
                   ) : isEmptyDashboard ? (
                     <DashboardEmptyState
@@ -1787,6 +1800,8 @@ const Dashboards = () => {
                   ) : (
                     <DashboardLayoutView
                       layout={dashboard.layout}
+                      mobileView={isMobileDashboardView}
+                      readOnly={isMobileDashboardView}
                       updateLayout={(model) => {
                         updateLayout(model)
                         // Mark this dashboard as having changes after layout update

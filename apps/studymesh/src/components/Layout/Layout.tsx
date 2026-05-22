@@ -22,6 +22,38 @@ interface DashboardLayoutViewProps {
   layout?: DashboardLayout
   updateLayout: (model: Model) => void
   readOnly?: boolean
+  mobileView?: boolean
+}
+
+interface MobileWidgetNode {
+  id: string
+  name: string
+  component: string
+  customProps?: Record<string, unknown>
+}
+
+const collectMobileWidgetNodes = (
+  node: DashboardLayout | undefined,
+  path: string[] = [],
+): MobileWidgetNode[] => {
+  if (!node) {
+    return []
+  }
+
+  if (node.component) {
+    return [
+      {
+        id: node.id || path.join('-') || node.name || node.component,
+        name: node.name || node.component,
+        component: node.component,
+        customProps: node.config?.customProps,
+      },
+    ]
+  }
+
+  return (node.children || []).flatMap((child, index) =>
+    collectMobileWidgetNodes(child, [...path, String(index)]),
+  )
 }
 
 const CONFIG = {
@@ -54,6 +86,7 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
   layout,
   updateLayout,
   readOnly = false,
+  mobileView = false,
 }) => {
   const { ref } = useLayout()
 
@@ -96,6 +129,37 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
     })
     return Model.fromJson(config)
   }, [layout, readOnly])
+
+  const mobileWidgets = useMemo(
+    () => collectMobileWidgetNodes(layout),
+    [layout],
+  )
+
+  if (mobileView) {
+    return (
+      <div className="studymesh-mobile-dashboard-layout">
+        {mobileWidgets.length === 0 ? (
+          <div className="studymesh-mobile-dashboard-empty">
+            <EmptyWidget />
+          </div>
+        ) : (
+          mobileWidgets.map((widget) => (
+            <section key={widget.id} className="studymesh-mobile-widget-card">
+              <DynamicMicrofrontend
+                name={widget.name}
+                component={widget.component}
+                width={
+                  typeof window !== 'undefined' ? window.innerWidth - 32 : 360
+                }
+                height={0}
+                customProps={widget.customProps}
+              />
+            </section>
+          ))
+        )}
+      </div>
+    )
+  }
 
   return (
     <div
