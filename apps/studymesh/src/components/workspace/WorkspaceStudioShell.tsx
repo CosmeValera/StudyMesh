@@ -296,10 +296,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       >
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={800} noWrap>
-            Studio / Creation
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            Creation toolbox
+            Create Study Material
           </Typography>
         </Box>
         <Stack direction="row" spacing={0.5}>
