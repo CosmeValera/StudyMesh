@@ -32,6 +32,7 @@ interface StudyBlockViewProps {
 const STUDY_BLOCK_TYPES = [
   'FlashcardBlock',
   'QuizBlock',
+  'QuizzSingle',
   'RevealBlock',
   'StudyNoteBlock',
   'CodeBlock',
@@ -137,6 +138,16 @@ const toStringArray = (value: unknown): string[] => {
   }
 
   return []
+}
+
+const toFourOptions = (value: unknown): string[] => {
+  const options = toStringArray(value).slice(0, 4)
+
+  while (options.length < 4) {
+    options.push(`Option ${String.fromCharCode(65 + options.length)}`)
+  }
+
+  return options
 }
 
 const toRows = (value: unknown): string[][] =>
@@ -482,7 +493,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     `${String(props.title || '')}:${String(props.text || '')}`,
   )}`
   const [noteMode, setNoteMode] = useState(() => readStoredMode(noteStorageKey))
-  const options = useMemo(() => toStringArray(props.options), [props.options])
+  const options = useMemo(() => toFourOptions(props.options), [props.options])
   const steps = useMemo(
     () => toStringArray(props.steps || props.items),
     [props.steps, props.items],
@@ -631,26 +642,18 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
 
   if (type === 'QuizBlock') {
     const question = String(props.question || 'Question')
-    const quizMode = String(props.quizMode || 'multipleChoice')
-    const correctIndex = Number(props.correctIndex || 0)
+    const correctIndex = Math.max(
+      0,
+      Math.min(3, Number(props.correctIndex || 0)),
+    )
     const answer = String(props.answer || options[correctIndex] || '')
     const explanation = String(props.explanation || '')
-    const submittedShortAnswer = Boolean(shortAnswer.trim())
-    const shortAnswerCorrect =
-      submittedShortAnswer &&
-      normalizeAnswer(shortAnswer) === normalizeAnswer(answer)
-    const registerQuizAttempt = (nextSelectedIndex: number | null) => {
+    const registerQuizAttempt = (nextSelectedIndex: number) => {
       if (!studyPathMeta) {
         return
       }
 
-      const isShortAnswer = quizMode === 'shortAnswer'
-      const selectedAnswer = isShortAnswer
-        ? shortAnswer
-        : options[nextSelectedIndex || 0] || ''
-      const isCorrect = isShortAnswer
-        ? normalizeAnswer(selectedAnswer) === normalizeAnswer(answer)
-        : nextSelectedIndex === correctIndex
+      const selectedAnswer = options[nextSelectedIndex] || ''
 
       registerStudyPathAttempt({
         ...studyPathMeta,
@@ -662,7 +665,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
         explanation,
         options,
         correctIndex,
-        correct: isCorrect,
+        correct: nextSelectedIndex === correctIndex,
       })
     }
 
@@ -672,74 +675,110 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           <Typography variant="subtitle1" fontWeight={700}>
             {question}
           </Typography>
-          {quizMode === 'shortAnswer' ? (
-            <Stack spacing={1}>
-              <TextField
-                label="Answer"
-                value={shortAnswer}
-                onChange={(event) => setShortAnswer(event.target.value)}
-                onBlur={() => {
-                  if (shortAnswer.trim()) {
-                    registerQuizAttempt(null)
-                  }
-                }}
-                size="small"
-                fullWidth
-              />
-              {submittedShortAnswer && (
-                <Typography
-                  variant="body2"
-                  color={shortAnswerCorrect ? 'success.main' : 'error.main'}
-                >
-                  {shortAnswerCorrect ? 'Correct' : `Expected: ${answer}`}
-                </Typography>
-              )}
-            </Stack>
-          ) : (
-            <Stack spacing={1}>
-              {options.map((option, index) => {
-                const isSelected = selectedIndex === index
-                const isCorrect = index === correctIndex
-                const showResult = selectedIndex !== null
-                const resultColor = isCorrect
-                  ? 'success.main'
-                  : isSelected
-                    ? 'error.main'
-                    : 'divider'
+          <Stack spacing={1}>
+            {options.map((option, index) => {
+              const isSelected = selectedIndex === index
+              const isCorrect = index === correctIndex
+              const showResult = selectedIndex !== null
+              const resultColor = isCorrect
+                ? 'success.main'
+                : isSelected
+                  ? 'error.main'
+                  : 'divider'
 
-                return (
-                  <Button
-                    key={`${option}-${index}`}
-                    variant="outlined"
-                    color="primary"
-                    onClick={() => {
-                      setSelectedIndex(index)
-                      registerQuizAttempt(index)
-                    }}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      color: 'text.primary',
-                      borderColor: showResult ? resultColor : 'divider',
+              return (
+                <Button
+                  key={`${option}-${index}`}
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => {
+                    setSelectedIndex(index)
+                    registerQuizAttempt(index)
+                  }}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    color: 'text.primary',
+                    borderColor: showResult ? resultColor : 'divider',
+                    bgcolor:
+                      showResult && (isCorrect || isSelected)
+                        ? `${isCorrect ? '#2E7D32' : '#D32F2F'}14`
+                        : 'transparent',
+                    '&:hover': {
+                      borderColor: showResult ? resultColor : 'primary.main',
                       bgcolor:
                         showResult && (isCorrect || isSelected)
-                          ? `${isCorrect ? '#2E7D32' : '#D32F2F'}14`
-                          : 'transparent',
-                      '&:hover': {
-                        borderColor: showResult ? resultColor : 'primary.main',
-                        bgcolor:
-                          showResult && (isCorrect || isSelected)
-                            ? `${isCorrect ? '#2E7D32' : '#D32F2F'}20`
-                            : 'action.hover',
-                      },
-                    }}
-                  >
-                    {option}
-                  </Button>
-                )
-              })}
-            </Stack>
+                          ? `${isCorrect ? '#2E7D32' : '#D32F2F'}20`
+                          : 'action.hover',
+                    },
+                  }}
+                >
+                  {option}
+                </Button>
+              )
+            })}
+          </Stack>
+          {selectedIndex !== null && explanation && (
+            <Typography variant="body2" color="text.secondary">
+              {explanation}
+            </Typography>
           )}
-          {(selectedIndex !== null || submittedShortAnswer) && explanation && (
+        </Stack>
+      </Paper>
+    )
+  }
+
+  if (type === 'QuizzSingle') {
+    const question = String(props.question || 'Question')
+    const answer = String(props.answer || '')
+    const explanation = String(props.explanation || '')
+    const submittedShortAnswer = Boolean(shortAnswer.trim())
+    const shortAnswerCorrect =
+      submittedShortAnswer &&
+      normalizeAnswer(shortAnswer) === normalizeAnswer(answer)
+    const registerSingleAttempt = () => {
+      if (!studyPathMeta || !shortAnswer.trim()) {
+        return
+      }
+
+      registerStudyPathAttempt({
+        ...studyPathMeta,
+        itemId: getStudyPathItemId(props, hashValue(`${question}:${answer}`)),
+        type: 'quiz',
+        prompt: question,
+        answer: shortAnswer,
+        expectedAnswer: answer,
+        explanation,
+        options: [],
+        correctIndex: 0,
+        correct: normalizeAnswer(shortAnswer) === normalizeAnswer(answer),
+      })
+    }
+
+    return (
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {question}
+          </Typography>
+          <Stack spacing={1}>
+            <TextField
+              label="Answer"
+              value={shortAnswer}
+              onChange={(event) => setShortAnswer(event.target.value)}
+              onBlur={registerSingleAttempt}
+              size="small"
+              fullWidth
+            />
+            {submittedShortAnswer && (
+              <Typography
+                variant="body2"
+                color={shortAnswerCorrect ? 'success.main' : 'error.main'}
+              >
+                {shortAnswerCorrect ? 'Correct' : `Expected: ${answer}`}
+              </Typography>
+            )}
+          </Stack>
+          {submittedShortAnswer && explanation && (
             <Typography variant="body2" color="text.secondary">
               {explanation}
             </Typography>

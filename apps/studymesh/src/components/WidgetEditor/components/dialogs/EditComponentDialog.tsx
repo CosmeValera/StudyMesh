@@ -23,6 +23,50 @@ import KnowledgeBlockEditor from '../editors/KnowledgeBlockEditor'
 import StudyBlockEditor from '../editors/StudyBlockEditor'
 import { isStudyBlockType } from '../preview/StudyBlockView'
 
+const normalizeQuizBlockProps = (
+  props: Record<string, unknown>,
+): Record<string, unknown> => {
+  const options = Array.isArray(props.options)
+    ? props.options.map(String).filter(Boolean).slice(0, 4)
+    : []
+
+  while (options.length < 4) {
+    options.push(`Option ${String.fromCharCode(65 + options.length)}`)
+  }
+
+  const correctIndex = Math.max(0, Math.min(3, Number(props.correctIndex || 0)))
+
+  return {
+    ...props,
+    __blockType: 'QuizBlock',
+    quizMode: 'multi',
+    options,
+    correctIndex,
+    answer: String(props.answer || options[correctIndex] || ''),
+  }
+}
+
+const normalizeStudyBlockProps = (
+  componentType: string,
+  props: Record<string, unknown>,
+): Record<string, unknown> => {
+  if (componentType === 'QuizBlock') {
+    return normalizeQuizBlockProps(props)
+  }
+
+  if (componentType === 'QuizzSingle') {
+    return {
+      ...props,
+      __blockType: 'QuizzSingle',
+      quizMode: 'single',
+      options: [],
+      correctIndex: 0,
+    }
+  }
+
+  return props
+}
+
 const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   open,
   component,
@@ -140,7 +184,7 @@ const EditComponentDialog: React.FC<EditComponentDialogProps> = ({
   const handleSave = () => {
     const updatedComponent = {
       ...component,
-      props: editedProps,
+      props: normalizeStudyBlockProps(component.type, editedProps),
     }
     onSave(updatedComponent)
     onClose()

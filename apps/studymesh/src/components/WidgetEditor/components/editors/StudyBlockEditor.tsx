@@ -25,6 +25,16 @@ const parseLines = (value: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean)
 
+const normalizeQuizOptions = (value: string): string[] => {
+  const options = parseLines(value).slice(0, 4)
+
+  while (options.length < 4) {
+    options.push(`Option ${String.fromCharCode(65 + options.length)}`)
+  }
+
+  return options
+}
+
 const rowsToText = (value: unknown): string =>
   Array.isArray(value)
     ? value
@@ -104,15 +114,6 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
           Quiz
         </Typography>
         <TextField
-          select
-          label="Quiz mode"
-          value={(props.quizMode as string) || 'multipleChoice'}
-          onChange={(event) => update('quizMode', event.target.value)}
-        >
-          <MenuItem value="multipleChoice">Multiple choice</MenuItem>
-          <MenuItem value="shortAnswer">Short answer</MenuItem>
-        </TextField>
-        <TextField
           label="Question"
           value={(props.question as string) || ''}
           onChange={(event) => update('question', event.target.value)}
@@ -129,18 +130,57 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
           fullWidth
           multiline
           minRows={4}
-          helperText="One option per line. Correct answer uses zero-based index below."
+          helperText="Exactly four options. Extra lines are ignored; missing lines are filled."
+          onBlur={(event) =>
+            update('options', normalizeQuizOptions(event.target.value))
+          }
         />
         <TextField
           label="Correct option index"
           type="number"
           value={(props.correctIndex as number) || 0}
           onChange={(event) =>
-            update('correctIndex', Number(event.target.value) || 0)
+            update(
+              'correctIndex',
+              Math.max(0, Math.min(3, Number(event.target.value) || 0)),
+            )
           }
+          helperText="Use 0, 1, 2, or 3."
         />
         <TextField
-          label="Short answer / expected answer"
+          label="Correct answer"
+          value={(props.answer as string) || ''}
+          onChange={(event) => update('answer', event.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Explanation"
+          value={(props.explanation as string) || ''}
+          onChange={(event) => update('explanation', event.target.value)}
+          fullWidth
+          multiline
+          minRows={3}
+        />
+      </Stack>
+    )
+  }
+
+  if (blockType === 'QuizzSingle') {
+    return (
+      <Stack spacing={2} sx={{ p: 3 }}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          Quiz single
+        </Typography>
+        <TextField
+          label="Question"
+          value={(props.question as string) || ''}
+          onChange={(event) => update('question', event.target.value)}
+          fullWidth
+          multiline
+          minRows={2}
+        />
+        <TextField
+          label="Expected answer"
           value={(props.answer as string) || ''}
           onChange={(event) => update('answer', event.target.value)}
           fullWidth

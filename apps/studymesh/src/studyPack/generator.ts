@@ -60,6 +60,47 @@ const createLabel = (
   },
 })
 
+const normalizeMultipleChoiceOptions = (
+  object: Extract<StudyObject, { kind: 'quiz' }>,
+) => {
+  const answer = object.answer || object.options[object.correctIndex] || ''
+  const options = object.options.filter(Boolean)
+  const currentAnswerIndex = options.findIndex((option) => option === answer)
+  const normalized = [...options]
+
+  if (answer && currentAnswerIndex === -1) {
+    normalized.unshift(answer)
+  } else if (currentAnswerIndex > 3) {
+    normalized.splice(currentAnswerIndex, 1)
+    normalized.unshift(answer)
+  }
+
+  const fallbackOptions = [
+    'Not enough information',
+    'None of the above',
+    'All of the above',
+    'Review the notes',
+  ]
+
+  fallbackOptions.forEach((option) => {
+    if (normalized.length < 4 && !normalized.includes(option)) {
+      normalized.push(option)
+    }
+  })
+
+  const fourOptions = normalized.slice(0, 4)
+  const correctIndex = Math.max(
+    0,
+    fourOptions.findIndex((option) => option === answer),
+  )
+
+  return {
+    options: fourOptions,
+    correctIndex,
+    answer: answer || fourOptions[correctIndex] || '',
+  }
+}
+
 const objectToComponents = (
   object: StudyObject,
   widgetId: string,
@@ -135,17 +176,36 @@ const objectToComponents = (
         },
       ]
     case 'quiz':
+      if (object.quizMode === 'shortAnswer') {
+        return [
+          {
+            id: createComponentId(widgetId, object, 'quiz-single'),
+            type: 'QuizzSingle',
+            props: {
+              __blockType: 'QuizzSingle',
+              quizMode: 'single',
+              question: object.question,
+              answer: object.answer,
+              explanation: object.explanation,
+              ...studyPathProps,
+            },
+          },
+        ]
+      }
+
+      const quiz = normalizeMultipleChoiceOptions(object)
+
       return [
         {
           id: createComponentId(widgetId, object, 'quiz'),
           type: 'QuizBlock',
           props: {
             __blockType: 'QuizBlock',
-            quizMode: object.quizMode,
+            quizMode: 'multi',
             question: object.question,
-            options: object.options,
-            correctIndex: object.correctIndex,
-            answer: object.answer,
+            options: quiz.options,
+            correctIndex: quiz.correctIndex,
+            answer: quiz.answer,
             explanation: object.explanation,
             shuffleOptions: false,
             ...studyPathProps,
@@ -1036,8 +1096,8 @@ export const createStudyPackDashboardLayout = (
   options.mode === 'orchestrator'
     ? createOrchestratorDashboardLayout(widgets)
     : options.mode === 'tabs'
-    ? createTabbedDashboardLayout(widgets)
-    : createSmartDashboardLayout(widgets)
+      ? createTabbedDashboardLayout(widgets)
+      : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],
