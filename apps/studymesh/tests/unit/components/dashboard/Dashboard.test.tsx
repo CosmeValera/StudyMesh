@@ -204,17 +204,24 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     expect(
-      screen.getByRole('heading', { name: /empty study workspace/i }),
+      screen.getByRole('heading', { name: /create a study path/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /open study material/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/create from notes/i)).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /create study path/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create from notes/i }),
+      screen.getByRole('button', { name: /add sources/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /advanced dashboard/i }),
+      screen.getByRole('button', { name: /open existing dashboard/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /advanced dashboard/i }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /view daily operations example/i }),
     ).not.toBeInTheDocument()
@@ -287,7 +294,7 @@ describe('Dashboards', () => {
     )
   })
 
-  it('keeps Create Dashboard builder actions reachable on phones', () => {
+  it('keeps the balanced empty dashboard actions reachable on phones', () => {
     mockPhoneViewport()
     mockDashboardProvider({
       openDashboards: [],
@@ -296,18 +303,16 @@ describe('Dashboards', () => {
 
     render(<Dashboards />)
 
-    fireEvent.click(screen.getByRole('button', { name: /advanced dashboard/i }))
-
-    expect(screen.getByText('New Dashboard')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /widgets/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /edit dashboard details/i }),
+      screen.getByRole('button', { name: /create study path/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/open study material/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /add sources/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /close dashboard editor/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: /advanced dashboard/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('adds generated Study Path review dashboards to the open Course navigator', () => {

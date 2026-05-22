@@ -215,7 +215,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
   }
 
   const selectImageSource = () => {
-    fireEvent.click(screen.getByRole('button', { name: /image notes/i }))
+    expect(screen.getByText('Add sources')).toBeInTheDocument()
   }
 
   const getImageFileInput = () =>
@@ -252,18 +252,14 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     expect(screen.getByText('Create from notes')).toBeInTheDocument()
+    expect(screen.getByText('Add sources')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /text notes/i }),
+      screen.getByRole('button', { name: /upload files/i }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /image notes/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /pdf notes/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /powerpoint notes/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Text')).toBeInTheDocument()
+    expect(screen.getByText('Images')).toBeInTheDocument()
+    expect(screen.getByText('PDF')).toBeInTheDocument()
+    expect(screen.getByText('PPTX')).toBeInTheDocument()
     expect(screen.queryByText(/AI Tutor/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Target amount/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/^Practice$/i)).not.toBeInTheDocument()
@@ -390,6 +386,32 @@ describe('CreateStudyPackModal create from notes flow', () => {
     ).toBeInTheDocument()
   })
 
+  it('accepts mixed source uploads from the unified source input', async () => {
+    render(
+      <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
+    )
+
+    const text = makeTextFile('Quiz:: Text? | A', 'notes.md', 'text/markdown')
+    const pdf = new File(['pdf'], 'reading.pdf', { type: 'application/pdf' })
+    const image = new File(['image'], 'board.png', { type: 'image/png' })
+    vi.mocked(extractTextFromPdf).mockResolvedValueOnce({
+      text: '# Reading\n\nQuiz:: PDF? | B',
+      warnings: [],
+    })
+
+    fireEvent.change(getTextFileInput(), {
+      target: { files: [text, pdf, image] },
+    })
+
+    expect(
+      await screen.findByDisplayValue(/# notes[\s\S]*# Reading/i),
+    ).toBeInTheDocument()
+    expect(screen.getByAltText('board.png')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /extract notes/i }),
+    ).toBeInTheDocument()
+  })
+
   it('shows Gemini elapsed and estimated Create from notes timing capped at 99%', async () => {
     vi.useFakeTimers()
     vi.mocked(readStudyPackAiSettings).mockReturnValue({
@@ -434,7 +456,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     selectImageSource()
-    expect(screen.getByText(/drop images here/i)).toBeInTheDocument()
+    expect(screen.getByText(/drop notes here/i)).toBeInTheDocument()
 
     const image = new File(['image-bytes'], 'lecture.png', {
       type: 'image/png',
@@ -552,13 +574,13 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     selectImageSource()
-    const unsupported = new File(['pdf-bytes'], 'notes.pdf', {
-      type: 'application/pdf',
+    const unsupported = new File(['svg-bytes'], 'diagram.svg', {
+      type: 'image/svg+xml',
     })
     fireEvent.change(getImageFileInput(), { target: { files: [unsupported] } })
 
     expect(
-      await screen.findByText(/use a png, jpg, webp, gif, bmp, or pbm image/i),
+      await screen.findByText(/use text, image, pdf, or \.pptx source files/i),
     ).toBeInTheDocument()
     expect(extractRawNotesFromImage).not.toHaveBeenCalled()
   })
@@ -568,7 +590,6 @@ describe('CreateStudyPackModal create from notes flow', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pdf notes/i }))
     const first = new File(['pdf-1'], 'chapter-one.pdf', {
       type: 'application/pdf',
     })
@@ -603,7 +624,6 @@ describe('CreateStudyPackModal create from notes flow', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pdf notes/i }))
     const first = new File(['pdf-1'], 'one.pdf', { type: 'application/pdf' })
     const second = new File(['pdf-2'], 'two.pdf', { type: 'application/pdf' })
     vi.mocked(extractTextFromPdf)
@@ -630,7 +650,6 @@ describe('CreateStudyPackModal create from notes flow', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /powerpoint notes/i }))
     const ppt = new File(['legacy'], 'lecture.ppt', {
       type: 'application/vnd.ms-powerpoint',
     })
@@ -658,7 +677,6 @@ describe('CreateStudyPackModal create from notes flow', () => {
       <CreateStudyPackModal open onClose={vi.fn()} onCreatePack={vi.fn()} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /powerpoint notes/i }))
     const first = new File(['pptx-1'], 'one.pptx', {
       type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     })

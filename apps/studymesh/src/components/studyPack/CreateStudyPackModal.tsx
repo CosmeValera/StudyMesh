@@ -19,10 +19,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
-import ImageIcon from '@mui/icons-material/Image'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
-import SlideshowIcon from '@mui/icons-material/Slideshow'
 import DeleteIcon from '@mui/icons-material/Delete'
 import {
   createStudyPackOrchestratorWidgets,
@@ -102,16 +99,6 @@ interface CreateStudyPackModalProps {
   presentation?: 'dialog' | 'embedded'
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
 }
-
-const sourceOptions: Array<{
-  label: string
-  value: SourceInputType
-}> = [
-  { label: 'Text notes / files', value: 'text' },
-  { label: 'Images', value: 'image' },
-  { label: 'PDF', value: 'pdf' },
-  { label: 'PowerPoint', value: 'powerpoint' },
-]
 
 const supportedImageExtensions = [
   'bmp',
@@ -287,48 +274,6 @@ const isSupportedImageFile = (file: File) => {
     supportedImageExtensions.includes(extension || '') ||
     supportedImageMimeTypes.includes(file.type)
   )
-}
-
-const getSourceOptionIcon = (value: SourceInputType) => {
-  switch (value) {
-    case 'image':
-      return ImageIcon
-    case 'pdf':
-      return PictureAsPdfIcon
-    case 'powerpoint':
-      return SlideshowIcon
-    case 'text':
-    default:
-      return AutoStoriesIcon
-  }
-}
-
-const getSourceOptionTitle = (value: SourceInputType) => {
-  switch (value) {
-    case 'image':
-      return 'Image notes'
-    case 'pdf':
-      return 'PDF notes'
-    case 'powerpoint':
-      return 'PowerPoint notes'
-    case 'text':
-    default:
-      return 'Text notes'
-  }
-}
-
-const getSourceOptionDescription = (value: SourceInputType) => {
-  switch (value) {
-    case 'image':
-      return 'Screenshots or photos'
-    case 'pdf':
-      return 'Selectable PDF text'
-    case 'powerpoint':
-      return 'PPTX slide text'
-    case 'text':
-    default:
-      return 'Paste or upload files'
-  }
 }
 
 const appendSourceText = (current: string, next: string) =>
@@ -709,18 +654,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     onClose()
   }
 
-  const handleSourceInputTypeChange = (value: SourceInputType) => {
-    setSourceInputType(value)
-    setSourceText('')
-    setSourceFormat('text')
-    setImageFiles([])
-    setExtractedImageCount(0)
-    setImageTextExtracted(false)
-    setOcrProgress(0)
-    setOcrStatus('')
-    setError('')
-  }
-
   const selectImageFiles = (files: File[]) => {
     const unsupportedFile = files.find((file) => !isSupportedImageFile(file))
     if (unsupportedFile) {
@@ -741,6 +674,168 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setOcrProgress(0)
     setOcrStatus('')
     setError('')
+  }
+
+  const appendTextFiles = async (files: File[]) => {
+    const fileTexts = await Promise.all(
+      files.map(async (file) => ({
+        name: file.name,
+        text: await file.text(),
+      })),
+    )
+    const text = fileTexts
+      .map(({ name, text }) => `# ${getFileTitle({ name } as File)}\n\n${text}`)
+      .join('\n\n---\n\n')
+
+    setSourceText((current) => appendSourceText(current, text))
+    setPackTitle((currentTitle) =>
+      currentTitle === 'Notes Dashboard'
+        ? files.length === 1
+          ? getFileTitle(files[0])
+          : `${getFileTitle(files[0])} Dashboard`
+        : currentTitle,
+    )
+    setSourceFormat('text')
+    setSourceInputType('text')
+  }
+
+  const appendPdfFiles = async (files: File[]) => {
+    setIsExtractingDocument(true)
+    setOcrStatus('Extracting PDF text')
+
+    try {
+      const extracted = await Promise.all(
+        files.map((file) => extractTextFromPdf(file)),
+      )
+      const text = extracted
+        .map((item) => item.text)
+        .filter(Boolean)
+        .join('\n\n---\n\n')
+      const warnings = extracted.flatMap((item) => item.warnings)
+
+      if (!text.trim()) {
+        setError(
+          'No selectable PDF text was found. Scanned PDFs need OCR in a later iteration.',
+        )
+        return
+      }
+
+      setSourceText((current) => appendSourceText(current, text))
+      setPackTitle((currentTitle) =>
+        currentTitle === 'Notes Dashboard'
+          ? files.length === 1
+            ? getFileTitle(files[0])
+            : `${getFileTitle(files[0])} Dashboard`
+          : currentTitle,
+      )
+      setSourceFormat('text')
+      setSourceInputType('text')
+      setError(warnings[0] || '')
+    } catch {
+      setError('Could not extract text from this PDF.')
+    } finally {
+      setIsExtractingDocument(false)
+      setOcrStatus('')
+    }
+  }
+
+  const appendPowerPointFiles = async (files: File[]) => {
+    setIsExtractingDocument(true)
+    setOcrStatus('Extracting PowerPoint text')
+
+    try {
+      const extracted = await Promise.all(
+        files.map((file) => extractTextFromPptx(file)),
+      )
+      const text = extracted
+        .map((item) => item.text)
+        .filter(Boolean)
+        .join('\n\n---\n\n')
+      const warnings = extracted.flatMap((item) => item.warnings)
+
+      if (!text.trim()) {
+        setError('No extractable slide text was found.')
+        return
+      }
+
+      setSourceText((current) => appendSourceText(current, text))
+      setPackTitle((currentTitle) =>
+        currentTitle === 'Notes Dashboard'
+          ? files.length === 1
+            ? getFileTitle(files[0])
+            : `${getFileTitle(files[0])} Dashboard`
+          : currentTitle,
+      )
+      setSourceFormat('text')
+      setSourceInputType('text')
+      setError(warnings[0] || '')
+    } catch {
+      setError('Could not extract text from this PowerPoint file.')
+    } finally {
+      setIsExtractingDocument(false)
+      setOcrStatus('')
+    }
+  }
+
+  const addSourceFiles = async (files: File[]) => {
+    if (files.length === 0) {
+      return
+    }
+
+    const textFiles: File[] = []
+    const pdfFiles: File[] = []
+    const powerPointFiles: File[] = []
+    const imageSourceFiles: File[] = []
+    const unsupportedFiles: File[] = []
+
+    files.forEach((file) => {
+      const lowerName = file.name.toLowerCase()
+      const extension = lowerName.split('.').pop() || ''
+
+      if (['md', 'txt', 'csv'].includes(extension)) {
+        textFiles.push(file)
+      } else if (extension === 'pdf') {
+        pdfFiles.push(file)
+      } else if (extension === 'pptx') {
+        powerPointFiles.push(file)
+      } else if (extension === 'ppt') {
+        unsupportedFiles.push(file)
+      } else if (isSupportedImageFile(file)) {
+        imageSourceFiles.push(file)
+      } else {
+        unsupportedFiles.push(file)
+      }
+    })
+
+    if (unsupportedFiles.length > 0) {
+      setError(
+        unsupportedFiles.some((file) =>
+          file.name.toLowerCase().endsWith('.ppt'),
+        )
+          ? 'Legacy .ppt files are not supported. Export to .pptx or PDF.'
+          : 'Use text, image, PDF, or .pptx source files.',
+      )
+      return
+    }
+
+    setError('')
+
+    if (textFiles.length > 0) {
+      await appendTextFiles(textFiles)
+    }
+
+    if (pdfFiles.length > 0) {
+      await appendPdfFiles(pdfFiles)
+    }
+
+    if (powerPointFiles.length > 0) {
+      await appendPowerPointFiles(powerPointFiles)
+    }
+
+    if (imageSourceFiles.length > 0) {
+      setSourceInputType('image')
+      selectImageFiles(imageSourceFiles)
+    }
   }
 
   const parseSource = () => {
@@ -1099,189 +1194,18 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     parseSource()
   }
 
-  const handleFileUpload = async (
+  const handleUnifiedFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) {
-      return
-    }
-
-    const unsupportedFile = files.find((file) => {
-      const extension = file.name.split('.').pop()?.toLowerCase()
-      return !['md', 'txt', 'csv'].includes(extension || '')
-    })
-    if (unsupportedFile) {
-      setError(
-        unsupportedFile.name.toLowerCase().endsWith('.pdf')
-          ? 'PDF upload needs a parser before it can be read here. Export the PDF text, paste it, or add the PDF link in your notes for now.'
-          : 'Use .md, .txt, or .csv files.',
-      )
-      event.target.value = ''
-      return
-    }
-
-    const fileTexts = await Promise.all(
-      files.map(async (file) => ({
-        name: file.name,
-        text: await file.text(),
-      })),
-    )
-    const text = fileTexts
-      .map(({ name, text }) => `# ${getFileTitle({ name } as File)}\n\n${text}`)
-      .join('\n\n---\n\n')
-    setSourceText((current) => appendSourceText(current, text))
-    setPackTitle((currentTitle) =>
-      currentTitle === 'Notes Dashboard'
-        ? files.length === 1
-          ? getFileTitle(files[0])
-          : `${getFileTitle(files[0])} Dashboard`
-        : currentTitle,
-    )
-    setSourceFormat('text')
-    setError('')
+    await addSourceFiles(Array.from(event.target.files || []))
     event.target.value = ''
   }
 
-  const handlePdfUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
+  const handleUnifiedSourceDrop = async (
+    event: React.DragEvent<HTMLDivElement>,
   ) => {
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) {
-      return
-    }
-
-    const unsupportedFile = files.find(
-      (file) => !file.name.toLowerCase().endsWith('.pdf'),
-    )
-    if (unsupportedFile) {
-      setError('Use PDF files in the PDF tab.')
-      event.target.value = ''
-      return
-    }
-
-    setIsExtractingDocument(true)
-    setOcrStatus('Extracting PDF text')
-    setError('')
-
-    try {
-      const extracted = await Promise.all(
-        files.map((file) => extractTextFromPdf(file)),
-      )
-      const text = extracted
-        .map((item) => item.text)
-        .filter(Boolean)
-        .join('\n\n---\n\n')
-      const warnings = extracted.flatMap((item) => item.warnings)
-
-      if (!text.trim()) {
-        setError(
-          'No selectable PDF text was found. Scanned PDFs need OCR in a later iteration.',
-        )
-        return
-      }
-
-      setSourceText((current) => appendSourceText(current, text))
-      setPackTitle((currentTitle) =>
-        currentTitle === 'Notes Dashboard'
-          ? files.length === 1
-            ? getFileTitle(files[0])
-            : `${getFileTitle(files[0])} Dashboard`
-          : currentTitle,
-      )
-      setSourceFormat('text')
-      setError(warnings[0] || '')
-    } catch {
-      setError('Could not extract text from this PDF.')
-    } finally {
-      setIsExtractingDocument(false)
-      setOcrStatus('')
-      event.target.value = ''
-    }
-  }
-
-  const handlePowerPointUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) {
-      return
-    }
-
-    const legacyFile = files.find((file) =>
-      file.name.toLowerCase().endsWith('.ppt'),
-    )
-    if (legacyFile) {
-      setError('Legacy .ppt files are not supported. Export to .pptx or PDF.')
-      event.target.value = ''
-      return
-    }
-
-    const unsupportedFile = files.find(
-      (file) => !file.name.toLowerCase().endsWith('.pptx'),
-    )
-    if (unsupportedFile) {
-      setError('Use .pptx files in the PowerPoint tab.')
-      event.target.value = ''
-      return
-    }
-
-    setIsExtractingDocument(true)
-    setOcrStatus('Extracting PowerPoint text')
-    setError('')
-
-    try {
-      const extracted = await Promise.all(
-        files.map((file) => extractTextFromPptx(file)),
-      )
-      const text = extracted
-        .map((item) => item.text)
-        .filter(Boolean)
-        .join('\n\n---\n\n')
-      const warnings = extracted.flatMap((item) => item.warnings)
-
-      if (!text.trim()) {
-        setError('No extractable slide text was found.')
-        return
-      }
-
-      setSourceText((current) => appendSourceText(current, text))
-      setPackTitle((currentTitle) =>
-        currentTitle === 'Notes Dashboard'
-          ? files.length === 1
-            ? getFileTitle(files[0])
-            : `${getFileTitle(files[0])} Dashboard`
-          : currentTitle,
-      )
-      setSourceFormat('text')
-      setError(warnings[0] || '')
-    } catch {
-      setError('Could not extract text from this PowerPoint file.')
-    } finally {
-      setIsExtractingDocument(false)
-      setOcrStatus('')
-      event.target.value = ''
-    }
-  }
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) {
-      return
-    }
-
-    selectImageFiles(files)
-    event.target.value = ''
-  }
-
-  const handleImageDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    const files = Array.from(event.dataTransfer.files || [])
-    if (files.length === 0) {
-      return
-    }
-
-    selectImageFiles(files)
+    await addSourceFiles(Array.from(event.dataTransfer.files || []))
   }
 
   const removeImageFile = (indexToRemove: number) => {
@@ -1418,411 +1342,184 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               fullWidth
             />
 
-            <Box
+            <Paper
+              elevation={0}
+              onDrop={handleUnifiedSourceDrop}
+              onDragOver={(event) => event.preventDefault()}
               sx={{
-                display: 'grid',
-                gridTemplateColumns:
-                  presentation === 'embedded'
-                    ? 'repeat(2, minmax(0, 1fr))'
-                    : { xs: '1fr', sm: 'repeat(4, minmax(0, 1fr))' },
-                gap: 1,
+                p: presentation === 'embedded' ? 2 : 3,
+                border: '1.5px dashed',
+                borderColor:
+                  sourceText.trim() || imageFiles.length > 0
+                    ? 'primary.main'
+                    : 'divider',
+                bgcolor: 'background.paper',
+                borderRadius: 2,
               }}
             >
-              {sourceOptions.map((option) => {
-                const selected = sourceInputType === option.value
-                const Icon = getSourceOptionIcon(option.value)
-                return (
-                  <Paper
-                    key={option.value}
-                    component="button"
-                    type="button"
-                    onClick={() => handleSourceInputTypeChange(option.value)}
-                    elevation={0}
-                    sx={{
-                      p: presentation === 'embedded' ? 1.25 : 1.5,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      border: 1,
-                      borderColor: selected ? 'primary.main' : 'divider',
-                      bgcolor: selected ? 'primary.50' : 'background.paper',
-                      borderRadius: 2,
-                      color: 'text.primary',
-                      boxShadow: selected ? 1 : 0,
-                      '&:hover': { borderColor: 'primary.main' },
-                    }}
-                  >
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Icon
-                        color={selected ? 'primary' : 'action'}
-                        fontSize="small"
-                      />
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle2" fontWeight={900} noWrap>
-                          {getSourceOptionTitle(option.value)}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                        >
-                          {getSourceOptionDescription(option.value)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </Paper>
-                )
-              })}
-            </Box>
-
-            {sourceInputType === 'text' && (
-              <Stack spacing={1.25}>
-                <TextField
-                  label="Paste notes"
-                  value={sourceText}
-                  onChange={(event) => setSourceText(event.target.value)}
-                  fullWidth
-                  multiline
-                  minRows={presentation === 'embedded' ? 8 : 14}
-                  placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
-                />
-                <Stack
-                  direction={
-                    presentation === 'embedded'
-                      ? 'column'
-                      : { xs: 'column', sm: 'row' }
-                  }
-                  spacing={1}
-                  alignItems={
-                    presentation === 'embedded'
-                      ? 'stretch'
-                      : { xs: 'stretch', sm: 'center' }
-                  }
-                >
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<UploadFileIcon />}
-                    fullWidth={presentation === 'embedded'}
-                    sx={{
-                      alignSelf:
-                        presentation === 'embedded'
-                          ? 'stretch'
-                          : { sm: 'flex-start' },
-                      width: presentation === 'embedded' ? '100%' : undefined,
-                    }}
-                  >
-                    Upload text files
-                    <input
-                      hidden
-                      type="file"
-                      multiple
-                      accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
-                      onChange={handleFileUpload}
-                    />
-                  </Button>
-                  <Typography variant="caption" color="text.secondary">
-                    Supports multiple .md, .txt, and .csv files.
+              <Stack spacing={1.5} alignItems="center" textAlign="center">
+                <UploadFileIcon color="primary" sx={{ fontSize: 44 }} />
+                <Box sx={{ width: '100%', minWidth: 0 }}>
+                  <Typography variant="subtitle1" fontWeight={900}>
+                    Add sources
                   </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Drop notes here, or upload text, images, PDFs, and slides.
+                  </Typography>
+                </Box>
+                <Button
+                  component="label"
+                  variant="contained"
+                  startIcon={<UploadFileIcon />}
+                  disabled={isExtractingDocument || isExtractingImage}
+                  fullWidth={presentation === 'embedded'}
+                  sx={{
+                    width: presentation === 'embedded' ? '100%' : undefined,
+                    textTransform: 'none',
+                  }}
+                >
+                  Upload files
+                  <input
+                    hidden
+                    type="file"
+                    multiple
+                    accept={[
+                      '.md',
+                      '.txt',
+                      '.csv',
+                      '.pdf',
+                      '.pptx',
+                      imageAcceptValue,
+                      'text/markdown',
+                      'text/plain',
+                      'text/csv',
+                      'application/pdf',
+                      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    ].join(',')}
+                    onChange={handleUnifiedFileUpload}
+                  />
+                </Button>
+                <Stack
+                  direction="row"
+                  gap={0.75}
+                  flexWrap="wrap"
+                  justifyContent="center"
+                >
+                  {['Text', 'Images', 'PDF', 'PPTX'].map((label) => (
+                    <Chip key={label} label={label} size="small" />
+                  ))}
                 </Stack>
               </Stack>
-            )}
+            </Paper>
 
-            {sourceInputType === 'image' && (
-              <Stack spacing={1.5}>
-                <Paper
-                  elevation={0}
-                  onDrop={handleImageDrop}
-                  onDragOver={(event) => event.preventDefault()}
-                  sx={{
-                    p: 3,
-                    border: 1,
-                    borderColor:
-                      imageFiles.length > 0 ? 'primary.main' : 'divider',
-                    bgcolor: 'background.paper',
-                    minHeight: 220,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 2,
-                  }}
-                >
-                  <Stack spacing={1.5} alignItems="center" textAlign="center">
-                    {imagePreviewUrls.length > 0 ? (
-                      <Stack
-                        direction="row"
-                        gap={1}
-                        flexWrap="wrap"
-                        justifyContent="center"
-                      >
-                        {imagePreviewUrls.map((preview, index) => (
-                          <Paper
-                            key={`${preview.name}-${preview.url}`}
-                            elevation={0}
-                            sx={{
-                              width: 116,
-                              maxWidth: 116,
-                              minWidth: 0,
-                              p: 0.75,
-                              border: 1,
-                              borderColor: 'divider',
-                              borderRadius: 1,
-                              position: 'relative',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <Box
-                              component="img"
-                              src={preview.url}
-                              alt={preview.name}
-                              sx={{
-                                width: '100%',
-                                height: 72,
-                                borderRadius: 0.75,
-                                objectFit: 'cover',
-                              }}
-                            />
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              noWrap
-                              sx={{
-                                display: 'block',
-                                mt: 0.5,
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {preview.name}
-                            </Typography>
-                            <IconButton
-                              aria-label={`Remove ${preview.name}`}
-                              size="small"
-                              onClick={() => removeImageFile(index)}
-                              sx={{
-                                position: 'absolute',
-                                top: 2,
-                                right: 2,
-                                bgcolor: 'background.paper',
-                              }}
-                            >
-                              <DeleteIcon fontSize="inherit" />
-                            </IconButton>
-                          </Paper>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <ImageIcon color="primary" sx={{ fontSize: 48 }} />
-                    )}
-                    <Box sx={{ width: '100%', minWidth: 0 }}>
-                      <Typography variant="subtitle1" fontWeight={900}>
-                        {imageFiles.length > 0
-                          ? `${imageFiles.length} image${
-                              imageFiles.length === 1 ? '' : 's'
-                            } selected`
-                          : 'Drop images here'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        PNG, JPG, WebP, GIF, BMP, or PBM.
-                      </Typography>
-                    </Box>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<UploadFileIcon />}
-                      fullWidth={presentation === 'embedded'}
+            {imagePreviewUrls.length > 0 && (
+              <Stack direction="row" gap={1} flexWrap="wrap">
+                {imagePreviewUrls.map((preview, index) => (
+                  <Paper
+                    key={`${preview.name}-${preview.url}`}
+                    elevation={0}
+                    sx={{
+                      width: 104,
+                      maxWidth: 104,
+                      minWidth: 0,
+                      p: 0.75,
+                      border: 1,
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={preview.url}
+                      alt={preview.name}
                       sx={{
-                        width: presentation === 'embedded' ? '100%' : undefined,
+                        width: '100%',
+                        height: 64,
+                        borderRadius: 0.75,
+                        objectFit: 'cover',
                       }}
-                    >
-                      Select images
-                      <input
-                        hidden
-                        type="file"
-                        multiple
-                        accept={imageAcceptValue}
-                        onChange={handleImageUpload}
-                      />
-                    </Button>
-                  </Stack>
-                </Paper>
-                {isExtractingImage && (
-                  <Box>
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      sx={{ mb: 0.75 }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        {aiProgressLabel || ocrStatus || 'Extracting notes'}
-                      </Typography>
-                      {aiProvider !== 'gemini' && (
-                        <Typography variant="body2" color="text.secondary">
-                          {ocrProgress}%
-                        </Typography>
-                      )}
-                    </Stack>
-                    <LinearProgress
-                      variant={
-                        aiProvider !== 'gemini' && ocrProgress > 0
-                          ? 'determinate'
-                          : 'indeterminate'
-                      }
-                      value={ocrProgress}
                     />
-                  </Box>
-                )}
-                <TextField
-                  label="Extracted notes"
-                  value={sourceText}
-                  onChange={(event) => {
-                    setSourceText(event.target.value)
-                    setImageTextExtracted(Boolean(event.target.value.trim()))
-                  }}
-                  fullWidth
-                  multiline
-                  minRows={8}
-                  disabled={isExtractingImage}
-                  placeholder="Extracted notes will appear here. You can edit them before creating the dashboard."
-                />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      noWrap
+                      sx={{
+                        display: 'block',
+                        mt: 0.5,
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {preview.name}
+                    </Typography>
+                    <IconButton
+                      aria-label={`Remove ${preview.name}`}
+                      size="small"
+                      onClick={() => removeImageFile(index)}
+                      sx={{
+                        position: 'absolute',
+                        top: 2,
+                        right: 2,
+                        bgcolor: 'background.paper',
+                      }}
+                    >
+                      <DeleteIcon fontSize="inherit" />
+                    </IconButton>
+                  </Paper>
+                ))}
               </Stack>
             )}
 
-            {sourceInputType === 'pdf' && (
-              <Stack spacing={1.25}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 3,
-                    border: 1,
-                    borderColor: sourceText ? 'primary.main' : 'divider',
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                  }}
+            {(isExtractingImage || isExtractingDocument) && (
+              <Box>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  sx={{ mb: 0.75 }}
                 >
-                  <Stack spacing={1.5} alignItems="center" textAlign="center">
-                    <PictureAsPdfIcon color="primary" sx={{ fontSize: 48 }} />
-                    <Box sx={{ width: '100%', minWidth: 0 }}>
-                      <Typography variant="subtitle1" fontWeight={900}>
-                        Upload PDF notes
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Selectable text only. Scanned pages need OCR later.
-                      </Typography>
-                    </Box>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<UploadFileIcon />}
-                      disabled={isExtractingDocument}
-                      fullWidth={presentation === 'embedded'}
-                      sx={{
-                        width: presentation === 'embedded' ? '100%' : undefined,
-                      }}
-                    >
-                      Select PDFs
-                      <input
-                        hidden
-                        type="file"
-                        multiple
-                        accept=".pdf,application/pdf"
-                        onChange={handlePdfUpload}
-                      />
-                    </Button>
-                  </Stack>
-                </Paper>
-                {isExtractingDocument && (
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 0.75 }}
-                    >
-                      {ocrStatus || 'Extracting document text'}
+                  <Typography variant="body2" color="text.secondary">
+                    {aiProgressLabel || ocrStatus || 'Extracting notes'}
+                  </Typography>
+                  {isExtractingImage && aiProvider !== 'gemini' && (
+                    <Typography variant="body2" color="text.secondary">
+                      {ocrProgress}%
                     </Typography>
-                    <LinearProgress />
-                  </Box>
-                )}
-                <TextField
-                  label="Extracted notes"
-                  value={sourceText}
-                  onChange={(event) => setSourceText(event.target.value)}
-                  fullWidth
-                  multiline
-                  minRows={10}
-                  disabled={isExtractingDocument}
-                  placeholder="Extracted PDF notes will appear here. You can edit them before creating the dashboard."
+                  )}
+                </Stack>
+                <LinearProgress
+                  variant={
+                    isExtractingImage &&
+                    aiProvider !== 'gemini' &&
+                    ocrProgress > 0
+                      ? 'determinate'
+                      : 'indeterminate'
+                  }
+                  value={ocrProgress}
                 />
-              </Stack>
+              </Box>
             )}
 
-            {sourceInputType === 'powerpoint' && (
-              <Stack spacing={1.25}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 3,
-                    border: 1,
-                    borderColor: sourceText ? 'primary.main' : 'divider',
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                  }}
-                >
-                  <Stack spacing={1.5} alignItems="center" textAlign="center">
-                    <SlideshowIcon color="primary" sx={{ fontSize: 48 }} />
-                    <Box sx={{ width: '100%', minWidth: 0 }}>
-                      <Typography variant="subtitle1" fontWeight={900}>
-                        Upload PowerPoint notes
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Supports .pptx slide text and speaker notes.
-                      </Typography>
-                    </Box>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<UploadFileIcon />}
-                      disabled={isExtractingDocument}
-                      fullWidth={presentation === 'embedded'}
-                      sx={{
-                        width: presentation === 'embedded' ? '100%' : undefined,
-                      }}
-                    >
-                      Select PPTX files
-                      <input
-                        hidden
-                        type="file"
-                        multiple
-                        accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                        onChange={handlePowerPointUpload}
-                      />
-                    </Button>
-                  </Stack>
-                </Paper>
-                {isExtractingDocument && (
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 0.75 }}
-                    >
-                      {ocrStatus || 'Extracting document text'}
-                    </Typography>
-                    <LinearProgress />
-                  </Box>
-                )}
-                <TextField
-                  label="Extracted notes"
-                  value={sourceText}
-                  onChange={(event) => setSourceText(event.target.value)}
-                  fullWidth
-                  multiline
-                  minRows={10}
-                  disabled={isExtractingDocument}
-                  placeholder="Extracted PowerPoint notes will appear here. You can edit them before creating the dashboard."
-                />
-              </Stack>
-            )}
+            <TextField
+              label="Paste notes"
+              value={sourceText}
+              onChange={(event) => {
+                setSourceText(event.target.value)
+                if (sourceInputType === 'image') {
+                  setImageTextExtracted(Boolean(event.target.value.trim()))
+                } else {
+                  setSourceInputType('text')
+                }
+              }}
+              fullWidth
+              multiline
+              minRows={presentation === 'embedded' ? 9 : 14}
+              disabled={isExtractingImage || isExtractingDocument}
+              helperText="Pasted and extracted notes will appear here before StudyMesh builds the dashboard."
+              placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
+            />
 
             {isGeneratingAi && (
               <Paper
