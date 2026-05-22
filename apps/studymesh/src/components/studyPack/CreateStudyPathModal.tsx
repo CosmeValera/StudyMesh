@@ -10,7 +10,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControlLabel,
+  IconButton,
   LinearProgress,
   MenuItem,
   Paper,
@@ -21,6 +23,7 @@ import {
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import RouteIcon from '@mui/icons-material/Route'
 import TuneIcon from '@mui/icons-material/Tune'
+import CloseIcon from '@mui/icons-material/Close'
 import {
   createStudyPackOrchestratorWidgets,
   StudyObject,
@@ -754,19 +757,50 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
   const content = (
     <>
-      <DialogTitle>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <RouteIcon color="primary" />
-          <Box>
-            <Typography variant="h6">Create Study Path</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Generate several ordered Study Pack dashboards in one folder.
-            </Typography>
-          </Box>
+      <DialogTitle sx={{ pb: 1.5 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          gap={2}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center" minWidth={0}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                flex: '0 0 auto',
+              }}
+            >
+              <RouteIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" fontWeight={900} noWrap>
+                Create Study Path
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Build an ordered lesson path from one clear prompt.
+              </Typography>
+            </Box>
+          </Stack>
+          <IconButton
+            aria-label="Close Create Study Path"
+            onClick={handleClose}
+          >
+            <CloseIcon />
+          </IconButton>
         </Stack>
       </DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2.5} sx={{ pt: 1 }}>
+      <Divider />
+      <DialogContent
+        sx={{ bgcolor: 'background.default', p: { xs: 2, md: 3 } }}
+      >
+        <Stack spacing={2}>
           {error && <Alert severity="error">{error}</Alert>}
           {step === 'prompt' ? (
             <>
@@ -786,7 +820,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     onChange={(event) => setPrompt(event.target.value)}
                     placeholder="Example: Teach me Spanish vocabulary level B2."
                     multiline
-                    minRows={5}
+                    minRows={presentation === 'embedded' ? 4 : 5}
                     fullWidth
                   />
                   <Stack
@@ -861,9 +895,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                             setMustInclude(event.target.value)
                           }
                           placeholder="Example: include irregular verbs, common mistakes, exam-style examples..."
-                          helperText="Optional. StudyMesh will prioritize these in the planner."
                           multiline
-                          minRows={3}
+                          minRows={presentation === 'embedded' ? 2 : 3}
                           fullWidth
                         />
                         <TextField
@@ -873,9 +906,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                             setAvoidTopics(event.target.value)
                           }
                           placeholder="Example: skip basic greetings, avoid beginner grammar, no PDF resources..."
-                          helperText="Optional. StudyMesh will avoid making these the focus when planning."
                           multiline
-                          minRows={3}
+                          minRows={presentation === 'embedded' ? 2 : 3}
                           fullWidth
                         />
                       </Stack>
@@ -883,10 +915,6 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                   </Box>
                 </Stack>
               </Paper>
-              <Alert severity="info">
-                Study Path uses the AI provider selected in Settings. The next
-                screen previews each dashboard before saving anything.
-              </Alert>
               {aiProvider === 'local' && (
                 <Alert
                   severity={generationAmount === 'deep' ? 'error' : 'info'}
@@ -1173,7 +1201,6 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 label="Folder name"
                 value={reviewFolderName}
                 onChange={(event) => setReviewFolderName(event.target.value)}
-                helperText="The selected provider chose this folder for the generated dashboards. You can change it before creating the path."
                 fullWidth
               />
               <FormControlLabel
@@ -1227,7 +1254,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 ))}
               </Stack>
               {draft?.warnings.length ? (
-                <Alert severity="warning">{draft.warnings.join(' ')}</Alert>
+                <Alert severity="warning">
+                  {draft.warnings.slice(0, 2).join(' ')}
+                </Alert>
               ) : null}
               {debugTrace ? (
                 <Paper
@@ -1311,7 +1340,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ flexShrink: 0 }}>
+      <DialogActions sx={{ p: 2, flexShrink: 0 }}>
         <Button onClick={handleClose}>Cancel</Button>
         {step === 'review' && (
           <Button onClick={() => setStep('prompt')}>Back</Button>
@@ -1359,7 +1388,19 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: 'background.paper',
+          borderRadius: 3,
+          minHeight: { xs: '100dvh', md: 620 },
+        },
+      }}
+    >
       {content}
     </Dialog>
   )
