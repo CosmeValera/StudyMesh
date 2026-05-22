@@ -377,6 +377,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               aria-label={isPinned ? 'Unpin Studio' : 'Pin Studio'}
               onClick={() => setIsPinned((current) => !current)}
               size="small"
+              sx={{
+                color: isPinned ? 'primary.main' : 'text.primary',
+                bgcolor: isPinned ? 'primary.50' : 'background.default',
+                border: 1,
+                borderColor: isPinned ? 'primary.main' : 'divider',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+                '&:hover': {
+                  bgcolor: isPinned ? 'primary.100' : 'action.hover',
+                  borderColor: isPinned ? 'primary.dark' : 'text.secondary',
+                },
+              }}
             >
               {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
             </IconButton>
@@ -386,6 +397,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               aria-label="Close Studio"
               onClick={closeStudio}
               size="small"
+              sx={{
+                color: 'text.primary',
+                bgcolor: 'background.default',
+                border: 1,
+                borderColor: 'divider',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                  borderColor: 'text.secondary',
+                },
+              }}
             >
               <CloseIcon />
             </IconButton>
