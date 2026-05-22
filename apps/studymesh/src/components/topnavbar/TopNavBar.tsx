@@ -494,6 +494,11 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             detail.message ||
             `${workspaceCreationTaskLabels[detail.task]} needs attention.`,
         })
+      } else if (detail.state === 'idle' && detail.message) {
+        setCreationToast({
+          severity: 'success',
+          message: detail.message,
+        })
       }
     }
 

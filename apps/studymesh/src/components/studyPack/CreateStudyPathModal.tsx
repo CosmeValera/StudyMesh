@@ -34,7 +34,6 @@ import {
   AiStudyPathDashboardDraft,
   AiStudyPathDraft,
   assertRoleObjectsAreClean,
-  cancelAllLocalAiSessions,
   filterStudyObjectsForDashboardRole,
   generateStudyPathWithAi,
   isLocalAiGenerationError,
@@ -550,7 +549,6 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const cancelActiveGeneration = () => {
     activeGenerationRef.current?.abort()
     activeGenerationRef.current = null
-    cancelAllLocalAiSessions()
   }
 
   React.useEffect(

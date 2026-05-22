@@ -38,7 +38,6 @@ import {
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import {
   AiSourceSummary,
-  cancelAllLocalAiSessions,
   extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
@@ -524,7 +523,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const cancelActiveOperation = () => {
     activeOperationRef.current?.abort()
     activeOperationRef.current = null
-    cancelAllLocalAiSessions()
   }
 
   useEffect(
