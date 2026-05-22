@@ -66,10 +66,7 @@ interface CreateStudyPathModalProps {
     }>
   }) => void
   presentation?: 'dialog' | 'embedded'
-  onStatusChange?: (
-    state: WorkspaceCreationTaskState,
-    message?: string,
-  ) => void
+  onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
 }
 
 const generationAmountOptions: Array<{
@@ -867,6 +864,17 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           <IconButton
             aria-label="Close Create Study Path"
             onClick={handleClose}
+            sx={{
+              color: 'text.primary',
+              bgcolor: 'background.default',
+              border: 1,
+              borderColor: 'divider',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+              '&:hover': {
+                bgcolor: 'action.hover',
+                borderColor: 'text.secondary',
+              },
+            }}
           >
             <CloseIcon />
           </IconButton>
