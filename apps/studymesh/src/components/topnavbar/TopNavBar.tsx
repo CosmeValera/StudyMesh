@@ -51,6 +51,10 @@ import {
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyPackAiProvider,
 } from '../../studyPack/ai'
+import {
+  readUserAvatar,
+  USER_PROFILE_AVATAR_CHANGED_EVENT,
+} from '../../userProfile'
 
 // Define user data type
 interface UserData {
@@ -111,6 +115,7 @@ const studyPackAiProviderLabels: Record<StudyPackAiProvider, string> = {
 interface TopNavBarProps {
   open?: boolean
   setOpen?: (open: boolean) => void
+  creationHost?: 'navbar' | 'external'
 }
 
 // Custom button with icon and label for phone view
@@ -182,7 +187,7 @@ const useStoredBoolean = (key: string, defaultValue: boolean) => {
   return [value, setValue] as const
 }
 
-const TopNavBar: React.FC<TopNavBarProps> = () => {
+const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   // State for different dropdown menus
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
   const [advancedAnchorEl, setAdvancedAnchorEl] = useState<null | HTMLElement>(
@@ -222,6 +227,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const [showDeleteTemplateConfirmation, setShowDeleteTemplateConfirmation] =
     useStoredBoolean('widget-editor-delete-template-confirmation', true)
   const [userData, setUserData] = useState<UserData>(adminUser)
+  const [avatarSrc, setAvatarSrc] = useState(() => readUserAvatar(adminUser.id))
   const isAdmin = isAdminUser(userData)
   const hostedAiUnavailable = studyPackAiProvider === 'hosted'
   const canCreateStudyPath =
@@ -235,6 +241,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     openCreateWidget,
     openCreateDashboard,
     openCreateStudyPack,
+    openCreateStudyPath,
     createStudyPackDashboard,
     createStudyPackDashboards,
   } = useWorkspaceActions()
@@ -253,11 +260,39 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
       try {
         const parsedUserData = JSON.parse(storedUserData)
         setUserData(parsedUserData)
+        setAvatarSrc(readUserAvatar(parsedUserData.id))
       } catch (error) {
         console.error('Failed to parse user data from localStorage', error)
       }
     }
   }, [])
+
+  useEffect(() => {
+    setAvatarSrc(readUserAvatar(userData.id))
+
+    const handleAvatarChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        userId?: string
+        avatarDataUrl?: string
+      }>
+
+      if (customEvent.detail?.userId === userData.id) {
+        setAvatarSrc(customEvent.detail.avatarDataUrl || '')
+      }
+    }
+
+    window.addEventListener(
+      USER_PROFILE_AVATAR_CHANGED_EVENT,
+      handleAvatarChanged,
+    )
+
+    return () => {
+      window.removeEventListener(
+        USER_PROFILE_AVATAR_CHANGED_EVENT,
+        handleAvatarChanged,
+      )
+    }
+  }, [userData.id])
 
   useEffect(() => {
     const refreshAiProvider = () => {
@@ -280,6 +315,10 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   }, [])
 
   useEffect(() => {
+    if (creationHost === 'external') {
+      return
+    }
+
     const handleOpenWidgetEditor = (event: Event) => {
       let parsedUserData = userData
 
@@ -316,9 +355,13 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
         handleOpenWidgetEditor,
       )
     }
-  }, [userData])
+  }, [creationHost, userData])
 
   useEffect(() => {
+    if (creationHost === 'external') {
+      return
+    }
+
     const handleOpenStudyPack = () => {
       const parsedUserData = readCurrentUserData(userData)
 
@@ -334,9 +377,13 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     return () => {
       window.removeEventListener(OPEN_STUDY_PACK_EVENT, handleOpenStudyPack)
     }
-  }, [userData])
+  }, [creationHost, userData])
 
   useEffect(() => {
+    if (creationHost === 'external') {
+      return
+    }
+
     const handleOpenStudyPath = () => {
       const parsedUserData = readCurrentUserData(userData)
 
@@ -352,7 +399,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
     return () => {
       window.removeEventListener(OPEN_STUDY_PATH_EVENT, handleOpenStudyPath)
     }
-  }, [userData])
+  }, [creationHost, userData])
 
   // Handle opening and closing dropdowns
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -387,6 +434,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
   const switchUser = (nextUser: UserData) => {
     localStorage.setItem('userData', JSON.stringify(nextUser))
     setUserData(nextUser)
+    setAvatarSrc(readUserAvatar(nextUser.id))
     window.dispatchEvent(
       new CustomEvent(USER_ROLE_CHANGED_EVENT, { detail: nextUser }),
     )
@@ -423,6 +471,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
             }}
           >
             <Box
+              data-testid="logo"
               component="img"
               src="/logo.png"
               alt=""
@@ -449,7 +498,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <ButtonWithLabel
                 icon={<RouteIcon />}
                 label="Create Study Path"
-                onClick={() => setStudyPathOpen(true)}
+                onClick={() => openCreateStudyPath()}
                 disabled={!canCreateStudyPath}
                 title={
                   !isAdmin
@@ -468,7 +517,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               />
             ) : (
               <Button
-                onClick={() => setStudyPathOpen(true)}
+                onClick={() => openCreateStudyPath()}
                 disabled={!canCreateStudyPath}
                 sx={{
                   color: 'foreground.contrastPrimary',
@@ -647,6 +696,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
               <ButtonWithLabel
                 icon={
                   <Avatar
+                    src={avatarSrc || undefined}
                     sx={{
                       width: 32,
                       height: 32,
@@ -674,6 +724,7 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
                 endIcon={<KeyboardArrowDownIcon />}
               >
                 <Avatar
+                  src={avatarSrc || undefined}
                   sx={{
                     width: 32,
                     height: 32,
@@ -848,88 +899,94 @@ const TopNavBar: React.FC<TopNavBarProps> = () => {
           setShowDeleteTemplateConfirmation
         }
       />
-      <CreateStudyPackModal
-        open={studyPackOpen}
-        onClose={() => setStudyPackOpen(false)}
-        onCreatePack={createStudyPackDashboard}
-      />
-      <CreateStudyPathModal
-        open={studyPathOpen}
-        onClose={() => setStudyPathOpen(false)}
-        onCreatePath={createStudyPackDashboards}
-      />
-      <Dialog
-        fullScreen
-        open={widgetEditorOpen}
-        onClose={() => {
-          setWidgetEditorOpen(false)
-          dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
-        }}
-        PaperProps={{
-          sx: {
-            bgcolor: 'background.default',
-          },
-        }}
-      >
-        <Box
-          sx={{
-            height: '100dvh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
-              height: 48,
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              px: 2,
-              borderBottom: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+      {creationHost === 'navbar' && (
+        <>
+          <CreateStudyPackModal
+            open={studyPackOpen}
+            onClose={() => setStudyPackOpen(false)}
+            onCreatePack={createStudyPackDashboard}
+          />
+          <CreateStudyPathModal
+            open={studyPathOpen}
+            onClose={() => setStudyPathOpen(false)}
+            onCreatePath={createStudyPackDashboards}
+          />
+          <Dialog
+            fullScreen
+            open={widgetEditorOpen}
+            onClose={() => {
+              setWidgetEditorOpen(false)
+              dispatchWorkspaceOnboardingEvent({
+                type: 'widget-editor-closed',
+              })
+            }}
+            PaperProps={{
+              sx: {
+                bgcolor: 'background.default',
+              },
             }}
           >
-            <Typography variant="subtitle1" fontWeight={700}>
-              Create Widget
-            </Typography>
-            <IconButton
-              aria-label="Close Create Widget"
-              data-onboarding-id="close-create-widget"
-              onClick={() => {
-                setWidgetEditorOpen(false)
-                dispatchWorkspaceOnboardingEvent({
-                  type: 'widget-editor-closed',
-                })
-              }}
+            <Box
               sx={{
-                color: 'text.primary',
-                bgcolor: 'background.default',
-                border: 1,
-                borderColor: 'divider',
-                width: 36,
-                height: 36,
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                  borderColor: 'text.secondary',
-                },
+                height: '100dvh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
               }}
             >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <WidgetEditor
-              key={`${widgetEditorOpen}-${
-                widgetEditorPayload?.loadWidget?.id || 'new'
-              }`}
-              customProps={widgetEditorPayload || undefined}
-            />
-          </Box>
-        </Box>
-      </Dialog>
+              <Box
+                sx={{
+                  height: 48,
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  px: 2,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Create Widget
+                </Typography>
+                <IconButton
+                  aria-label="Close Create Widget"
+                  data-onboarding-id="close-create-widget"
+                  onClick={() => {
+                    setWidgetEditorOpen(false)
+                    dispatchWorkspaceOnboardingEvent({
+                      type: 'widget-editor-closed',
+                    })
+                  }}
+                  sx={{
+                    color: 'text.primary',
+                    bgcolor: 'background.default',
+                    border: 1,
+                    borderColor: 'divider',
+                    width: 36,
+                    height: 36,
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      borderColor: 'text.secondary',
+                    },
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <WidgetEditor
+                  key={`${widgetEditorOpen}-${
+                    widgetEditorPayload?.loadWidget?.id || 'new'
+                  }`}
+                  customProps={widgetEditorPayload || undefined}
+                />
+              </Box>
+            </Box>
+          </Dialog>
+        </>
+      )}
     </>
   )
 }

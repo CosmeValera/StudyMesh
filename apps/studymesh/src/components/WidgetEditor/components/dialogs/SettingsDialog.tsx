@@ -17,6 +17,8 @@ import {
   Alert,
   LinearProgress,
   Checkbox,
+  Avatar,
+  Stack,
 } from '@mui/material'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -33,6 +35,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
 import ReplayIcon from '@mui/icons-material/Replay'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 
 import {
   STUDYMESH_ONBOARDING_RESET_EVENT,
@@ -47,6 +50,11 @@ import {
   testLocalLanguageModel,
 } from '../../../../studyPack/ai'
 import { seedStudyMeshGuideStudyPath } from '../../../../studyPack/studyMeshGuideSeed'
+import {
+  readUserAvatar,
+  removeUserAvatar,
+  saveUserAvatar,
+} from '../../../../userProfile'
 
 const WORKSPACE_ONBOARDING_KEY = 'studymesh-workspace-onboarding-v1'
 const LOCAL_AI_ESTIMATE_COPY =
@@ -59,6 +67,49 @@ const aiProviderLabels: Record<StudyPackAiProvider, string> = {
 }
 const normalizeExportFolderName = (folder?: unknown) =>
   typeof folder === 'string' && folder.trim() ? folder.trim() : 'Default'
+
+const readCurrentUserData = () => {
+  try {
+    const storedUserData = localStorage.getItem('userData')
+    return storedUserData
+      ? JSON.parse(storedUserData)
+      : { id: 'admin', name: 'Admin', role: 'ADMIN_ROLE' }
+  } catch (error) {
+    console.error('Failed to read user data', error)
+    return { id: 'admin', name: 'Admin', role: 'ADMIN_ROLE' }
+  }
+}
+
+const createSquareAvatarDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      const size = Math.min(image.naturalWidth, image.naturalHeight)
+      const sourceX = (image.naturalWidth - size) / 2
+      const sourceY = (image.naturalHeight - size) / 2
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+
+      URL.revokeObjectURL(objectUrl)
+
+      if (!context) {
+        reject(new Error('Could not prepare profile picture.'))
+        return
+      }
+
+      canvas.width = 256
+      canvas.height = 256
+      context.drawImage(image, sourceX, sourceY, size, size, 0, 0, 256, 256)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Could not read profile picture.'))
+    }
+    image.src = objectUrl
+  })
 
 interface ExportDashboardItem {
   dashboard: unknown
@@ -197,6 +248,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [selectedExportIndexes, setSelectedExportIndexes] = React.useState<
     Set<number>
   >(new Set())
+  const [profileUser, setProfileUser] = React.useState(readCurrentUserData)
+  const [profileAvatar, setProfileAvatar] = React.useState(() =>
+    readUserAvatar(readCurrentUserData().id),
+  )
+  const [profileAvatarStatus, setProfileAvatarStatus] = React.useState('')
   const hasEnvToken = Boolean(getEnvGeminiApiKey())
 
   const exportDashboardGroups = React.useMemo<ExportDashboardGroup[]>(() => {
@@ -236,6 +292,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
 
     const settings = readStudyPackAiSettings()
+    const currentUser = readCurrentUserData()
+
+    setProfileUser(currentUser)
+    setProfileAvatar(readUserAvatar(currentUser.id))
+    setProfileAvatarStatus('')
     setAiProvider(settings.provider || 'basic')
     setAiApiToken(settings.apiToken)
     setAiModel(settings.model)
@@ -304,6 +365,42 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
       apiToken: '',
       model: aiModel,
     })
+  }
+
+  const handleProfileAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setProfileAvatarStatus('Use a PNG, JPG, or WebP image.')
+      return
+    }
+
+    try {
+      setProfileAvatarStatus('Preparing profile picture...')
+      const avatarDataUrl = await createSquareAvatarDataUrl(file)
+      saveUserAvatar(profileUser.id, avatarDataUrl)
+      setProfileAvatar(avatarDataUrl)
+      setProfileAvatarStatus('Profile picture updated.')
+    } catch (error) {
+      setProfileAvatarStatus(
+        error instanceof Error
+          ? error.message
+          : 'Could not update profile picture.',
+      )
+    }
+  }
+
+  const handleRemoveProfileAvatar = () => {
+    removeUserAvatar(profileUser.id)
+    setProfileAvatar('')
+    setProfileAvatarStatus('Profile picture removed.')
   }
 
   const handleTestLocalAi = async () => {
@@ -529,6 +626,89 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           >
             {showGlobalSettings ? 'Application Options' : 'Editor Options'}
           </Typography>
+
+          {showGlobalSettings && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                <PhotoCameraIcon sx={{ mr: 1.5, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="medium" color="text.primary">
+                    Profile Picture
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                  >
+                    Customize the avatar shown in the workspace navigation.
+                  </Typography>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  >
+                    <Avatar
+                      src={profileAvatar || undefined}
+                      sx={{
+                        width: 56,
+                        height: 56,
+                        bgcolor: 'primary.main',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {String(profileUser.id || 'ad')
+                        .substring(0, 2)
+                        .toUpperCase()}
+                    </Avatar>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        gap: 1,
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <Button component="label" variant="outlined" size="small">
+                        Upload picture
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={handleProfileAvatarUpload}
+                        />
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<DeleteOutlineIcon />}
+                        onClick={handleRemoveProfileAvatar}
+                        disabled={!profileAvatar}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  </Stack>
+                  {profileAvatarStatus && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 1 }}
+                    >
+                      {profileAvatarStatus}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </Paper>
+          )}
 
           {showGlobalSettings && (
             <Paper

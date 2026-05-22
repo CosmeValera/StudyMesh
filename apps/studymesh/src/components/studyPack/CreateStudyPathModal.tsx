@@ -60,6 +60,7 @@ interface CreateStudyPathModalProps {
       folderName: string
     }>
   }) => void
+  presentation?: 'dialog' | 'embedded'
 }
 
 const generationAmountOptions: Array<{
@@ -473,6 +474,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   open,
   onClose,
   onCreatePath,
+  presentation = 'dialog',
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
   const [prompt, setPrompt] = useState(DEFAULT_STUDY_PATH_PROMPT)
@@ -750,8 +752,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     handleClose()
   }
 
-  return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+  const content = (
+    <>
       <DialogTitle>
         <Stack direction="row" spacing={1} alignItems="center">
           <RouteIcon color="primary" />
@@ -1309,7 +1311,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ flexShrink: 0 }}>
         <Button onClick={handleClose}>Cancel</Button>
         {step === 'review' && (
           <Button onClick={() => setStep('prompt')}>Back</Button>
@@ -1328,6 +1330,37 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           </Button>
         )}
       </DialogActions>
+    </>
+  )
+
+  if (presentation === 'embedded') {
+    if (!open) {
+      return null
+    }
+
+    return (
+      <Box
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'background.paper',
+          overflow: 'hidden',
+          '& .MuiDialogContent-root': {
+            flex: 1,
+            minHeight: 0,
+            overflow: 'auto',
+          },
+        }}
+      >
+        {content}
+      </Box>
+    )
+  }
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      {content}
     </Dialog>
   )
 }

@@ -1,15 +1,20 @@
 .react-tabs {
   -webkit-tap-highlight-color: transparent;
-  margin: -56px 6px 0 6px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   background-color: var(--background-bar-medium);
 
   &__tab-list {
+    flex: 0 0 auto;
     display: flex;
     align-items: flex-end;
     align-self: stretch;
     gap: 2px;
 
-    padding: 0;
+    padding: 0 4px;
     margin: 0;
     overflow-x: auto;
 
@@ -90,26 +95,16 @@
   &__tab-panel {
     position: relative;
     background: var(--background-bar-medium, #f4f7f8);
-    // NOTE use the whole viewport and substract (1) header's height, (2) main
-    // content's top padding, (3) tab bar height, and (4) main content's bottom
-    // padding
-
-    // Desktop default.
-    height: calc(100dvh - 36px - 16px - 36px - 24px);
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     display: none;
 
-    // Tablet: -2px extra height.
-    @media (min-width: 576px) and (max-width: 992px) {
-      height: calc(100dvh - 36px - 16px - 36px - 24px - 2px);
-    }
-
-    // Phone: -8px extra height.
-    @media (max-width: 576.99px) {
-      height: calc(100dvh - 36px - 16px - 36px - 24px - 8px);
-    }
+    padding: 0px 4px 2px;
 
     &--selected {
-      display: block;
+      display: flex;
+      flex-direction: column;
     }
   }
 }

@@ -97,6 +97,7 @@ interface CreateStudyPackModalProps {
     widgets: ReturnType<typeof createStudyPackWidgets>
     layoutMode?: StudyPackDashboardLayoutMode
   }) => void
+  presentation?: 'dialog' | 'embedded'
 }
 
 const sourceOptions: Array<{
@@ -503,6 +504,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   open,
   onClose,
   onCreatePack,
+  presentation = 'dialog',
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
@@ -1293,20 +1295,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     handleClose()
   }
 
-  return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: 'background.paper',
-          borderRadius: 3,
-          minHeight: { xs: '100dvh', md: 620 },
-        },
-      }}
-    >
+  const content = (
+    <>
       <DialogTitle sx={{ pb: 1.5 }}>
         <Stack
           direction="row"
@@ -1887,7 +1877,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           </Stack>
         )}
       </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions sx={{ p: 2, flexShrink: 0 }}>
         {step === 'review' && (
           <Button onClick={() => setStep('source')}>Back</Button>
         )}
@@ -1910,6 +1900,50 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           </Button>
         )}
       </DialogActions>
+    </>
+  )
+
+  if (presentation === 'embedded') {
+    if (!open) {
+      return null
+    }
+
+    return (
+      <Box
+        data-testid="study-pack-modal"
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'background.paper',
+          overflow: 'hidden',
+          '& .MuiDialogContent-root': {
+            flex: 1,
+            minHeight: 0,
+            overflow: 'auto',
+          },
+        }}
+      >
+        {content}
+      </Box>
+    )
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: 'background.paper',
+          borderRadius: 3,
+          minHeight: { xs: '100dvh', md: 620 },
+        },
+      }}
+    >
+      {content}
     </Dialog>
   )
 }

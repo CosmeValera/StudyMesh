@@ -235,11 +235,19 @@ export const useWorkspaceActions = () => {
   )
 
   const openCreateWidget = useCallback(() => {
-    window.dispatchEvent(new CustomEvent(OPEN_WIDGET_EDITOR_EVENT))
+    window.dispatchEvent(
+      new CustomEvent(OPEN_WIDGET_EDITOR_EVENT, {
+        detail: { host: 'studio' },
+      }),
+    )
   }, [])
 
   const openCreateDashboard = useCallback(() => {
-    window.dispatchEvent(new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT))
+    window.dispatchEvent(
+      new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT, {
+        detail: { host: 'workspace-builder' },
+      }),
+    )
   }, [])
 
   const openCreateStudyPack = useCallback(() => {
