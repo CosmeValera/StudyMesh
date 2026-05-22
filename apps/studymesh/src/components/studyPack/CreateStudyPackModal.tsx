@@ -21,6 +21,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import DeleteIcon from '@mui/icons-material/Delete'
+import ContentPasteIcon from '@mui/icons-material/ContentPaste'
+import DescriptionIcon from '@mui/icons-material/Description'
 import {
   createStudyPackOrchestratorWidgets,
   createStudyPackSmartWidgetGroups,
@@ -67,6 +69,12 @@ type ReviewType =
   | 'ignore'
 type SourceInputType = 'text' | 'image' | 'pdf' | 'powerpoint'
 type GenerationAmount = 'few' | 'medium' | 'many'
+type DocumentSourceType = 'pdf' | 'powerpoint'
+
+interface DocumentSource {
+  file: File
+  type: DocumentSourceType
+}
 
 interface GeminiTimedProgress {
   startedAt: number
@@ -279,6 +287,9 @@ const isSupportedImageFile = (file: File) => {
 const appendSourceText = (current: string, next: string) =>
   [current.trim(), next.trim()].filter(Boolean).join('\n\n---\n\n')
 
+const formatSourceAttachmentText = (title: string, text: string) =>
+  `# ${title}\n\n${text.trim()}`
+
 const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
   objects
     .filter(isReviewableStudyObject)
@@ -460,6 +471,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [sourceInputType, setSourceInputType] =
     useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
+  const [copiedTextDraft, setCopiedTextDraft] = useState('')
+  const [showCopiedTextBox, setShowCopiedTextBox] = useState(false)
+  const [copiedTextSourceCount, setCopiedTextSourceCount] = useState(0)
+  const [textSourceNames, setTextSourceNames] = useState<string[]>([])
   const [sourceFormat, setSourceFormat] =
     useState<StudyPackSourceFormat>('text')
   const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -468,6 +483,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   >([])
   const [extractedImageCount, setExtractedImageCount] = useState(0)
   const [imageTextExtracted, setImageTextExtracted] = useState(false)
+  const [documentSources, setDocumentSources] = useState<DocumentSource[]>([])
+  const [extractedDocumentCount, setExtractedDocumentCount] = useState(0)
   const [isExtractingImage, setIsExtractingImage] = useState(false)
   const [isExtractingDocument, setIsExtractingDocument] = useState(false)
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
@@ -612,11 +629,17 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setStep('source')
     setSourceInputType('text')
     setSourceText('')
+    setCopiedTextDraft('')
+    setShowCopiedTextBox(false)
+    setCopiedTextSourceCount(0)
+    setTextSourceNames([])
     setSourceFormat('text')
     setImageFiles([])
     setImagePreviewUrls([])
     setExtractedImageCount(0)
     setImageTextExtracted(false)
+    setDocumentSources([])
+    setExtractedDocumentCount(0)
     setIsExtractingImage(false)
     setIsExtractingDocument(false)
     setIsGeneratingAi(false)
@@ -676,6 +699,24 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setError('')
   }
 
+  const appendCopiedTextDraft = () => {
+    const text = copiedTextDraft.trim()
+    if (!text) {
+      setError('Paste copied text before adding it as a source.')
+      return false
+    }
+
+    const nextIndex = copiedTextSourceCount + 1
+    setSourceText((current) => appendSourceText(current, text))
+    setCopiedTextSourceCount(nextIndex)
+    setCopiedTextDraft('')
+    setShowCopiedTextBox(false)
+    setSourceFormat('text')
+    setSourceInputType('text')
+    setError('')
+    return true
+  }
+
   const appendTextFiles = async (files: File[]) => {
     const fileTexts = await Promise.all(
       files.map(async (file) => ({
@@ -684,7 +725,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       })),
     )
     const text = fileTexts
-      .map(({ name, text }) => `# ${getFileTitle({ name } as File)}\n\n${text}`)
+      .map(({ name, text }) =>
+        formatSourceAttachmentText(getFileTitle({ name } as File), text),
+      )
       .join('\n\n---\n\n')
 
     setSourceText((current) => appendSourceText(current, text))
@@ -697,80 +740,75 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     )
     setSourceFormat('text')
     setSourceInputType('text')
+    setTextSourceNames((current) => [
+      ...current,
+      ...files.map((file) => file.name),
+    ])
   }
 
-  const appendPdfFiles = async (files: File[]) => {
+  const appendDocumentFiles = (sources: DocumentSource[]) => {
+    setDocumentSources((current) => [...current, ...sources])
+    setPackTitle((currentTitle) =>
+      currentTitle === 'Notes Dashboard' && sources.length > 0
+        ? sources.length === 1
+          ? getFileTitle(sources[0].file)
+          : `${getFileTitle(sources[0].file)} Dashboard`
+        : currentTitle,
+    )
+    setError('')
+  }
+
+  const extractPendingDocuments = async (currentSourceText: string) => {
+    const pendingSources = documentSources.slice(extractedDocumentCount)
+    if (pendingSources.length === 0) {
+      return currentSourceText
+    }
+
     setIsExtractingDocument(true)
-    setOcrStatus('Extracting PDF text')
+    setOcrStatus('Reading attached documents')
 
     try {
       const extracted = await Promise.all(
-        files.map((file) => extractTextFromPdf(file)),
+        pendingSources.map(async (source) => {
+          const result =
+            source.type === 'pdf'
+              ? await extractTextFromPdf(source.file)
+              : await extractTextFromPptx(source.file)
+
+          return {
+            ...result,
+            title: getFileTitle(source.file),
+            type: source.type,
+          }
+        }),
       )
       const text = extracted
-        .map((item) => item.text)
+        .map((item) =>
+          item.text.trim()
+            ? formatSourceAttachmentText(item.title, item.text)
+            : '',
+        )
         .filter(Boolean)
         .join('\n\n---\n\n')
       const warnings = extracted.flatMap((item) => item.warnings)
 
       if (!text.trim()) {
         setError(
-          'No selectable PDF text was found. Scanned PDFs need OCR in a later iteration.',
+          'No selectable document text was found. Scanned PDFs need OCR in a later iteration.',
         )
-        return
+        return null
       }
 
-      setSourceText((current) => appendSourceText(current, text))
-      setPackTitle((currentTitle) =>
-        currentTitle === 'Notes Dashboard'
-          ? files.length === 1
-            ? getFileTitle(files[0])
-            : `${getFileTitle(files[0])} Dashboard`
-          : currentTitle,
-      )
+      const nextSourceText = appendSourceText(currentSourceText, text)
+      setSourceText(nextSourceText)
+      setExtractedDocumentCount(documentSources.length)
       setSourceFormat('text')
       setSourceInputType('text')
       setError(warnings[0] || '')
+      return nextSourceText
     } catch {
-      setError('Could not extract text from this PDF.')
-    } finally {
-      setIsExtractingDocument(false)
-      setOcrStatus('')
-    }
-  }
-
-  const appendPowerPointFiles = async (files: File[]) => {
-    setIsExtractingDocument(true)
-    setOcrStatus('Extracting PowerPoint text')
-
-    try {
-      const extracted = await Promise.all(
-        files.map((file) => extractTextFromPptx(file)),
-      )
-      const text = extracted
-        .map((item) => item.text)
-        .filter(Boolean)
-        .join('\n\n---\n\n')
-      const warnings = extracted.flatMap((item) => item.warnings)
-
-      if (!text.trim()) {
-        setError('No extractable slide text was found.')
-        return
-      }
-
-      setSourceText((current) => appendSourceText(current, text))
-      setPackTitle((currentTitle) =>
-        currentTitle === 'Notes Dashboard'
-          ? files.length === 1
-            ? getFileTitle(files[0])
-            : `${getFileTitle(files[0])} Dashboard`
-          : currentTitle,
-      )
-      setSourceFormat('text')
-      setSourceInputType('text')
-      setError(warnings[0] || '')
-    } catch {
-      setError('Could not extract text from this PowerPoint file.')
+      setError('Could not read text from one of these attached documents.')
+      return null
     } finally {
       setIsExtractingDocument(false)
       setOcrStatus('')
@@ -825,11 +863,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
 
     if (pdfFiles.length > 0) {
-      await appendPdfFiles(pdfFiles)
+      appendDocumentFiles(
+        pdfFiles.map((file) => ({
+          file,
+          type: 'pdf',
+        })),
+      )
     }
 
     if (powerPointFiles.length > 0) {
-      await appendPowerPointFiles(powerPointFiles)
+      appendDocumentFiles(
+        powerPointFiles.map((file) => ({
+          file,
+          type: 'powerpoint',
+        })),
+      )
     }
 
     if (imageSourceFiles.length > 0) {
@@ -838,15 +886,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
   }
 
-  const parseSource = () => {
-    const parsed = parseStudyPack(sourceText, {
+  const parseSource = (rawSource = sourceText) => {
+    const parsed = parseStudyPack(rawSource, {
       title: packTitle,
       defaultTags: ['study-pack'],
     })
     const augmented = augmentStudyPackPracticeObjects(parsed.objects, {
       packId: parsed.id,
       title: parsed.title,
-      rawNotes: sourceText,
+      rawNotes: rawSource,
       generationTargets,
       generationAmount,
       visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
@@ -867,7 +915,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setStep('review')
   }
 
-  const parseSourceWithAi = async () => {
+  const parseSourceWithAi = async (rawSource = sourceText) => {
     const credentials = resolveStudyPackAiCredentials()
     if (aiProvider === 'hosted') {
       setError('Hosted AI is not configured yet.')
@@ -931,7 +979,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         apiToken: credentials.apiToken,
         model: credentials.model,
         title: packTitle.trim() || 'Notes Dashboard',
-        rawNotes: sourceText,
+        rawNotes: rawSource,
         packId: getPackId(packTitle),
         generationTargets,
         generationAmount,
@@ -961,7 +1009,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       const augmented = augmentStudyPackPracticeObjects(draft.objects, {
         packId: getPackId(nextTitle),
         title: nextTitle,
-        rawNotes: sourceText,
+        rawNotes: rawSource,
         generationTargets,
         generationAmount,
         visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
@@ -1176,22 +1224,43 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const parseCurrentSource = async () => {
+    let rawSource = sourceText
+    const copiedDraft = copiedTextDraft.trim()
+    if (copiedDraft) {
+      const nextIndex = copiedTextSourceCount + 1
+      rawSource = appendSourceText(rawSource, copiedDraft)
+      setSourceText(rawSource)
+      setCopiedTextSourceCount(nextIndex)
+      setCopiedTextDraft('')
+      setShowCopiedTextBox(false)
+      setSourceFormat('text')
+      setSourceInputType('text')
+    }
+
+    if (documentSources.length > extractedDocumentCount) {
+      const extractedSource = await extractPendingDocuments(rawSource)
+      if (extractedSource === null) {
+        return
+      }
+      rawSource = extractedSource
+    }
+
     if (sourceInputType === 'image' && !imageTextExtracted) {
       await extractImageNotes()
       return
     }
 
-    if (!sourceText.trim()) {
-      setError('Add notes before continuing.')
+    if (!rawSource.trim()) {
+      setError('Add sources before continuing.')
       return
     }
 
     if (aiProvider !== 'basic') {
-      await parseSourceWithAi()
+      await parseSourceWithAi(rawSource)
       return
     }
 
-    parseSource()
+    parseSource(rawSource)
   }
 
   const handleUnifiedFileUpload = async (
@@ -1220,6 +1289,16 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     )
     setOcrProgress(0)
     setOcrStatus('')
+    setError('')
+  }
+
+  const removeDocumentSource = (indexToRemove: number) => {
+    setDocumentSources((current) =>
+      current.filter((_, index) => index !== indexToRemove),
+    )
+    setExtractedDocumentCount((current) =>
+      indexToRemove < current ? Math.max(0, current - 1) : current,
+    )
     setError('')
   }
 
@@ -1350,7 +1429,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 p: presentation === 'embedded' ? 2 : 3,
                 border: '1.5px dashed',
                 borderColor:
-                  sourceText.trim() || imageFiles.length > 0
+                  sourceText.trim() ||
+                  copiedTextDraft.trim() ||
+                  imageFiles.length > 0 ||
+                  documentSources.length > 0
                     ? 'primary.main'
                     : 'divider',
                 bgcolor: 'background.paper',
@@ -1399,6 +1481,19 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     onChange={handleUnifiedFileUpload}
                   />
                 </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<ContentPasteIcon />}
+                  onClick={() => setShowCopiedTextBox(true)}
+                  disabled={isExtractingDocument || isExtractingImage}
+                  fullWidth={presentation === 'embedded'}
+                  sx={{
+                    width: presentation === 'embedded' ? '100%' : undefined,
+                    textTransform: 'none',
+                  }}
+                >
+                  Copied text
+                </Button>
                 <Stack
                   direction="row"
                   gap={0.75}
@@ -1411,6 +1506,94 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 </Stack>
               </Stack>
             </Paper>
+
+            {showCopiedTextBox && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  bgcolor: 'background.paper',
+                }}
+              >
+                <Stack spacing={1.25}>
+                  <TextField
+                    label="Copied text"
+                    value={copiedTextDraft}
+                    onChange={(event) => setCopiedTextDraft(event.target.value)}
+                    fullWidth
+                    multiline
+                    minRows={presentation === 'embedded' ? 7 : 10}
+                    disabled={isExtractingImage || isExtractingDocument}
+                    placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
+                  />
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Button
+                      onClick={() => {
+                        setCopiedTextDraft('')
+                        setShowCopiedTextBox(false)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={appendCopiedTextDraft}
+                      disabled={isExtractingImage || isExtractingDocument}
+                    >
+                      Add copied text
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Paper>
+            )}
+
+            {(copiedTextSourceCount > 0 ||
+              textSourceNames.length > 0 ||
+              documentSources.length > 0) && (
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" fontWeight={900}>
+                  Sources
+                </Typography>
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  {Array.from({ length: copiedTextSourceCount }).map(
+                    (_, index) => (
+                      <Chip
+                        key={`copied-text-${index + 1}`}
+                        icon={<ContentPasteIcon />}
+                        label={
+                          index === 0
+                            ? 'Copied text'
+                            : `Copied text ${index + 1}`
+                        }
+                      />
+                    ),
+                  )}
+                  {textSourceNames.map((name) => (
+                    <Chip
+                      key={`text-${name}`}
+                      icon={<DescriptionIcon />}
+                      label={name}
+                    />
+                  ))}
+                  {documentSources.map((source, index) => (
+                    <Chip
+                      key={`${source.file.name}-${index}`}
+                      icon={<DescriptionIcon />}
+                      label={source.file.name}
+                      onDelete={
+                        index >= extractedDocumentCount
+                          ? () => removeDocumentSource(index)
+                          : undefined
+                      }
+                      deleteIcon={<DeleteIcon />}
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            )}
 
             {imagePreviewUrls.length > 0 && (
               <Stack direction="row" gap={1} flexWrap="wrap">
@@ -1501,25 +1684,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 />
               </Box>
             )}
-
-            <TextField
-              label="Paste notes"
-              value={sourceText}
-              onChange={(event) => {
-                setSourceText(event.target.value)
-                if (sourceInputType === 'image') {
-                  setImageTextExtracted(Boolean(event.target.value.trim()))
-                } else {
-                  setSourceInputType('text')
-                }
-              }}
-              fullWidth
-              multiline
-              minRows={presentation === 'embedded' ? 9 : 14}
-              disabled={isExtractingImage || isExtractingDocument}
-              helperText="Pasted and extracted notes will appear here before StudyMesh builds the dashboard."
-              placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
-            />
 
             {isGeneratingAi && (
               <Paper

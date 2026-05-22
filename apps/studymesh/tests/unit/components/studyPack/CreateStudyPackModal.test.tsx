@@ -209,7 +209,8 @@ describe('CreateStudyPackModal create from notes flow', () => {
   })
 
   const pasteNotes = (value: string) => {
-    fireEvent.change(screen.getByRole('textbox', { name: /^paste notes$/i }), {
+    fireEvent.click(screen.getByRole('button', { name: /^copied text$/i }))
+    fireEvent.change(screen.getByRole('textbox', { name: /^copied text$/i }), {
       target: { value },
     })
   }
@@ -256,6 +257,12 @@ describe('CreateStudyPackModal create from notes flow', () => {
     expect(
       screen.getByRole('button', { name: /upload files/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^copied text$/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: /^paste notes$/i }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('Text')).toBeInTheDocument()
     expect(screen.getByText('Images')).toBeInTheDocument()
     expect(screen.getByText('PDF')).toBeInTheDocument()
@@ -365,8 +372,8 @@ describe('CreateStudyPackModal create from notes flow', () => {
       target: { files: [first, second] },
     })
 
-    expect(await screen.findByDisplayValue(/# one/i)).toBeInTheDocument()
-    expect(screen.getByDisplayValue(/# one[\s\S]*# two/i)).toBeInTheDocument()
+    expect(await screen.findByText('one.md')).toBeInTheDocument()
+    expect(screen.getByText('two.txt')).toBeInTheDocument()
   })
 
   it('appends text files uploaded in separate batches', async () => {
@@ -377,13 +384,11 @@ describe('CreateStudyPackModal create from notes flow', () => {
     const first = makeTextFile('Quiz:: One? | A', 'one.md', 'text/markdown')
     const second = makeTextFile('Quiz:: Two? | B', 'two.md', 'text/markdown')
     fireEvent.change(getTextFileInput(), { target: { files: [first] } })
-    await screen.findByDisplayValue(/# one/i)
+    await screen.findByText('one.md')
 
     fireEvent.change(getTextFileInput(), { target: { files: [second] } })
 
-    expect(
-      await screen.findByDisplayValue(/# one[\s\S]*---[\s\S]*# two/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('two.md')).toBeInTheDocument()
   })
 
   it('accepts mixed source uploads from the unified source input', async () => {
@@ -403,9 +408,9 @@ describe('CreateStudyPackModal create from notes flow', () => {
       target: { files: [text, pdf, image] },
     })
 
-    expect(
-      await screen.findByDisplayValue(/# notes[\s\S]*# Reading/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('notes.md')).toBeInTheDocument()
+    expect(screen.getByText('reading.pdf')).toBeInTheDocument()
+    expect(extractTextFromPdf).not.toHaveBeenCalled()
     expect(screen.getByAltText('board.png')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /extract notes/i }),
@@ -471,9 +476,16 @@ describe('CreateStudyPackModal create from notes flow', () => {
       )
     })
     expect(parseStudyPack).not.toHaveBeenCalled()
-    expect(
-      await screen.findByDisplayValue(/# lecture[\s\S]*Quiz:: What is OCR/i),
-    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /continue/i }),
+      ).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    expect(parseStudyPack).toHaveBeenCalledWith(
+      expect.stringMatching(/# lecture[\s\S]*Quiz:: What is OCR/i),
+      expect.any(Object),
+    )
   })
 
   it('extracts multiple images and allows removing thumbnails', async () => {
@@ -505,9 +517,16 @@ describe('CreateStudyPackModal create from notes flow', () => {
         expect.any(Function),
       )
     })
-    expect(
-      await screen.findByDisplayValue(/# second[\s\S]*Quiz:: What is OCR/i),
-    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /continue/i }),
+      ).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    expect(parseStudyPack).toHaveBeenCalledWith(
+      expect.stringMatching(/# second[\s\S]*Quiz:: What is OCR/i),
+      expect.any(Object),
+    )
   })
 
   it('accumulates images selected in separate batches', async () => {
@@ -563,9 +582,17 @@ describe('CreateStudyPackModal create from notes flow', () => {
       )
     })
     expect(extractRawNotesFromImage).not.toHaveBeenCalled()
-    expect(
-      await screen.findByDisplayValue(/# handwritten[\s\S]*AI extracted/i),
-    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /continue/i }),
+      ).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rawNotes: expect.stringMatching(/# handwritten[\s\S]*AI extracted/i),
+      }),
+    )
   })
 
   it('rejects unsupported image files before OCR', async () => {
@@ -610,13 +637,16 @@ describe('CreateStudyPackModal create from notes flow', () => {
       target: { files: [first, second] },
     })
 
+    expect(await screen.findByText('chapter-one.pdf')).toBeInTheDocument()
+    expect(screen.getByText('chapter-two.pdf')).toBeInTheDocument()
+    expect(extractTextFromPdf).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
     await waitFor(() => {
       expect(extractTextFromPdf).toHaveBeenCalledWith(first)
       expect(extractTextFromPdf).toHaveBeenCalledWith(second)
     })
-    expect(
-      await screen.findByDisplayValue(/# Chapter One[\s\S]*# Chapter Two/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('1 study blocks')).toBeInTheDocument()
   })
 
   it('appends PDFs uploaded in separate batches', async () => {
@@ -637,12 +667,14 @@ describe('CreateStudyPackModal create from notes flow', () => {
       })
 
     fireEvent.change(getPdfFileInput(), { target: { files: [first] } })
-    await screen.findByDisplayValue(/# One/i)
+    await screen.findByText('one.pdf')
     fireEvent.change(getPdfFileInput(), { target: { files: [second] } })
 
-    expect(
-      await screen.findByDisplayValue(/# One[\s\S]*---[\s\S]*# Two/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('two.pdf')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    await waitFor(() => {
+      expect(extractTextFromPdf).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('extracts slide text from PPTX and rejects legacy PPT', async () => {
@@ -664,12 +696,14 @@ describe('CreateStudyPackModal create from notes flow', () => {
     })
     fireEvent.change(getPowerPointFileInput(), { target: { files: [pptx] } })
 
+    expect(await screen.findByText('lecture.pptx')).toBeInTheDocument()
+    expect(extractTextFromPptx).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
     await waitFor(() => {
       expect(extractTextFromPptx).toHaveBeenCalledWith(pptx)
     })
-    expect(
-      await screen.findByDisplayValue(/# Slide Notes[\s\S]*Quiz:: PPTX/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('1 study blocks')).toBeInTheDocument()
   })
 
   it('appends PPTX files uploaded in separate batches', async () => {
@@ -694,16 +728,16 @@ describe('CreateStudyPackModal create from notes flow', () => {
       })
 
     fireEvent.change(getPowerPointFileInput(), { target: { files: [first] } })
-    await screen.findByDisplayValue(/# One Slides/i)
+    await screen.findByText('one.pptx')
     fireEvent.change(getPowerPointFileInput(), {
       target: { files: [second] },
     })
 
-    expect(
-      await screen.findByDisplayValue(
-        /# One Slides[\s\S]*---[\s\S]*# Two Slides/i,
-      ),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('two.pptx')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    await waitFor(() => {
+      expect(extractTextFromPptx).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('previews CSV sources as a source table dashboard', async () => {
