@@ -6,6 +6,7 @@ import {
   Toolbar,
   Typography,
   Button,
+  CircularProgress,
   Menu,
   MenuItem,
   Divider,
@@ -214,27 +215,69 @@ const getCreationStatusColor = (state: WorkspaceCreationTaskState) => {
   return 'transparent'
 }
 
+const getCreationStatusBackground = (state: WorkspaceCreationTaskState) => {
+  if (state === 'running') {
+    return 'warning.light'
+  }
+
+  if (state === 'complete') {
+    return 'success.light'
+  }
+
+  if (state === 'error') {
+    return 'error.light'
+  }
+
+  return 'transparent'
+}
+
 const CreationStatusDot = ({
   state,
 }: {
   state: WorkspaceCreationTaskState
-}) => (
-  <Box
-    component="span"
-    sx={{
-      display: 'inline-flex',
-      width: 9,
-      height: 9,
-      borderRadius: '50%',
-      border: 1,
-      borderColor:
-        state === 'idle' ? 'foreground.contrastPrimary' : 'background.header',
-      bgcolor: getCreationStatusColor(state),
-      opacity: state === 'idle' ? 0.55 : 1,
-      flex: '0 0 auto',
-    }}
-  />
-)
+}) => {
+  if (state === 'idle') {
+    return null
+  }
+
+  const isRunning = state === 'running'
+  const symbol = state === 'complete' ? '✓' : state === 'error' ? '!' : ''
+
+  return (
+    <Box
+      component="span"
+      sx={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        border: 1,
+        borderColor: 'rgba(255,255,255,0.9)',
+        bgcolor: getCreationStatusBackground(state),
+        color: getCreationStatusColor(state),
+        boxShadow:
+          '0 0 0 2px rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.22)',
+        flex: '0 0 auto',
+        fontSize: 11,
+        fontWeight: 900,
+        lineHeight: 1,
+      }}
+    >
+      {isRunning ? (
+        <CircularProgress
+          size={14}
+          thickness={5}
+          sx={{ color: getCreationStatusColor(state) }}
+        />
+      ) : (
+        symbol
+      )}
+    </Box>
+  )
+}
 
 const CreationStatusLabel = ({
   label,
@@ -248,11 +291,13 @@ const CreationStatusLabel = ({
     sx={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 0.75,
+      gap: 0.85,
       minWidth: 0,
     }}
   >
-    <Box component="span">{label}</Box>
+    <Box component="span" sx={{ minWidth: 0 }}>
+      {label}
+    </Box>
     <CreationStatusDot state={state} />
   </Box>
 )
@@ -649,27 +694,27 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
     setUserSettingsAvatarStatus('Profile picture removed.')
   }
 
-  const reportStudyPathStatus = useCallback((
-    state: WorkspaceCreationTaskState,
-    message?: string,
-  ) => {
-    dispatchWorkspaceCreationStatus({
-      task: 'study-path',
-      state,
-      message,
-    })
-  }, [])
+  const reportStudyPathStatus = useCallback(
+    (state: WorkspaceCreationTaskState, message?: string) => {
+      dispatchWorkspaceCreationStatus({
+        task: 'study-path',
+        state,
+        message,
+      })
+    },
+    [],
+  )
 
-  const reportFromNotesStatus = useCallback((
-    state: WorkspaceCreationTaskState,
-    message?: string,
-  ) => {
-    dispatchWorkspaceCreationStatus({
-      task: 'from-notes',
-      state,
-      message,
-    })
-  }, [])
+  const reportFromNotesStatus = useCallback(
+    (state: WorkspaceCreationTaskState, message?: string) => {
+      dispatchWorkspaceCreationStatus({
+        task: 'from-notes',
+        state,
+        message,
+      })
+    },
+    [],
+  )
 
   return (
     <>
