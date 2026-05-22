@@ -1444,7 +1444,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     variant="outlined"
                     startIcon={<UploadFileIcon />}
                     fullWidth={presentation === 'embedded'}
-                    sx={{ alignSelf: { sm: 'flex-start' } }}
+                    sx={{
+                      alignSelf:
+                        presentation === 'embedded'
+                          ? 'stretch'
+                          : { sm: 'flex-start' },
+                      width: presentation === 'embedded' ? '100%' : undefined,
+                    }}
                   >
                     Upload text files
                     <input
@@ -1496,11 +1502,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                             sx={{
                               width: 116,
                               maxWidth: 116,
+                              minWidth: 0,
                               p: 0.75,
                               border: 1,
                               borderColor: 'divider',
                               borderRadius: 1,
                               position: 'relative',
+                              overflow: 'hidden',
                             }}
                           >
                             <Box
@@ -1547,7 +1555,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     ) : (
                       <ImageIcon color="primary" sx={{ fontSize: 48 }} />
                     )}
-                    <Box>
+                    <Box sx={{ width: '100%', minWidth: 0 }}>
                       <Typography variant="subtitle1" fontWeight={900}>
                         {imageFiles.length > 0
                           ? `${imageFiles.length} image${
@@ -1564,6 +1572,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
                       fullWidth={presentation === 'embedded'}
+                      sx={{
+                        width: presentation === 'embedded' ? '100%' : undefined,
+                      }}
                     >
                       Select images
                       <input
@@ -1632,7 +1643,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 >
                   <Stack spacing={1.5} alignItems="center" textAlign="center">
                     <PictureAsPdfIcon color="primary" sx={{ fontSize: 48 }} />
-                    <Box>
+                    <Box sx={{ width: '100%', minWidth: 0 }}>
                       <Typography variant="subtitle1" fontWeight={900}>
                         Upload PDF notes
                       </Typography>
@@ -1646,6 +1657,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       startIcon={<UploadFileIcon />}
                       disabled={isExtractingDocument}
                       fullWidth={presentation === 'embedded'}
+                      sx={{
+                        width: presentation === 'embedded' ? '100%' : undefined,
+                      }}
                     >
                       Select PDFs
                       <input
@@ -1697,7 +1711,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 >
                   <Stack spacing={1.5} alignItems="center" textAlign="center">
                     <SlideshowIcon color="primary" sx={{ fontSize: 48 }} />
-                    <Box>
+                    <Box sx={{ width: '100%', minWidth: 0 }}>
                       <Typography variant="subtitle1" fontWeight={900}>
                         Upload PowerPoint notes
                       </Typography>
@@ -1711,6 +1725,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       startIcon={<UploadFileIcon />}
                       disabled={isExtractingDocument}
                       fullWidth={presentation === 'embedded'}
+                      sx={{
+                        width: presentation === 'embedded' ? '100%' : undefined,
+                      }}
                     >
                       Select PPTX files
                       <input
