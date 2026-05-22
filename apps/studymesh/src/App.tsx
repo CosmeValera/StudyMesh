@@ -133,7 +133,7 @@ const WorkspacePage = () => {
           flex: 1,
           minHeight: 0,
           height: 'auto',
-          marginTop: 0,
+          marginTop: '6px',
           overflow: 'hidden',
           p: 0,
         }}
