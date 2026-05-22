@@ -26,6 +26,7 @@ vi.mock('../../../../src/studyPack/imageOcr', () => ({
 }))
 
 vi.mock('../../../../src/studyPack/ai', () => ({
+  cancelAllLocalAiSessions: vi.fn(),
   extractRawNotesWithAi: vi.fn(),
   extractNotesFromImageWithLocalLanguageModel: vi.fn(),
   generateStudyPackWithAi: vi.fn(),

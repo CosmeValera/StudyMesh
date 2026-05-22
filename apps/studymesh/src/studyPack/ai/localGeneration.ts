@@ -37,6 +37,7 @@ type LocalObjectKind =
 interface LocalGenerationOptions {
   onProgress?: (event: LocalAiProgressEvent) => void
   dashboardConcurrency?: 1 | 2 | 3 | 5
+  signal?: AbortSignal
 }
 
 export type LocalAiGenerationFailureCode =
@@ -1484,6 +1485,9 @@ export const generateStudyPackWithLocalAi = async (
     timeoutMs: LOCAL_STUDY_PACK_TIMEOUT_MS,
     onProgress: localOptions.onProgress,
     progressLabel: 'Estimated Local AI generation time',
+    signal: localOptions.signal,
+    promptType: 'study-pack',
+    stepLabel: options.title,
   })
   const parsed = parseLocalAiJson(text)
   const draft = normalizeLocalAiStudyPackDraft(parsed, options.packId, {
@@ -2340,6 +2344,9 @@ const createLocalStudyPathPlan = async (
         attempt,
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
         studyPathStep: 'planner',
+        signal: localOptions.signal,
+        promptType: 'planner',
+        stepLabel: 'Study Path planner',
       })
       debug.rawResponse = text
 
@@ -3274,6 +3281,10 @@ const generateLocalStudyPathMarkdownSection = async (
         attempt,
         attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
         studyPathStep: sectionIndex === 0 ? 'markdown1' : 'markdown2',
+        signal: localOptions.signal,
+        promptType: sectionIndex === 0 ? 'markdown1' : 'markdown2',
+        stepLabel: plannerItem.title,
+        dashboardTitle: plannerItem.title,
       })
       debug.rawResponse = text
       const markdown = cleanLocalStudyPathSectionMarkdown(text, requiredHeading)
@@ -3436,6 +3447,10 @@ const generateLocalStudyPathPractice = async (
           attempt,
           attemptCount: LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS,
           studyPathStep: kind,
+          signal: localOptions.signal,
+          promptType: kind,
+          stepLabel: plannerItem.title,
+          dashboardTitle: plannerItem.title,
         })
         debug.rawResponse = text
         const record = parseLocalStudyPathPracticeObject(text, kind, debug)

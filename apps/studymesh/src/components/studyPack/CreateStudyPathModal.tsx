@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -31,6 +31,7 @@ import {
   AiStudyPathDashboardDraft,
   AiStudyPathDraft,
   assertRoleObjectsAreClean,
+  cancelAllLocalAiSessions,
   filterStudyObjectsForDashboardRole,
   generateStudyPathWithAi,
   isLocalAiGenerationError,
@@ -494,7 +495,21 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [localAiFailureDebug, setLocalAiFailureDebug] =
     useState<LocalAiGenerationFailureDebug | null>(null)
   const [error, setError] = useState('')
+  const activeGenerationRef = useRef<AbortController | null>(null)
   const debugTrace = combinedDebugTrace(draft)
+
+  const cancelActiveGeneration = () => {
+    activeGenerationRef.current?.abort()
+    activeGenerationRef.current = null
+    cancelAllLocalAiSessions()
+  }
+
+  React.useEffect(
+    () => () => {
+      cancelActiveGeneration()
+    },
+    [],
+  )
 
   React.useEffect(() => {
     if (!isGenerating || aiProvider !== 'gemini' || !geminiProgress) {
@@ -541,6 +556,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   }
 
   const handleClose = () => {
+    cancelActiveGeneration()
     reset()
     onClose()
   }
@@ -567,6 +583,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       return
     }
 
+    cancelActiveGeneration()
+    const generationController = new AbortController()
+    activeGenerationRef.current = generationController
     setIsGenerating(true)
     setLocalAiProgress(null)
     setGeminiProgress(
@@ -595,10 +614,19 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         generationAmount,
         localAiDashboardConcurrency:
           aiProvider === 'local' ? localAiDashboardConcurrency : undefined,
+        signal: generationController.signal,
         onProgress: (event) => {
+          if (generationController.signal.aborted) {
+            return
+          }
+
           setLocalAiProgress(event)
         },
       })
+      if (generationController.signal.aborted) {
+        return
+      }
+
       const sanitizedDashboards = nextDraft.dashboards.map((dashboard) => {
         if (aiProvider === 'local') {
           return dashboard
@@ -633,6 +661,13 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       setReviewFolderName(nextDraft.folderName || nextDraft.title || '')
       setStep('review')
     } catch (err) {
+      if (
+        generationController.signal.aborted ||
+        (err instanceof Error && err.name === 'AbortError')
+      ) {
+        return
+      }
+
       setLocalAiFailureDebug(
         aiProvider === 'local' && isLocalAiGenerationError(err) && err.debug
           ? err.debug
@@ -644,9 +679,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           : 'Could not generate this Study Path.',
       )
     } finally {
-      setIsGenerating(false)
-      setLocalAiProgress(null)
-      setGeminiProgress(null)
+      if (activeGenerationRef.current === generationController) {
+        activeGenerationRef.current = null
+      }
+
+      if (!generationController.signal.aborted) {
+        setIsGenerating(false)
+        setLocalAiProgress(null)
+        setGeminiProgress(null)
+      }
     }
   }
 

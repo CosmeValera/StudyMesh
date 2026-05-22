@@ -7,6 +7,7 @@ import {
   Route,
   Navigate,
   useSearchParams,
+  useLocation,
 } from 'react-router-dom'
 
 import TopNavBar from './components/topnavbar/TopNavBar'
@@ -17,6 +18,8 @@ import DashboardProvider from './components/Dasboard/DashboardProvider'
 import LayoutProvider from './components/Layout/LayoutProvider'
 import StudyMeshLanding from './components/landing/StudyMeshLanding'
 import { useWorkspaceActions } from './customHooks/useWorkspaceActions'
+import LocalAiDebugPanel from './components/debug/LocalAiDebugPanel'
+import { cancelAllLocalAiSessions } from './studyPack/ai'
 
 import { createStudyMeshTheme } from './theme'
 import { AccentColorProvider } from './theme/AccentColorContext'
@@ -122,6 +125,8 @@ const WorkspacePage = () => {
 
 const AppShell = () => {
   const { mode } = useThemeMode()
+  const location = useLocation()
+  const previousPathRef = useRef(location.pathname)
   const [accentColorId, setAccentColorId] = useState(readStoredAccentColorId)
   const accentColor = useMemo(
     () => getAccentColorById(accentColorId),
@@ -136,6 +141,13 @@ const AppShell = () => {
     writeStoredAccentColorId(accentColorId)
     applyAccentCssVariables(accentColor)
   }, [accentColor, accentColorId])
+
+  useEffect(() => {
+    if (previousPathRef.current !== location.pathname) {
+      cancelAllLocalAiSessions()
+      previousPathRef.current = location.pathname
+    }
+  }, [location.pathname])
 
   const accentColorContextValue = useMemo(
     () => ({
@@ -152,6 +164,7 @@ const AppShell = () => {
       <ThemeProvider theme={theme}>
         <PrimeReactProvider value={{ ripple: true }}>
           <CssBaseline />
+          <LocalAiDebugPanel />
           <DashboardProvider>
             <LayoutProvider>
               <Routes>

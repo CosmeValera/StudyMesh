@@ -1,3 +1,8 @@
+import {
+  LocalAiPromptType,
+  runLocalAiPrompt,
+} from './localAiSessionManager'
+
 type LocalLanguage = 'en' | 'es' | 'ja'
 
 type LocalLanguageModelAvailability =
@@ -9,6 +14,7 @@ type LocalLanguageModelAvailability =
 interface LocalLanguageModelSession {
   prompt: (
     prompt: string | LocalLanguageModelPromptMessage[],
+    options?: { signal?: AbortSignal },
   ) => Promise<string>
   destroy?: () => void
 }
@@ -130,20 +136,14 @@ const LOCAL_AI_SMOKE_FAILURE_MESSAGE =
 let localAiCooldownUntil = 0
 let localAiLastTimeoutStage: 'create' | 'prompt' | 'smoke' | null = null
 
-class LocalAiTimeoutError extends Error {
-  stage: 'create' | 'prompt' | 'smoke'
-
-  constructor(message: string, stage: 'create' | 'prompt' | 'smoke') {
-    super(message)
-    this.name = 'LocalAiTimeoutError'
-    this.stage = stage
-  }
-}
-
 const debugLocalAi = (
   stage: string,
   details: Record<string, unknown> = {},
 ): void => {
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'development') {
+    return
+  }
+
   console.debug('[StudyMesh Local AI]', stage, {
     at: new Date().toISOString(),
     ...details,
@@ -259,27 +259,6 @@ export const getLocalLanguageModelAvailability = async (
   }
 }
 
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  timeoutMessage: string,
-  stage: 'create' | 'prompt' | 'smoke',
-): Promise<T> => {
-  let timeoutId = 0
-  const timeout = new Promise<T>((_resolve, reject) => {
-    timeoutId = window.setTimeout(() => {
-      debugLocalAi('timeout', { stage, timeoutMs })
-      reject(new LocalAiTimeoutError(timeoutMessage, stage))
-    }, timeoutMs)
-  })
-
-  try {
-    return await Promise.race([promise, timeout])
-  } finally {
-    window.clearTimeout(timeoutId)
-  }
-}
-
 const createPromptProgressTimer = (
   timeoutMs: number,
   phase: LocalAiProgressEvent['phase'],
@@ -350,6 +329,10 @@ export const callLocalLanguageModel = async (
     studyPathStep?: LocalAiStudyPathStep
     threadId?: number
     threadCount?: number
+    signal?: AbortSignal
+    promptType?: LocalAiPromptType
+    stepLabel?: string
+    dashboardTitle?: string
   } = {},
 ): Promise<string> => {
   assertLocalAiIsReady()
@@ -379,64 +362,9 @@ export const callLocalLanguageModel = async (
     )
   }
 
-  let session: LocalLanguageModelSession | null = null
   try {
     const createStartedAt = performance.now()
     debugLocalAi('create:start', { outputLanguage, expectedInputs })
-    const createPromise = languageModel.create({
-      outputLanguage,
-      expectedInputs,
-      expectedOutputs,
-      monitor: (monitor) => {
-        monitor.addEventListener('downloadprogress', (event) => {
-          const total = Number(event.total || 0)
-          const loaded = Number(event.loaded || 0)
-          if (total > 0) {
-            options.onProgress?.({
-              phase: 'download',
-              percent: Math.round((loaded / total) * 100),
-              label: 'Downloading local model',
-              dashboardIndex: options.dashboardIndex,
-              dashboardCount: options.dashboardCount,
-              attempt: options.attempt,
-              attemptCount: options.attemptCount,
-              studyPathStep: options.studyPathStep,
-              threadId: options.threadId,
-              threadCount: options.threadCount,
-            })
-          }
-        })
-      },
-    })
-    session = await withTimeout(
-      createPromise,
-      LOCAL_AI_CREATE_TIMEOUT_MS,
-      'Local AI timed out while creating a session. Try again, choose a smaller path, or use Own Gemini token.',
-      'create',
-    ).catch((error) => {
-      if (error instanceof LocalAiTimeoutError && error.stage === 'create') {
-        markLocalAiCooldown('create')
-        createPromise
-          .then((lateSession) => {
-            debugLocalAi('create:late-destroy', {})
-            lateSession.destroy?.()
-          })
-          .catch((lateError) => {
-            debugLocalAi('create:late-error', {
-              message:
-                lateError instanceof Error
-                  ? lateError.message
-                  : String(lateError),
-            })
-          })
-      }
-
-      throw error
-    })
-    debugLocalAi('create:end', {
-      durationMs: Math.round(performance.now() - createStartedAt),
-    })
-
     const promptStartedAt = performance.now()
     debugLocalAi('prompt:start', {
       ...summarizePrompt(prompt),
@@ -466,16 +394,61 @@ export const callLocalLanguageModel = async (
         threadCount: options.threadCount,
       },
     )
-    const result = await withTimeout(
-      session.prompt(prompt),
-      promptTimeoutMs,
-      promptTimeoutStage === 'smoke'
-        ? LOCAL_AI_SMOKE_FAILURE_MESSAGE
-        : LOCAL_AI_TIMEOUT_MESSAGE,
-      promptTimeoutStage,
-    ).catch((error) => {
-      stopPromptProgress()
-      if (error instanceof LocalAiTimeoutError) {
+    const createSession = async () => {
+      const createPromise = languageModel.create({
+        outputLanguage,
+        expectedInputs,
+        expectedOutputs,
+        monitor: (monitor) => {
+          monitor.addEventListener('downloadprogress', (event) => {
+            const total = Number(event.total || 0)
+            const loaded = Number(event.loaded || 0)
+            if (total > 0) {
+              options.onProgress?.({
+                phase: 'download',
+                percent: Math.round((loaded / total) * 100),
+                label: 'Downloading local model',
+                dashboardIndex: options.dashboardIndex,
+                dashboardCount: options.dashboardCount,
+                attempt: options.attempt,
+                attemptCount: options.attemptCount,
+                studyPathStep: options.studyPathStep,
+                threadId: options.threadId,
+                threadCount: options.threadCount,
+              })
+            }
+          })
+        },
+      })
+
+      return createPromise
+    }
+    const result = await runLocalAiPrompt({
+      createSession,
+      prompt,
+      promptType:
+        options.promptType ||
+        options.studyPathStep ||
+        (promptTimeoutStage === 'smoke' ? 'smoke' : 'unknown'),
+      stepLabel: options.stepLabel || options.progressLabel,
+      dashboardTitle: options.dashboardTitle,
+      promptPreview:
+        typeof prompt === 'string'
+          ? prompt.slice(0, 240)
+          : String(summarizePrompt(prompt).textPreview || '').slice(0, 240),
+      timeoutMs: promptTimeoutMs,
+      createTimeoutMs: LOCAL_AI_CREATE_TIMEOUT_MS,
+      timeoutMessage:
+        promptTimeoutStage === 'smoke'
+          ? LOCAL_AI_SMOKE_FAILURE_MESSAGE
+          : LOCAL_AI_TIMEOUT_MESSAGE,
+      createTimeoutMessage:
+        'Local AI timed out while creating a session. Try again, choose a smaller path, or use Own Gemini token.',
+      externalSignal: options.signal,
+      onCreateTimeout: () => {
+        markLocalAiCooldown('create')
+      },
+      onTimeout: () => {
         options.onProgress?.({
           phase: 'timeout',
           percent: 100,
@@ -492,12 +465,15 @@ export const callLocalLanguageModel = async (
           threadId: options.threadId,
           threadCount: options.threadCount,
         })
-        session?.destroy?.()
-        session = null
-        markLocalAiCooldown(error.stage)
-      }
+        markLocalAiCooldown(promptTimeoutStage)
+      },
+    }).catch((error) => {
+      stopPromptProgress()
 
       throw error
+    })
+    debugLocalAi('create:end', {
+      durationMs: Math.round(performance.now() - createStartedAt),
     })
     stopPromptProgress()
     options.onProgress?.({
@@ -530,8 +506,6 @@ export const callLocalLanguageModel = async (
     }
 
     throw new Error('Google Local AI failed before returning a response.')
-  } finally {
-    session?.destroy?.()
   }
 }
 
@@ -554,6 +528,7 @@ export const extractNotesFromImageWithLocalLanguageModel = async (
     outputLanguage?: LocalLanguage
     timeoutMs?: number
     onProgress?: (percent: number) => void
+    signal?: AbortSignal
   } = {},
 ): Promise<string> => {
   const outputLanguage = options.outputLanguage || 'en'
@@ -593,6 +568,8 @@ export const extractNotesFromImageWithLocalLanguageModel = async (
         { type: 'text', languages: [outputLanguage] },
         { type: 'image' },
       ],
+      promptType: 'image-notes',
+      signal: options.signal,
     },
   )
 }
@@ -625,6 +602,7 @@ export const testLocalLanguageModel = async (
         latestProgress = event.percent
         onProgress?.(event.percent)
       },
+      promptType: 'smoke',
     },
   )
 

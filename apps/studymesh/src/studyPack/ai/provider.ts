@@ -23,6 +23,7 @@ import { LocalAiProgressEvent } from './localLanguageModel'
 type ProviderOptions = {
   provider?: StudyPackAiProvider
   onProgress?: (event: LocalAiProgressEvent) => void
+  signal?: AbortSignal
 }
 
 const HOSTED_NOT_CONFIGURED_MESSAGE = 'Hosted AI is not configured yet.'
@@ -72,6 +73,7 @@ export const generateStudyPackWithAi = async (
   if (provider === 'local') {
     return generateStudyPackWithLocalAi(options, {
       onProgress: options.onProgress,
+      signal: options.signal,
     })
   }
 
@@ -111,6 +113,7 @@ export const generateStudyPathWithAi = async (
     return generateStudyPathWithLocalAi(options, {
       onProgress: options.onProgress,
       dashboardConcurrency: options.localAiDashboardConcurrency,
+      signal: options.signal,
     })
   }
 

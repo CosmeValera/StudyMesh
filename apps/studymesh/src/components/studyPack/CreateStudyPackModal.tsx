@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -39,6 +39,7 @@ import {
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import {
   AiSourceSummary,
+  cancelAllLocalAiSessions,
   extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
@@ -550,6 +551,20 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('medium')
   const [error, setError] = useState('')
+  const activeOperationRef = useRef<AbortController | null>(null)
+
+  const cancelActiveOperation = () => {
+    activeOperationRef.current?.abort()
+    activeOperationRef.current = null
+    cancelAllLocalAiSessions()
+  }
+
+  useEffect(
+    () => () => {
+      cancelActiveOperation()
+    },
+    [],
+  )
 
   const practiceProfile = useMemo(
     () => createStudyPackPracticeProfile(generationAmount, generationTargets),
@@ -639,6 +654,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const handleClose = () => {
+    cancelActiveOperation()
     reset()
     onClose()
   }
@@ -718,6 +734,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
+    cancelActiveOperation()
+    const generationController = new AbortController()
+    activeOperationRef.current = generationController
     setIsGeneratingAi(true)
     setOcrStatus('Generating study materials')
     setAiGenerationProgress(0)
@@ -773,7 +792,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         promptMode: false,
         studyPathMode: false,
+        signal: generationController.signal,
         onProgress: (event) => {
+          if (generationController.signal.aborted) {
+            return
+          }
+
           setAiGenerationProgress(event.percent)
           setAiGenerationProgressPhase(event.phase)
           setAiProgressLabel(
@@ -783,6 +807,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           )
         },
       })
+      if (generationController.signal.aborted) {
+        return
+      }
+
       const nextTitle = draft.title || packTitle
       setAiProgressLabel('Preparing review screen')
       const augmented = augmentStudyPackPracticeObjects(draft.objects, {
@@ -813,18 +841,31 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       )
       setStep('review')
     } catch (error) {
+      if (
+        generationController.signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError')
+      ) {
+        return
+      }
+
       setError(
         error instanceof Error
           ? error.message
           : 'Could not generate study materials with AI.',
       )
     } finally {
-      setIsGeneratingAi(false)
-      setAiProgressLabel('')
-      setAiGenerationProgress(0)
-      setAiGenerationProgressPhase('')
-      setGeminiProgress(null)
-      setOcrStatus('')
+      if (activeOperationRef.current === generationController) {
+        activeOperationRef.current = null
+      }
+
+      if (!generationController.signal.aborted) {
+        setIsGeneratingAi(false)
+        setAiProgressLabel('')
+        setAiGenerationProgress(0)
+        setAiGenerationProgressPhase('')
+        setGeminiProgress(null)
+        setOcrStatus('')
+      }
     }
   }
 
@@ -845,6 +886,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
+    cancelActiveOperation()
+    const extractionController = new AbortController()
+    activeOperationRef.current = extractionController
     setIsExtractingImage(true)
     setOcrProgress(0)
     setOcrStatus(
@@ -875,6 +919,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       const extractedTexts: string[] = []
       for (let index = 0; index < pendingImageFiles.length; index += 1) {
         const imageFile = pendingImageFiles[index]
+        if (extractionController.signal.aborted) {
+          return
+        }
+
         const imageNumber = extractedImageCount + index + 1
         setOcrStatus(
           pendingImageFiles.length > 1 || imageFiles.length > 1
@@ -893,12 +941,24 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             setOcrStatus('Extracting notes with Google Local AI')
             text = await extractNotesFromImageWithLocalLanguageModel(imageFile, {
               timeoutMs: 90 * 1000,
+              signal: extractionController.signal,
               onProgress: (progress) => {
+                if (extractionController.signal.aborted) {
+                  return
+                }
+
                 setOcrProgress(progress)
                 setOcrStatus(`Downloading local model ${progress}%`)
               },
             })
-          } catch {
+          } catch (error) {
+            if (
+              extractionController.signal.aborted ||
+              (error instanceof Error && error.name === 'AbortError')
+            ) {
+              return
+            }
+
             setOcrStatus('Local AI image input unavailable; using OCR')
             text = await extractRawNotesFromImage(imageFile, (progress) => {
               setOcrProgress(Math.round(progress.progress * 100))
@@ -918,6 +978,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       }
 
       if (extractedTexts.length === 0) {
+        if (extractionController.signal.aborted) {
+          return
+        }
+
         setSourceText('')
         setImageTextExtracted(false)
         setError('No text was detected in these images.')
@@ -937,7 +1001,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ? 'Image extraction complete'
             : 'OCR complete',
       )
-    } catch {
+    } catch (error) {
+      if (
+        extractionController.signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError')
+      ) {
+        return
+      }
+
       setError(
         aiProvider === 'gemini'
           ? 'Could not extract notes with AI. Check your Gemini API key or use Basic mode.'
@@ -945,8 +1016,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       )
       setImageTextExtracted(false)
     } finally {
-      setIsExtractingImage(false)
-      setAiProgressLabel('')
+      if (activeOperationRef.current === extractionController) {
+        activeOperationRef.current = null
+      }
+
+      if (!extractionController.signal.aborted) {
+        setIsExtractingImage(false)
+        setAiProgressLabel('')
+      }
     }
   }
 

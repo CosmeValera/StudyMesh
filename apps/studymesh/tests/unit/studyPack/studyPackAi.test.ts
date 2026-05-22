@@ -1009,12 +1009,12 @@ describe('local AI helpers', () => {
               studyPathStep: 'markdown1',
             }),
           ]),
-          timeoutMs: 180 * 1000,
+          timeoutMs: 300 * 1000,
         }),
         expect.objectContaining({
           dashboardCount: 5,
           label: 'Generated 5 of 5 dashboards',
-          timeoutMs: 150 * 1000,
+          timeoutMs: 240 * 1000,
           studyPathPipeline: expect.objectContaining({
             label: 'Study Path pipeline',
             estimatedRemainingMs: expect.any(Number),
@@ -1068,7 +1068,10 @@ describe('local AI helpers', () => {
       availability: 'available',
       result: 'hello',
     })
-    expect(prompt).toHaveBeenCalledWith('Return exactly one word: hello')
+    expect(prompt).toHaveBeenCalledWith(
+      'Return exactly one word: hello',
+      expect.objectContaining({ signal: expect.any(Object) }),
+    )
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         outputLanguage: 'en',
@@ -1116,15 +1119,18 @@ describe('local AI helpers', () => {
         monitor: expect.any(Function),
       }),
     )
-    expect(prompt).toHaveBeenCalledWith([
-      {
-        role: 'user',
-        content: [
-          expect.objectContaining({ type: 'text' }),
-          { type: 'image', value: image },
-        ],
-      },
-    ])
+    expect(prompt).toHaveBeenCalledWith(
+      [
+        {
+          role: 'user',
+          content: [
+            expect.objectContaining({ type: 'text' }),
+            { type: 'image', value: image },
+          ],
+        },
+      ],
+      expect.objectContaining({ signal: expect.any(Object) }),
+    )
     expect(destroy).toHaveBeenCalled()
   })
 
@@ -1166,6 +1172,7 @@ describe('local AI helpers', () => {
       prompt: vi.fn().mockResolvedValue('late'),
       destroy: lateDestroy,
     })
+    await Promise.resolve()
     await vi.runAllTicks()
     expect(lateDestroy).toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(8000)
@@ -1263,7 +1270,7 @@ describe('local AI helpers', () => {
       /Try again, choose a smaller path, or use Own Gemini token/i,
     )
 
-    await vi.advanceTimersByTimeAsync(1200 * 1000)
+    await vi.advanceTimersByTimeAsync(2400 * 1000)
     await rejection
     expect(destroy).toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(8000)

@@ -51,6 +51,21 @@ export {
 } from './localLanguageModel'
 export type { LocalAiProgressEvent } from './localLanguageModel'
 export {
+  cancelAllLocalAiSessions,
+  cancelLocalAiSession,
+  clearCompletedLocalAiSessionHistory,
+  destroyAllLocalAiSessions,
+  destroyLocalAiSession,
+  getLocalAiSessionDebugState,
+  resetLocalAiSessionManagerForTests,
+  runLocalAiPrompt,
+  subscribeToLocalAiSessionDebugState,
+} from './localAiSessionManager'
+export type {
+  LocalAiManagedSession,
+  LocalAiPromptType,
+} from './localAiSessionManager'
+export {
   generateStudyPathWithLocalAi,
   isLocalAiGenerationError,
   normalizeLocalAiStudyPackDraft,
