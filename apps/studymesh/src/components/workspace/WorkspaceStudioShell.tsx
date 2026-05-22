@@ -4,20 +4,12 @@ import {
   Dialog,
   Drawer,
   IconButton,
-  Paper,
-  Stack,
   Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import CloseIcon from '@mui/icons-material/Close'
-import ConstructionIcon from '@mui/icons-material/Construction'
-import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import PushPinIcon from '@mui/icons-material/PushPin'
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
-import RouteIcon from '@mui/icons-material/Route'
 
 import {
   OPEN_DASHBOARD_EDITOR_EVENT,
@@ -37,27 +29,44 @@ import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import {
   dispatchWorkspaceCreationStatus,
+  WorkspaceCreationTask,
   WorkspaceCreationTaskState,
 } from '../../workspaceCreationStatus'
 
-type StudioFlow = 'quick' | 'study-path' | 'from-notes'
+type StudioFlow = 'study-path' | 'from-notes'
 
-const PINNED_STORAGE_KEY = 'studymesh-workspace-studio-pinned-v1'
+const statusMarkerLabels: Record<WorkspaceCreationTaskState, string> = {
+  idle: '',
+  running: 'Generating study material…',
+  complete: 'Study material ready to review',
+  error: 'Generation failed. Click to review.',
+}
+
+const statusMarkerColors: Record<
+  Exclude<WorkspaceCreationTaskState, 'idle'>,
+  string
+> = {
+  running: 'warning.main',
+  complete: 'success.main',
+  error: 'error.main',
+}
+
+const statusMarkerGlow: Record<
+  Exclude<WorkspaceCreationTaskState, 'idle'>,
+  string
+> = {
+  running: '0 0 0 6px rgba(245, 158, 11, 0.14)',
+  complete: '0 0 0 7px rgba(34, 197, 94, 0.18)',
+  error: '0 0 0 6px rgba(239, 68, 68, 0.16)',
+}
+
 const studioPanelWidth = 424
+const studioPanelClamp = `clamp(380px, 31vw, ${studioPanelWidth}px)`
 const workspaceCanvasSx = {
   minHeight: 0,
   overflow: 'hidden',
   p: '8px',
   boxSizing: 'border-box',
-}
-
-const readPinnedPreference = () => {
-  try {
-    return localStorage.getItem(PINNED_STORAGE_KEY) === 'true'
-  } catch (error) {
-    console.error('Failed to read workspace Studio pinned preference', error)
-    return false
-  }
 }
 
 const readIsAdmin = () => {
@@ -75,75 +84,19 @@ const readIsAdmin = () => {
   }
 }
 
-const QuickAction = ({
-  icon,
-  title,
-  description,
-  onClick,
-  disabled,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-  onClick: () => void
-  disabled?: boolean
-}) => (
-  <Paper
-    component="button"
-    type="button"
-    elevation={0}
-    disabled={disabled}
-    onClick={onClick}
-    sx={{
-      width: '100%',
-      p: 1.5,
-      border: 1,
-      borderColor: 'divider',
-      borderRadius: 1,
-      bgcolor: 'background.paper',
-      color: 'text.primary',
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.45 : 1,
-      textAlign: 'left',
-      '&:hover': {
-        borderColor: disabled ? 'divider' : 'primary.main',
-        bgcolor: disabled ? 'background.paper' : 'action.hover',
-      },
-    }}
-  >
-    <Stack direction="row" spacing={1.25} alignItems="center">
-      <Box
-        sx={{
-          width: 36,
-          height: 36,
-          borderRadius: 1,
-          display: 'grid',
-          placeItems: 'center',
-          color: 'primary.main',
-          bgcolor: 'action.hover',
-          flex: '0 0 auto',
-        }}
-      >
-        {icon}
-      </Box>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="subtitle2" fontWeight={800}>
-          {title}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {description}
-        </Typography>
-      </Box>
-    </Stack>
-  </Paper>
-)
-
 const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const [isPinned, setIsPinned] = useState(readPinnedPreference)
-  const [isStudioOpen, setIsStudioOpen] = useState(() => readPinnedPreference())
-  const [activeFlow, setActiveFlow] = useState<StudioFlow>('quick')
+  const [isStudioOpen, setIsStudioOpen] = useState(false)
+  const [activeFlow, setActiveFlow] = useState<StudioFlow>('study-path')
+  const [creationMarkers, setCreationMarkers] = useState<
+    Partial<
+      Record<
+        WorkspaceCreationTask,
+        { state: Exclude<WorkspaceCreationTaskState, 'idle'>; message?: string }
+      >
+    >
+  >({})
   const [aiProvider, setAiProvider] = useState(
     () => readStudyPackAiSettings().provider || 'basic',
   )
@@ -151,14 +104,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     loadWidget?: CustomWidget
     initialEditMode?: boolean
   } | null>(null)
-  const {
-    openCreateWidget,
-    openCreateDashboard,
-    openCreateStudyPack,
-    openCreateStudyPath,
-    createStudyPackDashboard,
-    createStudyPackDashboards,
-  } = useWorkspaceActions()
+  const { createStudyPackDashboard, createStudyPackDashboards } =
+    useWorkspaceActions()
 
   const permissions = useMemo(() => {
     const isAdmin = readIsAdmin()
@@ -169,7 +116,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       canCreateStudyPath: isAdmin && aiProvider !== 'hosted',
       canCreateWidget: isAdmin,
     }
-  }, [activeFlow, aiProvider])
+  }, [aiProvider])
 
   useEffect(() => {
     const refreshAiProvider = () => {
@@ -215,12 +162,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         loadWidget: customEvent.detail?.loadWidget,
         initialEditMode: customEvent.detail?.initialEditMode,
       })
-      setActiveFlow('quick')
-      if (isPinned) {
-        setIsStudioOpen(true)
-      } else {
-        setIsStudioOpen(false)
-      }
+      setIsStudioOpen(false)
       dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-opened' })
     }
     const handleOpenStudyPack = (event: Event) => {
@@ -237,12 +179,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
     const handleOpenDashboard = () => {
       if (readIsAdmin()) {
-        setActiveFlow('quick')
-        if (isPinned) {
-          setIsStudioOpen(true)
-        } else {
-          setIsStudioOpen(false)
-        }
+        setIsStudioOpen(false)
       }
     }
 
@@ -265,30 +202,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
   }, [
     activeFlow,
-    isPinned,
     isStudioOpen,
     permissions.canCreateFromNotes,
     permissions.canCreateStudyPath,
   ])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(PINNED_STORAGE_KEY, String(isPinned))
-    } catch (error) {
-      console.error('Failed to save workspace Studio pinned preference', error)
-    }
-
-    if (isPinned) {
-      setIsStudioOpen(true)
-    }
-  }, [isPinned])
-
   const resetOrCloseStudio = () => {
-    setActiveFlow('quick')
-
-    if (!isPinned) {
-      setIsStudioOpen(false)
-    }
+    setIsStudioOpen(false)
   }
 
   const closeStudio = () => {
@@ -296,26 +216,47 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
   }
 
-  const reportStudyPathStatus = useCallback(
-    (state: WorkspaceCreationTaskState, message?: string) => {
-      dispatchWorkspaceCreationStatus({
-        task: 'study-path',
-        state,
-        message,
-      })
+  const reportCreationStatus = useCallback(
+    (
+      task: WorkspaceCreationTask,
+      state: WorkspaceCreationTaskState,
+      message?: string,
+    ) => {
+      dispatchWorkspaceCreationStatus({ task, state, message })
+
+      if (state === 'idle') {
+        setCreationMarkers((current) => {
+          const nextMarkers = { ...current }
+          delete nextMarkers[task]
+          return nextMarkers
+        })
+        return
+      }
+
+      setCreationMarkers((current) => ({
+        ...current,
+        [task]: { state, message },
+      }))
+
+      if (state === 'running') {
+        setIsStudioOpen(false)
+      }
     },
     [],
   )
 
+  const reportStudyPathStatus = useCallback(
+    (state: WorkspaceCreationTaskState, message?: string) => {
+      reportCreationStatus('study-path', state, message)
+    },
+    [reportCreationStatus],
+  )
+
   const reportFromNotesStatus = useCallback(
     (state: WorkspaceCreationTaskState, message?: string) => {
-      dispatchWorkspaceCreationStatus({
-        task: 'from-notes',
-        state,
-        message,
-      })
+      reportCreationStatus('from-notes', state, message)
     },
-    [],
+    [reportCreationStatus],
   )
 
   const closeFullScreenWidgetEditor = () => {
@@ -328,6 +269,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     payload,
   ) => {
     const dashboard = createStudyPackDashboard(payload)
+    reportCreationStatus('from-notes', 'idle', 'Study material created.')
     resetOrCloseStudio()
     return dashboard
   }
@@ -336,6 +278,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     payload,
   ) => {
     const dashboards = createStudyPackDashboards(payload)
+    reportCreationStatus('study-path', 'idle', 'Study material created.')
     resetOrCloseStudio()
     return dashboards
   }
@@ -371,90 +314,26 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             Build study dashboards without leaving the workspace
           </Typography>
         </Box>
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title={isPinned ? 'Unpin Studio' : 'Pin Studio'}>
-            <IconButton
-              aria-label={isPinned ? 'Unpin Studio' : 'Pin Studio'}
-              onClick={() => setIsPinned((current) => !current)}
-              size="small"
-              sx={{
-                color: isPinned ? 'primary.main' : 'text.primary',
-                bgcolor: isPinned ? 'primary.50' : 'background.default',
-                border: 1,
-                borderColor: isPinned ? 'primary.main' : 'divider',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
-                '&:hover': {
-                  bgcolor: isPinned ? 'primary.100' : 'action.hover',
-                  borderColor: isPinned ? 'primary.dark' : 'text.secondary',
-                },
-              }}
-            >
-              {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Close Studio">
-            <IconButton
-              aria-label="Close Studio"
-              onClick={closeStudio}
-              size="small"
-              sx={{
-                color: 'text.primary',
-                bgcolor: 'background.default',
-                border: 1,
-                borderColor: 'divider',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                  borderColor: 'text.secondary',
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      </Box>
-
-      <Box
-        sx={{
-          p: 2,
-          overflow: 'auto',
-          display: activeFlow === 'quick' ? 'block' : 'none',
-        }}
-      >
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Start from a prompt, notes, or advanced manual builders.
-        </Typography>
-        <Stack spacing={1.25}>
-          <QuickAction
-            icon={<RouteIcon />}
-            title="Create Study Path"
-            description="Generate ordered tutorial dashboards."
-            onClick={openCreateStudyPath}
-            disabled={!permissions.canCreateStudyPath}
-          />
-          <QuickAction
-            icon={<AutoStoriesIcon />}
-            title="Create From Notes"
-            description="Turn notes, images, PDFs, or slides into study material."
-            onClick={openCreateStudyPack}
-            disabled={!permissions.canCreateFromNotes}
-          />
-          <QuickAction
-            icon={<DashboardCustomizeIcon />}
-            title="Create Dashboard"
-            description="Compose a reusable workspace."
-            onClick={openCreateDashboard}
-            disabled={!permissions.canCreateDashboard}
-          />
-          <QuickAction
-            icon={<ConstructionIcon />}
-            title="Create Widget"
-            description="Build a reusable study widget from blocks."
-            onClick={openCreateWidget}
-            disabled={!permissions.canCreateWidget}
-          />
-        </Stack>
+        <Tooltip title="Close Studio">
+          <IconButton
+            aria-label="Close Studio"
+            onClick={closeStudio}
+            size="small"
+            sx={{
+              color: 'text.primary',
+              bgcolor: 'background.default',
+              border: 1,
+              borderColor: 'divider',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+              '&:hover': {
+                bgcolor: 'action.hover',
+                borderColor: 'text.secondary',
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Box
@@ -492,6 +371,123 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       </Box>
     </Box>
   )
+
+  const openCreationMarker = (task: WorkspaceCreationTask) => {
+    const nextFlow = task === 'study-path' ? 'study-path' : 'from-notes'
+
+    if (isStudioOpen && activeFlow === nextFlow) {
+      setIsStudioOpen(false)
+      return
+    }
+
+    setActiveFlow(nextFlow)
+    setIsStudioOpen(true)
+  }
+
+  const visibleCreationMarkers = (
+    Object.entries(creationMarkers) as Array<
+      [
+        WorkspaceCreationTask,
+        {
+          state: Exclude<WorkspaceCreationTaskState, 'idle'>
+          message?: string
+        },
+      ]
+    >
+  ).filter(([, marker]) => marker.state)
+
+  const creationStatusMarkers = visibleCreationMarkers.length ? (
+    <Box
+      sx={{
+        position: 'absolute',
+        left: isMobile ? 12 : isStudioOpen ? studioPanelClamp : 0,
+        top: isMobile ? 72 : 96,
+        zIndex: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        alignItems: 'flex-start',
+        transition: theme.transitions.create('left', {
+          duration: theme.transitions.duration.shorter,
+          easing: theme.transitions.easing.easeInOut,
+        }),
+      }}
+    >
+      {visibleCreationMarkers.map(([task, marker]) => (
+        <Tooltip
+          key={task}
+          title={marker.message || statusMarkerLabels[marker.state]}
+          placement="right"
+        >
+          <Box
+            component="button"
+            type="button"
+            aria-label={marker.message || statusMarkerLabels[marker.state]}
+            onClick={() => openCreationMarker(task)}
+            sx={{
+              width: isMobile ? 46 : 30,
+              height: isMobile ? 42 : 76,
+              border: 0,
+              borderRadius: isMobile ? 999 : '0 18px 18px 0',
+              bgcolor: 'background.paper',
+              color: 'text.primary',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? '0 12px 32px rgba(0,0,0,0.42)'
+                  : '0 12px 30px rgba(16,24,40,0.18)',
+              outline: 1,
+              outlineColor: 'divider',
+              animation:
+                marker.state === 'complete'
+                  ? 'studymesh-marker-ready 1.4s ease-out 1'
+                  : 'none',
+              '@keyframes studymesh-marker-ready': {
+                '0%': { boxShadow: statusMarkerGlow.complete },
+                '100%': {
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 12px 32px rgba(0,0,0,0.42)'
+                      : '0 12px 30px rgba(16,24,40,0.18)',
+                },
+              },
+            }}
+          >
+            <Box
+              sx={{
+                position: 'relative',
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                bgcolor: statusMarkerColors[marker.state],
+                boxShadow: statusMarkerGlow[marker.state],
+                '&::after':
+                  marker.state === 'running'
+                    ? {
+                        content: '""',
+                        position: 'absolute',
+                        inset: -5,
+                        borderRadius: '50%',
+                        border: 2,
+                        borderColor: 'warning.main',
+                        borderTopColor: 'transparent',
+                        animation:
+                          'studymesh-marker-spin 900ms linear infinite',
+                      }
+                    : undefined,
+                '@keyframes studymesh-marker-spin': {
+                  to: { transform: 'rotate(360deg)' },
+                },
+              }}
+            />
+          </Box>
+        </Tooltip>
+      ))}
+    </Box>
+  ) : null
 
   const widgetBuilderDialog = (
     <Dialog
@@ -563,7 +559,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   if (isMobile) {
     return (
-      <Box sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+      <Box
+        sx={{
+          position: 'relative',
+          height: '100%',
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         <Box sx={{ height: '100%', ...workspaceCanvasSx }}>{children}</Box>
         <Drawer
           anchor="left"
@@ -582,6 +585,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         >
           {studioContent}
         </Drawer>
+        {creationStatusMarkers}
         {widgetBuilderDialog}
       </Box>
     )
@@ -590,6 +594,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   return (
     <Box
       sx={{
+        position: 'relative',
         height: '100%',
         display: 'flex',
         overflow: 'hidden',
@@ -599,10 +604,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       <Box
         aria-hidden={!isStudioOpen}
         sx={{
-          width: isStudioOpen ? `clamp(380px, 31vw, ${studioPanelWidth}px)` : 0,
-          maxWidth: isStudioOpen
-            ? `clamp(380px, 31vw, ${studioPanelWidth}px)`
-            : 0,
+          width: isStudioOpen ? studioPanelClamp : 0,
+          maxWidth: isStudioOpen ? studioPanelClamp : 0,
           minWidth: isStudioOpen ? 380 : 0,
           flex: '0 0 auto',
           minHeight: 0,
@@ -658,6 +661,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           {children}
         </Box>
       </Box>
+      {creationStatusMarkers}
       {widgetBuilderDialog}
     </Box>
   )
