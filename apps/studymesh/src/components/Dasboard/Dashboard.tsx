@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  Drawer,
   TextField,
   IconButton,
   FormControlLabel,
@@ -37,12 +38,16 @@ import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import RouteIcon from '@mui/icons-material/Route'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
-import { DashboardLayout } from '../../state/store'
+import { DashboardLayout, StateDashboard } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import StudyPathWorkspaceView from './StudyPathWorkspaceView'
+import DashboardChatPanel, {
+  DashboardChatMessage,
+} from '../dashboardChat/DashboardChatPanel'
 import {
   createStudyPathContainerState,
   getStudyPathMetaFromLayout,
@@ -680,6 +685,10 @@ const Dashboards = () => {
   const [dashboardLibraryMode, setDashboardLibraryMode] = useState<
     'workspace' | 'builder'
   >('workspace')
+  const [dashboardChatOpen, setDashboardChatOpen] = useState(false)
+  const [dashboardChatMessages, setDashboardChatMessages] = useState<
+    Record<string, DashboardChatMessage[]>
+  >({})
   const [
     dashboardLibraryInitialSearchKey,
     setDashboardLibraryInitialSearchKey,
@@ -687,8 +696,9 @@ const Dashboards = () => {
   const dashboardEditorTitleCancelRef = useRef(false)
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
+  const currentDashboard = openDashboards[selectedDashboard]
   const selectedDashboardIsEmpty = !hasDashboardContent(
-    openDashboards[selectedDashboard]?.layout,
+    currentDashboard?.layout,
   )
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
@@ -789,6 +799,20 @@ const Dashboards = () => {
 
   const openCreateFromNotes = () => {
     window.dispatchEvent(new CustomEvent(OPEN_STUDY_PACK_EVENT))
+  }
+
+  const updateDashboardChatMessages = (
+    dashboard: StateDashboard | undefined,
+    messages: DashboardChatMessage[],
+  ) => {
+    if (!dashboard) {
+      return
+    }
+
+    setDashboardChatMessages((current) => ({
+      ...current,
+      [dashboard.id]: messages,
+    }))
   }
 
   const loadSavedDashboardInBuilder = (dashboard: SavedDashboard) => {
@@ -1911,6 +1935,59 @@ const Dashboards = () => {
           )
         })}
       </Tabs>
+
+      <TooltipStyled title="Ask this dashboard">
+        <Button
+          variant="contained"
+          size={isMobileDashboardView ? 'small' : 'medium'}
+          startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />}
+          onClick={() => setDashboardChatOpen(true)}
+          sx={{
+            position: 'absolute',
+            right: isMobileDashboardView ? 16 : 24,
+            bottom: isMobileDashboardView ? 18 : 24,
+            zIndex: 12,
+            borderRadius: 999,
+            px: isMobileDashboardView ? 1.25 : 1.75,
+            py: isMobileDashboardView ? 0.75 : 0.9,
+            minWidth: 'fit-content',
+            boxShadow:
+              theme.palette.mode === 'dark'
+                ? '0 12px 30px rgba(0,0,0,0.45)'
+                : '0 12px 28px rgba(16,24,40,0.16)',
+          }}
+        >
+          {isMobileDashboardView ? 'Ask' : 'Ask Sources'}
+        </Button>
+      </TooltipStyled>
+
+      <Drawer
+        anchor="right"
+        open={dashboardChatOpen}
+        onClose={() => setDashboardChatOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            width: isMobileDashboardView ? '100%' : 'min(440px, 38vw)',
+            maxWidth: '100%',
+            height: '100dvh',
+            bgcolor: 'background.paper',
+          },
+        }}
+      >
+        <DashboardChatPanel
+          dashboard={currentDashboard}
+          messages={
+            currentDashboard
+              ? dashboardChatMessages[currentDashboard.id] || []
+              : []
+          }
+          onMessagesChange={(messages) =>
+            updateDashboardChatMessages(currentDashboard, messages)
+          }
+          onClose={() => setDashboardChatOpen(false)}
+        />
+      </Drawer>
 
       <Menu
         open={dashboardTabMenu !== null}
