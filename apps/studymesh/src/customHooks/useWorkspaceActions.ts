@@ -250,12 +250,16 @@ export const useWorkspaceActions = () => {
     )
   }, [])
 
-  const openCreateStudyPack = useCallback(() => {
-    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PACK_EVENT))
+  const openCreateStudyPack = useCallback((options?: { toggle?: boolean }) => {
+    window.dispatchEvent(
+      new CustomEvent(OPEN_STUDY_PACK_EVENT, { detail: options }),
+    )
   }, [])
 
-  const openCreateStudyPath = useCallback(() => {
-    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PATH_EVENT))
+  const openCreateStudyPath = useCallback((options?: { toggle?: boolean }) => {
+    window.dispatchEvent(
+      new CustomEvent(OPEN_STUDY_PATH_EVENT, { detail: options }),
+    )
   }, [])
 
   const createStudyPackDashboard = useCallback(

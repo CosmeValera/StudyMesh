@@ -317,14 +317,14 @@ const getSourceOptionTitle = (value: SourceInputType) => {
 const getSourceOptionDescription = (value: SourceInputType) => {
   switch (value) {
     case 'image':
-      return 'Upload screenshots, slides, or photos.'
+      return 'Screenshots or photos'
     case 'pdf':
-      return 'Extract selectable PDF text.'
+      return 'Selectable PDF text'
     case 'powerpoint':
-      return 'Extract PPTX slide text.'
+      return 'PPTX slide text'
     case 'text':
     default:
-      return 'Paste notes or upload text files.'
+      return 'Paste or upload files'
   }
 }
 
@@ -941,18 +941,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         } else if (aiProvider === 'local') {
           try {
             setOcrStatus('Extracting notes with Google Local AI')
-            text = await extractNotesFromImageWithLocalLanguageModel(imageFile, {
-              timeoutMs: 90 * 1000,
-              signal: extractionController.signal,
-              onProgress: (progress) => {
-                if (extractionController.signal.aborted) {
-                  return
-                }
+            text = await extractNotesFromImageWithLocalLanguageModel(
+              imageFile,
+              {
+                timeoutMs: 90 * 1000,
+                signal: extractionController.signal,
+                onProgress: (progress) => {
+                  if (extractionController.signal.aborted) {
+                    return
+                  }
 
-                setOcrProgress(progress)
-                setOcrStatus(`Downloading local model ${progress}%`)
+                  setOcrProgress(progress)
+                  setOcrStatus(`Downloading local model ${progress}%`)
+                },
               },
-            })
+            )
           } catch (error) {
             if (
               extractionController.signal.aborted ||
@@ -1324,8 +1327,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 Create from notes
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Paste notes or start from an image. StudyMesh will build a
-                ready-to-use dashboard.
+                Turn notes, images, PDFs, or slides into a clean study
+                dashboard.
               </Typography>
             </Box>
           </Stack>
@@ -1348,7 +1351,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         )}
 
         {step === 'source' ? (
-          <Stack spacing={2.5}>
+          <Stack spacing={presentation === 'embedded' ? 1.5 : 2.5}>
             <TextField
               label="Dashboard name"
               value={packTitle}
@@ -1356,7 +1359,16 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               fullWidth
             />
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns:
+                  presentation === 'embedded'
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : { xs: '1fr', sm: 'repeat(4, minmax(0, 1fr))' },
+                gap: 1,
+              }}
+            >
               {sourceOptions.map((option) => {
                 const selected = sourceInputType === option.value
                 const Icon = getSourceOptionIcon(option.value)
@@ -1368,8 +1380,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     onClick={() => handleSourceInputTypeChange(option.value)}
                     elevation={0}
                     sx={{
-                      flex: 1,
-                      p: 2,
+                      p: presentation === 'embedded' ? 1.25 : 1.5,
                       textAlign: 'left',
                       cursor: 'pointer',
                       border: 1,
@@ -1381,13 +1392,20 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       '&:hover': { borderColor: 'primary.main' },
                     }}
                   >
-                    <Stack direction="row" spacing={1.25} alignItems="center">
-                      <Icon color={selected ? 'primary' : 'action'} />
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight={900}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Icon
+                        color={selected ? 'primary' : 'action'}
+                        fontSize="small"
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="subtitle2" fontWeight={900} noWrap>
                           {getSourceOptionTitle(option.value)}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                        >
                           {getSourceOptionDescription(option.value)}
                         </Typography>
                       </Box>
@@ -1395,7 +1413,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   </Paper>
                 )
               })}
-            </Stack>
+            </Box>
 
             {sourceInputType === 'text' && (
               <Stack spacing={1.25}>
@@ -1405,19 +1423,34 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   onChange={(event) => setSourceText(event.target.value)}
                   fullWidth
                   multiline
-                  minRows={14}
+                  minRows={presentation === 'embedded' ? 8 : 14}
                   placeholder={`# Derivatives\n\nDefinition:: A derivative measures instantaneous rate of change.\n\nQ: What is the power rule?\nA: d/dx x^n = nx^(n-1)`}
                 />
                 <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
+                  direction={
+                    presentation === 'embedded'
+                      ? 'column'
+                      : { xs: 'column', sm: 'row' }
+                  }
                   spacing={1}
-                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                  alignItems={
+                    presentation === 'embedded'
+                      ? 'stretch'
+                      : { xs: 'stretch', sm: 'center' }
+                  }
                 >
                   <Button
                     component="label"
                     variant="outlined"
                     startIcon={<UploadFileIcon />}
-                    sx={{ alignSelf: { sm: 'flex-start' } }}
+                    fullWidth={presentation === 'embedded'}
+                    sx={{
+                      alignSelf:
+                        presentation === 'embedded'
+                          ? 'stretch'
+                          : { sm: 'flex-start' },
+                      width: presentation === 'embedded' ? '100%' : undefined,
+                    }}
                   >
                     Upload text files
                     <input
@@ -1468,11 +1501,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                             elevation={0}
                             sx={{
                               width: 116,
+                              maxWidth: 116,
+                              minWidth: 0,
                               p: 0.75,
                               border: 1,
                               borderColor: 'divider',
                               borderRadius: 1,
                               position: 'relative',
+                              overflow: 'hidden',
                             }}
                           >
                             <Box
@@ -1490,7 +1526,13 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                               variant="caption"
                               color="text.secondary"
                               noWrap
-                              sx={{ display: 'block', mt: 0.5 }}
+                              sx={{
+                                display: 'block',
+                                mt: 0.5,
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
                             >
                               {preview.name}
                             </Typography>
@@ -1513,7 +1555,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     ) : (
                       <ImageIcon color="primary" sx={{ fontSize: 48 }} />
                     )}
-                    <Box>
+                    <Box sx={{ width: '100%', minWidth: 0 }}>
                       <Typography variant="subtitle1" fontWeight={900}>
                         {imageFiles.length > 0
                           ? `${imageFiles.length} image${
@@ -1529,6 +1571,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       component="label"
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
+                      fullWidth={presentation === 'embedded'}
+                      sx={{
+                        width: presentation === 'embedded' ? '100%' : undefined,
+                      }}
                     >
                       Select images
                       <input
@@ -1597,7 +1643,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 >
                   <Stack spacing={1.5} alignItems="center" textAlign="center">
                     <PictureAsPdfIcon color="primary" sx={{ fontSize: 48 }} />
-                    <Box>
+                    <Box sx={{ width: '100%', minWidth: 0 }}>
                       <Typography variant="subtitle1" fontWeight={900}>
                         Upload PDF notes
                       </Typography>
@@ -1610,6 +1656,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
                       disabled={isExtractingDocument}
+                      fullWidth={presentation === 'embedded'}
+                      sx={{
+                        width: presentation === 'embedded' ? '100%' : undefined,
+                      }}
                     >
                       Select PDFs
                       <input
@@ -1661,7 +1711,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                 >
                   <Stack spacing={1.5} alignItems="center" textAlign="center">
                     <SlideshowIcon color="primary" sx={{ fontSize: 48 }} />
-                    <Box>
+                    <Box sx={{ width: '100%', minWidth: 0 }}>
                       <Typography variant="subtitle1" fontWeight={900}>
                         Upload PowerPoint notes
                       </Typography>
@@ -1674,6 +1724,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       variant="outlined"
                       startIcon={<UploadFileIcon />}
                       disabled={isExtractingDocument}
+                      fullWidth={presentation === 'embedded'}
+                      sx={{
+                        width: presentation === 'embedded' ? '100%' : undefined,
+                      }}
                     >
                       Select PPTX files
                       <input
@@ -1748,7 +1802,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     <>
                       <Stack direction="row" justifyContent="space-between">
                         <Typography variant="caption" color="text.secondary">
-                          Elapsed {formatGeminiDuration(geminiProgress.elapsedMs)}
+                          Elapsed{' '}
+                          {formatGeminiDuration(geminiProgress.elapsedMs)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {geminiProgress.percent}%
@@ -1886,7 +1941,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           <Button
             variant="contained"
             onClick={parseCurrentSource}
-            disabled={isExtractingImage || isGeneratingAi || isExtractingDocument}
+            disabled={
+              isExtractingImage || isGeneratingAi || isExtractingDocument
+            }
           >
             {isGeneratingAi
               ? 'Creating...'

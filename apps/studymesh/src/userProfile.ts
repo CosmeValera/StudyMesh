@@ -38,3 +38,34 @@ export const removeUserAvatar = (userId: string) => {
     console.error('Failed to remove user avatar', error)
   }
 }
+
+export const createSquareAvatarDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      const size = Math.min(image.naturalWidth, image.naturalHeight)
+      const sourceX = (image.naturalWidth - size) / 2
+      const sourceY = (image.naturalHeight - size) / 2
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+
+      URL.revokeObjectURL(objectUrl)
+
+      if (!context) {
+        reject(new Error('Could not prepare profile picture.'))
+        return
+      }
+
+      canvas.width = 256
+      canvas.height = 256
+      context.drawImage(image, sourceX, sourceY, size, size, 0, 0, 256, 256)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Could not read profile picture.'))
+    }
+    image.src = objectUrl
+  })
