@@ -555,7 +555,7 @@ const StudyMeshLanding = () => {
                       <Typography
                         variant="h5"
                         fontWeight={950}
-                        color="primary.dark"
+                        color="#2196F3"
                       >
                         Create Study Path
                       </Typography>
@@ -654,12 +654,11 @@ const StudyMeshLanding = () => {
                       <Grid container spacing={1}>
                         {activeStudyPathExample.dashboards.map(
                           ([number, title, detail]) => (
-                            <Grid item xs={12} sm={6} key={number}>
+                            <Grid item xs={12} sm={6} key={number} px={1}>
                               <Box
                                 sx={{
-                                  pl: 1,
-                                  paddingRight: '8px',
                                   py: 1.25,
+                                  px: 1,
                                   minHeight: 86,
                                   borderRadius: 2,
                                   bgcolor: alpha('#2196F3', 0.08),
@@ -670,7 +669,7 @@ const StudyMeshLanding = () => {
                                 <Typography
                                   variant="caption"
                                   fontWeight={950}
-                                  color="primary.dark"
+                                  color="#2196F3"
                                 >
                                   Dashboard {number}
                                 </Typography>
@@ -721,7 +720,7 @@ const StudyMeshLanding = () => {
                       <Typography
                         variant="h5"
                         fontWeight={950}
-                        color="success.dark"
+                        color="#00A878"
                       >
                         Create from Notes
                       </Typography>
@@ -880,7 +879,7 @@ const StudyMeshLanding = () => {
                                 <Typography
                                   variant="caption"
                                   fontWeight={950}
-                                  color="success.dark"
+                                  color="#00A878"
                                 >
                                   Dashboard {cardIndex + 1}
                                 </Typography>
