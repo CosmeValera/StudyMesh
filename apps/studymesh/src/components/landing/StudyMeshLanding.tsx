@@ -296,9 +296,13 @@ const StudyMeshLanding = () => {
             <Typography
               variant="h5"
               component="p"
-              sx={{ fontWeight: 700, color: 'primary.dark', mb: 2 }}
+              sx={{ 
+                display: 'inline-block',
+                mb: 2,
+                fontWeight: 500, 
+              }}
             >
-              Turn prompts and messy notes into study paths.
+              Turn <span style={{ color: '#2196F3', fontWeight: 700 }}>prompts</span> and <span style={{ color: '#00C49A', fontWeight: 700 }}>messy notes</span> into <Box component="span" sx={{ fontWeight: 700 }}>study paths</Box>.
             </Typography>
             <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
               Create tutorials, study dashboards, exercises, and reusable
