@@ -43,12 +43,11 @@ import {
 type StudioFlow = 'quick' | 'study-path' | 'from-notes'
 
 const PINNED_STORAGE_KEY = 'studymesh-workspace-studio-pinned-v1'
-const studioPanelWidth = 400
+const studioPanelWidth = 424
 const workspaceCanvasSx = {
   minHeight: 0,
   overflow: 'hidden',
-  px: '6px',
-  pb: '2px',
+  p: '8px',
   boxSizing: 'border-box',
 }
 
@@ -347,18 +346,18 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: 'background.default',
+        bgcolor: 'background.paper',
         overflow: 'hidden',
       }}
     >
       <Box
         sx={{
-          minHeight: 48,
+          minHeight: 54,
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: 1.5,
+          px: 1.75,
           borderBottom: 1,
           borderColor: 'divider',
           bgcolor: 'background.paper',
@@ -368,6 +367,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           <Typography variant="subtitle1" fontWeight={800} noWrap>
             Create Study Material
           </Typography>
+          <Typography variant="caption" color="text.secondary" noWrap>
+            Build study dashboards without leaving the workspace
+          </Typography>
         </Box>
         <Stack direction="row" spacing={0.5}>
           <Tooltip title={isPinned ? 'Unpin Studio' : 'Pin Studio'}>
@@ -375,6 +377,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               aria-label={isPinned ? 'Unpin Studio' : 'Pin Studio'}
               onClick={() => setIsPinned((current) => !current)}
               size="small"
+              sx={{
+                color: isPinned ? 'primary.main' : 'text.primary',
+                bgcolor: isPinned ? 'primary.50' : 'background.default',
+                border: 1,
+                borderColor: isPinned ? 'primary.main' : 'divider',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+                '&:hover': {
+                  bgcolor: isPinned ? 'primary.100' : 'action.hover',
+                  borderColor: isPinned ? 'primary.dark' : 'text.secondary',
+                },
+              }}
             >
               {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
             </IconButton>
@@ -384,6 +397,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               aria-label="Close Studio"
               onClick={closeStudio}
               size="small"
+              sx={{
+                color: 'text.primary',
+                bgcolor: 'background.default',
+                border: 1,
+                borderColor: 'divider',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                  borderColor: 'text.secondary',
+                },
+              }}
             >
               <CloseIcon />
             </IconButton>
@@ -398,39 +422,39 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           display: activeFlow === 'quick' ? 'block' : 'none',
         }}
       >
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Start from a prompt, notes, or advanced manual builders.
-          </Typography>
-          <Stack spacing={1.25}>
-            <QuickAction
-              icon={<RouteIcon />}
-              title="Create Study Path"
-              description="Generate ordered tutorial dashboards."
-              onClick={openCreateStudyPath}
-              disabled={!permissions.canCreateStudyPath}
-            />
-            <QuickAction
-              icon={<AutoStoriesIcon />}
-              title="Create From Notes"
-              description="Turn notes, images, PDFs, or slides into study material."
-              onClick={openCreateStudyPack}
-              disabled={!permissions.canCreateFromNotes}
-            />
-            <QuickAction
-              icon={<DashboardCustomizeIcon />}
-              title="Create Dashboard"
-              description="Compose a reusable workspace."
-              onClick={openCreateDashboard}
-              disabled={!permissions.canCreateDashboard}
-            />
-            <QuickAction
-              icon={<ConstructionIcon />}
-              title="Create Widget"
-              description="Build a reusable study widget from blocks."
-              onClick={openCreateWidget}
-              disabled={!permissions.canCreateWidget}
-            />
-          </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Start from a prompt, notes, or advanced manual builders.
+        </Typography>
+        <Stack spacing={1.25}>
+          <QuickAction
+            icon={<RouteIcon />}
+            title="Create Study Path"
+            description="Generate ordered tutorial dashboards."
+            onClick={openCreateStudyPath}
+            disabled={!permissions.canCreateStudyPath}
+          />
+          <QuickAction
+            icon={<AutoStoriesIcon />}
+            title="Create From Notes"
+            description="Turn notes, images, PDFs, or slides into study material."
+            onClick={openCreateStudyPack}
+            disabled={!permissions.canCreateFromNotes}
+          />
+          <QuickAction
+            icon={<DashboardCustomizeIcon />}
+            title="Create Dashboard"
+            description="Compose a reusable workspace."
+            onClick={openCreateDashboard}
+            disabled={!permissions.canCreateDashboard}
+          />
+          <QuickAction
+            icon={<ConstructionIcon />}
+            title="Create Widget"
+            description="Build a reusable study widget from blocks."
+            onClick={openCreateWidget}
+            disabled={!permissions.canCreateWidget}
+          />
+        </Stack>
       </Box>
 
       <Box
@@ -575,19 +599,65 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       <Box
         aria-hidden={!isStudioOpen}
         sx={{
-          width: isStudioOpen ? studioPanelWidth : 0,
-          maxWidth: isStudioOpen ? '32vw' : 0,
-          minWidth: isStudioOpen ? 360 : 0,
+          width: isStudioOpen ? `clamp(380px, 31vw, ${studioPanelWidth}px)` : 0,
+          maxWidth: isStudioOpen
+            ? `clamp(380px, 31vw, ${studioPanelWidth}px)`
+            : 0,
+          minWidth: isStudioOpen ? 380 : 0,
           flex: '0 0 auto',
           minHeight: 0,
           overflow: 'hidden',
-          borderRight: isStudioOpen ? 1 : 0,
-          borderColor: 'divider',
+          p: isStudioOpen ? '8px 0 8px 8px' : 0,
+          boxSizing: 'border-box',
+          transition: theme.transitions.create(
+            ['width', 'max-width', 'min-width', 'padding'],
+            {
+              duration: theme.transitions.duration.shorter,
+              easing: theme.transitions.easing.easeInOut,
+            },
+          ),
         }}
       >
-        {studioContent}
+        <Box
+          sx={{
+            height: '100%',
+            overflow: 'hidden',
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 2.5,
+            boxShadow:
+              theme.palette.mode === 'dark'
+                ? '0 18px 40px rgba(0,0,0,0.42)'
+                : '0 18px 42px rgba(16,24,40,0.10)',
+          }}
+        >
+          {studioContent}
+        </Box>
       </Box>
-      <Box sx={{ flex: 1, minWidth: 0, ...workspaceCanvasSx }}>{children}</Box>
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          ...workspaceCanvasSx,
+          transition: theme.transitions.create('padding', {
+            duration: theme.transitions.duration.shorter,
+          }),
+        }}
+      >
+        <Box
+          sx={{
+            height: '100%',
+            minHeight: 0,
+            overflow: 'hidden',
+            borderRadius: 2,
+            bgcolor: 'background.paper',
+            border: 1,
+            borderColor: 'divider',
+          }}
+        >
+          {children}
+        </Box>
+      </Box>
       {widgetBuilderDialog}
     </Box>
   )
