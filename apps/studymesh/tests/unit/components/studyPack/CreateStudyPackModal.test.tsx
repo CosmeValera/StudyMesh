@@ -26,6 +26,8 @@ vi.mock('../../../../src/studyPack/imageOcr', () => ({
 }))
 
 vi.mock('../../../../src/studyPack/ai', () => ({
+  STUDY_PACK_AI_SETTINGS_CHANGED_EVENT:
+    'studymesh-study-pack-ai-settings-changed',
   cancelAllLocalAiSessions: vi.fn(),
   extractRawNotesWithAi: vi.fn(),
   extractNotesFromImageWithLocalLanguageModel: vi.fn(),

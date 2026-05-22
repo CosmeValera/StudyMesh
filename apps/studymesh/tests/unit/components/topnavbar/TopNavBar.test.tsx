@@ -250,7 +250,7 @@ describe('TopNavBar Component', () => {
     ).toBeTruthy()
   })
 
-  it('disables Study Path but keeps Create From Notes available in Basic fallback mode', () => {
+  it('keeps Study Path and Create From Notes available in Basic fallback mode', () => {
     localStorage.getItem.mockImplementation((key: string) => {
       if (key === 'userData') {
         return JSON.stringify({
@@ -279,7 +279,7 @@ describe('TopNavBar Component', () => {
 
     expect(
       screen.getByRole('button', { name: /create study path/i }),
-    ).toBeDisabled()
+    ).toBeEnabled()
     expect(
       screen.getByRole('button', { name: /create from notes/i }),
     ).toBeEnabled()

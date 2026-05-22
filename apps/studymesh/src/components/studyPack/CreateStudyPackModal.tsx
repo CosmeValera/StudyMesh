@@ -46,12 +46,14 @@ import {
   LocalAiProgressEvent,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
+  STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyPackAiProvider,
 } from '../../studyPack/ai'
 import {
   extractTextFromPdf,
   extractTextFromPptx,
 } from '../../studyPack/documentExtraction'
+import { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
 
 type ReviewType =
   | 'flashcard'
@@ -98,6 +100,10 @@ interface CreateStudyPackModalProps {
     layoutMode?: StudyPackDashboardLayoutMode
   }) => void
   presentation?: 'dialog' | 'embedded'
+  onStatusChange?: (
+    state: WorkspaceCreationTaskState,
+    message?: string,
+  ) => void
 }
 
 const sourceOptions: Array<{
@@ -505,6 +511,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onClose,
   onCreatePack,
   presentation = 'dialog',
+  onStatusChange,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
@@ -578,10 +585,53 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   )
 
   useEffect(() => {
-    if (open) {
+    if (isExtractingImage || isExtractingDocument || isGeneratingAi) {
+      onStatusChange?.('running', 'Create From Notes is working')
+      return
+    }
+
+    if (step === 'review' && reviewableCount > 0) {
+      onStatusChange?.('complete', 'Create From Notes is ready to review')
+      return
+    }
+
+    if (error && step !== 'review') {
+      onStatusChange?.('error', error)
+      return
+    }
+
+    onStatusChange?.('idle')
+  }, [
+    error,
+    isExtractingDocument,
+    isExtractingImage,
+    isGeneratingAi,
+    onStatusChange,
+    reviewableCount,
+    step,
+  ])
+
+  useEffect(() => {
+    const refreshAiProvider = () => {
       setAiProvider(readStudyPackAiSettings().provider || 'basic')
     }
-  }, [open])
+
+    if (open && !isGeneratingAi && !isExtractingImage) {
+      refreshAiProvider()
+    }
+
+    window.addEventListener(
+      STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+      refreshAiProvider,
+    )
+
+    return () => {
+      window.removeEventListener(
+        STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+        refreshAiProvider,
+      )
+    }
+  }, [isExtractingImage, isGeneratingAi, open])
 
   useEffect(() => {
     if (!isGeneratingAi || aiProvider !== 'gemini' || !geminiProgress) {
@@ -658,6 +708,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const handleClose = () => {
     cancelActiveOperation()
     reset()
+    onStatusChange?.('idle')
     onClose()
   }
 

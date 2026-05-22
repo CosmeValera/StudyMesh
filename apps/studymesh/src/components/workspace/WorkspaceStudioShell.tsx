@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Box,
   Dialog,
@@ -29,9 +29,16 @@ import {
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import CreateStudyPackModal from '../studyPack/CreateStudyPackModal'
 import CreateStudyPathModal from '../studyPack/CreateStudyPathModal'
-import { readStudyPackAiSettings } from '../../studyPack/ai'
+import {
+  readStudyPackAiSettings,
+  STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+} from '../../studyPack/ai'
 import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
+import {
+  dispatchWorkspaceCreationStatus,
+  WorkspaceCreationTaskState,
+} from '../../workspaceCreationStatus'
 
 type StudioFlow = 'quick' | 'study-path' | 'from-notes'
 
@@ -138,6 +145,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [isPinned, setIsPinned] = useState(readPinnedPreference)
   const [isStudioOpen, setIsStudioOpen] = useState(() => readPinnedPreference())
   const [activeFlow, setActiveFlow] = useState<StudioFlow>('quick')
+  const [aiProvider, setAiProvider] = useState(
+    () => readStudyPackAiSettings().provider || 'basic',
+  )
   const [fullScreenWidgetPayload, setFullScreenWidgetPayload] = useState<{
     loadWidget?: CustomWidget
     initialEditMode?: boolean
@@ -153,15 +163,32 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const permissions = useMemo(() => {
     const isAdmin = readIsAdmin()
-    const provider = readStudyPackAiSettings().provider || 'basic'
 
     return {
       canCreateDashboard: isAdmin,
-      canCreateFromNotes: isAdmin && provider !== 'hosted',
-      canCreateStudyPath: isAdmin && provider !== 'hosted',
+      canCreateFromNotes: isAdmin && aiProvider !== 'hosted',
+      canCreateStudyPath: isAdmin && aiProvider !== 'hosted',
       canCreateWidget: isAdmin,
     }
-  }, [activeFlow])
+  }, [activeFlow, aiProvider])
+
+  useEffect(() => {
+    const refreshAiProvider = () => {
+      setAiProvider(readStudyPackAiSettings().provider || 'basic')
+    }
+
+    window.addEventListener(
+      STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+      refreshAiProvider,
+    )
+
+    return () => {
+      window.removeEventListener(
+        STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+        refreshAiProvider,
+      )
+    }
+  }, [])
 
   useEffect(() => {
     const activateCreation = (flow: StudioFlow, toggle = false) => {
@@ -266,10 +293,31 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const closeStudio = () => {
-    setActiveFlow('quick')
     setIsStudioOpen(false)
     dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
   }
+
+  const reportStudyPathStatus = useCallback(
+    (state: WorkspaceCreationTaskState, message?: string) => {
+      dispatchWorkspaceCreationStatus({
+        task: 'study-path',
+        state,
+        message,
+      })
+    },
+    [],
+  )
+
+  const reportFromNotesStatus = useCallback(
+    (state: WorkspaceCreationTaskState, message?: string) => {
+      dispatchWorkspaceCreationStatus({
+        task: 'from-notes',
+        state,
+        message,
+      })
+    },
+    [],
+  )
 
   const closeFullScreenWidgetEditor = () => {
     setFullScreenWidgetPayload(null)
@@ -343,8 +391,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         </Stack>
       </Box>
 
-      {activeFlow === 'quick' && (
-        <Box sx={{ p: 2, overflow: 'auto' }}>
+      <Box
+        sx={{
+          p: 2,
+          overflow: 'auto',
+          display: activeFlow === 'quick' ? 'block' : 'none',
+        }}
+      >
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Start from a prompt, notes, or advanced manual builders.
           </Typography>
@@ -378,26 +431,41 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               disabled={!permissions.canCreateWidget}
             />
           </Stack>
-        </Box>
-      )}
+      </Box>
 
-      {activeFlow === 'study-path' && (
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          display: activeFlow === 'study-path' ? 'flex' : 'none',
+          flexDirection: 'column',
+        }}
+      >
         <CreateStudyPathModal
           open
           presentation="embedded"
           onClose={resetOrCloseStudio}
           onCreatePath={createPathAndHandleComplete}
+          onStatusChange={reportStudyPathStatus}
         />
-      )}
+      </Box>
 
-      {activeFlow === 'from-notes' && (
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          display: activeFlow === 'from-notes' ? 'flex' : 'none',
+          flexDirection: 'column',
+        }}
+      >
         <CreateStudyPackModal
           open
           presentation="embedded"
           onClose={resetOrCloseStudio}
           onCreatePack={createPackAndHandleComplete}
+          onStatusChange={reportFromNotesStatus}
         />
-      )}
+      </Box>
     </Box>
   )
 
@@ -476,7 +544,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         <Drawer
           anchor="left"
           open={isStudioOpen}
-          onClose={resetOrCloseStudio}
+          onClose={closeStudio}
           ModalProps={{ keepMounted: true }}
           PaperProps={{
             sx: {
@@ -504,22 +572,21 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         bgcolor: 'background.default',
       }}
     >
-      {isStudioOpen && (
-        <Box
-          sx={{
-            width: studioPanelWidth,
-            maxWidth: '32vw',
-            minWidth: 360,
-            flex: '0 0 auto',
-            minHeight: 0,
-            overflow: 'hidden',
-            borderRight: 1,
-            borderColor: 'divider',
-          }}
-        >
-          {studioContent}
-        </Box>
-      )}
+      <Box
+        aria-hidden={!isStudioOpen}
+        sx={{
+          width: isStudioOpen ? studioPanelWidth : 0,
+          maxWidth: isStudioOpen ? '32vw' : 0,
+          minWidth: isStudioOpen ? 360 : 0,
+          flex: '0 0 auto',
+          minHeight: 0,
+          overflow: 'hidden',
+          borderRight: isStudioOpen ? 1 : 0,
+          borderColor: 'divider',
+        }}
+      >
+        {studioContent}
+      </Box>
       <Box sx={{ flex: 1, minWidth: 0, ...workspaceCanvasSx }}>{children}</Box>
       {widgetBuilderDialog}
     </Box>

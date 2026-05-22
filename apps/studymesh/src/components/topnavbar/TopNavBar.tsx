@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import {
+  Alert,
   AppBar,
   Box,
   Toolbar,
@@ -15,6 +16,7 @@ import {
   DialogTitle,
   IconButton,
   ListItemIcon,
+  Snackbar,
   Stack,
   TextField,
   useMediaQuery,
@@ -66,6 +68,14 @@ import {
   saveUserAvatar,
   USER_PROFILE_AVATAR_CHANGED_EVENT,
 } from '../../userProfile'
+import {
+  dispatchWorkspaceCreationStatus,
+  WORKSPACE_CREATION_STATUS_EVENT,
+  workspaceCreationTaskLabels,
+  WorkspaceCreationStatusDetail,
+  WorkspaceCreationTask,
+  WorkspaceCreationTaskState,
+} from '../../workspaceCreationStatus'
 
 // Define user data type
 interface UserData {
@@ -122,6 +132,14 @@ const studyPackAiProviderLabels: Record<StudyPackAiProvider, string> = {
   hosted: 'Hosted AI tokens',
 }
 
+const initialCreationTaskStatuses: Record<
+  WorkspaceCreationTask,
+  WorkspaceCreationTaskState
+> = {
+  'study-path': 'idle',
+  'from-notes': 'idle',
+}
+
 // Define component props interface
 interface TopNavBarProps {
   open?: boolean
@@ -132,7 +150,7 @@ interface TopNavBarProps {
 // Custom button with icon and label for phone view
 interface ButtonWithLabelProps {
   icon: React.ReactNode
-  label: string
+  label: React.ReactNode
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void
   sx?: React.CSSProperties | Record<string, unknown>
   'data-tutorial-id'?: string
@@ -180,6 +198,65 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
   )
 }
 
+const getCreationStatusColor = (state: WorkspaceCreationTaskState) => {
+  if (state === 'running') {
+    return 'warning.main'
+  }
+
+  if (state === 'complete') {
+    return 'success.main'
+  }
+
+  if (state === 'error') {
+    return 'error.main'
+  }
+
+  return 'transparent'
+}
+
+const CreationStatusDot = ({
+  state,
+}: {
+  state: WorkspaceCreationTaskState
+}) => (
+  <Box
+    component="span"
+    sx={{
+      display: 'inline-flex',
+      width: 9,
+      height: 9,
+      borderRadius: '50%',
+      border: 1,
+      borderColor:
+        state === 'idle' ? 'foreground.contrastPrimary' : 'background.header',
+      bgcolor: getCreationStatusColor(state),
+      opacity: state === 'idle' ? 0.55 : 1,
+      flex: '0 0 auto',
+    }}
+  />
+)
+
+const CreationStatusLabel = ({
+  label,
+  state,
+}: {
+  label: string
+  state: WorkspaceCreationTaskState
+}) => (
+  <Box
+    component="span"
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 0.75,
+      minWidth: 0,
+    }}
+  >
+    <Box component="span">{label}</Box>
+    <CreationStatusDot state={state} />
+  </Box>
+)
+
 const useStoredBoolean = (key: string, defaultValue: boolean) => {
   const [value, setValue] = useState<boolean>(() => {
     try {
@@ -211,6 +288,14 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const [userSettingsAvatarStatus, setUserSettingsAvatarStatus] = useState('')
   const [studyPackOpen, setStudyPackOpen] = useState(false)
   const [studyPathOpen, setStudyPathOpen] = useState(false)
+  const [creationTaskStatuses, setCreationTaskStatuses] = useState(
+    initialCreationTaskStatuses,
+  )
+  const creationTaskStatusesRef = useRef(initialCreationTaskStatuses)
+  const [creationToast, setCreationToast] = useState<{
+    severity: 'success' | 'error'
+    message: string
+  } | null>(null)
   const [studyPackAiProvider, setStudyPackAiProvider] =
     useState<StudyPackAiProvider>(
       () => readStudyPackAiSettings().provider || 'basic',
@@ -249,6 +334,8 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const userModeLabel = isAdmin
     ? studyPackAiProviderLabels[studyPackAiProvider]
     : 'Viewer mode'
+  const studyPathCreationState = creationTaskStatuses['study-path']
+  const fromNotesCreationState = creationTaskStatuses['from-notes']
 
   const {
     openCreateWidget,
@@ -324,6 +411,57 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         refreshAiProvider,
       )
       window.removeEventListener('storage', refreshAiProvider)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleCreationStatusChange = (event: Event) => {
+      const detail = (event as CustomEvent<WorkspaceCreationStatusDetail>)
+        .detail
+
+      if (!detail?.task || !detail.state) {
+        return
+      }
+
+      const previousState = creationTaskStatusesRef.current[detail.task]
+      if (previousState === detail.state) {
+        return
+      }
+
+      const nextStatuses = {
+        ...creationTaskStatusesRef.current,
+        [detail.task]: detail.state,
+      }
+      creationTaskStatusesRef.current = nextStatuses
+      setCreationTaskStatuses(nextStatuses)
+
+      if (detail.state === 'complete') {
+        setCreationToast({
+          severity: 'success',
+          message:
+            detail.message ||
+            `${workspaceCreationTaskLabels[detail.task]} is ready to review.`,
+        })
+      } else if (detail.state === 'error') {
+        setCreationToast({
+          severity: 'error',
+          message:
+            detail.message ||
+            `${workspaceCreationTaskLabels[detail.task]} needs attention.`,
+        })
+      }
+    }
+
+    window.addEventListener(
+      WORKSPACE_CREATION_STATUS_EVENT,
+      handleCreationStatusChange,
+    )
+
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_CREATION_STATUS_EVENT,
+        handleCreationStatusChange,
+      )
     }
   }, [])
 
@@ -511,6 +649,28 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
     setUserSettingsAvatarStatus('Profile picture removed.')
   }
 
+  const reportStudyPathStatus = useCallback((
+    state: WorkspaceCreationTaskState,
+    message?: string,
+  ) => {
+    dispatchWorkspaceCreationStatus({
+      task: 'study-path',
+      state,
+      message,
+    })
+  }, [])
+
+  const reportFromNotesStatus = useCallback((
+    state: WorkspaceCreationTaskState,
+    message?: string,
+  ) => {
+    dispatchWorkspaceCreationStatus({
+      task: 'from-notes',
+      state,
+      message,
+    })
+  }, [])
+
   return (
     <>
       <AppBar
@@ -567,7 +727,12 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<RouteIcon />}
-                label="Create Study Path"
+                label={
+                  <CreationStatusLabel
+                    label="Create Study Path"
+                    state={studyPathCreationState}
+                  />
+                }
                 onClick={() => openCreateStudyPath({ toggle: true })}
                 disabled={!canCreateStudyPath}
                 title={
@@ -605,14 +770,22 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                       : 'Create Study Path'
                 }
               >
-                Create Study Path
+                <CreationStatusLabel
+                  label="Create Study Path"
+                  state={studyPathCreationState}
+                />
               </Button>
             )}
 
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<AutoStoriesIcon />}
-                label="Create From Notes"
+                label={
+                  <CreationStatusLabel
+                    label="Create From Notes"
+                    state={fromNotesCreationState}
+                  />
+                }
                 onClick={() => openCreateStudyPack({ toggle: true })}
                 data-tutorial-id="create-study-pack-button"
                 disabled={!canCreateFromNotes}
@@ -652,7 +825,10 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                       : 'Create From Notes'
                 }
               >
-                Create From Notes
+                <CreationStatusLabel
+                  label="Create From Notes"
+                  state={fromNotesCreationState}
+                />
               </Button>
             )}
 
@@ -875,7 +1051,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               <Divider sx={{ borderColor: 'divider' }} />
               <MenuItem
                 onClick={openUserSettings}
-                sx={{ color: 'text.primary' }}
+                sx={{ color: 'text.primary', marginTop: 1 }}
               >
                 <ListItemIcon>
                   <PersonIcon
@@ -1051,11 +1227,13 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             open={studyPackOpen}
             onClose={() => setStudyPackOpen(false)}
             onCreatePack={createStudyPackDashboard}
+            onStatusChange={reportFromNotesStatus}
           />
           <CreateStudyPathModal
             open={studyPathOpen}
             onClose={() => setStudyPathOpen(false)}
             onCreatePath={createStudyPackDashboards}
+            onStatusChange={reportStudyPathStatus}
           />
           <Dialog
             fullScreen
@@ -1133,6 +1311,21 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
           </Dialog>
         </>
       )}
+      <Snackbar
+        open={Boolean(creationToast)}
+        autoHideDuration={5000}
+        onClose={() => setCreationToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          severity={creationToast?.severity || 'success'}
+          variant="filled"
+          onClose={() => setCreationToast(null)}
+          sx={{ width: '100%' }}
+        >
+          {creationToast?.message}
+        </Alert>
+      </Snackbar>
     </>
   )
 }

@@ -43,9 +43,11 @@ import {
   normalizeStudyPathGenerationAmount,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
+  STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyPackAiProvider,
   StudyPathGenerationAmount,
 } from '../../studyPack/ai'
+import { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
 
 type GenerationAmount = StudyPathGenerationAmount
 type LocalAiDashboardConcurrency = 1 | 2 | 3 | 5
@@ -64,6 +66,10 @@ interface CreateStudyPathModalProps {
     }>
   }) => void
   presentation?: 'dialog' | 'embedded'
+  onStatusChange?: (
+    state: WorkspaceCreationTaskState,
+    message?: string,
+  ) => void
 }
 
 const generationAmountOptions: Array<{
@@ -498,6 +504,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onClose,
   onCreatePath,
   presentation = 'dialog',
+  onStatusChange,
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
   const [prompt, setPrompt] = useState(DEFAULT_STUDY_PATH_PROMPT)
@@ -521,7 +528,27 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     useState<LocalAiGenerationFailureDebug | null>(null)
   const [error, setError] = useState('')
   const activeGenerationRef = useRef<AbortController | null>(null)
+  const initializedProviderRef = useRef(false)
   const debugTrace = combinedDebugTrace(draft)
+
+  React.useEffect(() => {
+    if (isGenerating) {
+      onStatusChange?.('running', 'Create Study Path is working')
+      return
+    }
+
+    if (step === 'review' && draft) {
+      onStatusChange?.('complete', 'Create Study Path is ready to review')
+      return
+    }
+
+    if (error) {
+      onStatusChange?.('error', error)
+      return
+    }
+
+    onStatusChange?.('idle')
+  }, [draft, error, isGenerating, onStatusChange, step])
 
   const cancelActiveGeneration = () => {
     activeGenerationRef.current?.abort()
@@ -553,15 +580,39 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   }, [aiProvider, geminiProgress, isGenerating])
 
   React.useEffect(() => {
-    if (!open) {
-      return
+    const refreshAiProvider = () => {
+      const provider = readStudyPackAiSettings().provider || 'basic'
+      setAiProvider(provider)
+
+      if (!isGenerating) {
+        setGenerationAmount((current) =>
+          provider === 'local' && current === 'deep' ? 'superSmall' : current,
+        )
+      }
     }
 
-    const provider = readStudyPackAiSettings().provider || 'basic'
-    setAiProvider(provider)
-    setGenerationAmount(provider === 'local' ? 'superSmall' : 'average')
-    setLocalAiDashboardConcurrency(2)
-  }, [open])
+    if (open) {
+      refreshAiProvider()
+      if (!initializedProviderRef.current) {
+        const provider = readStudyPackAiSettings().provider || 'basic'
+        setGenerationAmount(provider === 'local' ? 'superSmall' : 'average')
+        setLocalAiDashboardConcurrency(2)
+        initializedProviderRef.current = true
+      }
+    }
+
+    window.addEventListener(
+      STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+      refreshAiProvider,
+    )
+
+    return () => {
+      window.removeEventListener(
+        STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+        refreshAiProvider,
+      )
+    }
+  }, [isGenerating, open])
 
   const reset = () => {
     setStep('prompt')
@@ -583,6 +634,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const handleClose = () => {
     cancelActiveGeneration()
     reset()
+    onStatusChange?.('idle')
     onClose()
   }
 
@@ -869,6 +921,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                         <MenuItem
                           key={option.value}
                           value={option.value}
+                          aria-label={`${option.label} - ${getGenerationAmountHelper(
+                            option,
+                            aiProvider,
+                          )}`}
                           disabled={
                             aiProvider === 'local' && option.value === 'deep'
                           }
