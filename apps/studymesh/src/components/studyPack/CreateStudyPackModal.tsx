@@ -317,14 +317,14 @@ const getSourceOptionTitle = (value: SourceInputType) => {
 const getSourceOptionDescription = (value: SourceInputType) => {
   switch (value) {
     case 'image':
-      return 'Upload screenshots, slides, or photos.'
+      return 'Screenshots or photos'
     case 'pdf':
-      return 'Extract selectable PDF text.'
+      return 'Selectable PDF text'
     case 'powerpoint':
-      return 'Extract PPTX slide text.'
+      return 'PPTX slide text'
     case 'text':
     default:
-      return 'Paste notes or upload text files.'
+      return 'Paste or upload files'
   }
 }
 
@@ -1351,7 +1351,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         )}
 
         {step === 'source' ? (
-          <Stack spacing={2.5}>
+          <Stack spacing={presentation === 'embedded' ? 1.5 : 2.5}>
             <TextField
               label="Dashboard name"
               value={packTitle}
@@ -1359,7 +1359,16 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               fullWidth
             />
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns:
+                  presentation === 'embedded'
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : { xs: '1fr', sm: 'repeat(4, minmax(0, 1fr))' },
+                gap: 1,
+              }}
+            >
               {sourceOptions.map((option) => {
                 const selected = sourceInputType === option.value
                 const Icon = getSourceOptionIcon(option.value)
@@ -1371,8 +1380,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     onClick={() => handleSourceInputTypeChange(option.value)}
                     elevation={0}
                     sx={{
-                      flex: 1,
-                      p: 2,
+                      p: presentation === 'embedded' ? 1.25 : 1.5,
                       textAlign: 'left',
                       cursor: 'pointer',
                       border: 1,
@@ -1384,13 +1392,20 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       '&:hover': { borderColor: 'primary.main' },
                     }}
                   >
-                    <Stack direction="row" spacing={1.25} alignItems="center">
-                      <Icon color={selected ? 'primary' : 'action'} />
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight={900}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Icon
+                        color={selected ? 'primary' : 'action'}
+                        fontSize="small"
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="subtitle2" fontWeight={900} noWrap>
                           {getSourceOptionTitle(option.value)}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                        >
                           {getSourceOptionDescription(option.value)}
                         </Typography>
                       </Box>
@@ -1398,7 +1413,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   </Paper>
                 )
               })}
-            </Stack>
+            </Box>
 
             {sourceInputType === 'text' && (
               <Stack spacing={1.25}>

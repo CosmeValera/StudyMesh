@@ -800,7 +800,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       <DialogContent
         sx={{ bgcolor: 'background.default', p: { xs: 2, md: 3 } }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={presentation === 'embedded' ? 1.5 : 2}>
           {error && <Alert severity="error">{error}</Alert>}
           {step === 'prompt' ? (
             <>
@@ -823,11 +823,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     minRows={presentation === 'embedded' ? 4 : 5}
                     fullWidth
                   />
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={2}
-                    alignItems={{ xs: 'stretch', sm: 'flex-start' }}
-                  >
+                  <Stack spacing={presentation === 'embedded' ? 1.25 : 2}>
                     <TextField
                       select
                       label="Path depth"
@@ -837,7 +833,13 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           event.target.value as GenerationAmount,
                         )
                       }
-                      sx={{ maxWidth: { xs: '100%', sm: 320 }, flex: 1 }}
+                      helperText={getGenerationAmountHelper(
+                        generationAmountOptions.find(
+                          (option) => option.value === generationAmount,
+                        ) || generationAmountOptions[0],
+                        aiProvider,
+                      )}
+                      fullWidth
                     >
                       {generationAmountOptions.map((option) => (
                         <MenuItem
@@ -847,8 +849,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                             aiProvider === 'local' && option.value === 'deep'
                           }
                         >
-                          {option.label} -{' '}
-                          {getGenerationAmountHelper(option, aiProvider)}
+                          {option.label}
                         </MenuItem>
                       ))}
                     </TextField>
