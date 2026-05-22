@@ -114,6 +114,7 @@ const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
   average: 60 * 1000,
   deep: 90 * 1000,
 }
+const BASIC_FALLBACK_STUDY_PATH_DELAY_MS = 10 * 1000
 
 interface GeminiTimedProgress {
   startedAt: number
@@ -186,6 +187,25 @@ const makeGeminiTimedProgress = (
     ),
   }
 }
+
+const waitForBasicFallbackDelay = (signal: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+
+    const timeoutId = window.setTimeout(
+      resolve,
+      BASIC_FALLBACK_STUDY_PATH_DELAY_MS,
+    )
+    const abortDelay = () => {
+      window.clearTimeout(timeoutId)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+
+    signal.addEventListener('abort', abortDelay, { once: true })
+  })
 
 type LocalPipelineStep = NonNullable<
   LocalAiProgressEvent['studyPathPipeline']
@@ -607,6 +627,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     setError('')
 
     try {
+      if (aiProvider === 'basic') {
+        await waitForBasicFallbackDelay(generationController.signal)
+      }
+
       const nextDraft = await generateStudyPathWithAi({
         provider: aiProvider,
         apiToken: credentials.apiToken,

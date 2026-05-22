@@ -106,7 +106,7 @@ const isAdminUser = (userData: UserData) =>
 const canOpenStudyPathForCurrentState = (userData: UserData) => {
   const provider = readStudyPackAiSettings().provider || 'basic'
 
-  return isAdminUser(userData) && provider !== 'basic' && provider !== 'hosted'
+  return isAdminUser(userData) && provider !== 'hosted'
 }
 
 const canOpenStudyPackForCurrentState = (userData: UserData) => {
@@ -244,8 +244,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const [avatarSrc, setAvatarSrc] = useState(() => readUserAvatar(adminUser.id))
   const isAdmin = isAdminUser(userData)
   const hostedAiUnavailable = studyPackAiProvider === 'hosted'
-  const canCreateStudyPath =
-    isAdmin && studyPackAiProvider !== 'basic' && !hostedAiUnavailable
+  const canCreateStudyPath = isAdmin && !hostedAiUnavailable
   const canCreateFromNotes = isAdmin && !hostedAiUnavailable
   const userModeLabel = isAdmin
     ? studyPackAiProviderLabels[studyPackAiProvider]
@@ -576,9 +575,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     ? 'Viewer mode cannot create study paths'
                     : hostedAiUnavailable
                       ? 'Hosted AI tokens are not available yet'
-                      : studyPackAiProvider === 'basic'
-                        ? 'Create Study Path is disabled in Basic fallback mode'
-                        : 'Create Study Path'
+                      : 'Create Study Path'
                 }
                 sx={
                   !canCreateStudyPath
@@ -605,9 +602,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     ? 'Viewer mode cannot create study paths'
                     : hostedAiUnavailable
                       ? 'Hosted AI tokens are not available yet'
-                      : studyPackAiProvider === 'basic'
-                        ? 'Create Study Path is disabled in Basic fallback mode'
-                        : 'Create Study Path'
+                      : 'Create Study Path'
                 }
               >
                 Create Study Path

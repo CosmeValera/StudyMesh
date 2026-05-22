@@ -158,8 +158,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     return {
       canCreateDashboard: isAdmin,
       canCreateFromNotes: isAdmin && provider !== 'hosted',
-      canCreateStudyPath:
-        isAdmin && provider !== 'basic' && provider !== 'hosted',
+      canCreateStudyPath: isAdmin && provider !== 'hosted',
       canCreateWidget: isAdmin,
     }
   }, [activeFlow])
