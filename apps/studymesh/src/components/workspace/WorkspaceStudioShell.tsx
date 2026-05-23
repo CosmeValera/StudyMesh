@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import AddIcon from '@mui/icons-material/Add'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import QuizIcon from '@mui/icons-material/Quiz'
 import RouteIcon from '@mui/icons-material/Route'
@@ -492,15 +493,30 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const creationHubContent = (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2.25 }}>
       <Stack spacing={2.25}>
-        <Box>
-          <Typography variant="h5" fontWeight={900}>
-            {selectedCreateOption ? 'Choose source' : 'What do you want to create?'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {selectedCreateOption
-              ? `Create ${selectedCreateOption.title.toLowerCase()} from a topic, the current dashboard, or pasted/uploaded material.`
-              : 'Start with the outcome first. StudyMesh will ask for the right source next.'}
-          </Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+          <IconButton
+            aria-label="Close Create panel"
+            onClick={closeStudio}
+            size="small"
+            sx={{
+              mt: 0.25,
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.default',
+            }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h5" fontWeight={900}>
+              {selectedCreateOption ? 'Choose source' : 'What do you want to create?'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {selectedCreateOption
+                ? `Create ${selectedCreateOption.title.toLowerCase()} from a topic, the current dashboard, or pasted/uploaded material.`
+                : 'Start with the outcome first. StudyMesh will ask for the right source next.'}
+            </Typography>
+          </Box>
         </Box>
 
         {!selectedCreateOption ? (

@@ -1983,28 +1983,40 @@ const Dashboards = () => {
 
         {!dashboardChatOpen && (
           <TooltipStyled title="Ask this dashboard">
-            <Button
-              variant="contained"
-              size={isMobileDashboardView ? 'small' : 'medium'}
-              startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />}
+            <Box
+              component="button"
+              type="button"
+              aria-label="Ask this dashboard"
               onClick={() => setDashboardChatOpen(true)}
               sx={{
                 position: isMobileDashboardView ? 'fixed' : 'absolute',
-                right: isMobileDashboardView ? 16 : 24,
-                bottom: isMobileDashboardView ? 18 : 24,
+                right: isMobileDashboardView ? 12 : 0,
+                top: isMobileDashboardView ? 'auto' : 96,
+                bottom: isMobileDashboardView ? 18 : 'auto',
                 zIndex: isMobileDashboardView ? 1301 : 12,
-                borderRadius: 999,
-                px: isMobileDashboardView ? 1.25 : 1.75,
-                py: isMobileDashboardView ? 0.75 : 0.9,
-                minWidth: 'fit-content',
+                width: isMobileDashboardView ? 46 : 34,
+                height: isMobileDashboardView ? 42 : 82,
+                border: 0,
+                borderRadius: isMobileDashboardView ? 999 : '20px 0 0 20px',
+                bgcolor: 'background.paper',
+                color: 'primary.main',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 boxShadow:
                   theme.palette.mode === 'dark'
-                    ? '0 12px 30px rgba(0,0,0,0.45)'
-                    : '0 12px 28px rgba(16,24,40,0.16)',
+                    ? '0 12px 32px rgba(0,0,0,0.42)'
+                    : '0 12px 30px rgba(16,24,40,0.18)',
+                outline: 1,
+                outlineColor: 'divider',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
               }}
             >
-              {isMobileDashboardView ? 'Ask' : 'Ask Sources'}
-            </Button>
+              <ChatBubbleOutlineIcon fontSize="small" />
+            </Box>
           </TooltipStyled>
         )}
       </Box>
