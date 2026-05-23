@@ -73,6 +73,7 @@ interface CreateStudyPathModalProps {
     inputSummary: string
     detailLevel: string
   }) => void
+  initialPrompt?: string
 }
 
 const generationAmountOptions: Array<{
@@ -510,9 +511,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onCollapse,
   onStatusChange,
   onDraftMetaChange,
+  initialPrompt,
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
-  const [prompt, setPrompt] = useState(DEFAULT_STUDY_PATH_PROMPT)
+  const [prompt, setPrompt] = useState(initialPrompt || DEFAULT_STUDY_PATH_PROMPT)
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
@@ -628,7 +630,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
   const reset = () => {
     setStep('prompt')
-    setPrompt(DEFAULT_STUDY_PATH_PROMPT)
+    setPrompt(initialPrompt || DEFAULT_STUDY_PATH_PROMPT)
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
     setAdvancedOpen(false)
     setMustInclude('')

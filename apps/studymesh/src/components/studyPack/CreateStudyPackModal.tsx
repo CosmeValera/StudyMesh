@@ -116,6 +116,9 @@ interface CreateStudyPackModalProps {
     resourceType?: StudyMaterialResourceType | null
     detailLevel: StudyMaterialDetailLevel
   }) => void
+  initialResourceType?: StudyMaterialResourceType | null
+  initialSourceText?: string
+  initialTitle?: string
 }
 
 const supportedImageExtensions = [
@@ -573,6 +576,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCollapse,
   onStatusChange,
   onDraftMetaChange,
+  initialResourceType,
+  initialSourceText,
+  initialTitle,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
@@ -618,6 +624,29 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<StudyPackDashboardLayoutMode>('orchestrator')
   const [error, setError] = useState('')
   const activeOperationRef = useRef<AbortController | null>(null)
+  const appliedInitialSourceRef = useRef(false)
+
+  useEffect(() => {
+    if (appliedInitialSourceRef.current) {
+      return
+    }
+
+    appliedInitialSourceRef.current = true
+
+    if (initialResourceType) {
+      setResourceType(initialResourceType)
+    }
+
+    if (initialSourceText?.trim()) {
+      setSourceText(initialSourceText.trim())
+      setSourceFormat('text')
+      setSourceInputType('text')
+      setPackTitle(initialTitle?.trim() || 'Current Dashboard')
+      setTextSourceNames(['Current dashboard'])
+    } else if (initialTitle?.trim()) {
+      setPackTitle(initialTitle.trim())
+    }
+  }, [initialResourceType, initialSourceText, initialTitle])
 
   useEffect(() => {
     const sourceCount =
@@ -762,6 +791,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }, [imageFiles])
 
   const reset = () => {
+    appliedInitialSourceRef.current = false
     setStep('source')
     setSourceInputType('text')
     setSourceText('')

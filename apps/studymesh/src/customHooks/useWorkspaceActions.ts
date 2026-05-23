@@ -24,6 +24,7 @@ export const OPEN_DASHBOARD_EDITOR_EVENT = 'studymesh-open-dashboard-editor'
 export const OPEN_SAVED_DASHBOARDS_EVENT = 'studymesh-open-saved-dashboards'
 export const OPEN_STUDY_PACK_EVENT = 'studymesh-open-study-pack'
 export const OPEN_STUDY_PATH_EVENT = 'studymesh-open-study-path'
+export const OPEN_CREATE_HUB_EVENT = 'studymesh-open-create-hub'
 export const STARTER_STUDY_PATH_FOLDER_NAME = STUDYMESH_GUIDE_FOLDER_NAME
 
 export interface WorkspaceComponentConfig {
@@ -262,6 +263,12 @@ export const useWorkspaceActions = () => {
     )
   }, [])
 
+  const openCreateHub = useCallback((options?: { toggle?: boolean }) => {
+    window.dispatchEvent(
+      new CustomEvent(OPEN_CREATE_HUB_EVENT, { detail: options }),
+    )
+  }, [])
+
   const createStudyPackDashboard = useCallback(
     ({
       name,
@@ -455,6 +462,7 @@ export const useWorkspaceActions = () => {
     openCreateDashboard,
     openCreateStudyPack,
     openCreateStudyPath,
+    openCreateHub,
     createStudyPackDashboard,
     createStudyPackDashboards,
     openOperationsExample,

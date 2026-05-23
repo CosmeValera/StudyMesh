@@ -29,14 +29,12 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
 import ConstructionIcon from '@mui/icons-material/Construction'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
-import RouteIcon from '@mui/icons-material/Route'
 import PersonIcon from '@mui/icons-material/Person'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
@@ -44,8 +42,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
 import {
-  OPEN_STUDY_PATH_EVENT,
   OPEN_STUDY_PACK_EVENT,
+  OPEN_STUDY_PATH_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
@@ -370,17 +368,12 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const [userData, setUserData] = useState<UserData>(adminUser)
   const [avatarSrc, setAvatarSrc] = useState(() => readUserAvatar(adminUser.id))
   const isAdmin = isAdminUser(userData)
-  const hostedAiUnavailable = studyPackAiProvider === 'hosted'
-  const canCreateStudyPath = isAdmin && !hostedAiUnavailable
-  const canCreateFromNotes = isAdmin && !hostedAiUnavailable
   const userModeLabel = isAdmin
     ? studyPackAiProviderLabels[studyPackAiProvider]
     : 'Viewer mode'
   const {
     openCreateWidget,
     openCreateDashboard,
-    openCreateStudyPack,
-    openCreateStudyPath,
     createStudyPackDashboard,
     createStudyPackDashboards,
   } = useWorkspaceActions()
@@ -760,97 +753,6 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               <DashboardOptionsMenu />
             )}
 
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={<RouteIcon />}
-                label="Create Study Path"
-                onClick={() => openCreateStudyPath({ toggle: true })}
-                disabled={!canCreateStudyPath}
-                title={
-                  !isAdmin
-                    ? 'Viewer mode cannot create study paths'
-                    : hostedAiUnavailable
-                      ? 'Hosted AI tokens are not available yet'
-                      : 'Create Study Path'
-                }
-                sx={
-                  !canCreateStudyPath
-                    ? { opacity: 0.45, pointerEvents: 'none' }
-                    : {}
-                }
-              />
-            ) : (
-              <Button
-                onClick={() => openCreateStudyPath({ toggle: true })}
-                disabled={!canCreateStudyPath}
-                sx={{
-                  color: 'foreground.contrastPrimary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: 'auto',
-                  mx: 1,
-                  px: 2,
-                  opacity: canCreateStudyPath ? 1 : 0.45,
-                }}
-                startIcon={<RouteIcon />}
-                title={
-                  !isAdmin
-                    ? 'Viewer mode cannot create study paths'
-                    : hostedAiUnavailable
-                      ? 'Hosted AI tokens are not available yet'
-                      : 'Create Study Path'
-                }
-              >
-                Create Study Path
-              </Button>
-            )}
-
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={<AutoStoriesIcon />}
-                label="Create From Notes"
-                onClick={() => openCreateStudyPack({ toggle: true })}
-                data-tutorial-id="create-study-pack-button"
-                disabled={!canCreateFromNotes}
-                title={
-                  !isAdmin
-                    ? 'Viewer mode cannot create from notes'
-                    : hostedAiUnavailable
-                      ? 'Hosted AI tokens are not available yet'
-                      : 'Create From Notes'
-                }
-                sx={
-                  !canCreateFromNotes
-                    ? { opacity: 0.45, pointerEvents: 'none' }
-                    : {}
-                }
-              />
-            ) : (
-              <Button
-                onClick={() => openCreateStudyPack({ toggle: true })}
-                disabled={!canCreateFromNotes}
-                sx={{
-                  color: 'foreground.contrastPrimary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: 'auto',
-                  mx: 1,
-                  px: 2,
-                  opacity: canCreateFromNotes ? 1 : 0.45,
-                }}
-                startIcon={<AutoStoriesIcon />}
-                data-tutorial-id="create-study-pack-button"
-                title={
-                  !isAdmin
-                    ? 'Viewer mode cannot create from notes'
-                    : hostedAiUnavailable
-                      ? 'Hosted AI tokens are not available yet'
-                      : 'Create From Notes'
-                }
-              >
-                Create From Notes
-              </Button>
-            )}
 
             {/* Advanced creation menu */}
             {isPhone || isTablet ? (
