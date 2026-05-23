@@ -494,20 +494,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     <Box sx={{ height: '100%', overflow: 'auto', p: 2.25 }}>
       <Stack spacing={2.25}>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-          <IconButton
-            aria-label="Close Create panel"
-            onClick={closeStudio}
-            size="small"
-            sx={{
-              mt: 0.25,
-              border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.default',
-            }}
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-          <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="h5" fontWeight={900}>
               {selectedCreateOption ? 'Choose source' : 'What do you want to create?'}
             </Typography>
@@ -517,6 +504,20 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 : 'Start with the outcome first. StudyMesh will ask for the right source next.'}
             </Typography>
           </Box>
+          <IconButton
+            aria-label="Close Create panel"
+            onClick={closeStudio}
+            size="small"
+            sx={{
+              mt: 0.25,
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.default',
+              flex: '0 0 auto',
+            }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
         </Box>
 
         {!selectedCreateOption ? (
