@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  Drawer,
   TextField,
   IconButton,
   FormControlLabel,
@@ -37,12 +38,16 @@ import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import RouteIcon from '@mui/icons-material/Route'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
-import { DashboardLayout } from '../../state/store'
+import { DashboardLayout, StateDashboard } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import SavedDashboardsDialog from './DashboardLibrary'
 import StudyPathWorkspaceView from './StudyPathWorkspaceView'
+import DashboardChatPanel, {
+  DashboardChatMessage,
+} from '../dashboardChat/DashboardChatPanel'
 import {
   createStudyPathContainerState,
   getStudyPathMetaFromLayout,
@@ -680,6 +685,10 @@ const Dashboards = () => {
   const [dashboardLibraryMode, setDashboardLibraryMode] = useState<
     'workspace' | 'builder'
   >('workspace')
+  const [dashboardChatOpen, setDashboardChatOpen] = useState(false)
+  const [dashboardChatMessages, setDashboardChatMessages] = useState<
+    Record<string, DashboardChatMessage[]>
+  >({})
   const [
     dashboardLibraryInitialSearchKey,
     setDashboardLibraryInitialSearchKey,
@@ -687,8 +696,9 @@ const Dashboards = () => {
   const dashboardEditorTitleCancelRef = useRef(false)
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
+  const currentDashboard = openDashboards[selectedDashboard]
   const selectedDashboardIsEmpty = !hasDashboardContent(
-    openDashboards[selectedDashboard]?.layout,
+    currentDashboard?.layout,
   )
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
@@ -789,6 +799,20 @@ const Dashboards = () => {
 
   const openCreateFromNotes = () => {
     window.dispatchEvent(new CustomEvent(OPEN_STUDY_PACK_EVENT))
+  }
+
+  const updateDashboardChatMessages = (
+    dashboard: StateDashboard | undefined,
+    messages: DashboardChatMessage[],
+  ) => {
+    if (!dashboard) {
+      return
+    }
+
+    setDashboardChatMessages((current) => ({
+      ...current,
+      [dashboard.id]: messages,
+    }))
   }
 
   const loadSavedDashboardInBuilder = (dashboard: SavedDashboard) => {
@@ -1696,221 +1720,345 @@ const Dashboards = () => {
     setDraggedDashboardIndex(null)
   }
 
-  return (
-    <Box sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
-      <Tabs
-        className={`react-tabs ${
-          selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''
-        } ${isMobileDashboardView ? 'react-tabs--mobile-dashboard' : ''}`.trim()}
-        selectedIndex={selectedDashboard}
-        onSelect={(index) => setSelectedDashboard(index)}
-        style={{ position: 'relative' }}
-      >
-        <TabList
-          onDragOver={
-            isMobileDashboardView ? undefined : allowDashboardTabListDrop
-          }
-          onDrop={isMobileDashboardView ? undefined : dropDashboardTabAtEnd}
-        >
-          {openDashboards.map((dashboard, index) => {
-            const isOnlyEmptyDashboard =
-              openDashboards.length === 1 &&
-              dashboard.kind !== 'studyPathContainer' &&
-              !hasDashboardContent(dashboard.layout)
+  const dashboardChatPanel = (
+    <DashboardChatPanel
+      dashboard={currentDashboard}
+      messages={
+        currentDashboard ? dashboardChatMessages[currentDashboard.id] || [] : []
+      }
+      onMessagesChange={(messages) =>
+        updateDashboardChatMessages(currentDashboard, messages)
+      }
+      onClose={() => setDashboardChatOpen(false)}
+    />
+  )
 
-            return (
-              <Tab
-                key={dashboard.id}
-                draggable={!isMobileDashboardView}
-                onDragStart={(event) =>
-                  !isMobileDashboardView && startDashboardTabDrag(event, index)
-                }
-                onDragOver={(event) => {
-                  if (isMobileDashboardView) {
-                    return
+  return (
+    <Box
+      sx={{
+        height: '100%',
+        minHeight: 0,
+        overflowX: 'hidden',
+        overflowY: isMobileDashboardView ? 'auto' : 'hidden',
+        WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
+        display: isMobileDashboardView ? 'block' : 'flex',
+        bgcolor: 'background.default',
+      }}
+    >
+      <Box
+        sx={{
+          position: 'relative',
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          overflow: isMobileDashboardView ? 'visible' : 'hidden',
+        }}
+      >
+        <Tabs
+          className={`react-tabs ${
+            selectedDashboardIsEmpty ? 'react-tabs--empty-selected' : ''
+          } ${
+            isMobileDashboardView ? 'react-tabs--mobile-dashboard' : ''
+          }`.trim()}
+          selectedIndex={selectedDashboard}
+          onSelect={(index) => setSelectedDashboard(index)}
+          style={{ position: 'relative' }}
+        >
+          <TabList
+            onDragOver={
+              isMobileDashboardView ? undefined : allowDashboardTabListDrop
+            }
+            onDrop={isMobileDashboardView ? undefined : dropDashboardTabAtEnd}
+          >
+            {openDashboards.map((dashboard, index) => {
+              const isOnlyEmptyDashboard =
+                openDashboards.length === 1 &&
+                dashboard.kind !== 'studyPathContainer' &&
+                !hasDashboardContent(dashboard.layout)
+
+              return (
+                <Tab
+                  key={dashboard.id}
+                  draggable={!isMobileDashboardView}
+                  onDragStart={(event) =>
+                    !isMobileDashboardView &&
+                    startDashboardTabDrag(event, index)
                   }
-                  event.preventDefault()
-                  event.dataTransfer.dropEffect = 'move'
-                }}
-                onDrop={(event) =>
-                  !isMobileDashboardView && dropDashboardTab(event, index)
-                }
-                onDragEnd={() => setDraggedDashboardIndex(null)}
-                onContextMenu={(event) => openDashboardTabMenu(event, index)}
-              >
-                <TooltipStyled
-                  title={dashboard.name}
-                  placement="bottom"
-                  enterTouchDelay={1000}
+                  onDragOver={(event) => {
+                    if (isMobileDashboardView) {
+                      return
+                    }
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(event) =>
+                    !isMobileDashboardView && dropDashboardTab(event, index)
+                  }
+                  onDragEnd={() => setDraggedDashboardIndex(null)}
+                  onContextMenu={(event) => openDashboardTabMenu(event, index)}
                 >
-                  <Typography
-                    component="span"
-                    variant="subtitle2"
-                    sx={{
-                      flex: '1 0 0',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      marginLeft: '0.5rem',
-                    }}
+                  <TooltipStyled
+                    title={dashboard.name}
+                    placement="bottom"
+                    enterTouchDelay={1000}
                   >
-                    {dashboard.name}
-                  </Typography>
-                </TooltipStyled>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {!isMobileDashboardView &&
-                    isAdmin &&
-                    dashboard.layout?.children &&
-                    dashboard.layout.children.length > 0 && (
-                      <TooltipStyled title="Edit Dashboard">
-                        <IconButton
-                          aria-label={`Edit dashboard ${dashboard.name}`}
-                          size="small"
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            openDashboardEditor(dashboard.id)
-                          }}
-                          sx={{
-                            p: 0.5,
-                            mr: 0.5,
-                            color: 'text.secondary',
-                            '&:hover': { color: 'primary.main' },
-                          }}
-                        >
-                          <EditIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </TooltipStyled>
-                    )}
-                  {!isOnlyEmptyDashboard && (
-                    <Box
-                      className="close"
+                    <Typography
+                      component="span"
+                      variant="subtitle2"
                       sx={{
-                        display: 'flex',
-                        p: 0.5,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderRadius: '999px',
-                        transition: 'all .25s ease',
-                        '&:hover': {
-                          backgroundColor: 'action.contrastHover',
-                        },
+                        flex: '1 0 0',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        marginLeft: '0.5rem',
                       }}
                     >
-                      <CloseIcon
-                        width={16}
-                        height={16}
-                        onClick={(ev) => {
-                          // NOTE prevent the tab being closed from being selected too!
-                          ev.stopPropagation()
-                          removeDashboard(dashboard.id)
+                      {dashboard.name}
+                    </Typography>
+                  </TooltipStyled>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {!isMobileDashboardView &&
+                      isAdmin &&
+                      dashboard.layout?.children &&
+                      dashboard.layout.children.length > 0 && (
+                        <TooltipStyled title="Edit Dashboard">
+                          <IconButton
+                            aria-label={`Edit dashboard ${dashboard.name}`}
+                            size="small"
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              openDashboardEditor(dashboard.id)
+                            }}
+                            sx={{
+                              p: 0.5,
+                              mr: 0.5,
+                              color: 'text.secondary',
+                              '&:hover': { color: 'primary.main' },
+                            }}
+                          >
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </TooltipStyled>
+                      )}
+                    {!isOnlyEmptyDashboard && (
+                      <Box
+                        className="close"
+                        sx={{
+                          display: 'flex',
+                          p: 0.5,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderRadius: '999px',
+                          transition: 'all .25s ease',
+                          '&:hover': {
+                            backgroundColor: 'action.contrastHover',
+                          },
                         }}
-                      />
-                    </Box>
-                  )}
-                </Box>
-              </Tab>
-            )
-          })}
-          {isAdmin && (
-            <Button
-              size="small"
-              variant="text"
-              disableRipple
-              data-testid="add-dashboard-button"
-              sx={{
-                position: 'relative',
-                top: '3px',
-                marginBottom: '8px',
-                minWidth: 'fit-content',
-                display: 'flex',
-                alignItems: 'middle',
-                gap: '8px',
-                fontSize: '13px',
-                p: '4px 12px',
-                color: 'primary.light',
-                transition: 'all .25s ease',
-                '.MuiButton-startIcon': {
-                  transition: 'all .25s ease',
-                  m: 0,
-                  color: 'primary.light',
-                },
-                ':hover': {
-                  backgroundColor: 'transparent',
-                  color: 'primary.main',
-                  '.MuiButton-startIcon': {
-                    color: 'primary.main',
-                  },
-                },
-              }}
-              startIcon={<AddIcon width={16} height={16} />}
-              onClick={createEmptyDashboardTab}
-            />
-          )}
-        </TabList>
-        {openDashboards.map((dashboard, index) => {
-          const isStudyPathContainer =
-            dashboard.kind === 'studyPathContainer' && dashboard.studyPath
-          const isEmptyDashboard =
-            !isStudyPathContainer && !hasDashboardContent(dashboard.layout)
-          return (
-            <TabPanel key={dashboard.id}>
-              <Box
+                      >
+                        <CloseIcon
+                          width={16}
+                          height={16}
+                          onClick={(ev) => {
+                            // NOTE prevent the tab being closed from being selected too!
+                            ev.stopPropagation()
+                            removeDashboard(dashboard.id)
+                          }}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                </Tab>
+              )
+            })}
+            {isAdmin && (
+              <Button
+                size="small"
+                variant="text"
+                disableRipple
+                data-testid="add-dashboard-button"
                 sx={{
+                  position: 'relative',
+                  top: '3px',
+                  marginBottom: '8px',
+                  minWidth: 'fit-content',
                   display: 'flex',
-                  flexDirection: 'column',
-                  height: isMobileDashboardView ? 'auto' : '100%',
-                  minHeight: isMobileDashboardView ? '100dvh' : undefined,
-                  backgroundColor: 'background.default',
+                  alignItems: 'middle',
+                  gap: '8px',
+                  fontSize: '13px',
+                  p: '4px 12px',
+                  color: 'primary.light',
+                  transition: 'all .25s ease',
+                  '.MuiButton-startIcon': {
+                    transition: 'all .25s ease',
+                    m: 0,
+                    color: 'primary.light',
+                  },
+                  ':hover': {
+                    backgroundColor: 'transparent',
+                    color: 'primary.main',
+                    '.MuiButton-startIcon': {
+                      color: 'primary.main',
+                    },
+                  },
                 }}
-              >
+                startIcon={<AddIcon width={16} height={16} />}
+                onClick={createEmptyDashboardTab}
+              />
+            )}
+          </TabList>
+          {openDashboards.map((dashboard, index) => {
+            const isStudyPathContainer =
+              dashboard.kind === 'studyPathContainer' && dashboard.studyPath
+            const isEmptyDashboard =
+              !isStudyPathContainer && !hasDashboardContent(dashboard.layout)
+            return (
+              <TabPanel key={dashboard.id}>
                 <Box
                   sx={{
-                    position: 'relative',
-                    flex: 1,
-                    minHeight: 0,
-                    overflow: 'visible',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: isMobileDashboardView ? 'auto' : '100%',
+                    minHeight: isMobileDashboardView ? '100dvh' : undefined,
+                    backgroundColor: 'background.default',
                   }}
                 >
-                  {isStudyPathContainer && dashboard.studyPath ? (
-                    <StudyPathWorkspaceView
-                      studyPath={dashboard.studyPath}
-                      onStudyPathChange={(studyPath) =>
-                        updateStudyPathContainer(dashboard.id, () => studyPath)
-                      }
-                      mobileView={isMobileDashboardView}
-                    />
-                  ) : isEmptyDashboard ? (
-                    <DashboardEmptyState
-                      isAdmin={isAdmin}
-                      hasDashboard
-                      onCreateStudyPath={openCreateStudyPath}
-                      onCreateFromNotes={openCreateFromNotes}
-                      onOpenSavedLibrary={openSavedLibraryFromEmptyState}
-                      dashboardOptions={visibleDashboardOptions}
-                      onOpenDashboard={openSavedDashboardInWorkspace}
-                      onOpenStudyGuide={openStudyGuideFromEmptyState}
-                    />
-                  ) : (
-                    <DashboardLayoutView
-                      layout={dashboard.layout}
-                      mobileView={isMobileDashboardView}
-                      readOnly={isMobileDashboardView}
-                      updateLayout={(model) => {
-                        updateLayout(model)
-                        // Mark this dashboard as having changes after layout update
-                        setHasChanges((prev) => ({
-                          ...prev,
-                          [selectedDashboard]: true,
-                        }))
-                      }}
-                    />
-                  )}
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      flex: 1,
+                      minHeight: 0,
+                      overflow: 'visible',
+                    }}
+                  >
+                    {isStudyPathContainer && dashboard.studyPath ? (
+                      <StudyPathWorkspaceView
+                        studyPath={dashboard.studyPath}
+                        onStudyPathChange={(studyPath) =>
+                          updateStudyPathContainer(
+                            dashboard.id,
+                            () => studyPath,
+                          )
+                        }
+                        mobileView={isMobileDashboardView}
+                      />
+                    ) : isEmptyDashboard ? (
+                      <DashboardEmptyState
+                        isAdmin={isAdmin}
+                        hasDashboard
+                        onCreateStudyPath={openCreateStudyPath}
+                        onCreateFromNotes={openCreateFromNotes}
+                        onOpenSavedLibrary={openSavedLibraryFromEmptyState}
+                        dashboardOptions={visibleDashboardOptions}
+                        onOpenDashboard={openSavedDashboardInWorkspace}
+                        onOpenStudyGuide={openStudyGuideFromEmptyState}
+                      />
+                    ) : (
+                      <DashboardLayoutView
+                        layout={dashboard.layout}
+                        mobileView={isMobileDashboardView}
+                        readOnly={isMobileDashboardView}
+                        updateLayout={(model) => {
+                          updateLayout(model)
+                          // Mark this dashboard as having changes after layout update
+                          setHasChanges((prev) => ({
+                            ...prev,
+                            [selectedDashboard]: true,
+                          }))
+                        }}
+                      />
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            </TabPanel>
-          )
-        })}
-      </Tabs>
+              </TabPanel>
+            )
+          })}
+        </Tabs>
+
+        {!dashboardChatOpen && (
+          <TooltipStyled title="Ask this dashboard">
+            <Button
+              variant="contained"
+              size={isMobileDashboardView ? 'small' : 'medium'}
+              startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />}
+              onClick={() => setDashboardChatOpen(true)}
+              sx={{
+                position: isMobileDashboardView ? 'fixed' : 'absolute',
+                right: isMobileDashboardView ? 16 : 24,
+                bottom: isMobileDashboardView ? 18 : 24,
+                zIndex: isMobileDashboardView ? 1301 : 12,
+                borderRadius: 999,
+                px: isMobileDashboardView ? 1.25 : 1.75,
+                py: isMobileDashboardView ? 0.75 : 0.9,
+                minWidth: 'fit-content',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 12px 30px rgba(0,0,0,0.45)'
+                    : '0 12px 28px rgba(16,24,40,0.16)',
+              }}
+            >
+              {isMobileDashboardView ? 'Ask' : 'Ask Sources'}
+            </Button>
+          </TooltipStyled>
+        )}
+      </Box>
+
+      {isMobileDashboardView ? (
+        <Drawer
+          anchor="right"
+          open={dashboardChatOpen}
+          onClose={() => setDashboardChatOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          PaperProps={{
+            sx: {
+              width: '100%',
+              maxWidth: '100%',
+              height: '100dvh',
+              bgcolor: 'background.paper',
+            },
+          }}
+        >
+          {dashboardChatPanel}
+        </Drawer>
+      ) : (
+        <Box
+          aria-hidden={!dashboardChatOpen}
+          sx={{
+            width: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
+            maxWidth: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
+            minWidth: dashboardChatOpen ? 380 : 0,
+            flex: '0 0 auto',
+            minHeight: 0,
+            overflow: 'hidden',
+            p: dashboardChatOpen ? '8px 8px 8px 0' : 0,
+            boxSizing: 'border-box',
+            bgcolor: 'background.default',
+            transition: theme.transitions.create(
+              ['width', 'max-width', 'min-width', 'padding'],
+              {
+                duration: theme.transitions.duration.shorter,
+                easing: theme.transitions.easing.easeInOut,
+              },
+            ),
+          }}
+        >
+          <Box
+            sx={{
+              height: '100%',
+              overflow: 'hidden',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2.5,
+              bgcolor: 'background.paper',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? '0 18px 40px rgba(0,0,0,0.42)'
+                  : '0 18px 42px rgba(16,24,40,0.10)',
+            }}
+          >
+            {dashboardChatOpen ? dashboardChatPanel : null}
+          </Box>
+        </Box>
+      )}
 
       <Menu
         open={dashboardTabMenu !== null}
