@@ -435,6 +435,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 onCreatePath={(payload) => {
                   const dashboards = createStudyPackDashboards(payload)
                   removeDraft(draft.id, 'study-path')
+                  setIsStudioOpen(false)
                   reportCreationStatus(
                     'study-path',
                     'idle',
@@ -483,6 +484,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 onCreatePack={(payload) => {
                   const dashboard = createStudyPackDashboard(payload)
                   removeDraft(draft.id, 'from-notes')
+                  setIsStudioOpen(false)
                   reportCreationStatus(
                     'from-notes',
                     'idle',

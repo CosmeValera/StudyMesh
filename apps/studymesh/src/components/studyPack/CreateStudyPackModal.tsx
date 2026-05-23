@@ -394,6 +394,18 @@ const toReviewItems = (
     }))
     .filter((item) => item.type !== 'ignore')
 
+const limitReviewItemsForDetailLevel = (
+  items: ReviewItem[],
+  resourceType: StudyMaterialResourceType,
+  detailLevel: StudyMaterialDetailLevel,
+): ReviewItem[] => {
+  if (resourceType !== 'flashcards' && resourceType !== 'quiz') {
+    return items
+  }
+
+  return items.slice(0, detailLevelCountLimits[resourceType][detailLevel].max)
+}
+
 const createPreviewWidgetGroups = (
   objects: StudyObject[],
   title: string,
@@ -1028,7 +1040,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       parsed.id,
       resourceType,
     )
-    const reviewableItems = toReviewItems(draft.objects, resourceType)
+    const reviewableItems = limitReviewItemsForDetailLevel(
+      toReviewItems(draft.objects, resourceType),
+      resourceType,
+      detailLevel,
+    )
     const nextTitle = packTitle.trim() || parsed.title
     setPackTitle(nextTitle)
     setSourceFormat(draft.sourceFormat || parsed.sourceFormat)
@@ -1151,7 +1167,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
       })
-      const reviewableItems = toReviewItems(augmented.objects, resourceType)
+      const reviewableItems = limitReviewItemsForDetailLevel(
+        toReviewItems(augmented.objects, resourceType),
+        resourceType,
+        detailLevel,
+      )
       setPackTitle(nextTitle)
       setSourceFormat(draft.sourceFormat || 'text')
       setReviewItems(reviewableItems)

@@ -138,6 +138,8 @@ export interface NormalizeAiStudyPackDraftOptions {
   rawNotes?: string
   rawAiResponse?: string
   dashboardRole?: StudyPathDashboardRole
+  resourceType?: StudyMaterialResourceType
+  detailLevel?: StudyMaterialDetailLevel
 }
 
 const markdownFromImprovedNotesDraft = (

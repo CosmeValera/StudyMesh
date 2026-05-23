@@ -12,6 +12,8 @@ import {
   applyStudyMaterialResourceTypeToDraft,
   AiStudyPackDraft,
   NormalizeAiStudyPackDraftOptions,
+  StudyMaterialDetailLevel,
+  StudyMaterialResourceType,
 } from './normalizer'
 import {
   callLocalLanguageModel,
@@ -1037,10 +1039,42 @@ const conceptFlashcard = (
   answer: concept.definition,
 })
 
+const localResourceLimits: Record<
+  Exclude<StudyMaterialResourceType, 'improvedNotes'>,
+  Record<StudyMaterialDetailLevel, { min: number; max: number }>
+> = {
+  flashcards: {
+    short: { min: 3, max: 5 },
+    medium: { min: 6, max: 9 },
+    long: { min: 12, max: 18 },
+  },
+  quiz: {
+    short: { min: 3, max: 4 },
+    medium: { min: 4, max: 6 },
+    long: { min: 8, max: 13 },
+  },
+}
+
+const getLocalResourceLimits = (
+  options: NormalizeAiStudyPackDraftOptions,
+): { min: number; max: number } | null => {
+  if (
+    options.resourceType !== 'flashcards' &&
+    options.resourceType !== 'quiz'
+  ) {
+    return null
+  }
+
+  return localResourceLimits[options.resourceType][
+    options.detailLevel || 'medium'
+  ]
+}
+
 const objectsFromContract = (
   contract: LocalRepairedContract,
   packId: string,
   events: string[],
+  options: NormalizeAiStudyPackDraftOptions = {},
 ): StudyObject[] => {
   const sourceSummary = Array.isArray(contract.sourceSummary)
     ? contract.sourceSummary
@@ -1051,6 +1085,13 @@ const objectsFromContract = (
   const flashcards = Array.isArray(contract.flashcards)
     ? contract.flashcards
     : []
+  const limits = getLocalResourceLimits(options)
+  const quizMax = options.resourceType === 'quiz' ? limits?.max || 6 : 6
+  const flashcardMax =
+    options.resourceType === 'flashcards' ? limits?.max || 5 : 5
+  const quizMin = options.resourceType === 'quiz' ? limits?.min || 3 : 3
+  const flashcardMin =
+    options.resourceType === 'flashcards' ? limits?.min || 3 : 3
   const objects: StudyObject[] = [
     {
       ...createBase(packId, 'markdown', 0, 'Source summary'),
@@ -1087,7 +1128,7 @@ const objectsFromContract = (
     events.push('Repaired sections: created Key concepts list.')
   }
 
-  quizzes.slice(0, 6).forEach((quiz, index) => {
+  quizzes.slice(0, quizMax).forEach((quiz, index) => {
     objects.push({
       ...createBase(packId, 'quiz', index, `Quiz ${index + 1}`),
       kind: 'quiz',
@@ -1100,7 +1141,7 @@ const objectsFromContract = (
     })
   })
 
-  flashcards.slice(0, 5).forEach((flashcard, index) => {
+  flashcards.slice(0, flashcardMax).forEach((flashcard, index) => {
     objects.push({
       ...createBase(packId, 'flashcard', index, `Flashcard ${index + 1}`),
       kind: 'qa',
@@ -1113,7 +1154,7 @@ const objectsFromContract = (
     (concept) => !isBadConcept(concept.concept),
   )
   while (
-    objects.filter((object) => object.kind === 'quiz').length < 3 &&
+    objects.filter((object) => object.kind === 'quiz').length < quizMin &&
     usableConcepts.length > 0
   ) {
     const index = objects.filter((object) => object.kind === 'quiz').length
@@ -1124,7 +1165,7 @@ const objectsFromContract = (
   }
 
   while (
-    objects.filter((object) => object.kind === 'qa').length < 3 &&
+    objects.filter((object) => object.kind === 'qa').length < flashcardMin &&
     usableConcepts.length > 0
   ) {
     const index = objects.filter((object) => object.kind === 'qa').length
@@ -1204,7 +1245,7 @@ export const normalizeLocalAiStudyPackDraft = (
     options.rawNotes || '',
     events,
   )
-  const contractObjects = objectsFromContract(contract, packId, events)
+  const contractObjects = objectsFromContract(contract, packId, events, options)
   const objects = uniqueByKey(
     [...contractObjects, ...looseObjects],
     (object) =>
@@ -1526,13 +1567,20 @@ export const generateStudyPackWithLocalAi = async (
     normalizeLocalAiStudyPackDraft(parsed, options.packId, {
       rawNotes: options.rawNotes,
       rawAiResponse: text,
+      resourceType: options.resourceType,
+      detailLevel: options.detailLevel,
     }),
     options.packId,
     options.resourceType,
   )
+  const limits = getLocalResourceLimits({
+    resourceType: options.resourceType,
+    detailLevel: options.detailLevel,
+  })
 
   return {
     ...draft,
+    objects: limits ? draft.objects.slice(0, limits.max) : draft.objects,
     title: draft.title || options.title,
     sourceFormat: draft.sourceFormat || 'text',
   }
