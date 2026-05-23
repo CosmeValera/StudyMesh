@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -23,6 +23,8 @@ import {
   selectDashboardChatChunks,
 } from '../../dashboardChat/contextBuilder'
 import { askDashboardSources } from '../../dashboardChat/askDashboard'
+import { readStudyPackAiSettings } from '../../studyPack/ai'
+import { renderMarkdown } from '../WidgetEditor/components/preview/StudyBlockView'
 
 export interface DashboardChatMessage {
   id: string
@@ -59,17 +61,109 @@ const DashboardChatPanel = ({
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [draft, setDraft] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [activeStartedAt, setActiveStartedAt] = useState<number | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const messagesRef = useRef(messages)
+  const queueRef = useRef(Promise.resolve())
+  const settings = readStudyPackAiSettings()
+  const isLocalAi = settings.provider === 'local'
   const context = useMemo(
-    () => buildDashboardChatContext(dashboard),
-    [dashboard],
+    () =>
+      buildDashboardChatContext(
+        dashboard,
+        isLocalAi
+          ? { sourceNotesOnly: true, studyPathScope: 'selected' }
+          : undefined,
+      ),
+    [dashboard, isLocalAi],
   )
   const hasContext = context.chunks.length > 0
 
-  const sendQuestion = async (question: string) => {
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  useEffect(() => {
+    if (!activeStartedAt) {
+      setElapsedSeconds(0)
+      return undefined
+    }
+
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - activeStartedAt) / 1000))
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [activeStartedAt])
+
+  const updateMessage = (
+    messageId: string,
+    updater: (message: DashboardChatMessage) => DashboardChatMessage,
+  ) => {
+    const updated = messagesRef.current.map((message) =>
+      message.id === messageId ? updater(message) : message,
+    )
+    messagesRef.current = updated
+    onMessagesChange(updated)
+  }
+
+  const answerQuestion = async (
+    question: string,
+    pendingMessageId: string,
+    historyMessages: DashboardChatMessage[],
+  ) => {
+    setActiveStartedAt(Date.now())
+
+    if (!hasContext) {
+      updateMessage(pendingMessageId, (message) => ({
+        ...message,
+        content:
+          'This dashboard does not have enough source content to answer from yet. Add source notes or generated study material, then ask again.',
+        pending: false,
+      }))
+      setActiveStartedAt(null)
+      return
+    }
+
+    const sourceChunks = selectDashboardChatChunks(context, question)
+
+    try {
+      const result = await askDashboardSources({
+        dashboardTitle: context.dashboardTitle,
+        contextText: formatDashboardChatContext(context, sourceChunks),
+        question,
+        history: historyMessages.map(({ role, content }) => ({
+          role,
+          content,
+        })),
+        sourceChunks,
+      })
+      updateMessage(pendingMessageId, (message) => ({
+        ...message,
+        content: result.answer,
+        sources: result.sources,
+        pending: false,
+      }))
+    } catch (err) {
+      updateMessage(pendingMessageId, (message) => ({
+        ...message,
+        content: 'I could not answer from this dashboard yet.',
+        pending: false,
+      }))
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not answer from this dashboard.',
+      )
+    } finally {
+      setActiveStartedAt(null)
+    }
+  }
+
+  const sendQuestion = (question: string) => {
     const trimmed = question.trim()
-    if (!trimmed || isLoading) {
+    if (!trimmed) {
       return
     }
 
@@ -86,70 +180,24 @@ const DashboardChatPanel = ({
       createdAt: Date.now(),
       pending: true,
     }
-    const nextMessages = [...messages, userMessage, pendingMessage]
+    const previousMessages = messagesRef.current
+    const nextMessages = [...previousMessages, userMessage, pendingMessage]
+    messagesRef.current = nextMessages
     onMessagesChange(nextMessages)
     setDraft('')
     setError('')
 
-    if (!hasContext) {
-      onMessagesChange(
-        nextMessages.map((message) =>
-          message.id === pendingMessage.id
-            ? {
-                ...message,
-                content:
-                  'This dashboard does not have enough source content to answer from yet. Add source notes or generated study material, then ask again.',
-                pending: false,
-              }
-            : message,
-        ),
-      )
-      return
-    }
+    queueRef.current = queueRef.current.then(() =>
+      answerQuestion(trimmed, pendingMessage.id, previousMessages),
+    )
+  }
 
-    const sourceChunks = selectDashboardChatChunks(context, trimmed)
-    setIsLoading(true)
-
-    try {
-      const result = await askDashboardSources({
-        dashboardTitle: context.dashboardTitle,
-        contextText: formatDashboardChatContext(context, sourceChunks),
-        question: trimmed,
-        history: messages.map(({ role, content }) => ({ role, content })),
-        sourceChunks,
-      })
-      onMessagesChange(
-        nextMessages.map((message) =>
-          message.id === pendingMessage.id
-            ? {
-                ...message,
-                content: result.answer,
-                sources: result.sources,
-                pending: false,
-              }
-            : message,
-        ),
-      )
-    } catch (err) {
-      onMessagesChange(
-        nextMessages.map((message) =>
-          message.id === pendingMessage.id
-            ? {
-                ...message,
-                content: 'I could not answer from this dashboard yet.',
-                pending: false,
-              }
-            : message,
-        ),
-      )
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not answer from this dashboard.',
-      )
-    } finally {
-      setIsLoading(false)
-    }
+  const formatSeconds = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return minutes > 0
+      ? `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+      : `${remainingSeconds}s`
   }
 
   return (
@@ -264,32 +312,61 @@ const DashboardChatPanel = ({
                   }}
                 >
                   {message.pending ? (
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      {[0, 1, 2].map((dot) => (
-                        <Box
-                          key={dot}
-                          sx={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            bgcolor: 'text.secondary',
-                            animation:
-                              'studymesh-chat-dot 1s infinite ease-in-out',
-                            animationDelay: `${dot * 140}ms`,
-                            '@keyframes studymesh-chat-dot': {
-                              '0%, 80%, 100%': {
-                                opacity: 0.35,
-                                transform: 'translateY(0)',
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        {[0, 1, 2].map((dot) => (
+                          <Box
+                            key={dot}
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              bgcolor: 'text.secondary',
+                              animation:
+                                'studymesh-chat-dot 1s infinite ease-in-out',
+                              animationDelay: `${dot * 140}ms`,
+                              '@keyframes studymesh-chat-dot': {
+                                '0%, 80%, 100%': {
+                                  opacity: 0.35,
+                                  transform: 'translateY(0)',
+                                },
+                                '40%': {
+                                  opacity: 1,
+                                  transform: 'translateY(-3px)',
+                                },
                               },
-                              '40%': {
-                                opacity: 1,
-                                transform: 'translateY(-3px)',
-                              },
-                            },
-                          }}
-                        />
-                      ))}
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {activeStartedAt &&
+                        messages.findIndex(({ id }) => id === message.id) ===
+                          messages.findIndex(
+                            ({ role, pending }) =>
+                              role === 'assistant' && pending,
+                          )
+                          ? isLocalAi
+                            ? `Local AI is replying… ${formatSeconds(
+                                elapsedSeconds,
+                              )} elapsed. Estimate: about 1:30.`
+                            : `Replying… ${formatSeconds(
+                                elapsedSeconds,
+                              )} elapsed.`
+                          : 'Queued — I’ll answer this after the previous question.'}
+                      </Typography>
                     </Stack>
+                  ) : message.role === 'assistant' ? (
+                    <Box
+                      sx={{
+                        '& p': { m: 0, mb: 1 },
+                        '& p:last-child': { mb: 0 },
+                        '& ul, & ol': { pl: 2.5, my: 0.75 },
+                        '& pre': { maxWidth: '100%' },
+                      }}
+                    >
+                      {renderMarkdown(message.content)}
+                    </Box>
                   ) : (
                     <Typography variant="body2">{message.content}</Typography>
                   )}
@@ -337,7 +414,6 @@ const DashboardChatPanel = ({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Ask about this dashboard…"
-            disabled={isLoading}
             fullWidth
             multiline
             maxRows={4}
@@ -352,7 +428,7 @@ const DashboardChatPanel = ({
           <IconButton
             color="primary"
             onClick={() => sendQuestion(draft)}
-            disabled={!draft.trim() || isLoading}
+            disabled={!draft.trim()}
             aria-label="Send dashboard question"
           >
             <SendIcon />

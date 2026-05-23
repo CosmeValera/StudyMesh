@@ -218,7 +218,7 @@ const renderMarkdownInline = (value: string): React.ReactNode[] => {
   return nodes
 }
 
-const renderMarkdown = (markdown: string): React.ReactNode[] => {
+export const renderMarkdown = (markdown: string): React.ReactNode[] => {
   const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
   const blocks: React.ReactNode[] = []
   let index = 0
@@ -704,8 +704,8 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                 const resultColor = isCorrect
                   ? 'success.main'
                   : isSelected
-                    ? 'error.main'
-                    : 'divider'
+                  ? 'error.main'
+                  : 'divider'
 
                 return (
                   <Button

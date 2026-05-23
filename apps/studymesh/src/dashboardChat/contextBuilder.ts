@@ -14,6 +14,11 @@ export interface DashboardChatContext {
   chunks: DashboardSourceChunk[]
 }
 
+interface BuildDashboardChatContextOptions {
+  sourceNotesOnly?: boolean
+  studyPathScope?: 'all' | 'selected'
+}
+
 const MAX_CHUNK_LENGTH = 2200
 const MAX_CONTEXT_LENGTH = 12000
 
@@ -138,11 +143,37 @@ const textFromProps = (props: Record<string, unknown>): string[] => {
   return values.map(normalizeText).filter(Boolean)
 }
 
+const isSourceNotesChunk = (chunk: DashboardSourceChunk): boolean => {
+  const value = `${chunk.title} ${chunk.type}`.toLowerCase()
+  return (
+    value.includes('source note') ||
+    value.includes('source-notes') ||
+    value.includes('sourcenotes') ||
+    value.includes('markdown')
+  )
+}
+
+const isSourceNotesComponent = (
+  record: Record<string, unknown>,
+  props: Record<string, unknown>,
+): boolean => {
+  const value = `${props.title || ''} ${props.__blockType || ''} ${
+    record.type || ''
+  } ${record.name || ''}`.toLowerCase()
+  return (
+    value.includes('source note') ||
+    value.includes('source-notes') ||
+    value.includes('sourcenotes') ||
+    value.includes('markdown')
+  )
+}
+
 const componentToChunks = (
   component: unknown,
   node: DashboardLayout,
   chunks: DashboardSourceChunk[],
   path: string[],
+  options: BuildDashboardChatContextOptions = {},
 ): void => {
   if (!component || typeof component !== 'object') {
     return
@@ -156,14 +187,17 @@ const componentToChunks = (
   const text = textFromProps(props).join('\n\n')
 
   if (text) {
-    chunks.push({
+    const chunk = {
       id: String(record.id || path.join('-') || chunks.length),
       title: titleFrom(props.title, record.name, node.name),
       type: String(
         props.__blockType || record.type || node.component || 'widget',
       ),
       text: truncate(text, MAX_CHUNK_LENGTH),
-    })
+    }
+    if (!options.sourceNotesOnly || isSourceNotesComponent(record, props)) {
+      chunks.push(chunk)
+    }
   }
 
   if (!text) {
@@ -171,20 +205,23 @@ const componentToChunks = (
     collectTextDeep(props, fallbackValues)
     const fallbackText = Array.from(new Set(fallbackValues)).join('\n')
     if (fallbackText) {
-      chunks.push({
+      const chunk = {
         id: String(record.id || path.join('-') || chunks.length),
         title: titleFrom(props.title, record.name, node.name),
         type: String(
           props.__blockType || record.type || node.component || 'widget',
         ),
         text: truncate(fallbackText, MAX_CHUNK_LENGTH),
-      })
+      }
+      if (!options.sourceNotesOnly || isSourceNotesComponent(record, props)) {
+        chunks.push(chunk)
+      }
     }
   }
 
   const children = Array.isArray(record.children) ? record.children : []
   children.forEach((child, index) =>
-    componentToChunks(child, node, chunks, [...path, String(index)]),
+    componentToChunks(child, node, chunks, [...path, String(index)], options),
   )
 }
 
@@ -192,6 +229,7 @@ const collectChunksFromLayout = (
   node: DashboardLayout | undefined,
   chunks: DashboardSourceChunk[],
   path: string[] = [],
+  options: BuildDashboardChatContextOptions = {},
 ): void => {
   if (!node) {
     return
@@ -212,7 +250,13 @@ const collectChunksFromLayout = (
   }
 
   components.forEach((component, index) =>
-    componentToChunks(component, node, chunks, [...path, String(index)]),
+    componentToChunks(
+      component,
+      node,
+      chunks,
+      [...path, String(index)],
+      options,
+    ),
   )
 
   const nodeText = [node.name, node.component]
@@ -220,12 +264,15 @@ const collectChunksFromLayout = (
     .filter(Boolean)
     .join('\n')
   if (node.component && nodeText && components.length === 0) {
-    chunks.push({
+    const chunk = {
       id: node.id || path.join('-') || `node-${chunks.length}`,
       title: titleFrom(node.name, node.component),
       type: node.component,
       text: truncate(nodeText, MAX_CHUNK_LENGTH),
-    })
+    }
+    if (!options.sourceNotesOnly || isSourceNotesChunk(chunk)) {
+      chunks.push(chunk)
+    }
   }
 
   if (components.length === 0 && customProps) {
@@ -233,16 +280,19 @@ const collectChunksFromLayout = (
     collectTextDeep(customProps, fallbackValues)
     const fallbackText = Array.from(new Set(fallbackValues)).join('\n')
     if (fallbackText) {
-      chunks.push({
+      const chunk = {
         id: `${node.id || path.join('-') || chunks.length}-custom-props`,
         title: titleFrom(node.name, node.component),
         type: node.component || 'dashboard widget',
         text: truncate(fallbackText, MAX_CHUNK_LENGTH),
-      })
+      }
+      if (!options.sourceNotesOnly || isSourceNotesChunk(chunk)) {
+        chunks.push(chunk)
+      }
     }
   }
   ;(node.children || []).forEach((child, index) =>
-    collectChunksFromLayout(child, chunks, [...path, String(index)]),
+    collectChunksFromLayout(child, chunks, [...path, String(index)], options),
   )
 }
 
@@ -261,24 +311,35 @@ const scoreChunk = (chunk: DashboardSourceChunk, question: string): number => {
 
 export const buildDashboardChatContext = (
   dashboard: StateDashboard | undefined,
+  options: BuildDashboardChatContextOptions = {},
 ): DashboardChatContext => {
   const chunks: DashboardSourceChunk[] = []
 
   if (dashboard?.kind === 'studyPathContainer' && dashboard.studyPath) {
     const dashboards = dashboard.studyPath.dashboards || []
     const selectedDashboard = dashboards[dashboard.studyPath.selectedIndex]
-    const orderedDashboards = selectedDashboard
-      ? [
-          selectedDashboard,
-          ...dashboards.filter(
-            (item) => item.dashboardKey !== selectedDashboard.dashboardKey,
-          ),
-        ]
-      : dashboards
+    const orderedDashboards =
+      options.studyPathScope === 'selected'
+        ? selectedDashboard
+          ? [selectedDashboard]
+          : []
+        : selectedDashboard
+        ? [
+            selectedDashboard,
+            ...dashboards.filter(
+              (item) => item.dashboardKey !== selectedDashboard.dashboardKey,
+            ),
+          ]
+        : dashboards
 
     orderedDashboards.forEach((studyDashboard, index) => {
       const beforeCount = chunks.length
-      collectChunksFromLayout(studyDashboard.layout, chunks, [String(index)])
+      collectChunksFromLayout(
+        studyDashboard.layout,
+        chunks,
+        [String(index)],
+        options,
+      )
 
       chunks.slice(beforeCount).forEach((chunk) => {
         chunk.title = `${studyDashboard.name}: ${chunk.title}`
@@ -286,11 +347,12 @@ export const buildDashboardChatContext = (
     })
   }
 
-  collectChunksFromLayout(dashboard?.layout, chunks)
+  collectChunksFromLayout(dashboard?.layout, chunks, [], options)
 
   return {
     dashboardId: dashboard?.id || 'unknown-dashboard',
-    dashboardTitle: dashboard?.studyPath?.title || dashboard?.name || 'Dashboard',
+    dashboardTitle:
+      dashboard?.studyPath?.title || dashboard?.name || 'Dashboard',
     chunks,
   }
 }
