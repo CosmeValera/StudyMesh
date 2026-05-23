@@ -10,6 +10,7 @@ import {
   useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 
 import {
   OPEN_DASHBOARD_EDITOR_EVENT,
@@ -34,6 +35,20 @@ import {
 } from '../../workspaceCreationStatus'
 
 type StudioFlow = 'study-path' | 'from-notes'
+type GenerationDraftStatus = 'generating' | 'ready' | 'failed' | 'cancelled'
+type GenerationMarkerState = Exclude<WorkspaceCreationTaskState, 'idle'>
+
+interface GenerationDraft {
+  id: string
+  flow: StudioFlow
+  status: GenerationDraftStatus | 'editing'
+  title: string
+  createdAt: string
+  inputSummary: string
+  selectedResourceType?: string | null
+  detailLevel?: string
+  error?: string
+}
 
 const statusMarkerLabels: Record<WorkspaceCreationTaskState, string> = {
   idle: '',
@@ -84,19 +99,81 @@ const readIsAdmin = () => {
   }
 }
 
+const createGenerationDraft = (flow: StudioFlow): GenerationDraft => ({
+  id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  flow,
+  status: 'editing',
+  title: flow === 'study-path' ? 'Study Path draft' : 'Notes draft',
+  createdAt: new Date().toISOString(),
+  inputSummary: flow === 'study-path' ? 'Learning prompt' : 'Sources',
+})
+
+const resourceTypeTitle = (resourceType?: string | null) => {
+  if (resourceType === 'flashcards') {
+    return 'Flashcards'
+  }
+
+  if (resourceType === 'quiz') {
+    return 'Quiz'
+  }
+
+  if (resourceType === 'improvedNotes') {
+    return 'Improved notes'
+  }
+
+  return 'Dashboard'
+}
+
+const formatDraftTitle = (draft: GenerationDraft) => {
+  const base = draft.title.trim()
+  const shortTitle =
+    base.length > 46 ? `${base.slice(0, 45).trim()}...` : base
+
+  if (draft.flow === 'study-path') {
+    return `Study Path: ${shortTitle || 'Untitled'}`
+  }
+
+  return `${resourceTypeTitle(draft.selectedResourceType)} from ${
+    draft.inputSummary || shortTitle || 'notes'
+  }`
+}
+
+const getDraftMarkerState = (
+  status: GenerationDraft['status'],
+): GenerationMarkerState | null => {
+  if (status === 'generating') {
+    return 'running'
+  }
+
+  if (status === 'ready') {
+    return 'complete'
+  }
+
+  if (status === 'failed') {
+    return 'error'
+  }
+
+  return null
+}
+
 const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const initialDrafts = useMemo(
+    () => [createGenerationDraft('study-path'), createGenerationDraft('from-notes')],
+    [],
+  )
   const [isStudioOpen, setIsStudioOpen] = useState(false)
   const [activeFlow, setActiveFlow] = useState<StudioFlow>('study-path')
-  const [creationMarkers, setCreationMarkers] = useState<
-    Partial<
-      Record<
-        WorkspaceCreationTask,
-        { state: Exclude<WorkspaceCreationTaskState, 'idle'>; message?: string }
-      >
-    >
-  >({})
+  const [generationDrafts, setGenerationDrafts] = useState<GenerationDraft[]>(
+    initialDrafts,
+  )
+  const [activeDraftByFlow, setActiveDraftByFlow] = useState<
+    Record<StudioFlow, string>
+  >(() => ({
+    'study-path': initialDrafts[0].id,
+    'from-notes': initialDrafts[1].id,
+  }))
   const [aiProvider, setAiProvider] = useState(
     () => readStudyPackAiSettings().provider || 'basic',
   )
@@ -137,15 +214,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    const activateCreation = (flow: StudioFlow, toggle = false) => {
-      if (toggle && isStudioOpen && activeFlow === flow) {
-        setIsStudioOpen(false)
-        return
-      }
-
-      setActiveFlow(flow)
-      setIsStudioOpen(true)
-    }
+    const activateCreation = (flow: StudioFlow) => createNewDraft(flow)
 
     const handleOpenWidgetEditor = (event: Event) => {
       const customEvent = event as CustomEvent<{
@@ -165,16 +234,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       setIsStudioOpen(false)
       dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-opened' })
     }
-    const handleOpenStudyPack = (event: Event) => {
+    const handleOpenStudyPack = () => {
       if (permissions.canCreateFromNotes) {
-        const customEvent = event as CustomEvent<{ toggle?: boolean }>
-        activateCreation('from-notes', Boolean(customEvent.detail?.toggle))
+        activateCreation('from-notes')
       }
     }
-    const handleOpenStudyPath = (event: Event) => {
+    const handleOpenStudyPath = () => {
       if (permissions.canCreateStudyPath) {
-        const customEvent = event as CustomEvent<{ toggle?: boolean }>
-        activateCreation('study-path', Boolean(customEvent.detail?.toggle))
+        activateCreation('study-path')
       }
     }
     const handleOpenDashboard = () => {
@@ -201,8 +268,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       )
     }
   }, [
-    activeFlow,
-    isStudioOpen,
     permissions.canCreateFromNotes,
     permissions.canCreateStudyPath,
   ])
@@ -223,24 +288,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       message?: string,
     ) => {
       dispatchWorkspaceCreationStatus({ task, state, message })
-
-      if (state === 'idle') {
-        setCreationMarkers((current) => {
-          const nextMarkers = { ...current }
-          delete nextMarkers[task]
-          return nextMarkers
-        })
-        return
-      }
-
-      setCreationMarkers((current) => ({
-        ...current,
-        [task]: { state, message },
-      }))
-
-      if (state === 'running') {
-        setIsStudioOpen(false)
-      }
     },
     [],
   )
@@ -259,29 +306,82 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     [reportCreationStatus],
   )
 
+  const updateDraft = useCallback(
+    (draftId: string, updates: Partial<GenerationDraft>) => {
+      setGenerationDrafts((current) =>
+        current.map((draft) =>
+          draft.id === draftId ? { ...draft, ...updates } : draft,
+        ),
+      )
+    },
+    [],
+  )
+
+  const createNewDraft = (flow: StudioFlow) => {
+    const draft = createGenerationDraft(flow)
+    setGenerationDrafts((current) => [
+      ...current.filter(
+        (existingDraft) =>
+          existingDraft.flow !== flow || existingDraft.status !== 'editing',
+      ),
+      draft,
+    ])
+    setActiveDraftByFlow((current) => ({ ...current, [flow]: draft.id }))
+    setActiveFlow(flow)
+    setIsStudioOpen(true)
+  }
+
+  const removeDraft = (draftId: string, flow: StudioFlow) => {
+    let nextActiveDraftId: string | null = null
+    setGenerationDrafts((current) => {
+      const remaining = current.filter((draft) => draft.id !== draftId)
+      const flowDrafts = remaining.filter((draft) => draft.flow === flow)
+      if (flowDrafts.length === 0) {
+        const replacement = createGenerationDraft(flow)
+        nextActiveDraftId = replacement.id
+        return [...remaining, replacement]
+      }
+
+      nextActiveDraftId = flowDrafts[0].id
+      return remaining
+    })
+    setActiveDraftByFlow((active) =>
+      active[flow] === draftId && nextActiveDraftId
+        ? { ...active, [flow]: nextActiveDraftId }
+        : active,
+    )
+  }
+
+  const makeDraftStatusHandler =
+    (draftId: string, flow: StudioFlow) =>
+    (state: WorkspaceCreationTaskState, message?: string) => {
+      updateDraft(draftId, {
+        status:
+          state === 'running'
+            ? 'generating'
+            : state === 'complete'
+              ? 'ready'
+              : state === 'error'
+                ? 'failed'
+                : 'editing',
+        error: state === 'error' ? message : undefined,
+      })
+
+      if (flow === 'study-path') {
+        reportStudyPathStatus(state, message)
+      } else {
+        reportFromNotesStatus(state, message)
+      }
+    }
+
   const closeFullScreenWidgetEditor = () => {
     setFullScreenWidgetPayload(null)
     resetOrCloseStudio()
     dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
   }
 
-  const createPackAndHandleComplete: typeof createStudyPackDashboard = (
-    payload,
-  ) => {
-    const dashboard = createStudyPackDashboard(payload)
-    reportCreationStatus('from-notes', 'idle', 'Study material created.')
-    resetOrCloseStudio()
-    return dashboard
-  }
-
-  const createPathAndHandleComplete: typeof createStudyPackDashboards = (
-    payload,
-  ) => {
-    const dashboards = createStudyPackDashboards(payload)
-    reportCreationStatus('study-path', 'idle', 'Study material created.')
-    resetOrCloseStudio()
-    return dashboards
-  }
+  const currentFeatureName =
+    activeFlow === 'study-path' ? 'Create Study Path' : 'Create From Notes'
 
   const studioContent = (
     <Box
@@ -308,15 +408,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       >
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={800} noWrap>
-            Create Study Material
+            {currentFeatureName}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
-            Build study dashboards without leaving the workspace
+            Create, review, then insert into the workspace
           </Typography>
         </Box>
-        <Tooltip title="Close Studio">
+        <Tooltip title="Collapse panel">
           <IconButton
-            aria-label="Close Studio"
+            aria-label="Collapse Studio panel"
             onClick={closeStudio}
             size="small"
             sx={{
@@ -331,7 +431,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               },
             }}
           >
-            <CloseIcon />
+            <ArrowBackIcon />
           </IconButton>
         </Tooltip>
       </Box>
@@ -344,13 +444,43 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           flexDirection: 'column',
         }}
       >
-        <CreateStudyPathModal
-          open
-          presentation="embedded"
-          onClose={resetOrCloseStudio}
-          onCreatePath={createPathAndHandleComplete}
-          onStatusChange={reportStudyPathStatus}
-        />
+        {generationDrafts
+          .filter((draft) => draft.flow === 'study-path')
+          .map((draft) => (
+            <Box
+              key={draft.id}
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: draft.id === activeDraftByFlow['study-path'] ? 'flex' : 'none',
+                flexDirection: 'column',
+              }}
+            >
+              <CreateStudyPathModal
+                open
+                presentation="embedded"
+                onClose={() => removeDraft(draft.id, 'study-path')}
+                onCreatePath={(payload) => {
+                  const dashboards = createStudyPackDashboards(payload)
+                  removeDraft(draft.id, 'study-path')
+                  reportCreationStatus(
+                    'study-path',
+                    'idle',
+                    'Study material created.',
+                  )
+                  return dashboards
+                }}
+                onStatusChange={makeDraftStatusHandler(draft.id, 'study-path')}
+                onDraftMetaChange={(metadata) =>
+                  updateDraft(draft.id, {
+                    title: metadata.title,
+                    inputSummary: metadata.inputSummary,
+                    detailLevel: metadata.detailLevel,
+                  })
+                }
+              />
+            </Box>
+          ))}
       </Box>
 
       <Box
@@ -361,40 +491,70 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           flexDirection: 'column',
         }}
       >
-        <CreateStudyPackModal
-          open
-          presentation="embedded"
-          onClose={resetOrCloseStudio}
-          onCreatePack={createPackAndHandleComplete}
-          onStatusChange={reportFromNotesStatus}
-        />
+        {generationDrafts
+          .filter((draft) => draft.flow === 'from-notes')
+          .map((draft) => (
+            <Box
+              key={draft.id}
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: draft.id === activeDraftByFlow['from-notes'] ? 'flex' : 'none',
+                flexDirection: 'column',
+              }}
+            >
+              <CreateStudyPackModal
+                open
+                presentation="embedded"
+                onClose={() => removeDraft(draft.id, 'from-notes')}
+                onCreatePack={(payload) => {
+                  const dashboard = createStudyPackDashboard(payload)
+                  removeDraft(draft.id, 'from-notes')
+                  reportCreationStatus(
+                    'from-notes',
+                    'idle',
+                    'Study material created.',
+                  )
+                  return dashboard
+                }}
+                onStatusChange={makeDraftStatusHandler(draft.id, 'from-notes')}
+                onDraftMetaChange={(metadata) =>
+                  updateDraft(draft.id, {
+                    title: metadata.title,
+                    inputSummary: metadata.inputSummary,
+                    selectedResourceType: metadata.resourceType,
+                    detailLevel: metadata.detailLevel,
+                  })
+                }
+              />
+            </Box>
+          ))}
       </Box>
     </Box>
   )
 
-  const openCreationMarker = (task: WorkspaceCreationTask) => {
-    const nextFlow = task === 'study-path' ? 'study-path' : 'from-notes'
-
-    if (isStudioOpen && activeFlow === nextFlow) {
-      setIsStudioOpen(false)
-      return
-    }
-
-    setActiveFlow(nextFlow)
+  const openCreationMarker = (draft: GenerationDraft) => {
+    setActiveFlow(draft.flow)
+    setActiveDraftByFlow((current) => ({
+      ...current,
+      [draft.flow]: draft.id,
+    }))
     setIsStudioOpen(true)
   }
 
-  const visibleCreationMarkers = (
-    Object.entries(creationMarkers) as Array<
-      [
-        WorkspaceCreationTask,
-        {
-          state: Exclude<WorkspaceCreationTaskState, 'idle'>
-          message?: string
-        },
-      ]
-    >
-  ).filter(([, marker]) => marker.state)
+  const visibleCreationMarkers = generationDrafts
+    .map((draft) => {
+      const state = getDraftMarkerState(draft.status)
+      return state ? { draft, state } : null
+    })
+    .filter(
+      (
+        marker,
+      ): marker is {
+        draft: GenerationDraft
+        state: GenerationMarkerState
+      } => Boolean(marker),
+    )
 
   const creationStatusMarkers = visibleCreationMarkers.length ? (
     <Box
@@ -413,17 +573,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         }),
       }}
     >
-      {visibleCreationMarkers.map(([task, marker]) => (
+      {visibleCreationMarkers.map(({ draft, state }) => (
         <Tooltip
-          key={task}
-          title={marker.message || statusMarkerLabels[marker.state]}
+          key={draft.id}
+          title={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
           placement="right"
         >
           <Box
             component="button"
             type="button"
-            aria-label={marker.message || statusMarkerLabels[marker.state]}
-            onClick={() => openCreationMarker(task)}
+            aria-label={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
+            onClick={() => openCreationMarker(draft)}
             sx={{
               width: isMobile ? 46 : 30,
               height: isMobile ? 42 : 76,
@@ -442,7 +602,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               outline: 1,
               outlineColor: 'divider',
               animation:
-                marker.state === 'complete'
+                state === 'complete'
                   ? 'studymesh-marker-ready 1.4s ease-out 1'
                   : 'none',
               '@keyframes studymesh-marker-ready': {
@@ -462,10 +622,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 width: 14,
                 height: 14,
                 borderRadius: '50%',
-                bgcolor: statusMarkerColors[marker.state],
-                boxShadow: statusMarkerGlow[marker.state],
+                bgcolor: statusMarkerColors[state],
+                boxShadow: statusMarkerGlow[state],
                 '&::after':
-                  marker.state === 'running'
+                  state === 'running'
                     ? {
                         content: '""',
                         position: 'absolute',

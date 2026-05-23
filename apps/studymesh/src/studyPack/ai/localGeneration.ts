@@ -1257,14 +1257,18 @@ const localStudyPackPrompt = ({
   promptMode = false,
 }: GenerateStudyPackWithAiOptions): string => {
   const compactNotes = rawNotes.replace(/\s+/g, ' ').trim().slice(0, 1800)
-  const count =
-    detailLevel === 'short' ? '3-4' : detailLevel === 'long' ? '8-10' : '5-6'
+  const flashcardCount =
+    detailLevel === 'short' ? '3-4' : detailLevel === 'long' ? '12-18' : '6-9'
+  const quizCount =
+    detailLevel === 'short' ? '3-4' : detailLevel === 'long' ? '8-13' : '4-6'
+  const localHardRule =
+    'The selected detail level is a hard constraint. Match this count or length as closely as possible. Do not ignore it.'
   const resourceRules =
     resourceType === 'improvedNotes'
       ? `Create one improved notes resource. Allowed kind only: markdown.
 Use this shape:
 {"title":"${title.replace(/"/g, '')}","objects":[{"kind":"markdown","title":"Improved notes","markdown":"Clear organized Markdown with headings and bullets"}]}
-Rules: one markdown object only. No quizzes. No flashcards. ${
+Rules: one markdown object only. No quizzes. No flashcards. ${localHardRule} ${
           detailLevel === 'short'
             ? 'Keep it concise.'
             : detailLevel === 'long'
@@ -1272,15 +1276,15 @@ Rules: one markdown object only. No quizzes. No flashcards. ${
               : 'Use balanced detail.'
         }`
       : resourceType === 'flashcards'
-        ? `Create ${count} flashcards. Allowed kind only: qa.
+        ? `Create ${flashcardCount} flashcards. Allowed kind only: qa.
 Use this shape:
 {"title":"${title.replace(/"/g, '')}","objects":[{"kind":"qa","question":"...","answer":"..."}]}
-Rules: qa objects only. No markdown. No quizzes. Each flashcard has one atomic question and one answer.`
+Rules: qa objects only. No markdown. No quizzes. Each flashcard has one atomic question and one answer. ${localHardRule}`
         : resourceType === 'quiz'
-          ? `Create ${count} quiz questions. Allowed kind only: quiz.
+          ? `Create ${quizCount} quiz questions. Allowed kind only: quiz.
 Use this shape:
 {"title":"${title.replace(/"/g, '')}","objects":[{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"}]}
-Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders.`
+Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders. ${localHardRule} Questions must be paraphrased, conceptual or applied, and include teaching explanations. Do not copy source sentences.`
           : `Create exactly 6 simple study objects from the source.
 Allowed kinds only: markdown, qa, quiz, list.
 Use this shape:
@@ -1291,7 +1295,7 @@ Use this shape:
 
   return `Return JSON only. No prose. No markdown fences.
 ${resourceRules}
-Rules: No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
+Rules: No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say. Do not copy exact source sentences into questions or answers. Use conceptual, applied, comparison, cause/effect, inference, and common-mistake question styles where possible.
 Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }

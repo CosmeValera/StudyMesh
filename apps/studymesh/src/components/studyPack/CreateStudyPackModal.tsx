@@ -16,7 +16,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
@@ -108,6 +107,12 @@ interface CreateStudyPackModalProps {
   }) => void
   presentation?: 'dialog' | 'embedded'
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
+  onDraftMetaChange?: (metadata: {
+    title: string
+    inputSummary: string
+    resourceType?: StudyMaterialResourceType | null
+    detailLevel: StudyMaterialDetailLevel
+  }) => void
 }
 
 const supportedImageExtensions = [
@@ -153,17 +158,17 @@ const resourceTypeOptions: Array<{
   {
     value: 'improvedNotes',
     label: 'Improved notes',
-    description: 'Clearer source notes with better structure and explanations.',
+    description: '',
   },
   {
     value: 'flashcards',
     label: 'Flashcards',
-    description: 'Recall cards focused on key ideas and facts.',
+    description: '',
   },
   {
     value: 'quiz',
     label: 'Quiz',
-    description: 'Practice questions with answers and explanations.',
+    description: '',
   },
 ]
 
@@ -195,6 +200,27 @@ const resourceTypeLabels: Record<StudyMaterialResourceType, string> = {
   improvedNotes: 'Improved notes',
   flashcards: 'Flashcards',
   quiz: 'Quiz',
+}
+
+const detailLevelCountLimits: Record<
+  StudyMaterialResourceType,
+  Record<StudyMaterialDetailLevel, { min: number; max: number }>
+> = {
+  improvedNotes: {
+    short: { min: 400, max: 700 },
+    medium: { min: 900, max: 1400 },
+    long: { min: 1800, max: 2600 },
+  },
+  flashcards: {
+    short: { min: 6, max: 10 },
+    medium: { min: 12, max: 18 },
+    long: { min: 24, max: 35 },
+  },
+  quiz: {
+    short: { min: 5, max: 7 },
+    medium: { min: 8, max: 12 },
+    long: { min: 15, max: 25 },
+  },
 }
 
 const formatGeminiDuration = (durationMs: number): string => {
@@ -530,6 +556,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCreatePack,
   presentation = 'dialog',
   onStatusChange,
+  onDraftMetaChange,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
@@ -575,6 +602,43 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<StudyPackDashboardLayoutMode>('orchestrator')
   const [error, setError] = useState('')
   const activeOperationRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const sourceCount =
+      copiedTextSourceCount +
+      textSourceNames.length +
+      documentSources.length +
+      imageFiles.length
+    const sourceKind =
+      documentSources.length > 0
+        ? documentSources[0].type === 'pdf'
+          ? 'PDF'
+          : 'slides'
+        : imageFiles.length > 0
+          ? 'image notes'
+          : sourceText.trim() || copiedTextDraft.trim()
+            ? 'notes'
+            : 'sources'
+
+    onDraftMetaChange?.({
+      title: packTitle,
+      inputSummary:
+        sourceCount > 1 ? `${sourceCount} source files` : sourceKind,
+      resourceType,
+      detailLevel,
+    })
+  }, [
+    copiedTextDraft,
+    copiedTextSourceCount,
+    detailLevel,
+    documentSources,
+    imageFiles,
+    onDraftMetaChange,
+    packTitle,
+    resourceType,
+    sourceText,
+    textSourceNames,
+  ])
 
   const cancelActiveOperation = () => {
     activeOperationRef.current?.abort()
@@ -1378,9 +1442,18 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const createPack = () => {
+    const limits = resourceType
+      ? detailLevelCountLimits[resourceType][detailLevel]
+      : null
     const objects = reviewItems
       .map(applyReviewItem)
       .filter((object): object is StudyObject => Boolean(object))
+      .slice(
+        0,
+        resourceType === 'flashcards' || resourceType === 'quiz'
+          ? limits?.max
+          : undefined,
+      )
     const objectsById = new Map(objects.map((object) => [object.id, object]))
     const groups = widgetGroups
       .map((group, index) => ({
@@ -1406,6 +1479,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     }
     const widgets = createStudyPackOrchestratorWidgets(pack, {
       forceQuizBlockComponent: resourceType === 'quiz',
+      focusedResourceType:
+        resourceType === 'flashcards' || resourceType === 'quiz'
+          ? resourceType
+          : undefined,
       includeSourceWidget: false,
       includeSummaryChart: false,
       rawSource: sourceText,
@@ -1415,7 +1492,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     onCreatePack({
       name: packTitle.trim() || 'Notes Dashboard',
       widgets,
-      layoutMode: layoutMode !== 'orchestrator' ? layoutMode : 'tabs',
+      layoutMode:
+        resourceType === 'flashcards' || resourceType === 'quiz'
+          ? 'tabs'
+          : layoutMode !== 'orchestrator'
+            ? layoutMode
+            : 'tabs',
     })
     handleClose()
   }
@@ -1454,23 +1536,6 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </Typography>
             </Box>
           </Stack>
-          <IconButton
-            aria-label="Close Create from notes"
-            onClick={handleClose}
-            sx={{
-              color: 'text.primary',
-              bgcolor: 'background.default',
-              border: 1,
-              borderColor: 'divider',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderColor: 'text.secondary',
-              },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
         </Stack>
       </DialogTitle>
       <Divider />
@@ -1933,6 +1998,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                           : 'Source notes included'
                     }
                   />
+                  <Chip label={`${detailLevel} detail`} />
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
                   Review the dashboard structure below, then create it in your

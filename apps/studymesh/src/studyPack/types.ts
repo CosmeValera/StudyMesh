@@ -165,6 +165,7 @@ export interface StudyPackGeneratorOptions {
   includeSourceWidget?: boolean
   includeSourceSummaryWidget?: boolean
   includeSummaryChart?: boolean
+  focusedResourceType?: 'flashcards' | 'quiz'
   rawSource?: string
   maxObjectsPerWidget?: number
   widgetIdPrefix?: string

@@ -512,7 +512,7 @@ const DashboardOptionsMenu: React.FC = () => {
         }}
       >
         {studyPathGroups.length > 0 && (
-          <>
+          <Box component="div">
             <Typography
               component="div"
               sx={{
@@ -674,11 +674,11 @@ const DashboardOptionsMenu: React.FC = () => {
                 </React.Fragment>
               )
             })}
-          </>
+          </Box>
         )}
 
         {studyPackFolders.length > 0 && (
-          <>
+          <Box component="div">
             <Typography
               component="div"
               sx={{
@@ -829,11 +829,11 @@ const DashboardOptionsMenu: React.FC = () => {
                 </React.Fragment>
               )
             })}
-          </>
+          </Box>
         )}
 
         {customDashboardFolders.length > 0 && (
-          <>
+          <Box component="div">
             <Typography
               component="div"
               sx={{
@@ -974,7 +974,7 @@ const DashboardOptionsMenu: React.FC = () => {
                 </React.Fragment>
               )
             })}
-          </>
+          </Box>
         )}
         {isPhone && visibleCustomDashboards.length === 0 && (
           <MenuItem
