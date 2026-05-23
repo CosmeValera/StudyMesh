@@ -111,7 +111,7 @@
 
 .react-tabs--mobile-dashboard {
   height: auto;
-  min-height: 100dvh;
+  min-height: 100%;
   margin: 0;
   background-color: var(--background-default, #f4f7f8);
   overflow: visible;
@@ -146,7 +146,7 @@
   .react-tabs__tab-panel {
     flex: 0 0 auto;
     height: auto;
-    min-height: calc(100dvh - 56px);
+    min-height: calc(100dvh - 82px);
     overflow: visible;
     padding: 0 0 80px;
   }

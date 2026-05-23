@@ -1736,9 +1736,11 @@ const Dashboards = () => {
   return (
     <Box
       sx={{
-        height: isMobileDashboardView ? 'auto' : '100%',
-        minHeight: isMobileDashboardView ? '100dvh' : 0,
-        overflow: isMobileDashboardView ? 'visible' : 'hidden',
+        height: '100%',
+        minHeight: 0,
+        overflowX: 'hidden',
+        overflowY: isMobileDashboardView ? 'auto' : 'hidden',
+        WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
         display: isMobileDashboardView ? 'block' : 'flex',
         bgcolor: 'background.default',
       }}
@@ -1980,10 +1982,10 @@ const Dashboards = () => {
               startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />}
               onClick={() => setDashboardChatOpen(true)}
               sx={{
-                position: 'absolute',
+                position: isMobileDashboardView ? 'fixed' : 'absolute',
                 right: isMobileDashboardView ? 16 : 24,
                 bottom: isMobileDashboardView ? 18 : 24,
-                zIndex: 12,
+                zIndex: isMobileDashboardView ? 1301 : 12,
                 borderRadius: 999,
                 px: isMobileDashboardView ? 1.25 : 1.75,
                 py: isMobileDashboardView ? 0.75 : 0.9,
