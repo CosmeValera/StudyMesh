@@ -110,14 +110,21 @@
 }
 
 .react-tabs--mobile-dashboard {
-  margin: -48px 0 0 0;
+  height: auto;
+  min-height: 100dvh;
+  margin: 0;
   background-color: var(--background-default, #f4f7f8);
+  overflow: visible;
 
   .react-tabs__tab-list {
+    position: sticky;
+    top: 0;
+    z-index: 10;
     align-items: center;
     gap: 8px;
-    padding: 0 12px 8px;
+    padding: 8px 12px;
     scroll-snap-type: x proximity;
+    background-color: var(--background-default, #f4f7f8);
   }
 
   .react-tabs__tab {
@@ -137,8 +144,10 @@
   }
 
   .react-tabs__tab-panel {
+    flex: 0 0 auto;
     height: auto;
-    min-height: calc(100dvh - 96px);
+    min-height: calc(100dvh - 56px);
     overflow: visible;
+    padding: 0 0 80px;
   }
 }

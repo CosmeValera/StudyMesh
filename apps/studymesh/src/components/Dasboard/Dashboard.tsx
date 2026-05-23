@@ -1736,10 +1736,10 @@ const Dashboards = () => {
   return (
     <Box
       sx={{
-        height: '100%',
-        minHeight: 0,
-        overflow: 'hidden',
-        display: 'flex',
+        height: isMobileDashboardView ? 'auto' : '100%',
+        minHeight: isMobileDashboardView ? '100dvh' : 0,
+        overflow: isMobileDashboardView ? 'visible' : 'hidden',
+        display: isMobileDashboardView ? 'block' : 'flex',
         bgcolor: 'background.default',
       }}
     >
@@ -1749,7 +1749,7 @@ const Dashboards = () => {
           flex: 1,
           minWidth: 0,
           minHeight: 0,
-          overflow: 'hidden',
+          overflow: isMobileDashboardView ? 'visible' : 'hidden',
         }}
       >
         <Tabs
