@@ -9,6 +9,7 @@ import {
   StudyPathDashboardRole,
 } from '../types'
 import {
+  applyStudyMaterialResourceTypeToDraft,
   AiStudyPackDraft,
   NormalizeAiStudyPackDraftOptions,
 } from './normalizer'
@@ -1251,19 +1252,46 @@ const getLocalStudyPathDashboardCount = (
 const localStudyPackPrompt = ({
   title,
   rawNotes,
+  resourceType,
+  detailLevel = 'medium',
   promptMode = false,
 }: GenerateStudyPackWithAiOptions): string => {
   const compactNotes = rawNotes.replace(/\s+/g, ' ').trim().slice(0, 1800)
-
-  return `Return JSON only. No prose. No markdown fences.
-Create exactly 6 simple study objects from the source.
+  const count =
+    detailLevel === 'short' ? '3-4' : detailLevel === 'long' ? '8-10' : '5-6'
+  const resourceRules =
+    resourceType === 'improvedNotes'
+      ? `Create one improved notes resource. Allowed kind only: markdown.
+Use this shape:
+{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"markdown","title":"Improved notes","markdown":"Clear organized Markdown with headings and bullets"}]}
+Rules: one markdown object only. No quizzes. No flashcards. ${
+          detailLevel === 'short'
+            ? 'Keep it concise.'
+            : detailLevel === 'long'
+              ? 'Include deeper explanations and examples.'
+              : 'Use balanced detail.'
+        }`
+      : resourceType === 'flashcards'
+        ? `Create ${count} flashcards. Allowed kind only: qa.
+Use this shape:
+{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"qa","question":"...","answer":"..."}]}
+Rules: qa objects only. No markdown. No quizzes. Each flashcard has one atomic question and one answer.`
+        : resourceType === 'quiz'
+          ? `Create ${count} quiz questions. Allowed kind only: quiz.
+Use this shape:
+{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"}]}
+Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders.`
+          : `Create exactly 6 simple study objects from the source.
 Allowed kinds only: markdown, qa, quiz, list.
 Use this shape:
 {"title":"${title.replace(
-    /"/g,
-    '',
-  )}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}
-Rules: exactly 6 objects. First object markdown. No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
+          /"/g,
+          '',
+        )}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}`
+
+  return `Return JSON only. No prose. No markdown fences.
+${resourceRules}
+Rules: No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say.
 Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }
@@ -1490,10 +1518,14 @@ export const generateStudyPackWithLocalAi = async (
     stepLabel: options.title,
   })
   const parsed = parseLocalAiJson(text)
-  const draft = normalizeLocalAiStudyPackDraft(parsed, options.packId, {
-    rawNotes: options.rawNotes,
-    rawAiResponse: text,
-  })
+  const draft = applyStudyMaterialResourceTypeToDraft(
+    normalizeLocalAiStudyPackDraft(parsed, options.packId, {
+      rawNotes: options.rawNotes,
+      rawAiResponse: text,
+    }),
+    options.packId,
+    options.resourceType,
+  )
 
   return {
     ...draft,

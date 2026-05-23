@@ -17,9 +17,12 @@ import {
 } from '../practice'
 import {
   assertRoleObjectsAreClean,
+  applyStudyMaterialResourceTypeToDraft,
   filterStudyObjectsForDashboardRole,
   normalizeAiStudyPackDraft,
   AiStudyPackDraft,
+  StudyMaterialDetailLevel,
+  StudyMaterialResourceType,
 } from './normalizer'
 
 interface GeminiPart {
@@ -76,6 +79,8 @@ export interface GenerateStudyPackWithAiOptions {
   packId: string
   generationTargets?: string[]
   generationAmount?: 'few' | 'medium' | 'many'
+  resourceType?: StudyMaterialResourceType
+  detailLevel?: StudyMaterialDetailLevel
   promptMode?: boolean
   studyPathMode?: boolean
 }
@@ -961,6 +966,8 @@ export const generateStudyPackWithAi = async ({
   packId,
   generationTargets = [],
   generationAmount = 'medium',
+  resourceType,
+  detailLevel = 'medium',
   promptMode = false,
   studyPathMode = false,
 }: GenerateStudyPackWithAiOptions): Promise<AiStudyPackDraft> => {
@@ -977,6 +984,20 @@ export const generateStudyPackWithAi = async ({
     practiceProfile.enforceQuizzes || practiceProfile.enforceFlashcards
       ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
       : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
+  const resourceInstruction =
+    resourceType === 'improvedNotes'
+      ? 'Selected resource type: Improved notes. Create a clearer, better organized explanation from the source. Fill sourceSummary and conceptRecap. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
+      : resourceType === 'flashcards'
+        ? 'Selected resource type: Flashcards. Create only atomic flashcards. Keep sourceSummary brief, leave conceptRecap sections empty, and leave all practice arrays empty.'
+        : resourceType === 'quiz'
+          ? 'Selected resource type: Quiz. Create only quiz questions. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
+          : 'Selected resource type: mixed Study Pack.'
+  const detailInstruction =
+    detailLevel === 'short'
+      ? 'Detail level: Short. Keep notes concise and generate a small focused set.'
+      : detailLevel === 'long'
+        ? 'Detail level: Long. Create deeper explanations or a larger practice set while staying grounded.'
+        : 'Detail level: Medium. Use balanced depth and amount.'
   const sourceInstruction = promptMode
     ? 'The raw input is a learning prompt, not notes. Teach the requested topic from scratch. Because the input is not source notes, you may use accurate general knowledge for this topic. First create concise source notes/explanations, then generate practice grounded in those generated explanations. Include explanation/theory objects before exercises.'
     : 'The raw input is source notes. Stay grounded in those notes.'
@@ -1043,6 +1064,8 @@ Rules:
   }
 - Do not create or reference heavy resources such as PDFs or images unless the user explicitly asks for PDFs, images, screenshots, diagrams, or visual resources.
 - Keep objects concise and student-friendly.
+- ${resourceInstruction}
+- ${detailInstruction}
 - ${targetInstruction}
 - ${amountInstruction}
 - ${mixInstruction}
@@ -1105,10 +1128,14 @@ The previous response failed JSON formatting. Retry with a simpler response:
     }
   }
 
-  const draft = normalizeAiStudyPackDraft(parsed, packId, {
-    rawNotes,
-    rawAiResponse: text,
-  })
+  const draft = applyStudyMaterialResourceTypeToDraft(
+    normalizeAiStudyPackDraft(parsed, packId, {
+      rawNotes,
+      rawAiResponse: text,
+    }),
+    packId,
+    resourceType,
+  )
 
   return {
     ...draft,

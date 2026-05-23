@@ -1,6 +1,9 @@
 import { parseStudyPack } from '../parser'
 import { augmentStudyPackPracticeObjects } from '../practice'
-import { AiStudyPackDraft } from './normalizer'
+import {
+  AiStudyPackDraft,
+  applyStudyMaterialResourceTypeToDraft,
+} from './normalizer'
 import {
   generateStudyPackWithAi as generateStudyPackWithGemini,
   generateStudyPathWithAi as generateStudyPathWithGemini,
@@ -61,13 +64,17 @@ export const generateStudyPackWithAi = async (
       generationAmount: options.generationAmount,
     })
 
-    return {
-      title: parsed.title,
-      sourceFormat: parsed.sourceFormat,
-      rawNotes: options.rawNotes,
-      objects: augmented.objects,
-      warnings: [...parsed.warnings, ...augmented.warnings],
-    }
+    return applyStudyMaterialResourceTypeToDraft(
+      {
+        title: parsed.title,
+        sourceFormat: parsed.sourceFormat,
+        rawNotes: options.rawNotes,
+        objects: augmented.objects,
+        warnings: [...parsed.warnings, ...augmented.warnings],
+      },
+      parsed.id,
+      options.resourceType,
+    )
   }
 
   if (provider === 'local') {
