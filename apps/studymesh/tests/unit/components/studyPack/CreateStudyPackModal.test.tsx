@@ -346,6 +346,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     expect(createStudyPackOrchestratorWidgets).toHaveBeenCalledWith(
       expect.objectContaining({ sourceFormat: 'text' }),
       expect.objectContaining({
+        forceQuizBlockComponent: true,
         includeSourceWidget: false,
         includeSummaryChart: false,
         rawSource: 'Quiz:: What is derivative? | Rate of change',

@@ -105,6 +105,7 @@ const objectToComponents = (
   object: StudyObject,
   widgetId: string,
   studyPath?: StudyPathDashboardContext,
+  forceQuizBlockComponent = false,
 ): ComponentData[] => {
   const studyPathProps = studyPath
     ? {
@@ -176,7 +177,7 @@ const objectToComponents = (
         },
       ]
     case 'quiz':
-      if (object.quizMode === 'shortAnswer') {
+      if (object.quizMode === 'shortAnswer' && !forceQuizBlockComponent) {
         return [
           {
             id: createComponentId(widgetId, object, 'quiz-single'),
@@ -561,6 +562,7 @@ const createWidgetRecord = (
       | 'author'
       | 'category'
       | 'createdAt'
+      | 'forceQuizBlockComponent'
       | 'maxObjectsPerWidget'
       | 'widgetIdPrefix'
     >
@@ -572,7 +574,12 @@ const createWidgetRecord = (
     widgetIndex + 1
   }`
   const bodyComponents = objects.flatMap((object) =>
-    objectToComponents(object, widgetId, options.studyPath),
+    objectToComponents(
+      object,
+      widgetId,
+      options.studyPath,
+      options.forceQuizBlockComponent,
+    ),
   )
   const components: ComponentData[] = [
     createLabel(
@@ -839,6 +846,7 @@ export const createStudyPackOrchestratorWidgets = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     groupingThreshold: Math.max(2, options.groupingThreshold || 3),
     includeSourceWidget: options.includeSourceWidget ?? true,
     includeSourceSummaryWidget: options.includeSourceSummaryWidget ?? true,
@@ -906,6 +914,7 @@ export const createStudyPackWidgets = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 6),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
   }
@@ -928,6 +937,7 @@ export const createStudyPackWidgetsFromGroups = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     includeSummaryChart: options.includeSummaryChart ?? true,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',

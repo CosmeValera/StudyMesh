@@ -1405,6 +1405,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       sourceSummary: aiSourceSummary || undefined,
     }
     const widgets = createStudyPackOrchestratorWidgets(pack, {
+      forceQuizBlockComponent: resourceType === 'quiz',
       includeSourceWidget: false,
       includeSummaryChart: false,
       rawSource: sourceText,

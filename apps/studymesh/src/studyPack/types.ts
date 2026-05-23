@@ -160,6 +160,7 @@ export interface StudyPackGeneratorOptions {
   category?: string
   createdAt?: string
   dashboardName?: string
+  forceQuizBlockComponent?: boolean
   groupingThreshold?: number
   includeSourceWidget?: boolean
   includeSourceSummaryWidget?: boolean
