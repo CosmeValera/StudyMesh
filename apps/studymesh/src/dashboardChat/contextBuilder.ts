@@ -263,11 +263,34 @@ export const buildDashboardChatContext = (
   dashboard: StateDashboard | undefined,
 ): DashboardChatContext => {
   const chunks: DashboardSourceChunk[] = []
+
+  if (dashboard?.kind === 'studyPathContainer' && dashboard.studyPath) {
+    const dashboards = dashboard.studyPath.dashboards || []
+    const selectedDashboard = dashboards[dashboard.studyPath.selectedIndex]
+    const orderedDashboards = selectedDashboard
+      ? [
+          selectedDashboard,
+          ...dashboards.filter(
+            (item) => item.dashboardKey !== selectedDashboard.dashboardKey,
+          ),
+        ]
+      : dashboards
+
+    orderedDashboards.forEach((studyDashboard, index) => {
+      const beforeCount = chunks.length
+      collectChunksFromLayout(studyDashboard.layout, chunks, [String(index)])
+
+      chunks.slice(beforeCount).forEach((chunk) => {
+        chunk.title = `${studyDashboard.name}: ${chunk.title}`
+      })
+    })
+  }
+
   collectChunksFromLayout(dashboard?.layout, chunks)
 
   return {
     dashboardId: dashboard?.id || 'unknown-dashboard',
-    dashboardTitle: dashboard?.name || 'Dashboard',
+    dashboardTitle: dashboard?.studyPath?.title || dashboard?.name || 'Dashboard',
     chunks,
   }
 }

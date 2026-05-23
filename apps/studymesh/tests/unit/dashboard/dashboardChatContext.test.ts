@@ -66,4 +66,38 @@ describe('dashboard chat context builder', () => {
 
     expect(chunks[0].title).toBe('Source notes')
   })
+
+  it('extracts source chunks from dashboards inside a study path workspace', () => {
+    const context = buildDashboardChatContext({
+      id: 'path-1',
+      name: 'Spanish Study Path Workspace',
+      kind: 'studyPathContainer',
+      layout: {
+        type: 'row',
+        children: [],
+      },
+      studyPath: {
+        pathId: 'spanish-path',
+        title: 'Spanish Basics',
+        folderName: 'Spanish',
+        selectedIndex: 0,
+        dashboards: [
+          {
+            id: 'lesson-dashboard',
+            name: 'Lesson 1',
+            dashboardKey: 'lesson-1',
+            dashboardIndex: 0,
+            dashboardCount: 1,
+            folderName: 'Spanish',
+            layout: dashboard.layout,
+          },
+        ],
+      },
+    })
+
+    expect(context.dashboardTitle).toBe('Spanish Basics')
+    expect(context.chunks).toHaveLength(2)
+    expect(context.chunks[0].title).toBe('Lesson 1: Source notes')
+    expect(context.chunks[0].text).toContain('subjunctive')
+  })
 })
