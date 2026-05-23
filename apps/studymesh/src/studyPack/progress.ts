@@ -261,15 +261,18 @@ const createReviewComponents = (path: StudyPathProgress): ComponentData[] => {
 
   missedAttempts.forEach(({ dashboard, attempt }, index) => {
     if (attempt.type === 'quiz') {
+      const hasOptions =
+        Array.isArray(attempt.options) && attempt.options.length > 0
+
       components.push({
         id: `${path.pathId}-review-quiz-${index + 1}`,
-        type: 'QuizBlock',
+        type: hasOptions ? 'QuizBlock' : 'QuizzSingle',
         props: {
-          __blockType: 'QuizBlock',
-          quizMode: attempt.options?.length ? 'multipleChoice' : 'shortAnswer',
+          __blockType: hasOptions ? 'QuizBlock' : 'QuizzSingle',
+          quizMode: hasOptions ? 'multi' : 'single',
           question: `[${dashboard.dashboardName}] ${attempt.prompt}`,
-          options: attempt.options || [],
-          correctIndex: attempt.correctIndex || 0,
+          options: hasOptions ? attempt.options || [] : [],
+          correctIndex: hasOptions ? attempt.correctIndex || 0 : 0,
           answer: attempt.expectedAnswer || '',
           explanation: attempt.explanation || '',
           shuffleOptions: false,

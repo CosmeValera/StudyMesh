@@ -9,6 +9,7 @@ import {
   generateStudyPathWithGemini as generateStudyPathWithAi,
   getStudyPathDashboardRoles,
   isLocalAiGenerationError,
+  applyStudyMaterialResourceTypeToDraft,
   normalizeAiStudyPackDraft,
   normalizeLocalAiStudyPackDraft,
   parseLocalAiJson,
@@ -351,6 +352,43 @@ describe('study pack AI normalizer', () => {
     expect(draft.debugTrace?.droppedOrRepairedItems).toContain(
       'Dropped conceptRecap: exercises dashboards are practice-only.',
     )
+  })
+
+  it('filters normalized drafts to the selected Create From Notes resource type', () => {
+    const draft = normalizeAiStudyPackDraft(strictContract, 'resource-pack', {
+      rawNotes:
+        'Il faut que triggers the subjunctive and students should practice the rule.',
+    })
+
+    const improvedNotes = applyStudyMaterialResourceTypeToDraft(
+      draft,
+      'resource-pack',
+      'improvedNotes',
+    )
+    expect(improvedNotes.objects).toEqual([
+      expect.objectContaining({
+        kind: 'markdown',
+        title: 'Improved notes',
+        markdown: expect.stringContaining('Subjunctive trigger: il faut que'),
+      }),
+    ])
+
+    const flashcards = applyStudyMaterialResourceTypeToDraft(
+      draft,
+      'resource-pack',
+      'flashcards',
+    )
+    expect(flashcards.objects.map((object) => object.kind)).toEqual(['qa'])
+
+    const quiz = applyStudyMaterialResourceTypeToDraft(
+      draft,
+      'resource-pack',
+      'quiz',
+    )
+    expect(quiz.objects.map((object) => object.kind)).toEqual([
+      'quiz',
+      'quiz',
+    ])
   })
 })
 
@@ -952,6 +990,51 @@ describe('local AI helpers', () => {
       timeoutMs: 4 * 60 * 1000,
     })
     expect(events.at(-1)).toMatchObject({ phase: 'timeout', percent: 100 })
+  })
+
+  it('passes Create From Notes resource choice into Local AI prompts', async () => {
+    const prompt = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        title: 'Atomic theories',
+        objects: [
+          {
+            kind: 'qa',
+            question: 'What did Dalton propose about matter?',
+            answer: 'Matter is made of atoms.',
+          },
+          {
+            kind: 'quiz',
+            question: 'Which idea matches Dalton?',
+            quizMode: 'multipleChoice',
+            options: ['Matter is made of atoms', 'Cells divide', 'Water boils'],
+            correctIndex: 0,
+            answer: 'Matter is made of atoms',
+            explanation: 'Dalton proposed atoms.',
+          },
+        ],
+      }),
+    )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPackWithProvider({
+      provider: 'local',
+      apiToken: '',
+      model: '',
+      title: 'Atomic theories',
+      rawNotes: 'Dalton proposed that matter is made of atoms.',
+      packId: 'atomic-theories',
+      resourceType: 'flashcards',
+      detailLevel: 'short',
+      generationTargets: ['flashcards'],
+      generationAmount: 'few',
+    })
+
+    expect(prompt.mock.calls[0][0]).toContain('Allowed kind only: qa')
+    expect(prompt.mock.calls[0][0]).toContain('Create 3-4 flashcards')
+    expect(draft.objects.map((object) => object.kind)).toEqual(['qa'])
   })
 
   it('uses 240 second per-dashboard progress and combined dashboard labels for Local Average', async () => {
@@ -2514,6 +2597,87 @@ describe('Gemini study pack client', () => {
     )
     expect(draft.debugTrace?.rawAiResponse).toContain('Derivative summary')
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('passes Create From Notes resource choice into Gemini and filters extras', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    title: 'Derivatives',
+                    sourceFormat: 'text',
+                    sourceSummary: {
+                      title: 'Derivative summary',
+                      bullets: [
+                        'A derivative measures instantaneous rate of change.',
+                      ],
+                    },
+                    conceptRecap: {
+                      title: 'Concept recap',
+                      sections: [
+                        {
+                          title: 'Derivative',
+                          bullets: [
+                            'Use derivatives to reason about rates of change.',
+                          ],
+                          example: 'Velocity is a derivative.',
+                        },
+                      ],
+                    },
+                    practice: {
+                      shortAnswer: [
+                        {
+                          question:
+                            'How would you apply a derivative to compare motion?',
+                          expectedAnswer:
+                            'Compare instantaneous rates of change.',
+                          explanation:
+                            'Derivatives describe instantaneous rates.',
+                        },
+                      ],
+                      multipleChoice: [],
+                    },
+                    flashcards: [
+                      {
+                        front: 'What does a derivative measure?',
+                        back: 'Instantaneous rate of change.',
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const draft = await generateStudyPackWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'Derivatives',
+      rawNotes: 'Derivative = instantaneous rate of change',
+      packId: 'derivatives',
+      resourceType: 'quiz',
+      detailLevel: 'long',
+      generationTargets: ['quizzes'],
+      generationAmount: 'many',
+    })
+
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'Selected resource type: Quiz',
+    )
+    expect(fetchMock.mock.calls[0][1].body).toContain('Detail level: Long')
+    expect(draft.objects.map((object) => object.kind)).toEqual(['quiz'])
+    expect(draft.warnings).toContain(
+      'Filtered generated content to the selected resource type.',
+    )
   })
 
   it('retries Study Path generation when Gemini returns malformed JSON with strict dashboards', async () => {

@@ -134,7 +134,7 @@ export const COMPONENT_TYPES: ComponentType[] = [
     label: 'Quiz',
     defaultProps: {
       __blockType: 'QuizBlock',
-      quizMode: 'multipleChoice',
+      quizMode: 'multi',
       question: 'Question',
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       correctIndex: 0,
@@ -145,7 +145,21 @@ export const COMPONENT_TYPES: ComponentType[] = [
     category: 'Study Blocks',
     icon: QuizIcon,
     tooltip:
-      'Adds a quiz question with selectable answers and instant feedback.',
+      'Adds a multiple-choice quiz with exactly four selectable answers.',
+  },
+  {
+    type: 'QuizzSingle',
+    label: 'Quiz Single',
+    defaultProps: {
+      __blockType: 'QuizzSingle',
+      quizMode: 'single',
+      question: 'Question',
+      answer: 'Expected answer',
+      explanation: 'Explain why the answer is correct.',
+    },
+    category: 'Study Blocks',
+    icon: QuizIcon,
+    tooltip: 'Adds a typed-answer quiz with an answer box.',
   },
   {
     type: 'StudyNoteBlock',

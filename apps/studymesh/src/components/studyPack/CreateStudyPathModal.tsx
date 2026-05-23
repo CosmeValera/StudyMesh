@@ -18,12 +18,13 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import RouteIcon from '@mui/icons-material/Route'
 import TuneIcon from '@mui/icons-material/Tune'
-import CloseIcon from '@mui/icons-material/Close'
 import {
   createStudyPackOrchestratorWidgets,
   StudyObject,
@@ -65,7 +66,13 @@ interface CreateStudyPathModalProps {
     }>
   }) => void
   presentation?: 'dialog' | 'embedded'
+  onCollapse?: () => void
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
+  onDraftMetaChange?: (metadata: {
+    title: string
+    inputSummary: string
+    detailLevel: string
+  }) => void
 }
 
 const generationAmountOptions: Array<{
@@ -500,7 +507,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onClose,
   onCreatePath,
   presentation = 'dialog',
+  onCollapse,
   onStatusChange,
+  onDraftMetaChange,
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
   const [prompt, setPrompt] = useState(DEFAULT_STUDY_PATH_PROMPT)
@@ -526,6 +535,14 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const activeGenerationRef = useRef<AbortController | null>(null)
   const initializedProviderRef = useRef(false)
   const debugTrace = combinedDebugTrace(draft)
+
+  React.useEffect(() => {
+    onDraftMetaChange?.({
+      title: prompt.trim() || 'Study Path',
+      inputSummary: prompt.trim() || 'Learning prompt',
+      detailLevel: generationAmount,
+    })
+  }, [generationAmount, onDraftMetaChange, prompt])
 
   React.useEffect(() => {
     if (isGenerating) {
@@ -859,23 +876,28 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
               </Typography>
             </Box>
           </Stack>
-          <IconButton
-            aria-label="Close Create Study Path"
-            onClick={handleClose}
-            sx={{
-              color: 'text.primary',
-              bgcolor: 'background.default',
-              border: 1,
-              borderColor: 'divider',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderColor: 'text.secondary',
-              },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+          {onCollapse && (
+            <Tooltip title="Collapse panel">
+              <IconButton
+                aria-label="Collapse Create Study Path panel"
+                onClick={onCollapse}
+                size="small"
+                sx={{
+                  color: 'text.primary',
+                  bgcolor: 'background.default',
+                  border: 1,
+                  borderColor: 'divider',
+                  flex: '0 0 auto',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'text.secondary',
+                  },
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Stack>
       </DialogTitle>
       <Divider />

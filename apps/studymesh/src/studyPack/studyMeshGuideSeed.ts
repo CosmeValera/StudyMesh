@@ -364,21 +364,25 @@ const createGuideLayout = (
         gutterBottom: true,
       },
     },
-    ...lesson.quizzes.map<ComponentData>((quiz, quizIndex) => ({
-      id: `${lesson.id}-quiz-${quizIndex + 1}`,
-      type: 'QuizBlock',
-      props: withStudyPathProps(lesson, index, {
-        __blockType: 'QuizBlock',
-        quizMode: quiz.options?.length ? 'multipleChoice' : 'shortAnswer',
-        question: quiz.question,
-        options: quiz.options || [],
-        correctIndex: quiz.correctIndex || 0,
-        answer: quiz.answer,
-        explanation: quiz.explanation,
-        shuffleOptions: false,
-        studyPathItemId: `study-path-${index}-quiz-${quizIndex + 1}`,
-      }),
-    })),
+    ...lesson.quizzes.map<ComponentData>((quiz, quizIndex) => {
+      const isMultipleChoice = Boolean(quiz.options?.length)
+
+      return {
+        id: `${lesson.id}-quiz-${quizIndex + 1}`,
+        type: isMultipleChoice ? 'QuizBlock' : 'QuizzSingle',
+        props: withStudyPathProps(lesson, index, {
+          __blockType: isMultipleChoice ? 'QuizBlock' : 'QuizzSingle',
+          quizMode: isMultipleChoice ? 'multi' : 'single',
+          question: quiz.question,
+          options: isMultipleChoice ? quiz.options || [] : [],
+          correctIndex: isMultipleChoice ? quiz.correctIndex || 0 : 0,
+          answer: quiz.answer,
+          explanation: quiz.explanation,
+          shuffleOptions: false,
+          studyPathItemId: `study-path-${index}-quiz-${quizIndex + 1}`,
+        }),
+      }
+    }),
   ]
 
   const flashcardComponents: ComponentData[] = [

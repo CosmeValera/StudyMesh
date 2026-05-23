@@ -160,10 +160,12 @@ export interface StudyPackGeneratorOptions {
   category?: string
   createdAt?: string
   dashboardName?: string
+  forceQuizBlockComponent?: boolean
   groupingThreshold?: number
   includeSourceWidget?: boolean
   includeSourceSummaryWidget?: boolean
   includeSummaryChart?: boolean
+  focusedResourceType?: 'flashcards' | 'quiz'
   rawSource?: string
   maxObjectsPerWidget?: number
   widgetIdPrefix?: string

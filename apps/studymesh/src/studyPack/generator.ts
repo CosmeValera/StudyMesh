@@ -60,10 +60,52 @@ const createLabel = (
   },
 })
 
+const normalizeMultipleChoiceOptions = (
+  object: Extract<StudyObject, { kind: 'quiz' }>,
+) => {
+  const answer = object.answer || object.options[object.correctIndex] || ''
+  const options = object.options.filter(Boolean)
+  const currentAnswerIndex = options.findIndex((option) => option === answer)
+  const normalized = [...options]
+
+  if (answer && currentAnswerIndex === -1) {
+    normalized.unshift(answer)
+  } else if (currentAnswerIndex > 3) {
+    normalized.splice(currentAnswerIndex, 1)
+    normalized.unshift(answer)
+  }
+
+  const fallbackOptions = [
+    'Not enough information',
+    'None of the above',
+    'All of the above',
+    'Review the notes',
+  ]
+
+  fallbackOptions.forEach((option) => {
+    if (normalized.length < 4 && !normalized.includes(option)) {
+      normalized.push(option)
+    }
+  })
+
+  const fourOptions = normalized.slice(0, 4)
+  const correctIndex = Math.max(
+    0,
+    fourOptions.findIndex((option) => option === answer),
+  )
+
+  return {
+    options: fourOptions,
+    correctIndex,
+    answer: answer || fourOptions[correctIndex] || '',
+  }
+}
+
 const objectToComponents = (
   object: StudyObject,
   widgetId: string,
   studyPath?: StudyPathDashboardContext,
+  forceQuizBlockComponent = false,
 ): ComponentData[] => {
   const studyPathProps = studyPath
     ? {
@@ -135,17 +177,36 @@ const objectToComponents = (
         },
       ]
     case 'quiz':
+      if (object.quizMode === 'shortAnswer' && !forceQuizBlockComponent) {
+        return [
+          {
+            id: createComponentId(widgetId, object, 'quiz-single'),
+            type: 'QuizzSingle',
+            props: {
+              __blockType: 'QuizzSingle',
+              quizMode: 'single',
+              question: object.question,
+              answer: object.answer,
+              explanation: object.explanation,
+              ...studyPathProps,
+            },
+          },
+        ]
+      }
+
+      const quiz = normalizeMultipleChoiceOptions(object)
+
       return [
         {
           id: createComponentId(widgetId, object, 'quiz'),
           type: 'QuizBlock',
           props: {
             __blockType: 'QuizBlock',
-            quizMode: object.quizMode,
+            quizMode: 'multi',
             question: object.question,
-            options: object.options,
-            correctIndex: object.correctIndex,
-            answer: object.answer,
+            options: quiz.options,
+            correctIndex: quiz.correctIndex,
+            answer: quiz.answer,
             explanation: object.explanation,
             shuffleOptions: false,
             ...studyPathProps,
@@ -301,6 +362,58 @@ const objectToComponents = (
           },
         },
       ]
+  }
+}
+
+const createFocusedStudySessionWidget = (
+  pack: StudyPack,
+  objects: StudyObject[],
+  index: number,
+  options: {
+    author: string
+    category: string
+    createdAt: string
+    focusedResourceType: 'flashcards' | 'quiz'
+    widgetIdPrefix: string
+  },
+  widgetName?: string,
+): CustomWidget => {
+  const widgetId = `${options.widgetIdPrefix}-${index + 1}`
+
+  return {
+    id: widgetId,
+    name:
+      widgetName ||
+      (options.focusedResourceType === 'flashcards'
+        ? `${pack.title} Flashcards`
+        : `${pack.title} Quiz`),
+    components: [
+      {
+        id: `${widgetId}-focused-session`,
+        type:
+          options.focusedResourceType === 'flashcards'
+            ? 'FocusedFlashcardSessionBlock'
+            : 'FocusedQuizSessionBlock',
+        props: {
+          __blockType:
+            options.focusedResourceType === 'flashcards'
+              ? 'FocusedFlashcardSessionBlock'
+              : 'FocusedQuizSessionBlock',
+          title: pack.title,
+          items: objects,
+        },
+      },
+    ],
+    category: options.category,
+    tags: ['study-pack', 'focused-study', options.focusedResourceType],
+    description:
+      options.focusedResourceType === 'flashcards'
+        ? 'Focused flashcard study session.'
+        : 'Focused quiz study session.',
+    version: '1.0',
+    author: options.author,
+    createdAt: options.createdAt,
+    updatedAt: options.createdAt,
   }
 }
 
@@ -501,6 +614,7 @@ const createWidgetRecord = (
       | 'author'
       | 'category'
       | 'createdAt'
+      | 'forceQuizBlockComponent'
       | 'maxObjectsPerWidget'
       | 'widgetIdPrefix'
     >
@@ -512,7 +626,12 @@ const createWidgetRecord = (
     widgetIndex + 1
   }`
   const bodyComponents = objects.flatMap((object) =>
-    objectToComponents(object, widgetId, options.studyPath),
+    objectToComponents(
+      object,
+      widgetId,
+      options.studyPath,
+      options.forceQuizBlockComponent,
+    ),
   )
   const components: ComponentData[] = [
     createLabel(
@@ -779,6 +898,8 @@ export const createStudyPackOrchestratorWidgets = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    focusedResourceType: options.focusedResourceType,
+    forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     groupingThreshold: Math.max(2, options.groupingThreshold || 3),
     includeSourceWidget: options.includeSourceWidget ?? true,
     includeSourceSummaryWidget: options.includeSourceSummaryWidget ?? true,
@@ -846,6 +967,7 @@ export const createStudyPackWidgets = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 6),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
   }
@@ -868,6 +990,7 @@ export const createStudyPackWidgetsFromGroups = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     includeSummaryChart: options.includeSummaryChart ?? true,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
     widgetIdPrefix: options.widgetIdPrefix || 'study-widget',
@@ -880,14 +1003,22 @@ export const createStudyPackWidgetsFromGroups = (
       : [{ name: pack.title, objects: [] }]
 
   return effectiveGroups.map((group, index) =>
-    createWidgetRecord(
-      pack,
-      group.objects,
-      index,
-      normalizedOptions,
-      group.name,
-      normalizedOptions.includeSummaryChart,
-    ),
+    normalizedOptions.focusedResourceType
+      ? createFocusedStudySessionWidget(pack, group.objects, index, {
+          author: normalizedOptions.author,
+          category: normalizedOptions.category,
+          createdAt: normalizedOptions.createdAt,
+          focusedResourceType: normalizedOptions.focusedResourceType,
+          widgetIdPrefix: normalizedOptions.widgetIdPrefix,
+        }, group.name)
+      : createWidgetRecord(
+          pack,
+          group.objects,
+          index,
+          normalizedOptions,
+          group.name,
+          normalizedOptions.includeSummaryChart,
+        ),
   )
 }
 
@@ -1036,8 +1167,8 @@ export const createStudyPackDashboardLayout = (
   options.mode === 'orchestrator'
     ? createOrchestratorDashboardLayout(widgets)
     : options.mode === 'tabs'
-    ? createTabbedDashboardLayout(widgets)
-    : createSmartDashboardLayout(widgets)
+      ? createTabbedDashboardLayout(widgets)
+      : createSmartDashboardLayout(widgets)
 
 export const createStudyPackSaveWidgetInputs = (
   widgets: CustomWidget[],
