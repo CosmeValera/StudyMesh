@@ -234,8 +234,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) => createNewDraft(flow)
-    const handleOpenCreateHub = () => {
-      setSelectedIntent(null)
+    const handleOpenCreateHub = (event: Event) => {
+      const customEvent = event as CustomEvent<{ intent?: CreateIntent }>
+      setSelectedIntent(customEvent.detail?.intent || null)
       setUseCurrentDashboardSource(false)
       setActiveFlow('hub')
       setIsStudioOpen(true)

@@ -46,6 +46,7 @@ import {
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+  QuizQuestionStyle,
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
   StudyPackAiProvider,
@@ -185,6 +186,15 @@ const detailLevelOptions: Array<{
   { value: 'short', label: 'Short' },
   { value: 'medium', label: 'Medium' },
   { value: 'long', label: 'Long' },
+]
+
+const quizQuestionStyleOptions: Array<{
+  value: QuizQuestionStyle
+  label: string
+}> = [
+  { value: 'mixed', label: 'Mixed' },
+  { value: 'conceptual', label: 'Conceptual' },
+  { value: 'examLike', label: 'Exam-like' },
 ]
 
 const resourceTypeTargets: Record<StudyMaterialResourceType, string[]> = {
@@ -616,6 +626,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<StudyMaterialResourceType | null>(null)
   const [detailLevel, setDetailLevel] =
     useState<StudyMaterialDetailLevel>('medium')
+  const [quizQuestionStyle, setQuizQuestionStyle] =
+    useState<QuizQuestionStyle>('mixed')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
   const [aiSourceSummary, setAiSourceSummary] =
@@ -818,6 +830,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setPackTitle('Notes Dashboard')
     setResourceType(null)
     setDetailLevel('medium')
+    setQuizQuestionStyle('mixed')
     setReviewItems([])
     setWidgetGroups([])
     setAiSourceSummary(null)
@@ -1166,6 +1179,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         resourceType,
         detailLevel,
+        quizQuestionStyle,
         promptMode: false,
         studyPathMode: false,
         signal: generationController.signal,
@@ -1706,6 +1720,30 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     </Button>
                   ))}
                 </Stack>
+                {resourceType === 'quiz' && (
+                  <Stack spacing={0.75}>
+                    <Typography variant="caption" color="text.secondary">
+                      Question style
+                    </Typography>
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      {quizQuestionStyleOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          size="small"
+                          variant={
+                            quizQuestionStyle === option.value
+                              ? 'contained'
+                              : 'outlined'
+                          }
+                          onClick={() => setQuizQuestionStyle(option.value)}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </Stack>
+                  </Stack>
+                )}
               </Stack>
             </Paper>
 

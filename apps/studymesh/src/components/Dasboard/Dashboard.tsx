@@ -55,9 +55,8 @@ import {
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
+  OPEN_CREATE_HUB_EVENT,
   OPEN_DASHBOARD_EDITOR_EVENT,
-  OPEN_STUDY_PACK_EVENT,
-  OPEN_STUDY_PATH_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
   STARTER_STUDY_PATH_FOLDER_NAME,
 } from '../../customHooks/useWorkspaceActions'
@@ -794,11 +793,19 @@ const Dashboards = () => {
   }
 
   const openCreateStudyPath = () => {
-    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PATH_EVENT))
+    window.dispatchEvent(
+      new CustomEvent(OPEN_CREATE_HUB_EVENT, {
+        detail: { intent: 'study-path' },
+      }),
+    )
   }
 
   const openCreateFromNotes = () => {
-    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PACK_EVENT))
+    window.dispatchEvent(
+      new CustomEvent(OPEN_CREATE_HUB_EVENT, {
+        detail: { intent: 'improvedNotes' },
+      }),
+    )
   }
 
   const updateDashboardChatMessages = (

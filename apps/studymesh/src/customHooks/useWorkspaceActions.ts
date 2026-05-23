@@ -263,11 +263,14 @@ export const useWorkspaceActions = () => {
     )
   }, [])
 
-  const openCreateHub = useCallback((options?: { toggle?: boolean }) => {
-    window.dispatchEvent(
-      new CustomEvent(OPEN_CREATE_HUB_EVENT, { detail: options }),
-    )
-  }, [])
+  const openCreateHub = useCallback(
+    (options?: { toggle?: boolean; intent?: string }) => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_CREATE_HUB_EVENT, { detail: options }),
+      )
+    },
+    [],
+  )
 
   const createStudyPackDashboard = useCallback(
     ({
