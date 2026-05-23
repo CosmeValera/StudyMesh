@@ -14,10 +14,11 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -25,7 +26,6 @@ import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import DescriptionIcon from '@mui/icons-material/Description'
 import {
   createStudyPackOrchestratorWidgets,
-  createStudyPackSmartWidgetGroups,
   createStudyPackWidgets,
   augmentStudyPackPracticeObjects,
   createStudyPackPracticeProfile,
@@ -38,6 +38,7 @@ import {
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import {
   AiSourceSummary,
+  applyStudyMaterialResourceTypeToDraft,
   extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
@@ -45,6 +46,8 @@ import {
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+  StudyMaterialDetailLevel,
+  StudyMaterialResourceType,
   StudyPackAiProvider,
 } from '../../studyPack/ai'
 import {
@@ -65,6 +68,7 @@ type ReviewType =
   | 'note'
   | 'reveal'
   | 'sequence'
+  | 'markdown'
   | 'ignore'
 type SourceInputType = 'text' | 'image' | 'pdf' | 'powerpoint'
 type GenerationAmount = 'few' | 'medium' | 'many'
@@ -104,7 +108,14 @@ interface CreateStudyPackModalProps {
     layoutMode?: StudyPackDashboardLayoutMode
   }) => void
   presentation?: 'dialog' | 'embedded'
+  onCollapse?: () => void
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
+  onDraftMetaChange?: (metadata: {
+    title: string
+    inputSummary: string
+    resourceType?: StudyMaterialResourceType | null
+    detailLevel: StudyMaterialDetailLevel
+  }) => void
 }
 
 const supportedImageExtensions = [
@@ -140,6 +151,79 @@ const GEMINI_STUDY_PACK_ESTIMATES_MS: Record<GenerationAmount, number> = {
   few: 30 * 1000,
   medium: 60 * 1000,
   many: 90 * 1000,
+}
+
+const resourceTypeOptions: Array<{
+  value: StudyMaterialResourceType
+  label: string
+  description: string
+}> = [
+  {
+    value: 'improvedNotes',
+    label: 'Improved notes',
+    description: '',
+  },
+  {
+    value: 'flashcards',
+    label: 'Flashcards',
+    description: '',
+  },
+  {
+    value: 'quiz',
+    label: 'Quiz',
+    description: '',
+  },
+]
+
+const detailLevelOptions: Array<{
+  value: StudyMaterialDetailLevel
+  label: string
+}> = [
+  { value: 'short', label: 'Short' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'long', label: 'Long' },
+]
+
+const resourceTypeTargets: Record<StudyMaterialResourceType, string[]> = {
+  improvedNotes: ['summaries', 'definitions', 'lists'],
+  flashcards: ['flashcards'],
+  quiz: ['quizzes'],
+}
+
+const detailLevelToGenerationAmount: Record<
+  StudyMaterialDetailLevel,
+  GenerationAmount
+> = {
+  short: 'few',
+  medium: 'medium',
+  long: 'many',
+}
+
+const resourceTypeLabels: Record<StudyMaterialResourceType, string> = {
+  improvedNotes: 'Improved notes',
+  flashcards: 'Flashcards',
+  quiz: 'Quiz',
+}
+
+const detailLevelCountLimits: Record<
+  StudyMaterialResourceType,
+  Record<StudyMaterialDetailLevel, { min: number; max: number }>
+> = {
+  improvedNotes: {
+    short: { min: 400, max: 700 },
+    medium: { min: 900, max: 1400 },
+    long: { min: 1800, max: 2600 },
+  },
+  flashcards: {
+    short: { min: 6, max: 10 },
+    medium: { min: 12, max: 18 },
+    long: { min: 24, max: 35 },
+  },
+  quiz: {
+    short: { min: 5, max: 7 },
+    medium: { min: 8, max: 12 },
+    long: { min: 15, max: 25 },
+  },
 }
 
 const formatGeminiDuration = (durationMs: number): string => {
@@ -183,7 +267,7 @@ const getObjectTitle = (object: StudyObject) => {
 
   switch (object.kind) {
     case 'markdown':
-      return object.title || 'Markdown notes'
+      return object.title || 'Improved notes'
     case 'term':
       return object.term
     case 'qa':
@@ -245,6 +329,10 @@ const getObjectPreview = (object: StudyObject) => {
 }
 
 const getReviewType = (object: StudyObject): ReviewType => {
+  if (object.kind === 'markdown') {
+    return 'markdown'
+  }
+
   if (object.kind === 'qa' || object.kind === 'reveal') {
     return 'flashcard'
   }
@@ -289,9 +377,16 @@ const appendSourceText = (current: string, next: string) =>
 const formatSourceAttachmentText = (title: string, text: string) =>
   `# ${title}\n\n${text.trim()}`
 
-const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
+const toReviewItems = (
+  objects: StudyObject[],
+  resourceType: StudyMaterialResourceType,
+): ReviewItem[] =>
   objects
-    .filter(isReviewableStudyObject)
+    .filter((object) =>
+      resourceType === 'improvedNotes'
+        ? object.kind === 'markdown'
+        : isReviewableStudyObject(object),
+    )
     .map((object) => ({
       object,
       title: getObjectTitle(object),
@@ -302,25 +397,25 @@ const toReviewItems = (objects: StudyObject[]): ReviewItem[] =>
 const createPreviewWidgetGroups = (
   objects: StudyObject[],
   title: string,
+  resourceType: StudyMaterialResourceType,
 ): PreviewWidgetGroup[] =>
-  createStudyPackSmartWidgetGroups(
-    {
-      id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-pack',
-      title,
-      sourceFormat: 'text',
-      objects,
-      warnings: [],
-    },
-    3,
-  ).map((group, index) => ({
-    id: `preview-widget-${index + 1}`,
-    name: group.name,
-    objectIds: group.objects.map((object) => object.id),
-  }))
+  objects.length === 0
+    ? []
+    : [
+        {
+          id: 'preview-widget-1',
+          name: `${title} ${resourceTypeLabels[resourceType]}`,
+          objectIds: objects.map((object) => object.id),
+        },
+      ]
 
 const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   if (item.type === 'ignore') {
     return null
+  }
+
+  if (item.type === 'markdown' && item.object.kind === 'markdown') {
+    return { ...item.object, title: item.title }
   }
 
   if (item.type === 'flashcard' && item.object.kind === 'qa') {
@@ -463,7 +558,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onClose,
   onCreatePack,
   presentation = 'dialog',
+  onCollapse,
   onStatusChange,
+  onDraftMetaChange,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
@@ -497,28 +594,55 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrStatus, setOcrStatus] = useState('')
   const [packTitle, setPackTitle] = useState('Notes Dashboard')
+  const [resourceType, setResourceType] =
+    useState<StudyMaterialResourceType | null>(null)
+  const [detailLevel, setDetailLevel] =
+    useState<StudyMaterialDetailLevel>('medium')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
   const [aiSourceSummary, setAiSourceSummary] =
     useState<AiSourceSummary | null>(null)
-  const [includeSourceWidget, setIncludeSourceWidget] = useState(true)
   const [layoutMode, setLayoutMode] =
     useState<StudyPackDashboardLayoutMode>('orchestrator')
-  const [generationTargets, setGenerationTargets] = useState<string[]>([
-    'quizzes',
-    'flashcards',
-    'summaries',
-    'definitions',
-    'reviewPrompts',
-    'lists',
-    'tables',
-    'comparisons',
-    'code',
-  ])
-  const [generationAmount, setGenerationAmount] =
-    useState<GenerationAmount>('medium')
   const [error, setError] = useState('')
   const activeOperationRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const sourceCount =
+      copiedTextSourceCount +
+      textSourceNames.length +
+      documentSources.length +
+      imageFiles.length
+    const sourceKind =
+      documentSources.length > 0
+        ? documentSources[0].type === 'pdf'
+          ? 'PDF'
+          : 'slides'
+        : imageFiles.length > 0
+          ? 'image notes'
+          : sourceText.trim() || copiedTextDraft.trim()
+            ? 'notes'
+            : 'sources'
+
+    onDraftMetaChange?.({
+      title: packTitle,
+      inputSummary:
+        sourceCount > 1 ? `${sourceCount} source files` : sourceKind,
+      resourceType,
+      detailLevel,
+    })
+  }, [
+    copiedTextDraft,
+    copiedTextSourceCount,
+    detailLevel,
+    documentSources,
+    imageFiles,
+    onDraftMetaChange,
+    packTitle,
+    resourceType,
+    sourceText,
+    textSourceNames,
+  ])
 
   const cancelActiveOperation = () => {
     activeOperationRef.current?.abort()
@@ -532,6 +656,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     [],
   )
 
+  const generationTargets = resourceType ? resourceTypeTargets[resourceType] : []
+  const generationAmount = detailLevelToGenerationAmount[detailLevel]
   const practiceProfile = useMemo(
     () => createStudyPackPracticeProfile(generationAmount, generationTargets),
     [generationAmount, generationTargets],
@@ -648,23 +774,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setOcrProgress(0)
     setOcrStatus('')
     setPackTitle('Notes Dashboard')
+    setResourceType(null)
+    setDetailLevel('medium')
     setReviewItems([])
     setWidgetGroups([])
     setAiSourceSummary(null)
-    setIncludeSourceWidget(true)
     setLayoutMode('orchestrator')
-    setGenerationTargets([
-      'quizzes',
-      'flashcards',
-      'summaries',
-      'definitions',
-      'reviewPrompts',
-      'lists',
-      'tables',
-      'comparisons',
-      'code',
-    ])
-    setGenerationAmount('medium')
     setError('')
   }
 
@@ -885,6 +1000,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const parseSource = (rawSource = sourceText) => {
+    if (!resourceType) {
+      setError('Choose a resource type before continuing.')
+      return
+    }
+
     const parsed = parseStudyPack(rawSource, {
       title: packTitle,
       defaultTags: ['study-pack'],
@@ -897,23 +1017,40 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       generationAmount,
       visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
     })
-    const reviewableItems = toReviewItems(augmented.objects)
+    const draft = applyStudyMaterialResourceTypeToDraft(
+      {
+        title: parsed.title,
+        sourceFormat: parsed.sourceFormat,
+        rawNotes: rawSource,
+        objects: augmented.objects,
+        warnings: [...parsed.warnings, ...augmented.warnings],
+      },
+      parsed.id,
+      resourceType,
+    )
+    const reviewableItems = toReviewItems(draft.objects, resourceType)
     const nextTitle = packTitle.trim() || parsed.title
     setPackTitle(nextTitle)
-    setSourceFormat(parsed.sourceFormat)
+    setSourceFormat(draft.sourceFormat || parsed.sourceFormat)
     setReviewItems(reviewableItems)
     setAiSourceSummary(null)
     setWidgetGroups(
       createPreviewWidgetGroups(
         reviewableItems.map((item) => item.object),
         nextTitle,
+        resourceType,
       ),
     )
-    setError(parsed.warnings[0] || augmented.warnings[0] || '')
+    setError(draft.warnings[0] || '')
     setStep('review')
   }
 
   const parseSourceWithAi = async (rawSource = sourceText) => {
+    if (!resourceType) {
+      setError('Choose a resource type before continuing.')
+      return
+    }
+
     const credentials = resolveStudyPackAiCredentials()
     if (aiProvider === 'hosted') {
       setError('Hosted AI is not configured yet.')
@@ -967,8 +1104,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ? aiProvider === 'local'
               ? 'Creating compact local study objects'
               : aiProvider === 'gemini'
-                ? 'Creating quizzes, flashcards, and study blocks with Gemini'
-                : 'Creating quizzes, flashcards, and study blocks'
+                ? `Creating ${resourceTypeLabels[resourceType]} with Gemini`
+                : `Creating ${resourceTypeLabels[resourceType]}`
             : current,
         )
       }, 1800)
@@ -981,6 +1118,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         packId: getPackId(packTitle),
         generationTargets,
         generationAmount,
+        resourceType,
+        detailLevel,
         promptMode: false,
         studyPathMode: false,
         signal: generationController.signal,
@@ -1012,7 +1151,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         visiblePracticeTarget: Math.max(0, practiceProfile.targetTotal - 2),
       })
-      const reviewableItems = toReviewItems(augmented.objects)
+      const reviewableItems = toReviewItems(augmented.objects, resourceType)
       setPackTitle(nextTitle)
       setSourceFormat(draft.sourceFormat || 'text')
       setReviewItems(reviewableItems)
@@ -1021,6 +1160,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         createPreviewWidgetGroups(
           reviewableItems.map((item) => item.object),
           nextTitle,
+          resourceType,
         ),
       )
       setError(
@@ -1222,6 +1362,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const parseCurrentSource = async () => {
+    if (!resourceType) {
+      setError('Choose a resource type before continuing.')
+      return
+    }
+
     let rawSource = sourceText
     const copiedDraft = copiedTextDraft.trim()
     if (copiedDraft) {
@@ -1301,9 +1446,18 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }
 
   const createPack = () => {
+    const limits = resourceType
+      ? detailLevelCountLimits[resourceType][detailLevel]
+      : null
     const objects = reviewItems
       .map(applyReviewItem)
       .filter((object): object is StudyObject => Boolean(object))
+      .slice(
+        0,
+        resourceType === 'flashcards' || resourceType === 'quiz'
+          ? limits?.max
+          : undefined,
+      )
     const objectsById = new Map(objects.map((object) => [object.id, object]))
     const groups = widgetGroups
       .map((group, index) => ({
@@ -1314,10 +1468,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       }))
       .filter((group) => group.objects.length > 0)
 
-    if (!includeSourceWidget && groups.length === 0) {
-      setError(
-        'Keep the source notes or add at least one generated study section.',
-      )
+    if (groups.length === 0) {
+      setError('Add at least one generated study section.')
       return
     }
 
@@ -1330,7 +1482,12 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       sourceSummary: aiSourceSummary || undefined,
     }
     const widgets = createStudyPackOrchestratorWidgets(pack, {
-      includeSourceWidget,
+      forceQuizBlockComponent: resourceType === 'quiz',
+      focusedResourceType:
+        resourceType === 'flashcards' || resourceType === 'quiz'
+          ? resourceType
+          : undefined,
+      includeSourceWidget: false,
       includeSummaryChart: false,
       rawSource: sourceText,
       widgetGroups: groups,
@@ -1340,9 +1497,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       name: packTitle.trim() || 'Notes Dashboard',
       widgets,
       layoutMode:
-        includeSourceWidget || layoutMode !== 'orchestrator'
-          ? layoutMode
-          : 'tabs',
+        resourceType === 'flashcards' || resourceType === 'quiz'
+          ? 'tabs'
+          : layoutMode !== 'orchestrator'
+            ? layoutMode
+            : 'tabs',
     })
     handleClose()
   }
@@ -1381,23 +1540,28 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </Typography>
             </Box>
           </Stack>
-          <IconButton
-            aria-label="Close Create from notes"
-            onClick={handleClose}
-            sx={{
-              color: 'text.primary',
-              bgcolor: 'background.default',
-              border: 1,
-              borderColor: 'divider',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderColor: 'text.secondary',
-              },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+          {onCollapse && (
+            <Tooltip title="Collapse panel">
+              <IconButton
+                aria-label="Collapse Create From Notes panel"
+                onClick={onCollapse}
+                size="small"
+                sx={{
+                  color: 'text.primary',
+                  bgcolor: 'background.default',
+                  border: 1,
+                  borderColor: 'divider',
+                  flex: '0 0 auto',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'text.secondary',
+                  },
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Stack>
       </DialogTitle>
       <Divider />
@@ -1418,6 +1582,82 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               onChange={(event) => setPackTitle(event.target.value)}
               fullWidth
             />
+
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: resourceType ? 'primary.main' : 'divider',
+                borderRadius: 2,
+                bgcolor: 'background.paper',
+              }}
+            >
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={900}>
+                    Choose resource
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Pick one output type for this resource pack.
+                  </Typography>
+                </Box>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1}
+                  alignItems="stretch"
+                >
+                  {resourceTypeOptions.map((option) => {
+                    const selected = resourceType === option.value
+                    return (
+                      <Button
+                        key={option.value}
+                        variant={selected ? 'contained' : 'outlined'}
+                        onClick={() => {
+                          setResourceType(option.value)
+                          setError('')
+                        }}
+                        sx={{
+                          flex: 1,
+                          justifyContent: 'flex-start',
+                          textTransform: 'none',
+                          textAlign: 'left',
+                          alignItems: 'flex-start',
+                          p: 1.25,
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={900}>
+                            {option.label}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color={selected ? 'inherit' : 'text.secondary'}
+                          >
+                            {option.description}
+                          </Typography>
+                        </Box>
+                      </Button>
+                    )
+                  })}
+                </Stack>
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  {detailLevelOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      size="small"
+                      variant={
+                        detailLevel === option.value ? 'contained' : 'outlined'
+                      }
+                      onClick={() => setDetailLevel(option.value)}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </Stack>
+              </Stack>
+            </Paper>
 
             <Paper
               elevation={0}
@@ -1777,11 +2017,14 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                   <Chip label={`${widgetGroups.length} sections`} />
                   <Chip
                     label={
-                      sourceFormat === 'csv'
-                        ? 'Source table included'
-                        : 'Source notes included'
+                      resourceType
+                        ? resourceTypeLabels[resourceType]
+                        : sourceFormat === 'csv'
+                          ? 'Source table included'
+                          : 'Source notes included'
                     }
                   />
+                  <Chip label={`${detailLevel} detail`} />
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
                   Review the dashboard structure below, then create it in your
@@ -1860,7 +2103,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             variant="contained"
             onClick={parseCurrentSource}
             disabled={
-              isExtractingImage || isGeneratingAi || isExtractingDocument
+              !resourceType ||
+              isExtractingImage ||
+              isGeneratingAi ||
+              isExtractingDocument
             }
           >
             {isGeneratingAi

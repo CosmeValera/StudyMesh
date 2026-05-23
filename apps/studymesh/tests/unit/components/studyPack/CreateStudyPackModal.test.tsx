@@ -5,7 +5,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CreateStudyPackModal from '../../../../src/components/studyPack/CreateStudyPackModal'
 import {
   createStudyPackOrchestratorWidgets,
-  createStudyPackSmartWidgetGroups,
   parseStudyPack,
 } from '../../../../src/studyPack'
 import { extractRawNotesFromImage } from '../../../../src/studyPack/imageOcr'
@@ -29,6 +28,44 @@ vi.mock('../../../../src/studyPack/ai', () => ({
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT:
     'studymesh-study-pack-ai-settings-changed',
   cancelAllLocalAiSessions: vi.fn(),
+  applyStudyMaterialResourceTypeToDraft: vi.fn((draft, packId, resourceType) => {
+    if (resourceType === 'improvedNotes') {
+      return {
+        ...draft,
+        objects: [
+          {
+            id: `${packId}-improved-notes-1`,
+            kind: 'markdown',
+            title: 'Improved notes',
+            sourceLine: 1,
+            tags: [],
+            markdown: draft.rawNotes || 'Improved notes',
+          },
+        ],
+      }
+    }
+
+    if (resourceType === 'flashcards') {
+      return {
+        ...draft,
+        objects: draft.objects.filter(
+          (object: { kind: string }) =>
+            object.kind === 'qa' || object.kind === 'reveal',
+        ),
+      }
+    }
+
+    if (resourceType === 'quiz') {
+      return {
+        ...draft,
+        objects: draft.objects.filter(
+          (object: { kind: string }) => object.kind === 'quiz',
+        ),
+      }
+    }
+
+    return draft
+  }),
   extractRawNotesWithAi: vi.fn(),
   extractNotesFromImageWithLocalLanguageModel: vi.fn(),
   generateStudyPackWithAi: vi.fn(),
@@ -215,7 +252,12 @@ describe('CreateStudyPackModal create from notes flow', () => {
     })
   }
 
+  const selectResource = (name: string | RegExp = /quiz/i) => {
+    fireEvent.click(screen.getByRole('button', { name }))
+  }
+
   const selectImageSource = () => {
+    selectResource()
     expect(screen.getByText('Add sources')).toBeInTheDocument()
   }
 
@@ -253,6 +295,12 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     expect(screen.getByText('Create from notes')).toBeInTheDocument()
+    expect(screen.getByText('Choose resource')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /improved notes/i }))
+    expect(screen.getByRole('button', { name: /flashcards/i }))
+    expect(screen.getByRole('button', { name: /quiz/i }))
+    expect(screen.getByRole('button', { name: /medium/i }))
+    expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled()
     expect(screen.getByText('Add sources')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /upload files/i }),
@@ -283,11 +331,12 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     pasteNotes('Quiz:: What is derivative? | Rate of change')
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     expect(await screen.findByText('1 study blocks')).toBeInTheDocument()
     expect(screen.getByText('1 sections')).toBeInTheDocument()
-    expect(screen.getByText('Notes Dashboard Generated')).toBeInTheDocument()
+    expect(screen.getByText('Notes Dashboard Quiz')).toBeInTheDocument()
     expect(
       screen.queryByDisplayValue('Derivative quiz'),
     ).not.toBeInTheDocument()
@@ -297,12 +346,13 @@ describe('CreateStudyPackModal create from notes flow', () => {
     expect(createStudyPackOrchestratorWidgets).toHaveBeenCalledWith(
       expect.objectContaining({ sourceFormat: 'text' }),
       expect.objectContaining({
-        includeSourceWidget: true,
+        forceQuizBlockComponent: true,
+        includeSourceWidget: false,
         includeSummaryChart: false,
         rawSource: 'Quiz:: What is derivative? | Rate of change',
         widgetGroups: [
           expect.objectContaining({
-            name: 'Notes Dashboard Generated',
+            name: 'Notes Dashboard Quiz',
             objects: expect.arrayContaining([
               expect.objectContaining({ kind: 'quiz' }),
             ]),
@@ -313,7 +363,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     expect(onCreatePack).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Notes Dashboard',
-        layoutMode: 'orchestrator',
+        layoutMode: 'tabs',
       }),
     )
   })
@@ -336,6 +386,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     pasteNotes('Photosynthesis happens in chloroplasts.')
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     await waitFor(() => {
@@ -344,12 +395,14 @@ describe('CreateStudyPackModal create from notes flow', () => {
           apiToken: 'settings-token',
           model: 'gemini-test',
           rawNotes: 'Photosynthesis happens in chloroplasts.',
+          resourceType: 'quiz',
+          detailLevel: 'medium',
           promptMode: false,
         }),
       )
     })
     expect(
-      await screen.findByText('AI Study Pack Generated'),
+      await screen.findByText('AI Study Pack Quiz'),
     ).toBeInTheDocument()
   })
 
@@ -439,6 +492,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     pasteNotes('Photosynthesis happens in chloroplasts.')
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     expect(screen.getByText(/estimated total 1m/i)).toBeInTheDocument()
@@ -640,6 +694,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     expect(await screen.findByText('chapter-one.pdf')).toBeInTheDocument()
     expect(screen.getByText('chapter-two.pdf')).toBeInTheDocument()
     expect(extractTextFromPdf).not.toHaveBeenCalled()
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     await waitFor(() => {
@@ -671,6 +726,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     fireEvent.change(getPdfFileInput(), { target: { files: [second] } })
 
     expect(await screen.findByText('two.pdf')).toBeInTheDocument()
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
     await waitFor(() => {
       expect(extractTextFromPdf).toHaveBeenCalledTimes(2)
@@ -698,6 +754,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
 
     expect(await screen.findByText('lecture.pptx')).toBeInTheDocument()
     expect(extractTextFromPptx).not.toHaveBeenCalled()
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     await waitFor(() => {
@@ -734,6 +791,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
     })
 
     expect(await screen.findByText('two.pptx')).toBeInTheDocument()
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
     await waitFor(() => {
       expect(extractTextFromPptx).toHaveBeenCalledTimes(2)
@@ -746,9 +804,10 @@ describe('CreateStudyPackModal create from notes flow', () => {
     )
 
     pasteNotes('Rule,Formula\nPower,nx^(n-1)')
+    selectResource()
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
-    expect(await screen.findByText('Source table included')).toBeInTheDocument()
-    expect(createStudyPackSmartWidgetGroups).toHaveBeenCalled()
+    expect(await screen.findByText('Quiz')).toBeInTheDocument()
+    expect(parseStudyPack).toHaveBeenCalled()
   })
 })

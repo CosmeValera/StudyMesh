@@ -31,6 +31,7 @@ export { generateStudyPackWithAi, generateStudyPathWithAi } from './provider'
 export {
   assertRoleObjectsAreClean,
   filterStudyObjectsForDashboardRole,
+  applyStudyMaterialResourceTypeToDraft,
   normalizeAiStudyPackDraft,
   studyObjectAllowedForDashboardRole,
 } from './normalizer'
@@ -39,6 +40,8 @@ export type {
   AiSourceSummary,
   AiStudyPackDraft,
   StrictAiDashboardContract,
+  StudyMaterialDetailLevel,
+  StudyMaterialResourceType,
 } from './normalizer'
 export {
   callLocalLanguageModel,

@@ -43,6 +43,8 @@ const STUDY_BLOCK_TYPES = [
   'ReviewPromptBlock',
   'MarkdownBlock',
   'StudyPathProgressBlock',
+  'FocusedFlashcardSessionBlock',
+  'FocusedQuizSessionBlock',
 ]
 
 export const isStudyBlockType = (type: string) =>
@@ -85,6 +87,14 @@ const hashValue = (value: string): string => {
 
   return hash.toString(36)
 }
+
+const toFocusedItems = (value: unknown): Array<Record<string, unknown>> =>
+  Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object',
+      )
+    : []
 
 const readStoredMode = (key: string): string => {
   try {
@@ -483,6 +493,11 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   const [selfGrade, setSelfGrade] = useState<'known' | 'missed' | ''>('')
   const [revealed, setRevealed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [focusedCardIndex, setFocusedCardIndex] = useState(0)
+  const [focusedQuestionIndex, setFocusedQuestionIndex] = useState(0)
+  const [focusedQuizAnswers, setFocusedQuizAnswers] = useState<
+    Record<number, number>
+  >({})
   const [shortAnswer, setShortAnswer] = useState('')
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
   const [definitionStudy, setDefinitionStudy] = useState(false)
@@ -640,6 +655,108 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     )
   }
 
+  if (type === 'FocusedFlashcardSessionBlock') {
+    const title = String(props.title || 'Flashcards')
+    const cards = toFocusedItems(props.items)
+      .map((item) => ({
+        front: String(item.question || item.prompt || item.title || ''),
+        back: String(item.answer || item.hiddenText || ''),
+        tag: String(item.title || ''),
+      }))
+      .filter((item) => item.front && item.back)
+    const safeIndex = Math.min(focusedCardIndex, Math.max(0, cards.length - 1))
+    const card = cards[safeIndex]
+
+    if (!card) {
+      return (
+        <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            No flashcards available.
+          </Typography>
+        </Paper>
+      )
+    }
+
+    return (
+      <Box
+        sx={{
+          minHeight: { xs: 'calc(100dvh - 180px)', md: 'calc(100vh - 190px)' },
+          display: 'grid',
+          placeItems: 'center',
+          px: { xs: 1, md: 3 },
+          py: { xs: 2, md: 4 },
+        }}
+      >
+        <Stack spacing={2.5} sx={{ width: 'min(760px, 100%)' }}>
+          <Stack direction="row" justifyContent="space-between" gap={2}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h5" fontWeight={900}>
+                {title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {safeIndex + 1} / {cards.length}
+              </Typography>
+            </Box>
+            {card.tag && <Chip label={card.tag} />}
+          </Stack>
+          <Paper
+            variant="outlined"
+            onClick={() => setFlipped((current) => !current)}
+            sx={{
+              minHeight: { xs: 300, sm: 360 },
+              p: { xs: 3, sm: 5 },
+              borderRadius: 2,
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              textAlign: 'center',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Stack spacing={2} alignItems="center">
+              <Typography variant="overline" color="text.secondary">
+                {flipped ? 'Answer' : 'Prompt'}
+              </Typography>
+              <Typography
+                variant="h5"
+                sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.35 }}
+              >
+                {flipped ? card.back : card.front}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Click card to flip
+              </Typography>
+            </Stack>
+          </Paper>
+          <Stack direction="row" spacing={1.25} justifyContent="center">
+            <Button
+              variant="outlined"
+              disabled={safeIndex === 0}
+              onClick={() => {
+                setFocusedCardIndex((current) => Math.max(0, current - 1))
+                setFlipped(false)
+              }}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="contained"
+              disabled={safeIndex >= cards.length - 1}
+              onClick={() => {
+                setFocusedCardIndex((current) =>
+                  Math.min(cards.length - 1, current + 1),
+                )
+                setFlipped(false)
+              }}
+            >
+              Next
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+    )
+  }
+
   if (type === 'QuizBlock') {
     const question = String(props.question || 'Question')
     const correctIndex = Math.max(
@@ -724,6 +841,160 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           )}
         </Stack>
       </Paper>
+    )
+  }
+
+  if (type === 'FocusedQuizSessionBlock') {
+    const title = String(props.title || 'Quiz')
+    const questions = toFocusedItems(props.items)
+      .map((item) => {
+        const options = Array.isArray(item.options)
+          ? item.options.map((option) => String(option)).filter(Boolean)
+          : []
+        const correctIndex = Math.max(
+          0,
+          Math.min(options.length - 1, Number(item.correctIndex || 0)),
+        )
+
+        return {
+          question: String(item.question || item.title || ''),
+          options,
+          correctIndex,
+          answer: String(item.answer || options[correctIndex] || ''),
+          explanation: String(item.explanation || ''),
+        }
+      })
+      .filter((item) => item.question && item.options.length >= 2)
+    const safeIndex = Math.min(
+      focusedQuestionIndex,
+      Math.max(0, questions.length - 1),
+    )
+    const question = questions[safeIndex]
+    const selected = focusedQuizAnswers[safeIndex]
+    const score = questions.reduce(
+      (total, item, index) =>
+        focusedQuizAnswers[index] === item.correctIndex ? total + 1 : total,
+      0,
+    )
+
+    if (!question) {
+      return (
+        <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            No quiz questions available.
+          </Typography>
+        </Paper>
+      )
+    }
+
+    return (
+      <Box
+        sx={{
+          minHeight: { xs: 'calc(100dvh - 180px)', md: 'calc(100vh - 190px)' },
+          display: 'grid',
+          placeItems: 'center',
+          px: { xs: 1, md: 3 },
+          py: { xs: 2, md: 4 },
+        }}
+      >
+        <Stack spacing={2.5} sx={{ width: 'min(820px, 100%)' }}>
+          <Stack direction="row" justifyContent="space-between" gap={2}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h5" fontWeight={900}>
+                {title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {safeIndex + 1} / {questions.length}
+              </Typography>
+            </Box>
+            <Chip label={`Score ${score}/${questions.length}`} />
+          </Stack>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: { xs: 2.25, sm: 4 },
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Stack spacing={2.25}>
+              <Typography variant="h5" sx={{ lineHeight: 1.35 }}>
+                {question.question}
+              </Typography>
+              <Stack spacing={1.25}>
+                {question.options.map((option, index) => {
+                  const hasAnswered = selected !== undefined
+                  const isCorrect = index === question.correctIndex
+                  const isSelected = selected === index
+
+                  return (
+                    <Button
+                      key={`${option}-${index}`}
+                      variant="outlined"
+                      onClick={() =>
+                        setFocusedQuizAnswers((current) => ({
+                          ...current,
+                          [safeIndex]: index,
+                        }))
+                      }
+                      sx={{
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        minHeight: 52,
+                        whiteSpace: 'normal',
+                        color: 'text.primary',
+                        borderColor: hasAnswered
+                          ? isCorrect
+                            ? 'success.main'
+                            : isSelected
+                              ? 'error.main'
+                              : 'divider'
+                          : 'divider',
+                        bgcolor:
+                          hasAnswered && (isCorrect || isSelected)
+                            ? isCorrect
+                              ? 'success.light'
+                              : 'error.light'
+                            : 'transparent',
+                      }}
+                    >
+                      {option}
+                    </Button>
+                  )
+                })}
+              </Stack>
+              {selected !== undefined && (
+                <Typography variant="body2" color="text.secondary">
+                  {question.explanation ||
+                    `Correct answer: ${question.answer}`}
+                </Typography>
+              )}
+            </Stack>
+          </Paper>
+          <Stack direction="row" spacing={1.25} justifyContent="center">
+            <Button
+              variant="outlined"
+              disabled={safeIndex === 0}
+              onClick={() =>
+                setFocusedQuestionIndex((current) => Math.max(0, current - 1))
+              }
+            >
+              Previous
+            </Button>
+            <Button
+              variant="contained"
+              disabled={safeIndex >= questions.length - 1}
+              onClick={() =>
+                setFocusedQuestionIndex((current) =>
+                  Math.min(questions.length - 1, current + 1),
+                )
+              }
+            >
+              Next
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
     )
   }
 

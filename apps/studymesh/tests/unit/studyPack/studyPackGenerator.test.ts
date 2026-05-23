@@ -538,4 +538,20 @@ A: Back`,
     expect(JSON.stringify(widgets)).not.toContain('Source notes')
     expect(JSON.stringify(widgets)).not.toContain('"Chart"')
   })
+
+  it('can force short-answer quizzes to render as QuizBlock components', () => {
+    const pack = parseStudyPack('Quiz:: What is a derivative? | Rate of change')
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      forceQuizBlockComponent: true,
+      includeSourceWidget: false,
+    })
+    const serialized = JSON.stringify(widgets)
+
+    expect(pack.objects).toEqual([
+      expect.objectContaining({ kind: 'quiz', quizMode: 'shortAnswer' }),
+    ])
+    expect(serialized).toContain('QuizBlock')
+    expect(serialized).not.toContain('QuizzSingle')
+    expect(serialized).not.toContain('quiz-single')
+  })
 })

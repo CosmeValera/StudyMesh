@@ -17,9 +17,12 @@ import {
 } from '../practice'
 import {
   assertRoleObjectsAreClean,
+  applyStudyMaterialResourceTypeToDraft,
   filterStudyObjectsForDashboardRole,
   normalizeAiStudyPackDraft,
   AiStudyPackDraft,
+  StudyMaterialDetailLevel,
+  StudyMaterialResourceType,
 } from './normalizer'
 
 interface GeminiPart {
@@ -68,6 +71,27 @@ const generationTargetLabels: Record<string, string> = {
 const formatGenerationTargets = (targets: string[]): string =>
   targets.map((target) => generationTargetLabels[target] || target).join(', ')
 
+const geminiDetailTargets: Record<
+  StudyMaterialResourceType,
+  Record<StudyMaterialDetailLevel, string>
+> = {
+  improvedNotes: {
+    short: '400-700 words',
+    medium: '900-1400 words',
+    long: '1800-2600 words',
+  },
+  flashcards: {
+    short: '6-10 flashcards',
+    medium: '12-18 flashcards',
+    long: '24-35 flashcards',
+  },
+  quiz: {
+    short: '5-7 questions',
+    medium: '8-12 questions',
+    long: '15-25 questions',
+  },
+}
+
 export interface GenerateStudyPackWithAiOptions {
   apiToken: string
   model: string
@@ -76,6 +100,8 @@ export interface GenerateStudyPackWithAiOptions {
   packId: string
   generationTargets?: string[]
   generationAmount?: 'few' | 'medium' | 'many'
+  resourceType?: StudyMaterialResourceType
+  detailLevel?: StudyMaterialDetailLevel
   promptMode?: boolean
   studyPathMode?: boolean
 }
@@ -961,6 +987,8 @@ export const generateStudyPackWithAi = async ({
   packId,
   generationTargets = [],
   generationAmount = 'medium',
+  resourceType,
+  detailLevel = 'medium',
   promptMode = false,
   studyPathMode = false,
 }: GenerateStudyPackWithAiOptions): Promise<AiStudyPackDraft> => {
@@ -977,6 +1005,23 @@ export const generateStudyPackWithAi = async ({
     practiceProfile.enforceQuizzes || practiceProfile.enforceFlashcards
       ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
       : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
+  const resourceInstruction =
+    resourceType === 'improvedNotes'
+      ? 'Selected resource type: Improved notes. Create a clearer, better organized explanation from the source. Fill sourceSummary and conceptRecap. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
+      : resourceType === 'flashcards'
+        ? 'Selected resource type: Flashcards. Create only atomic flashcards. Keep sourceSummary brief, leave conceptRecap sections empty, and leave all practice arrays empty.'
+        : resourceType === 'quiz'
+          ? 'Selected resource type: Quiz. Create only quiz questions. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
+          : 'Selected resource type: mixed Study Pack.'
+  const detailInstruction =
+    detailLevel === 'short'
+      ? 'Detail level: Short. Keep notes concise and generate a small focused set.'
+      : detailLevel === 'long'
+        ? 'Detail level: Long. Create deeper explanations or a larger practice set while staying grounded.'
+        : 'Detail level: Medium. Use balanced depth and amount.'
+  const hardDetailInstruction = resourceType
+    ? `The selected detail level is a hard constraint. Target ${geminiDetailTargets[resourceType][detailLevel]}. Match the target length/count exactly or as close as possible. Do not ignore it.`
+    : 'The selected detail level is a hard constraint. Match the requested amount as closely as possible. Do not ignore it.'
   const sourceInstruction = promptMode
     ? 'The raw input is a learning prompt, not notes. Teach the requested topic from scratch. Because the input is not source notes, you may use accurate general knowledge for this topic. First create concise source notes/explanations, then generate practice grounded in those generated explanations. Include explanation/theory objects before exercises.'
     : 'The raw input is source notes. Stay grounded in those notes.'
@@ -1022,6 +1067,11 @@ Rules:
 - Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
 - Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?"
+- Quiz questions must paraphrase the source. Do not copy exact source sentences as questions or answers.
+- Quiz questions must test understanding, not only memorization. Mix conceptual understanding, applying the idea to a new situation, comparing concepts, cause/effect, inference, identifying common mistakes, and fixing errors.
+- Distractors must be plausible but clearly wrong. Avoid answers that are too short, vague, repeated, or obvious because they reuse exact source wording.
+- Avoid "According to the text..." style questions unless strictly necessary.
+- Every quiz explanation must teach why the correct answer is correct.
 - Quizzes must test application, usage, contrast, formation, exceptions, or common mistakes with a concrete expected answer. Do not ask "Which statement best explains X?", "Which statement matches the notes?", "What does X help you understand or do?", "What is the core idea behind X?", or questions about what the notes say.
 - For language-learning Study Packs, generate grammar/application questions from accepted concepts only: complete a form, choose the trigger expression, choose indicative vs subjunctive, or fix a common mistake.
 - ${
@@ -1043,6 +1093,9 @@ Rules:
   }
 - Do not create or reference heavy resources such as PDFs or images unless the user explicitly asks for PDFs, images, screenshots, diagrams, or visual resources.
 - Keep objects concise and student-friendly.
+- ${resourceInstruction}
+- ${detailInstruction}
+- ${hardDetailInstruction}
 - ${targetInstruction}
 - ${amountInstruction}
 - ${mixInstruction}
@@ -1105,10 +1158,14 @@ The previous response failed JSON formatting. Retry with a simpler response:
     }
   }
 
-  const draft = normalizeAiStudyPackDraft(parsed, packId, {
-    rawNotes,
-    rawAiResponse: text,
-  })
+  const draft = applyStudyMaterialResourceTypeToDraft(
+    normalizeAiStudyPackDraft(parsed, packId, {
+      rawNotes,
+      rawAiResponse: text,
+    }),
+    packId,
+    resourceType,
+  )
 
   return {
     ...draft,
