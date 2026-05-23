@@ -207,26 +207,55 @@ const DashboardChatPanel = ({
         display: 'flex',
         flexDirection: 'column',
         bgcolor: 'background.paper',
+        overflow: 'hidden',
       }}
     >
       <Box
         sx={{
-          minHeight: 58,
+          minHeight: 76,
           px: 2,
+          py: 1.5,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 1.5,
           borderBottom: 1,
           borderColor: 'divider',
+          background:
+            theme.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, rgba(34,197,94,0.14), rgba(14,165,233,0.08))'
+              : 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(14,165,233,0.06))',
         }}
       >
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={900} noWrap>
-            Ask this dashboard
+            Ask Sources
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
-            Based on sources and study material here
+            Grounded in this workspace’s study material
           </Typography>
+          <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }}>
+            <Chip
+              size="small"
+              label={
+                isLocalAi
+                  ? 'Local AI'
+                  : settings.provider === 'gemini'
+                  ? 'Gemini'
+                  : 'Basic'
+              }
+              variant="outlined"
+              sx={{ height: 22, fontWeight: 700 }}
+            />
+            <Chip
+              size="small"
+              label={`${context.chunks.length} source${
+                context.chunks.length === 1 ? '' : 's'
+              }`}
+              variant="outlined"
+              sx={{ height: 22 }}
+            />
+          </Stack>
         </Box>
         <Stack direction="row" spacing={0.5}>
           {messages.length > 0 && (
@@ -252,20 +281,39 @@ const DashboardChatPanel = ({
         </Stack>
       </Box>
 
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          p: 2,
+          bgcolor:
+            theme.palette.mode === 'dark'
+              ? 'rgba(2,6,23,0.18)'
+              : 'rgba(248,250,252,0.72)',
+        }}
+      >
         {!hasContext ? (
           <Alert severity="info">
             This dashboard does not have enough source content to chat with yet.
           </Alert>
         ) : messages.length === 0 ? (
-          <Stack spacing={2}>
-            <Box>
+          <Stack spacing={2.25}>
+            <Box
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'background.paper',
+              }}
+            >
               <Typography variant="h6" fontWeight={900}>
-                Ask this dashboard
+                What do you want to understand?
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Ask questions based on the sources and study material in this
-                dashboard.
+                dashboard. I’ll keep answers grounded in what’s here.
               </Typography>
             </Box>
             <Stack spacing={1}>
@@ -275,7 +323,16 @@ const DashboardChatPanel = ({
                   variant="outlined"
                   size="small"
                   onClick={() => sendQuestion(suggestion)}
-                  sx={{ justifyContent: 'flex-start', borderRadius: 2 }}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1,
+                    px: 1.25,
+                    bgcolor: 'background.paper',
+                    borderColor: 'divider',
+                    color: 'text.primary',
+                    textTransform: 'none',
+                  }}
                 >
                   {suggestion}
                 </Button>
@@ -290,24 +347,33 @@ const DashboardChatPanel = ({
                 sx={{
                   alignSelf:
                     message.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '88%',
+                  maxWidth: '90%',
                 }}
               >
                 <Box
                   sx={{
                     px: 1.5,
-                    py: 1,
-                    borderRadius: 2,
+                    py: 1.1,
+                    borderRadius:
+                      message.role === 'user'
+                        ? '18px 18px 6px 18px'
+                        : '18px 18px 18px 6px',
                     bgcolor:
                       message.role === 'user'
                         ? 'primary.main'
-                        : 'background.default',
+                        : 'background.paper',
                     color:
                       message.role === 'user'
                         ? 'primary.contrastText'
                         : 'text.primary',
                     border: message.role === 'assistant' ? 1 : 0,
                     borderColor: 'divider',
+                    boxShadow:
+                      message.role === 'assistant'
+                        ? theme.palette.mode === 'dark'
+                          ? '0 10px 24px rgba(0,0,0,0.22)'
+                          : '0 10px 24px rgba(16,24,40,0.08)'
+                        : 'none',
                     whiteSpace: 'pre-wrap',
                   }}
                 >
@@ -408,7 +474,7 @@ const DashboardChatPanel = ({
       </Box>
 
       <Divider />
-      <Box sx={{ p: 1.5 }}>
+      <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
         <Stack direction="row" spacing={1} alignItems="flex-end">
           <TextField
             value={draft}
@@ -418,6 +484,15 @@ const DashboardChatPanel = ({
             multiline
             maxRows={4}
             size="small"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2.5,
+                bgcolor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(15,23,42,0.72)'
+                    : 'rgba(248,250,252,0.92)',
+              },
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
@@ -430,6 +505,19 @@ const DashboardChatPanel = ({
             onClick={() => sendQuestion(draft)}
             disabled={!draft.trim()}
             aria-label="Send dashboard question"
+            sx={{
+              width: 42,
+              height: 42,
+              bgcolor: draft.trim()
+                ? 'primary.main'
+                : 'action.disabledBackground',
+              color: draft.trim() ? 'primary.contrastText' : 'text.disabled',
+              '&:hover': {
+                bgcolor: draft.trim()
+                  ? 'primary.dark'
+                  : 'action.disabledBackground',
+              },
+            }}
           >
             <SendIcon />
           </IconButton>

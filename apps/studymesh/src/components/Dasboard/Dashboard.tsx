@@ -2021,17 +2021,17 @@ const Dashboards = () => {
         <Box
           aria-hidden={!dashboardChatOpen}
           sx={{
-            width: dashboardChatOpen ? 'min(440px, 38vw)' : 0,
-            maxWidth: dashboardChatOpen ? 'min(440px, 38vw)' : 0,
-            minWidth: dashboardChatOpen ? 360 : 0,
+            width: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
+            maxWidth: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
+            minWidth: dashboardChatOpen ? 380 : 0,
             flex: '0 0 auto',
             minHeight: 0,
             overflow: 'hidden',
-            borderLeft: dashboardChatOpen ? 1 : 0,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+            p: dashboardChatOpen ? '8px 8px 8px 0' : 0,
+            boxSizing: 'border-box',
+            bgcolor: 'background.default',
             transition: theme.transitions.create(
-              ['width', 'max-width', 'min-width', 'border-left-width'],
+              ['width', 'max-width', 'min-width', 'padding'],
               {
                 duration: theme.transitions.duration.shorter,
                 easing: theme.transitions.easing.easeInOut,
@@ -2039,7 +2039,22 @@ const Dashboards = () => {
             ),
           }}
         >
-          {dashboardChatOpen ? dashboardChatPanel : null}
+          <Box
+            sx={{
+              height: '100%',
+              overflow: 'hidden',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2.5,
+              bgcolor: 'background.paper',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? '0 18px 40px rgba(0,0,0,0.42)'
+                  : '0 18px 42px rgba(16,24,40,0.10)',
+            }}
+          >
+            {dashboardChatOpen ? dashboardChatPanel : null}
+          </Box>
         </Box>
       )}
 
