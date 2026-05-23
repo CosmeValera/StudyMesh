@@ -333,9 +333,6 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const [userSettingsAvatarStatus, setUserSettingsAvatarStatus] = useState('')
   const [studyPackOpen, setStudyPackOpen] = useState(false)
   const [studyPathOpen, setStudyPathOpen] = useState(false)
-  const [creationTaskStatuses, setCreationTaskStatuses] = useState(
-    initialCreationTaskStatuses,
-  )
   const creationTaskStatusesRef = useRef(initialCreationTaskStatuses)
   const [creationToast, setCreationToast] = useState<{
     severity: 'success' | 'error'
@@ -379,9 +376,6 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const userModeLabel = isAdmin
     ? studyPackAiProviderLabels[studyPackAiProvider]
     : 'Viewer mode'
-  const studyPathCreationState = creationTaskStatuses['study-path']
-  const fromNotesCreationState = creationTaskStatuses['from-notes']
-
   const {
     openCreateWidget,
     openCreateDashboard,
@@ -478,16 +472,8 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         [detail.task]: detail.state,
       }
       creationTaskStatusesRef.current = nextStatuses
-      setCreationTaskStatuses(nextStatuses)
 
-      if (detail.state === 'complete') {
-        setCreationToast({
-          severity: 'success',
-          message:
-            detail.message ||
-            `${workspaceCreationTaskLabels[detail.task]} is ready to review.`,
-        })
-      } else if (detail.state === 'error') {
+      if (detail.state === 'error') {
         setCreationToast({
           severity: 'error',
           message:
@@ -777,12 +763,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<RouteIcon />}
-                label={
-                  <CreationStatusLabel
-                    label="Create Study Path"
-                    state={studyPathCreationState}
-                  />
-                }
+                label="Create Study Path"
                 onClick={() => openCreateStudyPath({ toggle: true })}
                 disabled={!canCreateStudyPath}
                 title={
@@ -820,22 +801,14 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                       : 'Create Study Path'
                 }
               >
-                <CreationStatusLabel
-                  label="Create Study Path"
-                  state={studyPathCreationState}
-                />
+                Create Study Path
               </Button>
             )}
 
             {isPhone || isTablet ? (
               <ButtonWithLabel
                 icon={<AutoStoriesIcon />}
-                label={
-                  <CreationStatusLabel
-                    label="Create From Notes"
-                    state={fromNotesCreationState}
-                  />
-                }
+                label="Create From Notes"
                 onClick={() => openCreateStudyPack({ toggle: true })}
                 data-tutorial-id="create-study-pack-button"
                 disabled={!canCreateFromNotes}
@@ -875,10 +848,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                       : 'Create From Notes'
                 }
               >
-                <CreationStatusLabel
-                  label="Create From Notes"
-                  state={fromNotesCreationState}
-                />
+                Create From Notes
               </Button>
             )}
 

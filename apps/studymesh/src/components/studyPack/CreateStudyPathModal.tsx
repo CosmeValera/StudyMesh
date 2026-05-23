@@ -12,14 +12,17 @@ import {
   DialogTitle,
   Divider,
   FormControlLabel,
+  IconButton,
   LinearProgress,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import RouteIcon from '@mui/icons-material/Route'
 import TuneIcon from '@mui/icons-material/Tune'
 import {
@@ -63,6 +66,7 @@ interface CreateStudyPathModalProps {
     }>
   }) => void
   presentation?: 'dialog' | 'embedded'
+  onCollapse?: () => void
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
   onDraftMetaChange?: (metadata: {
     title: string
@@ -503,6 +507,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onClose,
   onCreatePath,
   presentation = 'dialog',
+  onCollapse,
   onStatusChange,
   onDraftMetaChange,
 }) => {
@@ -871,6 +876,28 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
               </Typography>
             </Box>
           </Stack>
+          {onCollapse && (
+            <Tooltip title="Collapse panel">
+              <IconButton
+                aria-label="Collapse Create Study Path panel"
+                onClick={onCollapse}
+                size="small"
+                sx={{
+                  color: 'text.primary',
+                  bgcolor: 'background.default',
+                  border: 1,
+                  borderColor: 'divider',
+                  flex: '0 0 auto',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'text.secondary',
+                  },
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Stack>
       </DialogTitle>
       <Divider />

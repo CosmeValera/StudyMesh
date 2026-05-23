@@ -14,9 +14,11 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -106,6 +108,7 @@ interface CreateStudyPackModalProps {
     layoutMode?: StudyPackDashboardLayoutMode
   }) => void
   presentation?: 'dialog' | 'embedded'
+  onCollapse?: () => void
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
   onDraftMetaChange?: (metadata: {
     title: string
@@ -555,6 +558,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onClose,
   onCreatePack,
   presentation = 'dialog',
+  onCollapse,
   onStatusChange,
   onDraftMetaChange,
 }) => {
@@ -1536,6 +1540,28 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </Typography>
             </Box>
           </Stack>
+          {onCollapse && (
+            <Tooltip title="Collapse panel">
+              <IconButton
+                aria-label="Collapse Create From Notes panel"
+                onClick={onCollapse}
+                size="small"
+                sx={{
+                  color: 'text.primary',
+                  bgcolor: 'background.default',
+                  border: 1,
+                  borderColor: 'divider',
+                  flex: '0 0 auto',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    borderColor: 'text.secondary',
+                  },
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Stack>
       </DialogTitle>
       <Divider />

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Dialog,
@@ -10,7 +10,6 @@ import {
   useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 
 import {
   OPEN_DASHBOARD_EDITOR_EVENT,
@@ -174,6 +173,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     'study-path': initialDrafts[0].id,
     'from-notes': initialDrafts[1].id,
   }))
+  const autoCollapsedDraftIds = useRef<Set<string>>(new Set())
   const [aiProvider, setAiProvider] = useState(
     () => readStudyPackAiSettings().provider || 'basic',
   )
@@ -333,6 +333,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const removeDraft = (draftId: string, flow: StudioFlow) => {
     let nextActiveDraftId: string | null = null
+    autoCollapsedDraftIds.current.delete(draftId)
     setGenerationDrafts((current) => {
       const remaining = current.filter((draft) => draft.id !== draftId)
       const flowDrafts = remaining.filter((draft) => draft.flow === flow)
@@ -355,17 +356,33 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const makeDraftStatusHandler =
     (draftId: string, flow: StudioFlow) =>
     (state: WorkspaceCreationTaskState, message?: string) => {
-      updateDraft(draftId, {
-        status:
-          state === 'running'
-            ? 'generating'
-            : state === 'complete'
-              ? 'ready'
-              : state === 'error'
-                ? 'failed'
-                : 'editing',
-        error: state === 'error' ? message : undefined,
-      })
+      setGenerationDrafts((current) =>
+        current.map((draft) => {
+          if (draft.id !== draftId) {
+            return draft
+          }
+
+          const nextStatus =
+            state === 'running'
+              ? 'generating'
+              : state === 'complete'
+                ? 'ready'
+                : state === 'error'
+                  ? 'failed'
+                  : 'editing'
+
+          return {
+            ...draft,
+            status: nextStatus,
+            error: state === 'error' ? message : undefined,
+          }
+        }),
+      )
+
+      if (state === 'running' && !autoCollapsedDraftIds.current.has(draftId)) {
+        autoCollapsedDraftIds.current.add(draftId)
+        setIsStudioOpen(false)
+      }
 
       if (flow === 'study-path') {
         reportStudyPathStatus(state, message)
@@ -380,9 +397,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
   }
 
-  const currentFeatureName =
-    activeFlow === 'study-path' ? 'Create Study Path' : 'Create From Notes'
-
   const studioContent = (
     <Box
       sx={{
@@ -393,49 +407,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         overflow: 'hidden',
       }}
     >
-      <Box
-        sx={{
-          minHeight: 54,
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 1.75,
-          borderBottom: 1,
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={800} noWrap>
-            {currentFeatureName}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            Create, review, then insert into the workspace
-          </Typography>
-        </Box>
-        <Tooltip title="Collapse panel">
-          <IconButton
-            aria-label="Collapse Studio panel"
-            onClick={closeStudio}
-            size="small"
-            sx={{
-              color: 'text.primary',
-              bgcolor: 'background.default',
-              border: 1,
-              borderColor: 'divider',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderColor: 'text.secondary',
-              },
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
       <Box
         sx={{
           flex: 1,
@@ -459,6 +430,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPathModal
                 open
                 presentation="embedded"
+                onCollapse={closeStudio}
                 onClose={() => removeDraft(draft.id, 'study-path')}
                 onCreatePath={(payload) => {
                   const dashboards = createStudyPackDashboards(payload)
@@ -506,6 +478,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPackModal
                 open
                 presentation="embedded"
+                onCollapse={closeStudio}
                 onClose={() => removeDraft(draft.id, 'from-notes')}
                 onCreatePack={(payload) => {
                   const dashboard = createStudyPackDashboard(payload)
@@ -534,6 +507,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   )
 
   const openCreationMarker = (draft: GenerationDraft) => {
+    const isActiveMarker = activeDraftByFlow[draft.flow] === draft.id
+
+    if (isStudioOpen && activeFlow === draft.flow && isActiveMarker) {
+      closeStudio()
+      return
+    }
+
     setActiveFlow(draft.flow)
     setActiveDraftByFlow((current) => ({
       ...current,
