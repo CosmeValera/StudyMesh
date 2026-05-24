@@ -213,8 +213,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [selectedIntent, setSelectedIntent] = useState<CreateIntent | null>(
     null,
   )
-  const [useCurrentDashboardSource, setUseCurrentDashboardSource] =
-    useState(false)
   const [generationDrafts, setGenerationDrafts] =
     useState<GenerationDraft[]>(initialDrafts)
   const [activeDraftByFlow, setActiveDraftByFlow] = useState<
@@ -296,7 +294,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     const handleOpenCreateHub = (event: Event) => {
       const customEvent = event as CustomEvent<{ intent?: CreateIntent }>
       setSelectedIntent(customEvent.detail?.intent || null)
-      setUseCurrentDashboardSource(false)
       setActiveFlow('hub')
       setIsStudioOpen(true)
     }
@@ -519,20 +516,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     currentDashboard?.name ||
     'Current dashboard'
 
-  const openIntentSourceStep = (intent: CreateIntent) => {
+  const startCreateIntent = (intent: CreateIntent) => {
     setSelectedIntent(intent)
-    setUseCurrentDashboardSource(false)
-  }
-
-  const startSelectedIntent = (useCurrentDashboard: boolean) => {
-    if (!selectedIntent) {
-      return
-    }
-
-    setUseCurrentDashboardSource(useCurrentDashboard)
-    createNewDraft(
-      selectedIntent === 'study-path' ? 'study-path' : 'from-notes',
-    )
+    createNewDraft(intent === 'study-path' ? 'study-path' : 'from-notes')
   }
 
   const createOptions: Array<{
@@ -544,7 +530,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     {
       intent: 'study-path',
       title: 'Study Path',
-      description: 'Generate an ordered learning path from a topic or source.',
+      description: 'Generate a guided learning path with connected dashboards.',
       icon: <RouteIcon />,
     },
     {
@@ -567,9 +553,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     },
   ]
 
-  const selectedCreateOption = createOptions.find(
-    (option) => option.intent === selectedIntent,
-  )
+  const studyPathOption = createOptions[0]
+  const materialOptions = createOptions.slice(1)
+
+  const returnToCreateHub = (
+    draftId: string,
+    flow: Exclude<StudioFlow, 'hub'>,
+  ) => {
+    removeDraft(draftId, flow)
+    setActiveFlow('hub')
+    setSelectedIntent(null)
+  }
 
   const creationHubContent = (
     <Box sx={{ height: '100%', overflow: 'auto', p: 2.25 }}>
@@ -577,14 +571,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="h5" fontWeight={900}>
-              {selectedCreateOption
-                ? 'Choose source'
-                : 'What do you want to create?'}
+              What do you want to create?
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {selectedCreateOption
-                ? `Create ${selectedCreateOption.title.toLowerCase()} from a topic, the current dashboard, or pasted/uploaded material.`
-                : 'Start with the outcome first. StudyMesh will ask for the right source next.'}
+              Start with the outcome first. StudyMesh will ask for the right
+              details next.
             </Typography>
           </Box>
           <IconButton
@@ -603,97 +594,124 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           </IconButton>
         </Box>
 
-        {!selectedCreateOption ? (
-          <Stack spacing={1.25}>
-            {createOptions.map((option) => (
-              <Paper
-                key={option.intent}
-                component="button"
-                type="button"
-                onClick={() => openIntentSourceStep(option.intent)}
-                variant="outlined"
-                sx={{
-                  width: '100%',
-                  p: 1.5,
-                  textAlign: 'left',
-                  borderRadius: 2.5,
-                  bgcolor: 'background.paper',
-                  color: 'text.primary',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  gap: 1.25,
-                  alignItems: 'center',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: 'action.hover',
-                  },
-                }}
-              >
-                <Box
+        <Stack spacing={1.5}>
+          <Typography variant="overline" color="text.secondary">
+            Recommended
+          </Typography>
+          <Paper
+            component="button"
+            type="button"
+            onClick={() => startCreateIntent(studyPathOption.intent)}
+            variant="outlined"
+            sx={{
+              width: '100%',
+              p: 1.75,
+              textAlign: 'left',
+              borderRadius: 2.5,
+              borderColor: 'primary.main',
+              bgcolor: 'rgba(20, 184, 166, 0.08)',
+              color: 'text.primary',
+              cursor: 'pointer',
+              display: 'flex',
+              gap: 1.25,
+              alignItems: 'center',
+              '&:hover': {
+                borderColor: 'primary.dark',
+                bgcolor: 'rgba(20, 184, 166, 0.12)',
+              },
+            }}
+          >
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: 2,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                flex: '0 0 auto',
+              }}
+            >
+              {studyPathOption.icon}
+            </Box>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Stack direction="row" gap={1} alignItems="center">
+                <Typography fontWeight={900}>
+                  {studyPathOption.title}
+                </Typography>
+                <Typography
+                  variant="caption"
                   sx={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 2,
-                    display: 'grid',
-                    placeItems: 'center',
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 999,
                     bgcolor: 'primary.main',
                     color: 'primary.contrastText',
-                    flex: '0 0 auto',
+                    fontWeight: 800,
                   }}
                 >
-                  {option.icon}
-                </Box>
-                <Box>
-                  <Typography fontWeight={900}>{option.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {option.description}
-                  </Typography>
-                </Box>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <Stack spacing={1.25}>
-            <Button
+                  Recommended
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                {studyPathOption.description}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Best when you want to learn a topic step by step.
+              </Typography>
+            </Box>
+          </Paper>
+          <Typography variant="overline" color="text.secondary">
+            Create from material
+          </Typography>
+          {materialOptions.map((option) => (
+            <Paper
+              key={option.intent}
+              component="button"
+              type="button"
+              onClick={() => startCreateIntent(option.intent)}
               variant="outlined"
-              onClick={() => setSelectedIntent(null)}
-              sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+              sx={{
+                width: '100%',
+                p: 1.5,
+                textAlign: 'left',
+                borderRadius: 2.5,
+                bgcolor: 'background.paper',
+                color: 'text.primary',
+                cursor: 'pointer',
+                display: 'flex',
+                gap: 1.25,
+                alignItems: 'center',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: 'action.hover',
+                },
+              }}
             >
-              Back
-            </Button>
-            {selectedIntent === 'study-path' && (
-              <Button
-                variant="contained"
-                onClick={() => startSelectedIntent(false)}
-                sx={{ justifyContent: 'flex-start', p: 1.5, borderRadius: 2 }}
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 2,
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  flex: '0 0 auto',
+                }}
               >
-                Start from a topic / prompt
-              </Button>
-            )}
-            <Button
-              variant="outlined"
-              disabled={!hasCurrentDashboardContext}
-              onClick={() => startSelectedIntent(true)}
-              sx={{ justifyContent: 'flex-start', p: 1.5, borderRadius: 2 }}
-            >
-              Use current dashboard as context
-              {hasCurrentDashboardContext
-                ? ` — ${currentDashboardTitle}`
-                : ' — no active content'}
-            </Button>
-            <Button
-              variant={
-                selectedIntent === 'study-path' ? 'outlined' : 'contained'
-              }
-              onClick={() => startSelectedIntent(false)}
-              sx={{ justifyContent: 'flex-start', p: 1.5, borderRadius: 2 }}
-            >
-              {selectedIntent === 'study-path'
-                ? 'Paste or upload sources instead'
-                : 'Paste text or upload files'}
-            </Button>
-          </Stack>
-        )}
+                {option.icon}
+              </Box>
+              <Box>
+                <Typography fontWeight={900}>{option.title}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {option.description}
+                </Typography>
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
       </Stack>
     </Box>
   )
@@ -745,7 +763,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPathModal
                 open
                 presentation="embedded"
-                onCollapse={closeStudio}
+                onCollapse={() => returnToCreateHub(draft.id, 'study-path')}
                 onClose={() => removeDraft(draft.id, 'study-path')}
                 onCreatePath={(payload) => {
                   const dashboards = createStudyPackDashboards(payload)
@@ -758,11 +776,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   )
                   return dashboards
                 }}
-                initialPrompt={
-                  useCurrentDashboardSource
-                    ? currentDashboardContext
-                    : undefined
-                }
+                currentDashboardContext={currentDashboardContext}
+                currentDashboardTitle={currentDashboardTitle}
+                hasCurrentDashboardContext={hasCurrentDashboardContext}
                 onStatusChange={makeDraftStatusHandler(draft.id, 'study-path')}
                 onDraftMetaChange={(metadata) =>
                   updateDraft(draft.id, {
@@ -802,7 +818,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPackModal
                 open
                 presentation="embedded"
-                onCollapse={closeStudio}
+                onCollapse={() => returnToCreateHub(draft.id, 'from-notes')}
                 onClose={() => removeDraft(draft.id, 'from-notes')}
                 onCreatePack={(payload) => {
                   const dashboard = createStudyPackDashboard(payload)
@@ -820,16 +836,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     ? selectedIntent
                     : undefined
                 }
-                initialSourceText={
-                  useCurrentDashboardSource
-                    ? currentDashboardContext
-                    : undefined
-                }
-                initialTitle={
-                  useCurrentDashboardSource
-                    ? `${currentDashboardTitle} ${selectedCreateOption?.title || 'Study Material'}`
-                    : undefined
-                }
+                initialSourceText={undefined}
+                initialTitle={undefined}
+                currentDashboardContext={currentDashboardContext}
+                currentDashboardTitle={currentDashboardTitle}
+                hasCurrentDashboardContext={hasCurrentDashboardContext}
                 onStatusChange={makeDraftStatusHandler(draft.id, 'from-notes')}
                 onDraftMetaChange={(metadata) =>
                   updateDraft(draft.id, {
@@ -893,7 +904,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     setSelectedIntent(null)
-    setUseCurrentDashboardSource(false)
     setActiveFlow('hub')
     setIsStudioOpen(true)
     window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))

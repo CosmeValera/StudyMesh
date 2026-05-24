@@ -74,6 +74,9 @@ interface CreateStudyPathModalProps {
     detailLevel: string
   }) => void
   initialPrompt?: string
+  currentDashboardContext?: string
+  currentDashboardTitle?: string
+  hasCurrentDashboardContext?: boolean
 }
 
 const generationAmountOptions: Array<{
@@ -512,9 +515,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onStatusChange,
   onDraftMetaChange,
   initialPrompt,
+  currentDashboardContext = '',
+  currentDashboardTitle = 'Current dashboard',
+  hasCurrentDashboardContext = false,
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
-  const [prompt, setPrompt] = useState(initialPrompt || DEFAULT_STUDY_PATH_PROMPT)
+  const [sourceMode, setSourceMode] = useState<'prompt' | 'dashboard'>('prompt')
+  const [prompt, setPrompt] = useState(
+    initialPrompt || DEFAULT_STUDY_PATH_PROMPT,
+  )
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
@@ -540,11 +549,23 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
   React.useEffect(() => {
     onDraftMetaChange?.({
-      title: prompt.trim() || 'Study Path',
-      inputSummary: prompt.trim() || 'Learning prompt',
+      title:
+        sourceMode === 'dashboard'
+          ? currentDashboardTitle
+          : prompt.trim() || 'Study Path',
+      inputSummary:
+        sourceMode === 'dashboard'
+          ? `Current dashboard: ${currentDashboardTitle}`
+          : prompt.trim() || 'Learning prompt',
       detailLevel: generationAmount,
     })
-  }, [generationAmount, onDraftMetaChange, prompt])
+  }, [
+    currentDashboardTitle,
+    generationAmount,
+    onDraftMetaChange,
+    prompt,
+    sourceMode,
+  ])
 
   React.useEffect(() => {
     if (isGenerating) {
@@ -630,6 +651,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
   const reset = () => {
     setStep('prompt')
+    setSourceMode('prompt')
     setPrompt(initialPrompt || DEFAULT_STUDY_PATH_PROMPT)
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
     setAdvancedOpen(false)
@@ -653,8 +675,26 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   }
 
   const generatePath = async () => {
-    if (!prompt.trim()) {
+    const effectivePrompt =
+      sourceMode === 'dashboard'
+        ? [
+            `Use current dashboard as source context: ${currentDashboardTitle}`,
+            currentDashboardContext,
+            mustInclude.trim()
+              ? `Optional focus / instructions: ${mustInclude.trim()}`
+              : '',
+          ]
+            .filter(Boolean)
+            .join('\n\n')
+        : prompt
+
+    if (!effectivePrompt.trim()) {
       setError('Describe what you want StudyMesh to teach.')
+      return
+    }
+
+    if (sourceMode === 'dashboard' && !hasCurrentDashboardContext) {
+      setError('Current dashboard has no usable study content.')
       return
     }
 
@@ -703,7 +743,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
         model: credentials.model,
         title: 'Study Path',
         folderName: '',
-        prompt,
+        prompt: effectivePrompt,
         mustInclude: mustInclude.trim() || undefined,
         avoidTopics: avoidTopics.trim() || undefined,
         generationAmount,
@@ -920,15 +960,59 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 }}
               >
                 <Stack spacing={2}>
-                  <TextField
-                    label="What should StudyMesh teach?"
-                    value={prompt}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    placeholder="Example: Teach me Spanish vocabulary level B2."
-                    multiline
-                    minRows={presentation === 'embedded' ? 4 : 5}
-                    fullWidth
-                  />
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" fontWeight={900}>
+                      Source
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+                      <Button
+                        variant={
+                          sourceMode === 'prompt' ? 'contained' : 'outlined'
+                        }
+                        onClick={() => {
+                          setSourceMode('prompt')
+                          setError('')
+                        }}
+                        sx={{ textTransform: 'none', flex: 1 }}
+                      >
+                        Topic / prompt
+                      </Button>
+                      <Button
+                        variant={
+                          sourceMode === 'dashboard' ? 'contained' : 'outlined'
+                        }
+                        disabled={!hasCurrentDashboardContext}
+                        onClick={() => {
+                          setSourceMode('dashboard')
+                          setError('')
+                        }}
+                        sx={{ textTransform: 'none', flex: 1 }}
+                      >
+                        Current dashboard
+                      </Button>
+                    </Stack>
+                    {!hasCurrentDashboardContext && (
+                      <Typography variant="caption" color="text.secondary">
+                        Current dashboard has no usable study content.
+                      </Typography>
+                    )}
+                  </Stack>
+
+                  {sourceMode === 'dashboard' ? (
+                    <Alert severity="info">
+                      Using current dashboard: {currentDashboardTitle}
+                    </Alert>
+                  ) : (
+                    <TextField
+                      label="What should StudyMesh teach?"
+                      value={prompt}
+                      onChange={(event) => setPrompt(event.target.value)}
+                      placeholder="Example: Teach me Spanish vocabulary level B2."
+                      multiline
+                      minRows={presentation === 'embedded' ? 4 : 5}
+                      fullWidth
+                    />
+                  )}
                   <Stack spacing={presentation === 'embedded' ? 1.25 : 2}>
                     <TextField
                       select
@@ -1460,7 +1544,10 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           <Button
             variant="contained"
             onClick={generatePath}
-            disabled={isGenerating}
+            disabled={
+              isGenerating ||
+              (sourceMode === 'dashboard' && !hasCurrentDashboardContext)
+            }
           >
             {isGenerating ? 'Generating...' : 'Generate Study Path'}
           </Button>

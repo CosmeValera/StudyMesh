@@ -120,6 +120,9 @@ interface CreateStudyPackModalProps {
   initialResourceType?: StudyMaterialResourceType | null
   initialSourceText?: string
   initialTitle?: string
+  currentDashboardContext?: string
+  currentDashboardTitle?: string
+  hasCurrentDashboardContext?: boolean
 }
 
 const supportedImageExtensions = [
@@ -589,9 +592,15 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   initialResourceType,
   initialSourceText,
   initialTitle,
+  currentDashboardContext = '',
+  currentDashboardTitle = 'Current dashboard',
+  hasCurrentDashboardContext = false,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
+  const [sourceMode, setSourceMode] = useState<'sources' | 'dashboard'>(
+    'sources',
+  )
   const [sourceInputType, setSourceInputType] =
     useState<SourceInputType>('text')
   const [sourceText, setSourceText] = useState('')
@@ -680,7 +689,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     onDraftMetaChange?.({
       title: packTitle,
       inputSummary:
-        sourceCount > 1 ? `${sourceCount} source files` : sourceKind,
+        sourceMode === 'dashboard'
+          ? `Current dashboard: ${currentDashboardTitle}`
+          : sourceCount > 1
+            ? `${sourceCount} source files`
+            : sourceKind,
       resourceType,
       detailLevel,
     })
@@ -694,7 +707,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     packTitle,
     resourceType,
     sourceText,
+    sourceMode,
     textSourceNames,
+    currentDashboardTitle,
   ])
 
   const cancelActiveOperation = () => {
@@ -807,6 +822,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   const reset = () => {
     appliedInitialSourceRef.current = false
     setStep('source')
+    setSourceMode('sources')
     setSourceInputType('text')
     setSourceText('')
     setCopiedTextDraft('')
@@ -1433,9 +1449,35 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    let rawSource = sourceText
+    let rawSource =
+      sourceMode === 'dashboard'
+        ? [
+            `Use current dashboard as source: ${currentDashboardTitle}`,
+            currentDashboardContext,
+          ]
+            .filter(Boolean)
+            .join('\n\n')
+        : sourceText
+
+    if (sourceMode === 'dashboard' && !hasCurrentDashboardContext) {
+      setError('Current dashboard has no usable study content.')
+      return
+    }
+
+    if (sourceMode === 'dashboard') {
+      setSourceText(rawSource)
+      setSourceFormat('text')
+      setSourceInputType('text')
+      setTextSourceNames(['Current dashboard'])
+      setPackTitle((currentTitle) =>
+        currentTitle === 'Notes Dashboard'
+          ? `${currentDashboardTitle} Study Material`
+          : currentTitle,
+      )
+    }
+
     const copiedDraft = copiedTextDraft.trim()
-    if (copiedDraft) {
+    if (sourceMode === 'sources' && copiedDraft) {
       const nextIndex = copiedTextSourceCount + 1
       rawSource = appendSourceText(rawSource, copiedDraft)
       setSourceText(rawSource)
@@ -1446,7 +1488,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       setSourceInputType('text')
     }
 
-    if (documentSources.length > extractedDocumentCount) {
+    if (
+      sourceMode === 'sources' &&
+      documentSources.length > extractedDocumentCount
+    ) {
       const extractedSource = await extractPendingDocuments(rawSource)
       if (extractedSource === null) {
         return
@@ -1454,7 +1499,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       rawSource = extractedSource
     }
 
-    if (sourceInputType === 'image' && !imageTextExtracted) {
+    if (
+      sourceMode === 'sources' &&
+      sourceInputType === 'image' &&
+      !imageTextExtracted
+    ) {
       await extractImageNotes()
       return
     }
@@ -1761,91 +1810,152 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
 
             <Paper
               elevation={0}
-              onDrop={handleUnifiedSourceDrop}
-              onDragOver={(event) => event.preventDefault()}
               sx={{
-                p: presentation === 'embedded' ? 2 : 3,
-                border: '1.5px dashed',
+                p: 2,
+                border: 1,
                 borderColor:
-                  sourceText.trim() ||
-                  copiedTextDraft.trim() ||
-                  imageFiles.length > 0 ||
-                  documentSources.length > 0
-                    ? 'primary.main'
-                    : 'divider',
-                bgcolor: 'background.paper',
+                  sourceMode === 'dashboard' ? 'primary.main' : 'divider',
                 borderRadius: 2,
+                bgcolor: 'background.paper',
               }}
             >
-              <Stack spacing={1.5} alignItems="center" textAlign="center">
-                <UploadFileIcon color="primary" sx={{ fontSize: 44 }} />
-                <Box sx={{ width: '100%', minWidth: 0 }}>
+              <Stack spacing={1.25}>
+                <Box>
                   <Typography variant="subtitle1" fontWeight={900}>
-                    Add sources
+                    Source
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Drop notes here, or upload text, images, PDFs, and slides.
+                    Add material, or reuse the current dashboard.
                   </Typography>
                 </Box>
-                <Button
-                  component="label"
-                  variant="contained"
-                  startIcon={<UploadFileIcon />}
-                  disabled={isExtractingDocument || isExtractingImage}
-                  fullWidth={presentation === 'embedded'}
-                  sx={{
-                    width: presentation === 'embedded' ? '100%' : undefined,
-                    textTransform: 'none',
-                  }}
-                >
-                  Upload files
-                  <input
-                    hidden
-                    type="file"
-                    multiple
-                    accept={[
-                      '.md',
-                      '.txt',
-                      '.csv',
-                      '.pdf',
-                      '.pptx',
-                      imageAcceptValue,
-                      'text/markdown',
-                      'text/plain',
-                      'text/csv',
-                      'application/pdf',
-                      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                    ].join(',')}
-                    onChange={handleUnifiedFileUpload}
-                  />
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<ContentPasteIcon />}
-                  onClick={() => setShowCopiedTextBox(true)}
-                  disabled={isExtractingDocument || isExtractingImage}
-                  fullWidth={presentation === 'embedded'}
-                  sx={{
-                    width: presentation === 'embedded' ? '100%' : undefined,
-                    textTransform: 'none',
-                  }}
-                >
-                  Copied text
-                </Button>
-                <Stack
-                  direction="row"
-                  gap={0.75}
-                  flexWrap="wrap"
-                  justifyContent="center"
-                >
-                  {['Text', 'Images', 'PDF', 'PPTX'].map((label) => (
-                    <Chip key={label} label={label} size="small" />
-                  ))}
+                <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+                  <Button
+                    variant={
+                      sourceMode === 'sources' ? 'contained' : 'outlined'
+                    }
+                    onClick={() => {
+                      setSourceMode('sources')
+                      setError('')
+                    }}
+                    sx={{ textTransform: 'none', flex: 1 }}
+                  >
+                    Add sources
+                  </Button>
+                  <Button
+                    variant={
+                      sourceMode === 'dashboard' ? 'contained' : 'outlined'
+                    }
+                    disabled={!hasCurrentDashboardContext}
+                    onClick={() => {
+                      setSourceMode('dashboard')
+                      setError('')
+                    }}
+                    sx={{ textTransform: 'none', flex: 1 }}
+                  >
+                    Current dashboard
+                  </Button>
                 </Stack>
+                {sourceMode === 'dashboard' ? (
+                  <Alert severity="info">
+                    Using current dashboard: {currentDashboardTitle}
+                  </Alert>
+                ) : !hasCurrentDashboardContext ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Current dashboard has no usable study content.
+                  </Typography>
+                ) : null}
               </Stack>
             </Paper>
 
-            {showCopiedTextBox && (
+            {sourceMode === 'sources' && (
+              <Paper
+                elevation={0}
+                onDrop={handleUnifiedSourceDrop}
+                onDragOver={(event) => event.preventDefault()}
+                sx={{
+                  p: presentation === 'embedded' ? 2 : 3,
+                  border: '1.5px dashed',
+                  borderColor:
+                    sourceText.trim() ||
+                    copiedTextDraft.trim() ||
+                    imageFiles.length > 0 ||
+                    documentSources.length > 0
+                      ? 'primary.main'
+                      : 'divider',
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                }}
+              >
+                <Stack spacing={1.5} alignItems="center" textAlign="center">
+                  <UploadFileIcon color="primary" sx={{ fontSize: 44 }} />
+                  <Box sx={{ width: '100%', minWidth: 0 }}>
+                    <Typography variant="subtitle1" fontWeight={900}>
+                      Add sources
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Drop notes here, or upload text, images, PDFs, and slides.
+                    </Typography>
+                  </Box>
+                  <Button
+                    component="label"
+                    variant="contained"
+                    startIcon={<UploadFileIcon />}
+                    disabled={isExtractingDocument || isExtractingImage}
+                    fullWidth={presentation === 'embedded'}
+                    sx={{
+                      width: presentation === 'embedded' ? '100%' : undefined,
+                      textTransform: 'none',
+                    }}
+                  >
+                    Upload files
+                    <input
+                      hidden
+                      type="file"
+                      multiple
+                      accept={[
+                        '.md',
+                        '.txt',
+                        '.csv',
+                        '.pdf',
+                        '.pptx',
+                        imageAcceptValue,
+                        'text/markdown',
+                        'text/plain',
+                        'text/csv',
+                        'application/pdf',
+                        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                      ].join(',')}
+                      onChange={handleUnifiedFileUpload}
+                    />
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ContentPasteIcon />}
+                    onClick={() => setShowCopiedTextBox(true)}
+                    disabled={isExtractingDocument || isExtractingImage}
+                    fullWidth={presentation === 'embedded'}
+                    sx={{
+                      width: presentation === 'embedded' ? '100%' : undefined,
+                      textTransform: 'none',
+                    }}
+                  >
+                    Copied text
+                  </Button>
+                  <Stack
+                    direction="row"
+                    gap={0.75}
+                    flexWrap="wrap"
+                    justifyContent="center"
+                  >
+                    {['Text', 'Images', 'PDF', 'PPTX'].map((label) => (
+                      <Chip key={label} label={label} size="small" />
+                    ))}
+                  </Stack>
+                </Stack>
+              </Paper>
+            )}
+
+            {sourceMode === 'sources' && showCopiedTextBox && (
               <Paper
                 elevation={0}
                 sx={{
@@ -1888,52 +1998,53 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </Paper>
             )}
 
-            {(copiedTextSourceCount > 0 ||
-              textSourceNames.length > 0 ||
-              documentSources.length > 0) && (
-              <Stack spacing={1}>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Sources
-                </Typography>
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                  {Array.from({ length: copiedTextSourceCount }).map(
-                    (_, index) => (
+            {sourceMode === 'sources' &&
+              (copiedTextSourceCount > 0 ||
+                textSourceNames.length > 0 ||
+                documentSources.length > 0) && (
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Sources
+                  </Typography>
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    {Array.from({ length: copiedTextSourceCount }).map(
+                      (_, index) => (
+                        <Chip
+                          key={`copied-text-${index + 1}`}
+                          icon={<ContentPasteIcon />}
+                          label={
+                            index === 0
+                              ? 'Copied text'
+                              : `Copied text ${index + 1}`
+                          }
+                        />
+                      ),
+                    )}
+                    {textSourceNames.map((name) => (
                       <Chip
-                        key={`copied-text-${index + 1}`}
-                        icon={<ContentPasteIcon />}
-                        label={
-                          index === 0
-                            ? 'Copied text'
-                            : `Copied text ${index + 1}`
-                        }
+                        key={`text-${name}`}
+                        icon={<DescriptionIcon />}
+                        label={name}
                       />
-                    ),
-                  )}
-                  {textSourceNames.map((name) => (
-                    <Chip
-                      key={`text-${name}`}
-                      icon={<DescriptionIcon />}
-                      label={name}
-                    />
-                  ))}
-                  {documentSources.map((source, index) => (
-                    <Chip
-                      key={`${source.file.name}-${index}`}
-                      icon={<DescriptionIcon />}
-                      label={source.file.name}
-                      onDelete={
-                        index >= extractedDocumentCount
-                          ? () => removeDocumentSource(index)
-                          : undefined
-                      }
-                      deleteIcon={<DeleteIcon />}
-                    />
-                  ))}
+                    ))}
+                    {documentSources.map((source, index) => (
+                      <Chip
+                        key={`${source.file.name}-${index}`}
+                        icon={<DescriptionIcon />}
+                        label={source.file.name}
+                        onDelete={
+                          index >= extractedDocumentCount
+                            ? () => removeDocumentSource(index)
+                            : undefined
+                        }
+                        deleteIcon={<DeleteIcon />}
+                      />
+                    ))}
+                  </Stack>
                 </Stack>
-              </Stack>
-            )}
+              )}
 
-            {imagePreviewUrls.length > 0 && (
+            {sourceMode === 'sources' && imagePreviewUrls.length > 0 && (
               <Stack direction="row" gap={1} flexWrap="wrap">
                 {imagePreviewUrls.map((preview, index) => (
                   <Paper
@@ -1994,34 +2105,35 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
               </Stack>
             )}
 
-            {(isExtractingImage || isExtractingDocument) && (
-              <Box>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  sx={{ mb: 0.75 }}
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    {aiProgressLabel || ocrStatus || 'Extracting notes'}
-                  </Typography>
-                  {isExtractingImage && aiProvider !== 'gemini' && (
+            {sourceMode === 'sources' &&
+              (isExtractingImage || isExtractingDocument) && (
+                <Box>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    sx={{ mb: 0.75 }}
+                  >
                     <Typography variant="body2" color="text.secondary">
-                      {ocrProgress}%
+                      {aiProgressLabel || ocrStatus || 'Extracting notes'}
                     </Typography>
-                  )}
-                </Stack>
-                <LinearProgress
-                  variant={
-                    isExtractingImage &&
-                    aiProvider !== 'gemini' &&
-                    ocrProgress > 0
-                      ? 'determinate'
-                      : 'indeterminate'
-                  }
-                  value={ocrProgress}
-                />
-              </Box>
-            )}
+                    {isExtractingImage && aiProvider !== 'gemini' && (
+                      <Typography variant="body2" color="text.secondary">
+                        {ocrProgress}%
+                      </Typography>
+                    )}
+                  </Stack>
+                  <LinearProgress
+                    variant={
+                      isExtractingImage &&
+                      aiProvider !== 'gemini' &&
+                      ocrProgress > 0
+                        ? 'determinate'
+                        : 'indeterminate'
+                    }
+                    value={ocrProgress}
+                  />
+                </Box>
+              )}
 
             {isGeneratingAi && (
               <Paper
@@ -2204,6 +2316,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             onClick={parseCurrentSource}
             disabled={
               !resourceType ||
+              (sourceMode === 'dashboard' && !hasCurrentDashboardContext) ||
               isExtractingImage ||
               isGeneratingAi ||
               isExtractingDocument
