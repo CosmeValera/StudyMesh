@@ -261,6 +261,26 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [aiProvider])
 
   useEffect(() => {
+    const showDashboardAfterChatClose = () => {
+      if (isMobile) {
+        setMobileSection('dashboard')
+      }
+    }
+
+    window.addEventListener(
+      CLOSE_DASHBOARD_CHAT_EVENT,
+      showDashboardAfterChatClose,
+    )
+
+    return () => {
+      window.removeEventListener(
+        CLOSE_DASHBOARD_CHAT_EVENT,
+        showDashboardAfterChatClose,
+      )
+    }
+  }, [isMobile])
+
+  useEffect(() => {
     const refreshAiProvider = () => {
       setAiProvider(readStudyPackAiSettings().provider || 'basic')
     }
