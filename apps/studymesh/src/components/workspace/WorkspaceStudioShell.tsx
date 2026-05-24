@@ -50,6 +50,10 @@ import {
   WorkspaceCreationTask,
   WorkspaceCreationTaskState,
 } from '../../workspaceCreationStatus'
+import {
+  CLOSE_DASHBOARD_CHAT_EVENT,
+  OPEN_DASHBOARD_CHAT_EVENT,
+} from './workspaceEvents'
 
 type StudioFlow = 'hub' | 'study-path' | 'from-notes'
 type CreateIntent = 'study-path' | StudyMaterialResourceType
@@ -97,8 +101,6 @@ const studioPanelWidth = 424
 const studioPanelRailWidth = 44
 const studioPanelMinWidth = 360
 const studioPanelMaxWidth = 620
-export const OPEN_DASHBOARD_CHAT_EVENT = 'studymesh:open-dashboard-chat'
-export const CLOSE_DASHBOARD_CHAT_EVENT = 'studymesh:close-dashboard-chat'
 const workspaceCanvasSx = {
   minHeight: 0,
   overflow: 'hidden',
@@ -905,7 +907,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     <Box
       sx={{
         position: isMobile ? 'fixed' : 'absolute',
-        left: isMobile ? 0 : isStudioOpen ? studioWidth : 0,
+        left: isMobile ? 0 : isStudioOpen ? studioWidth : studioPanelRailWidth,
         top: 96,
         zIndex: isMobile ? 1100 : 20,
         display: 'flex',

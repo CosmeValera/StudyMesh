@@ -70,7 +70,7 @@ import { OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT } from '../../studyPack/progress
 import {
   CLOSE_DASHBOARD_CHAT_EVENT,
   OPEN_DASHBOARD_CHAT_EVENT,
-} from '../workspace/WorkspaceStudioShell'
+} from '../workspace/workspaceEvents'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import './tabs.scss'
 
@@ -2097,6 +2097,7 @@ const Dashboards = () => {
       {isMobileDashboardView ? (
         <Drawer
           anchor="right"
+          variant="persistent"
           open={dashboardChatOpen}
           onClose={() => setDashboardChatOpen(false)}
           hideBackdrop
