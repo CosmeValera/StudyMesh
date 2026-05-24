@@ -67,6 +67,10 @@ import {
   normalizeFolderName,
 } from './folderColors'
 import { OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT } from '../../studyPack/progress'
+import {
+  CLOSE_DASHBOARD_CHAT_EVENT,
+  OPEN_DASHBOARD_CHAT_EVENT,
+} from '../workspace/WorkspaceStudioShell'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import './tabs.scss'
 
@@ -383,13 +387,19 @@ const DashboardEmptyState = ({
             <Typography
               variant="h5"
               fontWeight={900}
-              sx={{ lineHeight: 1.15, fontSize: { xs: '1.12rem', md: '1.5rem' } }}
+              sx={{
+                lineHeight: 1.15,
+                fontSize: { xs: '1.12rem', md: '1.5rem' },
+              }}
             >
               Create a Study Path
             </Typography>
             <Typography
               variant="body2"
-              sx={{ mt: { xs: 0.5, md: 1 }, color: 'foreground.contrastSecondary' }}
+              sx={{
+                mt: { xs: 0.5, md: 1 },
+                color: 'foreground.contrastSecondary',
+              }}
             >
               Start from a topic or prompt and generate ordered tutorial
               dashboards.
@@ -433,7 +443,10 @@ const DashboardEmptyState = ({
               <Typography
                 variant="h5"
                 fontWeight={900}
-                sx={{ lineHeight: 1.15, fontSize: { xs: '1.12rem', md: '1.5rem' } }}
+                sx={{
+                  lineHeight: 1.15,
+                  fontSize: { xs: '1.12rem', md: '1.5rem' },
+                }}
               >
                 Open study material
               </Typography>
@@ -581,11 +594,18 @@ const DashboardEmptyState = ({
             <Typography
               variant="h5"
               fontWeight={900}
-              sx={{ lineHeight: 1.15, fontSize: { xs: '1.12rem', md: '1.5rem' } }}
+              sx={{
+                lineHeight: 1.15,
+                fontSize: { xs: '1.12rem', md: '1.5rem' },
+              }}
             >
               Create From Notes
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: { xs: 0.5, md: 1 } }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: { xs: 0.5, md: 1 } }}
+            >
               Upload notes, screenshots, PDFs, or slides and turn them into a
               widget-based study dashboard.
             </Typography>
@@ -723,6 +743,7 @@ const Dashboards = () => {
     'workspace' | 'builder'
   >('workspace')
   const [dashboardChatOpen, setDashboardChatOpen] = useState(false)
+  const [dashboardChatWidth, setDashboardChatWidth] = useState(420)
   const [dashboardChatMessages, setDashboardChatMessages] = useState<
     Record<string, DashboardChatMessage[]>
   >({})
@@ -731,13 +752,59 @@ const Dashboards = () => {
     setDashboardLibraryInitialSearchKey,
   ] = useState(0)
   const dashboardEditorTitleCancelRef = useRef(false)
+
+  useEffect(() => {
+    const openDashboardChat = () => setDashboardChatOpen(true)
+    const closeDashboardChat = () => setDashboardChatOpen(false)
+
+    window.addEventListener(OPEN_DASHBOARD_CHAT_EVENT, openDashboardChat)
+    window.addEventListener(CLOSE_DASHBOARD_CHAT_EVENT, closeDashboardChat)
+
+    return () => {
+      window.removeEventListener(OPEN_DASHBOARD_CHAT_EVENT, openDashboardChat)
+      window.removeEventListener(CLOSE_DASHBOARD_CHAT_EVENT, closeDashboardChat)
+    }
+  }, [])
+
+  const startDashboardChatResize = (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = dashboardChatWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const nextWidth = Math.max(
+        360,
+        Math.min(620, startWidth + startX - moveEvent.clientX),
+      )
+      setDashboardChatWidth(nextWidth)
+    }
+
+    const stopResize = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopResize)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopResize)
+  }
+
+  const dashboardChatRailWidth = 44
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const currentDashboard = openDashboards[selectedDashboard]
-  const selectedDashboardIsStudyPath =
-    currentDashboard?.kind === 'studyPathContainer' && currentDashboard.studyPath
+  const selectedDashboardIsStudyPath = Boolean(
+    currentDashboard?.kind === 'studyPathContainer' &&
+      currentDashboard.studyPath,
+  )
   const selectedDashboardIsEmpty =
-    !selectedDashboardIsStudyPath && !hasDashboardContent(currentDashboard?.layout)
+    !selectedDashboardIsStudyPath &&
+    !hasDashboardContent(currentDashboard?.layout)
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
         (dashboard) => dashboard.id === dashboardEditorId,
@@ -1786,7 +1853,9 @@ const Dashboards = () => {
         minHeight: 0,
         overflowX: 'hidden',
         overflowY:
-          isMobileDashboardView && !selectedDashboardIsEmpty ? 'auto' : 'hidden',
+          isMobileDashboardView && !selectedDashboardIsEmpty
+            ? 'auto'
+            : 'hidden',
         WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
         display: isMobileDashboardView ? 'block' : 'flex',
         bgcolor: 'background.default',
@@ -2023,45 +2092,6 @@ const Dashboards = () => {
             )
           })}
         </Tabs>
-
-        {!dashboardChatOpen && (
-          <TooltipStyled title="Ask this dashboard">
-            <Box
-              component="button"
-              type="button"
-              aria-label="Ask this dashboard"
-              onClick={() => setDashboardChatOpen(true)}
-              sx={{
-                position: isMobileDashboardView ? 'fixed' : 'absolute',
-                right: 0,
-                top: 96,
-                bottom: 'auto',
-                zIndex: isMobileDashboardView ? 1100 : 12,
-                width: 34,
-                height: 82,
-                border: 0,
-                borderRadius: '20px 0 0 20px',
-                bgcolor: 'background.paper',
-                color: 'primary.main',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 12px 32px rgba(0,0,0,0.42)'
-                    : '0 12px 30px rgba(16,24,40,0.18)',
-                outline: 1,
-                outlineColor: 'divider',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <ChatBubbleOutlineIcon fontSize="small" />
-            </Box>
-          </TooltipStyled>
-        )}
       </Box>
 
       {isMobileDashboardView ? (
@@ -2069,12 +2099,14 @@ const Dashboards = () => {
           anchor="right"
           open={dashboardChatOpen}
           onClose={() => setDashboardChatOpen(false)}
+          hideBackdrop
           ModalProps={{ keepMounted: true }}
           PaperProps={{
             sx: {
               width: '100%',
               maxWidth: '100%',
-              height: '100dvh',
+              top: 128,
+              height: 'calc(100dvh - 128px)',
               bgcolor: 'background.paper',
             },
           }}
@@ -2083,42 +2115,108 @@ const Dashboards = () => {
         </Drawer>
       ) : (
         <Box
-          aria-hidden={!dashboardChatOpen}
           sx={{
-            width: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
-            maxWidth: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
-            minWidth: dashboardChatOpen ? 380 : 0,
+            width: dashboardChatOpen
+              ? dashboardChatWidth
+              : dashboardChatRailWidth,
             flex: '0 0 auto',
             minHeight: 0,
             overflow: 'hidden',
-            p: dashboardChatOpen ? '8px 8px 8px 0' : 0,
+            p: '8px 8px 8px 0',
             boxSizing: 'border-box',
             bgcolor: 'background.default',
-            transition: theme.transitions.create(
-              ['width', 'max-width', 'min-width', 'padding'],
-              {
-                duration: theme.transitions.duration.shorter,
-                easing: theme.transitions.easing.easeInOut,
-              },
-            ),
+            position: 'relative',
+            transition: theme.transitions.create(['width'], {
+              duration: theme.transitions.duration.shorter,
+              easing: theme.transitions.easing.easeInOut,
+            }),
           }}
         >
-          <Box
-            sx={{
-              height: '100%',
-              overflow: 'hidden',
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 2.5,
-              bgcolor: 'background.paper',
-              boxShadow:
-                theme.palette.mode === 'dark'
-                  ? '0 18px 40px rgba(0,0,0,0.42)'
-                  : '0 18px 42px rgba(16,24,40,0.10)',
-            }}
-          >
-            {dashboardChatOpen ? dashboardChatPanel : null}
-          </Box>
+          {dashboardChatOpen ? (
+            <Box
+              sx={{
+                height: '100%',
+                overflow: 'hidden',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'background.paper',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 18px 40px rgba(0,0,0,0.42)'
+                    : '0 18px 42px rgba(16,24,40,0.10)',
+              }}
+            >
+              {dashboardChatPanel}
+            </Box>
+          ) : (
+            <TooltipStyled title="Open AI Chat">
+              <Box
+                component="button"
+                type="button"
+                aria-label="Open AI Chat panel"
+                onClick={() => setDashboardChatOpen(true)}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2.5,
+                  bgcolor: 'background.paper',
+                  color: 'primary.main',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 12px 32px rgba(0,0,0,0.32)'
+                      : '0 12px 30px rgba(16,24,40,0.12)',
+                }}
+              >
+                <ChatBubbleOutlineIcon fontSize="small" />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    writingMode: 'vertical-rl',
+                    fontWeight: 800,
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  AI Chat
+                </Typography>
+              </Box>
+            </TooltipStyled>
+          )}
+          {dashboardChatOpen && (
+            <Box
+              role="separator"
+              aria-label="Resize AI Chat panel"
+              onMouseDown={startDashboardChatResize}
+              sx={{
+                position: 'absolute',
+                top: 14,
+                left: -3,
+                width: 8,
+                height: 'calc(100% - 28px)',
+                cursor: 'col-resize',
+                zIndex: 2,
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: 3,
+                  width: 2,
+                  borderRadius: 999,
+                  bgcolor: 'divider',
+                },
+                '&:hover::after': { bgcolor: 'primary.main' },
+              }}
+            />
+          )}
         </Box>
       )}
 

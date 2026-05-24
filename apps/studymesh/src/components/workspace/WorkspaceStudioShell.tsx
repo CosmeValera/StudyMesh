@@ -13,6 +13,8 @@ import {
   useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import AddIcon from '@mui/icons-material/Add'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
@@ -92,7 +94,11 @@ const statusMarkerGlow: Record<
 }
 
 const studioPanelWidth = 424
-const studioPanelClamp = `clamp(380px, 31vw, ${studioPanelWidth}px)`
+const studioPanelRailWidth = 44
+const studioPanelMinWidth = 360
+const studioPanelMaxWidth = 620
+export const OPEN_DASHBOARD_CHAT_EVENT = 'studymesh:open-dashboard-chat'
+export const CLOSE_DASHBOARD_CHAT_EVENT = 'studymesh:close-dashboard-chat'
 const workspaceCanvasSx = {
   minHeight: 0,
   overflow: 'hidden',
@@ -115,7 +121,9 @@ const readIsAdmin = () => {
   }
 }
 
-const createGenerationDraft = (flow: Exclude<StudioFlow, 'hub'>): GenerationDraft => ({
+const createGenerationDraft = (
+  flow: Exclude<StudioFlow, 'hub'>,
+): GenerationDraft => ({
   id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   flow,
   status: 'editing',
@@ -142,8 +150,7 @@ const resourceTypeTitle = (resourceType?: string | null) => {
 
 const formatDraftTitle = (draft: GenerationDraft) => {
   const base = draft.title.trim()
-  const shortTitle =
-    base.length > 46 ? `${base.slice(0, 45).trim()}...` : base
+  const shortTitle = base.length > 46 ? `${base.slice(0, 45).trim()}...` : base
 
   if (draft.flow === 'study-path') {
     return `Study Path: ${shortTitle || 'Untitled'}`
@@ -176,16 +183,25 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const initialDrafts = useMemo(
-    () => [createGenerationDraft('study-path'), createGenerationDraft('from-notes')],
+    () => [
+      createGenerationDraft('study-path'),
+      createGenerationDraft('from-notes'),
+    ],
     [],
   )
   const [isStudioOpen, setIsStudioOpen] = useState(false)
+  const [studioWidth, setStudioWidth] = useState(studioPanelWidth)
+  const [mobileSection, setMobileSection] = useState<
+    'creation' | 'dashboard' | 'ai-chat'
+  >('dashboard')
   const [activeFlow, setActiveFlow] = useState<StudioFlow>('hub')
-  const [selectedIntent, setSelectedIntent] = useState<CreateIntent | null>(null)
-  const [useCurrentDashboardSource, setUseCurrentDashboardSource] = useState(false)
-  const [generationDrafts, setGenerationDrafts] = useState<GenerationDraft[]>(
-    initialDrafts,
+  const [selectedIntent, setSelectedIntent] = useState<CreateIntent | null>(
+    null,
   )
+  const [useCurrentDashboardSource, setUseCurrentDashboardSource] =
+    useState(false)
+  const [generationDrafts, setGenerationDrafts] =
+    useState<GenerationDraft[]>(initialDrafts)
   const [activeDraftByFlow, setActiveDraftByFlow] = useState<
     Record<StudioFlow, string>
   >(() => ({
@@ -234,7 +250,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) => createNewDraft(flow)
+    const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) =>
+      createNewDraft(flow)
     const handleOpenCreateHub = (event: Event) => {
       const customEvent = event as CustomEvent<{ intent?: CreateIntent }>
       setSelectedIntent(customEvent.detail?.intent || null)
@@ -296,17 +313,20 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         handleOpenDashboard,
       )
     }
-  }, [
-    permissions.canCreateFromNotes,
-    permissions.canCreateStudyPath,
-  ])
+  }, [permissions.canCreateFromNotes, permissions.canCreateStudyPath])
 
   const resetOrCloseStudio = () => {
     setIsStudioOpen(false)
+    if (isMobile) {
+      setMobileSection('dashboard')
+    }
   }
 
   const closeStudio = () => {
     setIsStudioOpen(false)
+    if (isMobile) {
+      setMobileSection('dashboard')
+    }
     dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
   }
 
@@ -438,7 +458,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     return formatDashboardChatContext(context, context.chunks).trim()
   }, [currentDashboard])
   const hasCurrentDashboardContext = currentDashboardContext.length > 0
-  const currentDashboardTitle = currentDashboard?.studyPath?.title || currentDashboard?.name || 'Current dashboard'
+  const currentDashboardTitle =
+    currentDashboard?.studyPath?.title ||
+    currentDashboard?.name ||
+    'Current dashboard'
 
   const openIntentSourceStep = (intent: CreateIntent) => {
     setSelectedIntent(intent)
@@ -451,7 +474,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     setUseCurrentDashboardSource(useCurrentDashboard)
-    createNewDraft(selectedIntent === 'study-path' ? 'study-path' : 'from-notes')
+    createNewDraft(
+      selectedIntent === 'study-path' ? 'study-path' : 'from-notes',
+    )
   }
 
   const createOptions: Array<{
@@ -496,7 +521,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="h5" fontWeight={900}>
-              {selectedCreateOption ? 'Choose source' : 'What do you want to create?'}
+              {selectedCreateOption
+                ? 'Choose source'
+                : 'What do you want to create?'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {selectedCreateOption
@@ -594,10 +621,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               sx={{ justifyContent: 'flex-start', p: 1.5, borderRadius: 2 }}
             >
               Use current dashboard as context
-              {hasCurrentDashboardContext ? ` — ${currentDashboardTitle}` : ' — no active content'}
+              {hasCurrentDashboardContext
+                ? ` — ${currentDashboardTitle}`
+                : ' — no active content'}
             </Button>
             <Button
-              variant={selectedIntent === 'study-path' ? 'outlined' : 'contained'}
+              variant={
+                selectedIntent === 'study-path' ? 'outlined' : 'contained'
+              }
               onClick={() => startSelectedIntent(false)}
               sx={{ justifyContent: 'flex-start', p: 1.5, borderRadius: 2 }}
             >
@@ -648,7 +679,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               sx={{
                 flex: 1,
                 minHeight: 0,
-                display: draft.id === activeDraftByFlow['study-path'] ? 'flex' : 'none',
+                display:
+                  draft.id === activeDraftByFlow['study-path']
+                    ? 'flex'
+                    : 'none',
                 flexDirection: 'column',
               }}
             >
@@ -669,7 +703,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   return dashboards
                 }}
                 initialPrompt={
-                  useCurrentDashboardSource ? currentDashboardContext : undefined
+                  useCurrentDashboardSource
+                    ? currentDashboardContext
+                    : undefined
                 }
                 onStatusChange={makeDraftStatusHandler(draft.id, 'study-path')}
                 onDraftMetaChange={(metadata) =>
@@ -700,7 +736,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               sx={{
                 flex: 1,
                 minHeight: 0,
-                display: draft.id === activeDraftByFlow['from-notes'] ? 'flex' : 'none',
+                display:
+                  draft.id === activeDraftByFlow['from-notes']
+                    ? 'flex'
+                    : 'none',
                 flexDirection: 'column',
               }}
             >
@@ -726,7 +765,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     : undefined
                 }
                 initialSourceText={
-                  useCurrentDashboardSource ? currentDashboardContext : undefined
+                  useCurrentDashboardSource
+                    ? currentDashboardContext
+                    : undefined
                 }
                 initialTitle={
                   useCurrentDashboardSource
@@ -789,13 +830,82 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     setUseCurrentDashboardSource(false)
     setActiveFlow('hub')
     setIsStudioOpen(true)
+    if (isMobile) {
+      setMobileSection('creation')
+    }
   }
+
+  const openMobileDashboard = () => {
+    setIsStudioOpen(false)
+    setMobileSection('dashboard')
+    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+  }
+
+  const openMobileAiChat = () => {
+    setIsStudioOpen(false)
+    setMobileSection('ai-chat')
+    window.dispatchEvent(new Event(OPEN_DASHBOARD_CHAT_EVENT))
+  }
+
+  const mobileSectionTabs = (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 0.75,
+        p: 0.75,
+        bgcolor: 'background.paper',
+        borderBottom: 1,
+        borderColor: 'divider',
+        flexShrink: 0,
+      }}
+    >
+      {[
+        {
+          key: 'creation',
+          label: 'Creation',
+          icon: <AddIcon fontSize="small" />,
+          onClick: openCreateHub,
+        },
+        {
+          key: 'dashboard',
+          label: 'Dashboards',
+          icon: <DashboardIcon fontSize="small" />,
+          onClick: openMobileDashboard,
+        },
+        {
+          key: 'ai-chat',
+          label: 'AI Chat',
+          icon: <ChatBubbleOutlineIcon fontSize="small" />,
+          onClick: openMobileAiChat,
+        },
+      ].map((item) => (
+        <Button
+          key={item.key}
+          size="small"
+          variant={mobileSection === item.key ? 'contained' : 'outlined'}
+          onClick={item.onClick}
+          startIcon={item.icon}
+          sx={{
+            minWidth: 0,
+            px: 0.75,
+            borderRadius: 999,
+            textTransform: 'none',
+            fontSize: '0.72rem',
+            '& .MuiButton-startIcon': { mr: 0.5 },
+          }}
+        >
+          {item.label}
+        </Button>
+      ))}
+    </Box>
+  )
 
   const creationStatusMarkers = (
     <Box
       sx={{
         position: isMobile ? 'fixed' : 'absolute',
-        left: isMobile ? 0 : isStudioOpen ? studioPanelClamp : 0,
+        left: isMobile ? 0 : isStudioOpen ? studioWidth : 0,
         top: 96,
         zIndex: isMobile ? 1100 : 20,
         display: 'flex',
@@ -819,8 +929,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             height: isMobile ? 82 : 82,
             border: 0,
             borderRadius: '0 20px 20px 0',
-            bgcolor: activeFlow === 'hub' && isStudioOpen ? 'primary.main' : 'background.paper',
-            color: activeFlow === 'hub' && isStudioOpen ? 'primary.contrastText' : 'primary.main',
+            bgcolor:
+              activeFlow === 'hub' && isStudioOpen
+                ? 'primary.main'
+                : 'background.paper',
+            color:
+              activeFlow === 'hub' && isStudioOpen
+                ? 'primary.contrastText'
+                : 'primary.main',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -988,27 +1104,45 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           height: '100%',
           minHeight: 0,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'background.default',
         }}
       >
-        <Box sx={{ height: '100%', ...workspaceCanvasSx }}>{children}</Box>
-        <Drawer
-          anchor="left"
-          open={isStudioOpen}
-          onClose={closeStudio}
-          ModalProps={{ keepMounted: true }}
-          PaperProps={{
-            sx: {
-              width: '100%',
-              maxWidth: '100%',
-              height: '100dvh',
-              bgcolor: 'background.default',
-              overflow: 'hidden',
-            },
+        {mobileSectionTabs}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: mobileSection === 'creation' ? 'block' : 'none',
+            overflow: 'hidden',
+            p: '8px',
+            boxSizing: 'border-box',
           }}
         >
-          {studioContent}
-        </Drawer>
-        {!isStudioOpen && creationStatusMarkers}
+          <Box
+            sx={{
+              height: '100%',
+              overflow: 'hidden',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+            }}
+          >
+            {studioContent}
+          </Box>
+        </Box>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: mobileSection === 'creation' ? 'none' : 'block',
+            ...workspaceCanvasSx,
+          }}
+        >
+          {children}
+        </Box>
         {widgetBuilderDialog}
       </Box>
     )
@@ -1025,40 +1159,105 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       }}
     >
       <Box
-        aria-hidden={!isStudioOpen}
         sx={{
-          width: isStudioOpen ? studioPanelClamp : 0,
-          maxWidth: isStudioOpen ? studioPanelClamp : 0,
-          minWidth: isStudioOpen ? 380 : 0,
+          width: isStudioOpen ? studioWidth : studioPanelRailWidth,
           flex: '0 0 auto',
           minHeight: 0,
           overflow: 'hidden',
-          p: isStudioOpen ? '8px 0 8px 8px' : 0,
+          p: '8px 0 8px 8px',
           boxSizing: 'border-box',
-          transition: theme.transitions.create(
-            ['width', 'max-width', 'min-width', 'padding'],
-            {
-              duration: theme.transitions.duration.shorter,
-              easing: theme.transitions.easing.easeInOut,
-            },
-          ),
+          position: 'relative',
+          transition: theme.transitions.create(['width'], {
+            duration: theme.transitions.duration.shorter,
+            easing: theme.transitions.easing.easeInOut,
+          }),
         }}
       >
-        <Box
-          sx={{
-            height: '100%',
-            overflow: 'hidden',
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: 2.5,
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 18px 40px rgba(0,0,0,0.42)'
-                : '0 18px 42px rgba(16,24,40,0.10)',
-          }}
-        >
-          {studioContent}
-        </Box>
+        {isStudioOpen ? (
+          <Box
+            sx={{
+              height: '100%',
+              overflow: 'hidden',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2.5,
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? '0 18px 40px rgba(0,0,0,0.42)'
+                  : '0 18px 42px rgba(16,24,40,0.10)',
+            }}
+          >
+            {studioContent}
+          </Box>
+        ) : (
+          <Tooltip title="Open Create" placement="right">
+            <Box
+              component="button"
+              type="button"
+              aria-label="Open Create panel"
+              onClick={openCreateHub}
+              sx={{
+                width: '100%',
+                height: '100%',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'background.paper',
+                color: 'primary.main',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 12px 32px rgba(0,0,0,0.32)'
+                    : '0 12px 30px rgba(16,24,40,0.12)',
+              }}
+            >
+              <AddIcon fontSize="small" />
+              <Typography
+                variant="caption"
+                sx={{
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)',
+                  fontWeight: 800,
+                  letterSpacing: 0.4,
+                }}
+              >
+                Create
+              </Typography>
+            </Box>
+          </Tooltip>
+        )}
+        {isStudioOpen && (
+          <Box
+            role="separator"
+            aria-label="Resize Create panel"
+            onMouseDown={startStudioResize}
+            sx={{
+              position: 'absolute',
+              top: 14,
+              right: -3,
+              width: 8,
+              height: 'calc(100% - 28px)',
+              cursor: 'col-resize',
+              zIndex: 2,
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 3,
+                width: 2,
+                borderRadius: 999,
+                bgcolor: 'divider',
+              },
+              '&:hover::after': { bgcolor: 'primary.main' },
+            }}
+          />
+        )}
       </Box>
       <Box
         sx={{
@@ -1084,7 +1283,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           {children}
         </Box>
       </Box>
-      {creationStatusMarkers}
+      {isStudioOpen && creationStatusMarkers}
       {widgetBuilderDialog}
     </Box>
   )
