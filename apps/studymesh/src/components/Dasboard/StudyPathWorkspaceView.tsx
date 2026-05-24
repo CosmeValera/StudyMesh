@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Box,
   Button,
@@ -208,12 +214,12 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     }
   }, [navigatorDock, studyPath.pathId])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mobileView) {
-      return
+      return undefined
     }
 
-    const frame = window.requestAnimationFrame(() => {
+    const resetStudyPathScroll = () => {
       let element = rootRef.current?.parentElement
 
       while (element) {
@@ -222,19 +228,26 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
           (overflowY === 'auto' || overflowY === 'scroll') &&
           element.scrollHeight > element.clientHeight
 
-        if (canScroll) {
-          element.scrollTo({ top: 0, behavior: 'smooth' })
+        if (canScroll || element.scrollTop > 0) {
+          element.scrollTo({ top: 0, behavior: 'auto' })
           return
         }
 
         element = element.parentElement
       }
 
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }
 
-    return () => window.cancelAnimationFrame(frame)
-  }, [currentLesson?.dashboardKey, mobileView])
+    resetStudyPathScroll()
+    const frame = window.requestAnimationFrame(resetStudyPathScroll)
+    const timeout = window.setTimeout(resetStudyPathScroll, 80)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
+  }, [currentLesson?.dashboardKey, mobileView, selectedIndex])
 
   const selectLesson = (index: number) => {
     onStudyPathChange({ ...studyPath, selectedIndex: index })
