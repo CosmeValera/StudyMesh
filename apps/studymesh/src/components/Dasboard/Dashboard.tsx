@@ -330,11 +330,18 @@ const DashboardEmptyState = ({
         p: { xs: 1, sm: 1.5, md: 2.5 },
         pb: { xs: 1.25, md: 2.5 },
         bgcolor: 'background.default',
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        boxSizing: 'border-box',
       }}
     >
       <Box
         sx={{
           width: 'min(1280px, 100%)',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box',
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
@@ -360,6 +367,8 @@ const DashboardEmptyState = ({
             flexDirection: 'column',
             justifyContent: 'space-between',
             gap: { xs: 1, md: 2.5 },
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <Box>
@@ -413,6 +422,8 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1, md: 2 },
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <Stack direction="row" alignItems="center" spacing={1}>
@@ -473,6 +484,8 @@ const DashboardEmptyState = ({
                         borderColor: 'divider',
                         borderRadius: 1.25,
                         px: 1.25,
+                        minWidth: 0,
+                        maxWidth: '100%',
                         color: 'text.primary',
                         bgcolor: 'background.paper',
                         '&:hover': {
@@ -552,6 +565,8 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1, md: 2 },
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <Box>
@@ -602,6 +617,7 @@ const DashboardEmptyState = ({
                 textAlign: 'center',
                 display: 'grid',
                 placeItems: 'center',
+                boxSizing: 'border-box',
                 '&:hover': {
                   bgcolor: isAdmin ? 'action.hover' : 'background.default',
                   borderColor: isAdmin ? 'primary.dark' : 'primary.main',
