@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -134,6 +134,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   onStudyPathChange,
   mobileView = false,
 }) => {
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const [navigatorOpen, setNavigatorOpen] = useState(false)
   const [navigatorDock, setNavigatorDock] = useState<NavigatorDock>('right')
   const selectedIndex = Math.min(
@@ -207,6 +208,34 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     }
   }, [navigatorDock, studyPath.pathId])
 
+  useEffect(() => {
+    if (!mobileView) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      let element = rootRef.current?.parentElement
+
+      while (element) {
+        const overflowY = window.getComputedStyle(element).overflowY
+        const canScroll =
+          (overflowY === 'auto' || overflowY === 'scroll') &&
+          element.scrollHeight > element.clientHeight
+
+        if (canScroll) {
+          element.scrollTo({ top: 0, behavior: 'smooth' })
+          return
+        }
+
+        element = element.parentElement
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [currentLesson?.dashboardKey, mobileView])
+
   const selectLesson = (index: number) => {
     onStudyPathChange({ ...studyPath, selectedIndex: index })
   }
@@ -252,6 +281,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
 
   return (
     <Box
+      ref={rootRef}
       data-testid="study-path-workspace"
       sx={{
         height: '100%',
