@@ -353,7 +353,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
     const handleCloseCreateStudio = () => {
       setIsStudioOpen(false)
-      if (isMobile) {
+      if (isMobile && mobileSection === 'creation') {
         setMobileSection('dashboard')
       }
       dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
@@ -383,7 +383,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         handleCloseCreateStudio,
       )
     }
-  }, [isMobile, permissions.canCreateFromNotes, permissions.canCreateStudyPath])
+  }, [
+    isMobile,
+    mobileSection,
+    permissions.canCreateFromNotes,
+    permissions.canCreateStudyPath,
+  ])
 
   const resetOrCloseStudio = () => {
     setIsStudioOpen(false)
