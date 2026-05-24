@@ -323,12 +323,12 @@ const DashboardEmptyState = ({
   return (
     <Box
       sx={{
-        minHeight: { xs: 'auto', md: 'calc(100dvh - 130px)' },
+        minHeight: { xs: 'calc(100dvh - 176px)', md: 'calc(100dvh - 130px)' },
         display: 'flex',
         alignItems: { xs: 'flex-start', md: 'center' },
         justifyContent: 'center',
         p: { xs: 1, sm: 1.5, md: 2.5 },
-        pb: { xs: 8, md: 2.5 },
+        pb: { xs: 1.25, md: 2.5 },
         bgcolor: 'background.default',
       }}
     >
@@ -342,13 +342,15 @@ const DashboardEmptyState = ({
           },
           gap: { xs: 1, sm: 1.5, lg: 2 },
           alignItems: 'stretch',
+          maxHeight: { xs: 'calc(100dvh - 196px)', lg: 'none' },
+          overflowY: { xs: 'auto', lg: 'visible' },
         }}
       >
         <Paper
           elevation={0}
           sx={{
             minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.5, sm: 2, md: 2.5 },
+            p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'primary.light',
@@ -357,23 +359,27 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            gap: { xs: 1.5, md: 2.5 },
+            gap: { xs: 1, md: 2.5 },
           }}
         >
           <Box>
             <RouteIcon
-              sx={{ fontSize: { xs: 34, md: 44 }, color: 'primary.main', mb: 1 }}
+              sx={{
+                fontSize: { xs: 30, md: 44 },
+                color: 'primary.main',
+                mb: { xs: 0.5, md: 1 },
+              }}
             />
             <Typography
               variant="h5"
               fontWeight={900}
-              sx={{ lineHeight: 1.15, fontSize: { xs: '1.25rem', md: '1.5rem' } }}
+              sx={{ lineHeight: 1.15, fontSize: { xs: '1.12rem', md: '1.5rem' } }}
             >
               Create a Study Path
             </Typography>
             <Typography
               variant="body2"
-              sx={{ mt: 1, color: 'foreground.contrastSecondary' }}
+              sx={{ mt: { xs: 0.5, md: 1 }, color: 'foreground.contrastSecondary' }}
             >
               Start from a topic or prompt and generate ordered tutorial
               dashboards.
@@ -399,14 +405,14 @@ const DashboardEmptyState = ({
           elevation={0}
           sx={{
             minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.5, sm: 2, md: 2.5 },
+            p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: { xs: 1.25, md: 2 },
+            gap: { xs: 1, md: 2 },
           }}
         >
           <Stack direction="row" alignItems="center" spacing={1}>
@@ -415,7 +421,7 @@ const DashboardEmptyState = ({
               <Typography
                 variant="h5"
                 fontWeight={900}
-                sx={{ lineHeight: 1.15, fontSize: { xs: '1.25rem', md: '1.5rem' } }}
+                sx={{ lineHeight: 1.15, fontSize: { xs: '1.12rem', md: '1.5rem' } }}
               >
                 Open study material
               </Typography>
@@ -459,7 +465,7 @@ const DashboardEmptyState = ({
                           : firstDashboard && onOpenDashboard(firstDashboard)
                       }
                       sx={{
-                        minHeight: { xs: 48, md: 54 },
+                        minHeight: { xs: 42, md: 54 },
                         justifyContent: 'flex-start',
                         textAlign: 'left',
                         textTransform: 'none',
@@ -538,28 +544,32 @@ const DashboardEmptyState = ({
           elevation={0}
           sx={{
             minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.5, sm: 2, md: 2.5 },
+            p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            gap: { xs: 1, md: 2 },
           }}
         >
           <Box>
             <AutoStoriesIcon
-              sx={{ fontSize: { xs: 34, md: 44 }, color: 'primary.main', mb: 1 }}
+              sx={{
+                fontSize: { xs: 30, md: 44 },
+                color: 'primary.main',
+                mb: { xs: 0.5, md: 1 },
+              }}
             />
             <Typography
               variant="h5"
               fontWeight={900}
-              sx={{ lineHeight: 1.15, fontSize: { xs: '1.25rem', md: '1.5rem' } }}
+              sx={{ lineHeight: 1.15, fontSize: { xs: '1.12rem', md: '1.5rem' } }}
             >
               Create From Notes
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: { xs: 0.5, md: 1 } }}>
               Upload notes, screenshots, PDFs, or slides and turn them into a
               widget-based study dashboard.
             </Typography>
@@ -581,8 +591,8 @@ const DashboardEmptyState = ({
               disabled={!isAdmin}
               sx={{
                 width: '100%',
-                minHeight: { xs: 116, md: 170 },
-                p: { xs: 1.5, md: 2 },
+                minHeight: { xs: 92, md: 170 },
+                p: { xs: 1.25, md: 2 },
                 borderRadius: 2,
                 border: '1.5px dashed',
                 borderColor: 'primary.main',
@@ -601,8 +611,8 @@ const DashboardEmptyState = ({
               <Stack spacing={1.25} alignItems="center">
                 <Box
                   sx={{
-                    width: { xs: 42, md: 48 },
-                    height: { xs: 42, md: 48 },
+                    width: { xs: 36, md: 48 },
+                    height: { xs: 36, md: 48 },
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -1896,11 +1906,11 @@ const Dashboards = () => {
                 data-testid="add-dashboard-button"
                 sx={{
                   position: 'relative',
-                  top: '3px',
-                  marginBottom: '8px',
+                  top: 0,
+                  marginBottom: 0,
                   minWidth: 'fit-content',
                   display: 'flex',
-                  alignItems: 'middle',
+                  alignItems: 'center',
                   gap: '8px',
                   fontSize: '13px',
                   p: '4px 12px',

@@ -172,14 +172,29 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'flex-start',
         minWidth: '44px',
+        minHeight: '52px',
         mx: 0.25,
         px: 0.5,
+        pt: 0.5,
         ...sx,
       }}
       {...props}
     >
-      {icon}
+      <Box
+        component="span"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 24,
+          lineHeight: 0,
+          '& .MuiSvgIcon-root': { fontSize: 24 },
+        }}
+      >
+        {icon}
+      </Box>
       <Typography
         variant="caption"
         sx={{
