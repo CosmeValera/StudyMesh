@@ -794,10 +794,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const creationStatusMarkers = (
     <Box
       sx={{
-        position: 'absolute',
+        position: isMobile ? 'fixed' : 'absolute',
         left: isMobile ? 0 : isStudioOpen ? studioPanelClamp : 0,
         top: 96,
-        zIndex: 20,
+        zIndex: isMobile ? 1301 : 20,
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
