@@ -6,6 +6,7 @@ import {
   Drawer,
   IconButton,
   Paper,
+  Slide,
   Stack,
   Tooltip,
   Typography,
@@ -864,6 +865,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     setActiveFlow('hub')
     setIsStudioOpen(true)
     if (isMobile) {
+      window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
       setMobileSection('creation')
     }
   }
@@ -1154,34 +1156,55 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           sx={{
             flex: 1,
             minHeight: 0,
-            display: mobileSection === 'creation' ? 'block' : 'none',
+            position: 'relative',
             overflow: 'hidden',
-            p: '8px',
-            boxSizing: 'border-box',
           }}
         >
           <Box
             sx={{
-              height: '100%',
-              overflow: 'hidden',
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 2,
-              bgcolor: 'background.paper',
+              position: 'absolute',
+              inset: 0,
+              ...workspaceCanvasSx,
             }}
           >
-            {studioContent}
+            {children}
           </Box>
-        </Box>
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            display: mobileSection === 'creation' ? 'none' : 'block',
-            ...workspaceCanvasSx,
-          }}
-        >
-          {children}
+          <Slide
+            direction="right"
+            in={mobileSection === 'creation'}
+            mountOnEnter
+            unmountOnExit
+            timeout={{ enter: 260, exit: 220 }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                overflow: 'hidden',
+                p: '8px',
+                boxSizing: 'border-box',
+                zIndex: 2,
+                bgcolor: 'background.default',
+              }}
+            >
+              <Box
+                sx={{
+                  height: '100%',
+                  overflow: 'hidden',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  bgcolor: 'background.paper',
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 18px 40px rgba(0,0,0,0.42)'
+                      : '0 18px 42px rgba(16,24,40,0.10)',
+                }}
+              >
+                {studioContent}
+              </Box>
+            </Box>
+          </Slide>
         </Box>
         {mobileSectionTabs}
         {widgetBuilderDialog}
