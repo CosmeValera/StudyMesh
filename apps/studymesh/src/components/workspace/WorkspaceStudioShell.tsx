@@ -52,6 +52,7 @@ import {
   WorkspaceCreationTaskState,
 } from '../../workspaceCreationStatus'
 import {
+  CLOSE_CREATE_STUDIO_EVENT,
   CLOSE_DASHBOARD_CHAT_EVENT,
   OPEN_DASHBOARD_CHAT_EVENT,
 } from './workspaceEvents'
@@ -322,12 +323,20 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         setIsStudioOpen(false)
       }
     }
+    const handleCloseCreateStudio = () => {
+      setIsStudioOpen(false)
+      if (isMobile) {
+        setMobileSection('dashboard')
+      }
+      dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
+    }
 
     window.addEventListener(OPEN_CREATE_HUB_EVENT, handleOpenCreateHub)
     window.addEventListener(OPEN_WIDGET_EDITOR_EVENT, handleOpenWidgetEditor)
     window.addEventListener(OPEN_STUDY_PACK_EVENT, handleOpenStudyPack)
     window.addEventListener(OPEN_STUDY_PATH_EVENT, handleOpenStudyPath)
     window.addEventListener(OPEN_DASHBOARD_EDITOR_EVENT, handleOpenDashboard)
+    window.addEventListener(CLOSE_CREATE_STUDIO_EVENT, handleCloseCreateStudio)
 
     return () => {
       window.removeEventListener(OPEN_CREATE_HUB_EVENT, handleOpenCreateHub)
@@ -341,8 +350,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         OPEN_DASHBOARD_EDITOR_EVENT,
         handleOpenDashboard,
       )
+      window.removeEventListener(
+        CLOSE_CREATE_STUDIO_EVENT,
+        handleCloseCreateStudio,
+      )
     }
-  }, [permissions.canCreateFromNotes, permissions.canCreateStudyPath])
+  }, [isMobile, permissions.canCreateFromNotes, permissions.canCreateStudyPath])
 
   const resetOrCloseStudio = () => {
     setIsStudioOpen(false)
@@ -396,6 +409,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   )
 
   const createNewDraft = (flow: Exclude<StudioFlow, 'hub'>) => {
+    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
     const draft = createGenerationDraft(flow)
     setGenerationDrafts((current) => [
       ...current.filter(
@@ -828,6 +842,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     setActiveFlow(draft.flow)
+    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
     setActiveDraftByFlow((current) => ({
       ...current,
       [draft.flow]: draft.id,
@@ -864,6 +879,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     setUseCurrentDashboardSource(false)
     setActiveFlow('hub')
     setIsStudioOpen(true)
+    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
     if (isMobile) {
       window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
       setMobileSection('creation')

@@ -29,19 +29,20 @@ import { useNavigate } from 'react-router-dom'
 
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import LogoutIcon from '@mui/icons-material/Logout'
-import ConstructionIcon from '@mui/icons-material/Construction'
-import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import ColorLensIcon from '@mui/icons-material/ColorLens'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Brightness6Icon from '@mui/icons-material/Brightness6'
 import CloseIcon from '@mui/icons-material/Close'
-import SettingsIcon from '@mui/icons-material/Settings'
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
 import PersonIcon from '@mui/icons-material/Person'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import AddToPhotosIcon from '@mui/icons-material/AddToPhotos'
+import WidgetsIcon from '@mui/icons-material/Widgets'
+import SettingsApplicationsIcon from '@mui/icons-material/SettingsApplications'
+import ExtensionIcon from '@mui/icons-material/Extension'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
@@ -53,7 +54,6 @@ import {
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
-import DashboardWidgetExplanationModal from '../tutorial/DashboardWidgetExplanationModal'
 import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
@@ -80,6 +80,7 @@ import {
   WorkspaceCreationTask,
   WorkspaceCreationTaskState,
 } from '../../workspaceCreationStatus'
+import { WORKSPACE_DASHBOARD_TABS_SLOT_ID } from '../workspace/workspaceEvents'
 
 // Define user data type
 interface UserData {
@@ -326,10 +327,6 @@ const useStoredBoolean = (key: string, defaultValue: boolean) => {
 const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   // State for different dropdown menus
   const [userAnchorEl, setUserAnchorEl] = useState<null | HTMLElement>(null)
-  const [advancedAnchorEl, setAdvancedAnchorEl] = useState<null | HTMLElement>(
-    null,
-  )
-  const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false)
   const [userSettingsName, setUserSettingsName] = useState('')
@@ -400,6 +397,9 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
+  const isMobileWorkspaceHeader = useMediaQuery(
+    '(max-width:768px), (pointer: coarse)',
+  )
 
   // Load user data from localStorage on component mount
   useEffect(() => {
@@ -602,20 +602,6 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
     setUserAnchorEl(event.currentTarget)
   }
 
-  const handleAdvancedMenuOpen = (
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    if (!isAdmin) {
-      return
-    }
-
-    setAdvancedAnchorEl(event.currentTarget)
-  }
-
-  const handleAdvancedMenuClose = () => {
-    setAdvancedAnchorEl(null)
-  }
-
   const handleClose = () => {
     setUserAnchorEl(null)
   }
@@ -723,13 +709,14 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         sx={{
           backgroundColor: 'background.header',
           boxShadow: 2,
-          height: isPhone ? '56px' : '64px',
+          height: isPhone ? '56px' : '52px',
         }}
       >
         <Toolbar
           sx={{
-            height: isPhone ? '56px' : '64px',
-            px: isPhone ? 0.75 : 2,
+            minHeight: isPhone ? '56px' : '52px',
+            height: isPhone ? '56px' : '52px',
+            px: isPhone ? 0.75 : 1.25,
             gap: isPhone ? 0.75 : 0,
           }}
         >
@@ -790,140 +777,61 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             <>
               {/* Logo and Brand */}
               <Box
-                aria-label="StudyMesh logo"
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  fontWeight: isDesktop ? 'bold' : 'normal',
-                  mr: isPhone ? 0.25 : isDesktop ? 4 : 1,
-                  color: 'foreground.contrastPrimary',
-                  px: isPhone ? 0.5 : 0,
+                  flex: '0 0 auto',
+                  minWidth: 0,
                 }}
               >
+                {/* Logo and Brand */}
                 <Box
-                  data-testid="logo"
-                  component="img"
-                  src="/logo.png"
-                  alt=""
+                  aria-label="StudyMesh logo"
                   sx={{
-                    width: isPhone ? 28 : 32,
-                    height: isPhone ? 28 : 32,
-                    display: 'block',
-                    mr: isDesktop ? 1.5 : 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontWeight: isDesktop ? 'bold' : 'normal',
+                    mr: isDesktop ? 1.25 : 0.5,
+                    color: 'foreground.contrastPrimary',
+                    px: 0,
+                    whiteSpace: 'nowrap',
                   }}
-                />
-                {isDesktop && 'StudyMesh'}
-              </Box>
+                >
+                  <Box
+                    data-testid="logo"
+                    component="img"
+                    src="/logo.png"
+                    alt=""
+                    sx={{
+                      width: isDesktop ? 30 : 28,
+                      height: isDesktop ? 30 : 28,
+                      display: 'block',
+                      mr: isDesktop ? 1 : 0,
+                    }}
+                  />
+                  {isDesktop && 'StudyMesh'}
+                </Box>
 
-              {/* Main Navigation Items */}
-              <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
                 {/* Library */}
                 {isPhone || isTablet ? (
                   <DashboardOptionsMenu />
                 ) : (
                   <DashboardOptionsMenu />
                 )}
-
-                {/* Advanced creation menu */}
-                {isPhone || isTablet ? (
-                  <ButtonWithLabel
-                    icon={<DashboardCustomizeIcon />}
-                    label="Advanced"
-                    onClick={handleAdvancedMenuOpen}
-                    disabled={!isAdmin}
-                    title={
-                      isAdmin
-                        ? 'Advanced creation tools'
-                        : 'Viewer mode cannot use advanced creation tools'
-                    }
-                    sx={
-                      !isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}
-                    }
-                  />
-                ) : (
-                  <Button
-                    onClick={handleAdvancedMenuOpen}
-                    disabled={!isAdmin}
-                    sx={{
-                      color: 'foreground.contrastPrimary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      minWidth: 'auto',
-                      mx: 1,
-                      px: 2,
-                      opacity: isAdmin ? 1 : 0.45,
-                    }}
-                    startIcon={<DashboardCustomizeIcon />}
-                    endIcon={<KeyboardArrowDownIcon />}
-                    title={
-                      isAdmin
-                        ? 'Advanced creation tools'
-                        : 'Viewer mode cannot use advanced creation tools'
-                    }
-                  >
-                    Advanced
-                  </Button>
-                )}
-                <Menu
-                  anchorEl={advancedAnchorEl}
-                  open={Boolean(advancedAnchorEl)}
-                  onClose={handleAdvancedMenuClose}
-                  PaperProps={{
-                    sx: {
-                      bgcolor: 'background.paper',
-                      color: 'text.primary',
-                      border: 1,
-                      borderColor: 'divider',
-                      minWidth: 230,
-                      mt: 1,
-                    },
-                  }}
-                >
-                  <MenuItem
-                    onClick={() => {
-                      openCreateDashboard()
-                      handleAdvancedMenuClose()
-                    }}
-                    disabled={!isAdmin}
-                    data-tutorial-id="create-dashboard-button"
-                    data-onboarding-id="create-dashboard"
-                    sx={{ p: 1.5 }}
-                  >
-                    <ListItemIcon>
-                      <DashboardCustomizeIcon
-                        fontSize="small"
-                        sx={{ color: 'text.secondary' }}
-                      />
-                    </ListItemIcon>
-                    Create Dashboard
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      openCreateWidget()
-                      handleAdvancedMenuClose()
-                    }}
-                    disabled={!isAdmin}
-                    data-tutorial-id="create-widget-button"
-                    data-onboarding-id="dashboard-widget-create"
-                    sx={{ p: 1.5 }}
-                  >
-                    <ListItemIcon>
-                      <ConstructionIcon
-                        fontSize="small"
-                        sx={{ color: 'text.secondary' }}
-                      />
-                    </ListItemIcon>
-                    Create Widget
-                  </MenuItem>
-                  {!isAdmin && (
-                    <Box sx={{ px: 2, py: 1, maxWidth: 260 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Viewer mode cannot create dashboards or widgets.
-                      </Typography>
-                    </Box>
-                  )}
-                </Menu>
               </Box>
+
+              <Box
+                id={WORKSPACE_DASHBOARD_TABS_SLOT_ID}
+                sx={{
+                  flex: '1 1 auto',
+                  minWidth: 0,
+                  height: '100%',
+                  display: isMobileWorkspaceHeader ? 'none' : 'flex',
+                  alignItems: 'flex-end',
+                  mx: isTablet ? 0.5 : 1,
+                  position: 'relative',
+                }}
+              />
 
               {/* Right Side Elements */}
               <Box
@@ -931,6 +839,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: isPhone ? 1.5 : 1,
+                  flex: '0 0 auto',
                 }}
               >
                 {/* User Menu */}
@@ -1049,10 +958,21 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     <AccentColorPicker dense />
                   </Box>
                   <Divider sx={{ borderColor: 'divider' }} />
+                  <Box sx={{ px: 2, pt: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <SettingsApplicationsIcon
+                        fontSize="small"
+                        sx={{ color: 'primary.main', mr: 1 }}
+                      />
+                      <Typography variant="body2" fontWeight="medium">
+                        Settings
+                      </Typography>
+                    </Box>
+                  </Box>
                   <MenuItem
                     onClick={openUserSettings}
                     sx={{ color: 'text.primary', marginTop: 1 }}
-                  >
+                  > 
                     <ListItemIcon>
                       <PersonIcon
                         fontSize="small"
@@ -1061,7 +981,6 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     </ListItemIcon>
                     User settings
                   </MenuItem>
-                  <Divider sx={{ borderColor: 'divider' }} />
                   <MenuItem
                     onClick={() => {
                       setIsSettingsOpen(true)
@@ -1075,7 +994,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     }}
                   >
                     <ListItemIcon>
-                      <SettingsIcon
+                      <ManageAccountsIcon
                         fontSize="small"
                         sx={{ color: 'text.secondary' }}
                       />
@@ -1083,20 +1002,52 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     Settings
                   </MenuItem>
                   <Divider sx={{ borderColor: 'divider' }} />
+                  <Box sx={{ px: 2, pt: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <ExtensionIcon
+                        fontSize="small"
+                        sx={{ color: 'primary.main', mr: 1 }}
+                      />
+                      <Typography variant="body2" fontWeight="medium">
+                        Advanced
+                      </Typography>
+                    </Box>
+                  </Box>
                   <MenuItem
                     onClick={() => {
-                      setIsHelpOpen(true)
+                      openCreateDashboard()
                       handleClose()
                     }}
+                    disabled={!isAdmin}
+                    data-tutorial-id="create-dashboard-button"
+                    data-onboarding-id="create-dashboard"
                     sx={{ color: 'text.primary' }}
                   >
                     <ListItemIcon>
-                      <HelpOutlineIcon
+                      <AddToPhotosIcon
                         fontSize="small"
                         sx={{ color: 'text.secondary' }}
                       />
                     </ListItemIcon>
-                    Help / tutorial
+                    Create Dashboard
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      openCreateWidget()
+                      handleClose()
+                    }}
+                    disabled={!isAdmin}
+                    data-tutorial-id="create-widget-button"
+                    data-onboarding-id="dashboard-widget-create"
+                    sx={{ color: 'text.primary' }}
+                  >
+                    <ListItemIcon>
+                      <WidgetsIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Create Widget
                   </MenuItem>
                   <Divider sx={{ borderColor: 'divider' }} />
                   <MenuItem
@@ -1209,25 +1160,48 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             sx={{ color: 'text.primary' }}
           >
             <ListItemIcon>
-              <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-            </ListItemIcon>
-            Settings
-          </MenuItem>
-          <Divider sx={{ borderColor: 'divider' }} />
-          <MenuItem
-            onClick={() => {
-              setIsHelpOpen(true)
-              handleClose()
-            }}
-            sx={{ color: 'text.primary' }}
-          >
-            <ListItemIcon>
-              <HelpOutlineIcon
+              <ManageAccountsIcon
                 fontSize="small"
                 sx={{ color: 'text.secondary' }}
               />
             </ListItemIcon>
-            Help / tutorial
+            Settings
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              openCreateDashboard()
+              handleClose()
+            }}
+            disabled={!isAdmin}
+            data-tutorial-id="create-dashboard-button"
+            data-onboarding-id="create-dashboard"
+            sx={{ color: 'text.primary' }}
+          >
+            <ListItemIcon>
+              <AddToPhotosIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary' }}
+              />
+            </ListItemIcon>
+            Create Dashboard
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              openCreateWidget()
+              handleClose()
+            }}
+            disabled={!isAdmin}
+            data-tutorial-id="create-widget-button"
+            data-onboarding-id="dashboard-widget-create"
+            sx={{ color: 'text.primary' }}
+          >
+            <ListItemIcon>
+              <WidgetsIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary' }}
+              />
+            </ListItemIcon>
+            Create Widget
           </MenuItem>
           <Divider sx={{ borderColor: 'divider' }} />
           <MenuItem
@@ -1351,10 +1325,6 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         </Box>
       </Drawer>
 
-      <DashboardWidgetExplanationModal
-        open={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-      />
       <Dialog
         open={isUserSettingsOpen}
         onClose={() => setIsUserSettingsOpen(false)}
