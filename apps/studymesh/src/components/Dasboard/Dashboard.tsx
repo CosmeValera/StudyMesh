@@ -323,7 +323,8 @@ const DashboardEmptyState = ({
   return (
     <Box
       sx={{
-        minHeight: { xs: 'calc(100dvh - 176px)', md: 'calc(100dvh - 130px)' },
+        height: { xs: 'calc(100dvh - 176px)', md: 'auto' },
+        minHeight: { xs: 0, md: 'calc(100dvh - 130px)' },
         display: 'flex',
         alignItems: { xs: 'flex-start', md: 'center' },
         justifyContent: 'center',
@@ -332,7 +333,7 @@ const DashboardEmptyState = ({
         bgcolor: 'background.default',
         width: '100%',
         maxWidth: '100%',
-        overflowX: 'hidden',
+        overflow: { xs: 'hidden', md: 'visible' },
         boxSizing: 'border-box',
       }}
     >
@@ -349,7 +350,7 @@ const DashboardEmptyState = ({
           },
           gap: { xs: 1, sm: 1.5, lg: 2 },
           alignItems: 'stretch',
-          maxHeight: { xs: 'calc(100dvh - 196px)', lg: 'none' },
+          maxHeight: { xs: '100%', lg: 'none' },
           overflowY: { xs: 'auto', lg: 'visible' },
         }}
       >
