@@ -2103,11 +2103,11 @@ const Dashboards = () => {
             sx: {
               width: '100%',
               maxWidth: '100%',
-              top: 62,
-              bottom: 'calc(64px + env(safe-area-inset-bottom))',
+              top: 56,
+              bottom: 'calc(56px + env(safe-area-inset-bottom))',
               height: 'auto',
               bgcolor: 'background.default',
-              p: '8px',
+              p: '6px 8px 8px',
               boxSizing: 'border-box',
             },
           }}

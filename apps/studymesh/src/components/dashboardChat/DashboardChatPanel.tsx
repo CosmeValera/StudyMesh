@@ -203,7 +203,8 @@ const DashboardChatPanel = ({
   return (
     <Box
       sx={{
-        height: isMobile ? '100dvh' : '100%',
+        height: '100%',
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         bgcolor: 'background.paper',
@@ -241,8 +242,8 @@ const DashboardChatPanel = ({
                 isLocalAi
                   ? 'Local AI'
                   : settings.provider === 'gemini'
-                  ? 'Gemini'
-                  : 'Basic'
+                    ? 'Gemini'
+                    : 'Basic'
               }
               variant="outlined"
               sx={{ height: 22, fontWeight: 700 }}
