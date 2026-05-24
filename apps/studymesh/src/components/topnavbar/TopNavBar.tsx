@@ -827,7 +827,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                   minWidth: 0,
                   height: '100%',
                   display: isMobileWorkspaceHeader ? 'none' : 'flex',
-                  alignItems: 'flex-end',
+                  alignItems: 'center',
                   mx: isTablet ? 0.5 : 1,
                   position: 'relative',
                 }}

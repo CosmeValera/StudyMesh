@@ -131,7 +131,7 @@
   margin: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   position: relative;
   mask-image: linear-gradient(
     90deg,
@@ -142,7 +142,8 @@
   );
 
   &::-webkit-scrollbar {
-    height: 4px;
+    width: 0;
+    height: 0;
   }
 
   .react-tabs__tab {
@@ -150,19 +151,51 @@
     width: 172px;
     max-width: 172px;
     height: 36px;
-    padding: 4px 4px 4px 8px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px 0 10px;
     border-radius: 8px;
-    background-color: var(--background-paper);
-    border-color: var(--surface-border, var(--other-divider));
+    background-color: var(--background-paper, #fff);
+    border: 1px solid var(--surface-border, var(--other-divider));
     color: var(--foreground-secondary);
     font: inherit;
+    line-height: 1;
+    opacity: 1;
+    box-shadow: none;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease;
+
+    &:not(.react-tabs__tab--selected) {
+      box-shadow: none;
+      opacity: 1;
+
+      &:hover {
+        background-color: var(--background-medium, #f4f7f8);
+        border-color: var(--foreground-muted, var(--other-divider));
+        opacity: 1;
+      }
+    }
+
+    > span {
+      min-width: 0;
+      line-height: 1.2;
+    }
+
+    .MuiIconButton-root,
+    .close {
+      flex: 0 0 auto;
+    }
   }
 
   .react-tabs__tab--selected {
-    background-color: var(--background-medium);
+    background-color: var(--background-paper, #fff);
     color: var(--foreground-primary);
     border-color: var(--primary-main);
-    box-shadow: inset 0 2px 0 var(--primary-main);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   }
 }
 
