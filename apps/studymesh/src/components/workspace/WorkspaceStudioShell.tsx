@@ -222,6 +222,32 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     useWorkspaceActions()
   const { openDashboards, selectedDashboard } = useDashboards()
 
+  const startStudioResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = studioWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const nextWidth = Math.max(
+        studioPanelMinWidth,
+        Math.min(studioPanelMaxWidth, startWidth + moveEvent.clientX - startX),
+      )
+      setStudioWidth(nextWidth)
+    }
+
+    const stopResize = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopResize)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopResize)
+  }
+
   const permissions = useMemo(() => {
     const isAdmin = readIsAdmin()
 
