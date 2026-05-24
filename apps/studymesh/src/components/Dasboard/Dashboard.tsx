@@ -2103,14 +2103,32 @@ const Dashboards = () => {
             sx: {
               width: '100%',
               maxWidth: '100%',
-              top: 62,
-              bottom: 'calc(64px + env(safe-area-inset-bottom))',
+              top: 56,
+              bottom: 'calc(56px + env(safe-area-inset-bottom))',
               height: 'auto',
-              bgcolor: 'background.paper',
+              bgcolor: 'background.default',
+              p: '6px 8px 8px',
+              boxSizing: 'border-box',
             },
           }}
         >
-          {dashboardChatPanel}
+          <Box
+            sx={{
+              height: '100%',
+              minHeight: 0,
+              overflow: 'hidden',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? '0 18px 40px rgba(0,0,0,0.42)'
+                  : '0 18px 42px rgba(16,24,40,0.10)',
+            }}
+          >
+            {dashboardChatPanel}
+          </Box>
         </Drawer>
       ) : (
         <Box
