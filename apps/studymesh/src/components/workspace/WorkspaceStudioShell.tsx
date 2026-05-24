@@ -823,7 +823,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     )
 
   const openCreateHub = () => {
-    if (isStudioOpen && activeFlow === 'hub') {
+    if (isMobile && isStudioOpen && activeFlow === 'hub') {
+      setMobileSection('creation')
+      return
+    }
+
+    if (!isMobile && isStudioOpen && activeFlow === 'hub') {
       closeStudio()
       return
     }
@@ -856,10 +861,18 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: 0.75,
         p: 0.75,
+        pb: 'calc(0.75rem + env(safe-area-inset-bottom))',
         bgcolor: 'background.paper',
-        borderBottom: 1,
+        borderTop: 1,
         borderColor: 'divider',
         flexShrink: 0,
+        position: 'sticky',
+        bottom: 0,
+        zIndex: theme.zIndex.appBar,
+        boxShadow:
+          theme.palette.mode === 'dark'
+            ? '0 -10px 28px rgba(0,0,0,0.35)'
+            : '0 -10px 28px rgba(16,24,40,0.12)',
       }}
     >
       {[
@@ -1111,7 +1124,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           bgcolor: 'background.default',
         }}
       >
-        {mobileSectionTabs}
         <Box
           sx={{
             flex: 1,
@@ -1119,6 +1131,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             display: mobileSection === 'creation' ? 'block' : 'none',
             overflow: 'hidden',
             p: '8px',
+            pb: 'calc(76px + env(safe-area-inset-bottom))',
             boxSizing: 'border-box',
           }}
         >
@@ -1141,10 +1154,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             minHeight: 0,
             display: mobileSection === 'creation' ? 'none' : 'block',
             ...workspaceCanvasSx,
+            pb: 'calc(76px + env(safe-area-inset-bottom))',
           }}
         >
           {children}
         </Box>
+        {mobileSectionTabs}
         {widgetBuilderDialog}
       </Box>
     )

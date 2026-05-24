@@ -15,8 +15,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Drawer,
   IconButton,
   ListItemIcon,
+  ListItemText,
   Snackbar,
   Stack,
   TextField,
@@ -38,9 +40,12 @@ import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
 import PersonIcon from '@mui/icons-material/Person'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
+import { useDashboards } from '../Dasboard/DashboardProvider'
 import {
   OPEN_STUDY_PACK_EVENT,
   OPEN_STUDY_PATH_EVENT,
@@ -367,6 +372,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
     useStoredBoolean('widget-editor-delete-template-confirmation', true)
   const [userData, setUserData] = useState<UserData>(adminUser)
   const [avatarSrc, setAvatarSrc] = useState(() => readUserAvatar(adminUser.id))
+  const [dashboardSelectorOpen, setDashboardSelectorOpen] = useState(false)
   const isAdmin = isAdminUser(userData)
   const userModeLabel = isAdmin
     ? studyPackAiProviderLabels[studyPackAiProvider]
@@ -377,6 +383,15 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
     createStudyPackDashboard,
     createStudyPackDashboards,
   } = useWorkspaceActions()
+  const {
+    addDashboard,
+    openDashboards,
+    selectedDashboard,
+    setSelectedDashboard,
+  } = useDashboards()
+  const currentDashboard = openDashboards[selectedDashboard]
+  const currentDashboardTitle =
+    currentDashboard?.studyPath?.title || currentDashboard?.name || 'StudyMesh'
   const navigate = useNavigate()
 
   // Use theme and media query for responsive design
@@ -707,191 +722,55 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         sx={{
           backgroundColor: 'background.header',
           boxShadow: 2,
-          height: isPhone ? '72px' : '64px',
+          height: isPhone ? '56px' : '64px',
         }}
       >
         <Toolbar
           sx={{
-            height: isPhone ? '72px' : '64px',
-            px: isPhone ? 0.5 : 2,
-            gap: isPhone ? 0.25 : 0,
+            height: isPhone ? '56px' : '64px',
+            px: isPhone ? 0.75 : 2,
+            gap: isPhone ? 0.75 : 0,
           }}
         >
-          {/* Logo and Brand */}
-          <Box
-            aria-label="StudyMesh logo"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              fontWeight: isDesktop ? 'bold' : 'normal',
-              mr: isPhone ? 0.25 : isDesktop ? 4 : 1,
-              color: 'foreground.contrastPrimary',
-              px: isPhone ? 0.5 : 0,
-            }}
-          >
-            <Box
-              data-testid="logo"
-              component="img"
-              src="/logo.png"
-              alt=""
-              sx={{
-                width: isPhone ? 28 : 32,
-                height: isPhone ? 28 : 32,
-                display: 'block',
-                mr: isDesktop ? 1.5 : 0,
-              }}
-            />
-            {isDesktop && 'StudyMesh'}
-          </Box>
-
-          {/* Main Navigation Items */}
-          <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
-            {/* Library */}
-            {isPhone || isTablet ? (
-              <DashboardOptionsMenu />
-            ) : (
-              <DashboardOptionsMenu />
-            )}
-
-
-            {/* Advanced creation menu */}
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={<DashboardCustomizeIcon />}
-                label="Advanced"
-                onClick={handleAdvancedMenuOpen}
-                disabled={!isAdmin}
-                title={
-                  isAdmin
-                    ? 'Advanced creation tools'
-                    : 'Viewer mode cannot use advanced creation tools'
-                }
-                sx={!isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}}
-              />
-            ) : (
+          {isPhone ? (
+            <>
+              <Box sx={{ flex: '0 0 44px', display: 'flex' }}>
+                <DashboardOptionsMenu compactMobile />
+              </Box>
               <Button
-                onClick={handleAdvancedMenuOpen}
-                disabled={!isAdmin}
+                onClick={() => setDashboardSelectorOpen(true)}
+                endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 18 }} />}
                 sx={{
-                  color: 'foreground.contrastPrimary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: 'auto',
-                  mx: 1,
-                  px: 2,
-                  opacity: isAdmin ? 1 : 0.45,
-                }}
-                startIcon={<DashboardCustomizeIcon />}
-                endIcon={<KeyboardArrowDownIcon />}
-                title={
-                  isAdmin
-                    ? 'Advanced creation tools'
-                    : 'Viewer mode cannot use advanced creation tools'
-                }
-              >
-                Advanced
-              </Button>
-            )}
-            <Menu
-              anchorEl={advancedAnchorEl}
-              open={Boolean(advancedAnchorEl)}
-              onClose={handleAdvancedMenuClose}
-              PaperProps={{
-                sx: {
-                  bgcolor: 'background.paper',
-                  color: 'text.primary',
-                  border: 1,
-                  borderColor: 'divider',
-                  minWidth: 230,
-                  mt: 1,
-                },
-              }}
-            >
-              <MenuItem
-                onClick={() => {
-                  openCreateDashboard()
-                  handleAdvancedMenuClose()
-                }}
-                disabled={!isAdmin}
-                data-tutorial-id="create-dashboard-button"
-                data-onboarding-id="create-dashboard"
-                sx={{ p: 1.5 }}
-              >
-                <ListItemIcon>
-                  <DashboardCustomizeIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                Create Dashboard
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  openCreateWidget()
-                  handleAdvancedMenuClose()
-                }}
-                disabled={!isAdmin}
-                data-tutorial-id="create-widget-button"
-                data-onboarding-id="dashboard-widget-create"
-                sx={{ p: 1.5 }}
-              >
-                <ListItemIcon>
-                  <ConstructionIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                Create Widget
-              </MenuItem>
-              {!isAdmin && (
-                <Box sx={{ px: 2, py: 1, maxWidth: 260 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Viewer mode cannot create dashboards or widgets.
-                  </Typography>
-                </Box>
-              )}
-            </Menu>
-          </Box>
-
-          {/* Right Side Elements */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: isPhone ? 1.5 : 1,
-            }}
-          >
-            {/* User Menu */}
-            {isPhone || isTablet ? (
-              <ButtonWithLabel
-                icon={
-                  <Avatar
-                    src={avatarSrc || undefined}
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      bgcolor: 'primary.main',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    {userData.id.substring(0, 2).toUpperCase()}
-                  </Avatar>
-                }
-                label="User"
-                onClick={handleUserMenuOpen}
-                sx={{ minWidth: '45px' }}
-              />
-            ) : (
-              <Button
-                onClick={handleUserMenuOpen}
-                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  height: 44,
+                  px: 1,
                   color: 'foreground.contrastPrimary',
                   textTransform: 'none',
-                  minWidth: 'auto',
-                  px: 2,
-                  display: 'flex',
+                  borderRadius: 999,
+                  bgcolor: 'rgba(255,255,255,0.08)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.14)' },
+                  '& .MuiButton-endIcon': { ml: 0.25, mr: 0 },
                 }}
-                endIcon={<KeyboardArrowDownIcon />}
+              >
+                <Typography
+                  component="span"
+                  variant="subtitle2"
+                  fontWeight={800}
+                  noWrap
+                  sx={{ minWidth: 0, maxWidth: '100%' }}
+                >
+                  {currentDashboardTitle || 'Select dashboard'}
+                </Typography>
+              </Button>
+              <IconButton
+                onClick={handleUserMenuOpen}
+                aria-label="Open user menu"
+                sx={{
+                  width: 44,
+                  height: 44,
+                  color: 'foreground.contrastPrimary',
+                }}
               >
                 <Avatar
                   src={avatarSrc || undefined}
@@ -899,160 +778,434 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     width: 32,
                     height: 32,
                     bgcolor: 'primary.main',
-                    mr: 1,
                     fontSize: '0.9rem',
                   }}
                 >
                   {userData.id.substring(0, 2).toUpperCase()}
                 </Avatar>
-                <Box sx={{ textAlign: 'left' }}>
-                  <Typography variant="body2" sx={{ lineHeight: 1.2 }}>
-                    {userData.name}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ opacity: 0.7, lineHeight: 1 }}
+              </IconButton>
+            </>
+          ) : (
+            <>
+              {/* Logo and Brand */}
+              <Box
+                aria-label="StudyMesh logo"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontWeight: isDesktop ? 'bold' : 'normal',
+                  mr: isPhone ? 0.25 : isDesktop ? 4 : 1,
+                  color: 'foreground.contrastPrimary',
+                  px: isPhone ? 0.5 : 0,
+                }}
+              >
+                <Box
+                  data-testid="logo"
+                  component="img"
+                  src="/logo.png"
+                  alt=""
+                  sx={{
+                    width: isPhone ? 28 : 32,
+                    height: isPhone ? 28 : 32,
+                    display: 'block',
+                    mr: isDesktop ? 1.5 : 0,
+                  }}
+                />
+                {isDesktop && 'StudyMesh'}
+              </Box>
+
+              {/* Main Navigation Items */}
+              <Box sx={{ flexGrow: 1, display: 'flex', minWidth: 0 }}>
+                {/* Library */}
+                {isPhone || isTablet ? (
+                  <DashboardOptionsMenu />
+                ) : (
+                  <DashboardOptionsMenu />
+                )}
+
+                {/* Advanced creation menu */}
+                {isPhone || isTablet ? (
+                  <ButtonWithLabel
+                    icon={<DashboardCustomizeIcon />}
+                    label="Advanced"
+                    onClick={handleAdvancedMenuOpen}
+                    disabled={!isAdmin}
+                    title={
+                      isAdmin
+                        ? 'Advanced creation tools'
+                        : 'Viewer mode cannot use advanced creation tools'
+                    }
+                    sx={
+                      !isAdmin ? { opacity: 0.45, pointerEvents: 'none' } : {}
+                    }
+                  />
+                ) : (
+                  <Button
+                    onClick={handleAdvancedMenuOpen}
+                    disabled={!isAdmin}
+                    sx={{
+                      color: 'foreground.contrastPrimary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      minWidth: 'auto',
+                      mx: 1,
+                      px: 2,
+                      opacity: isAdmin ? 1 : 0.45,
+                    }}
+                    startIcon={<DashboardCustomizeIcon />}
+                    endIcon={<KeyboardArrowDownIcon />}
+                    title={
+                      isAdmin
+                        ? 'Advanced creation tools'
+                        : 'Viewer mode cannot use advanced creation tools'
+                    }
                   >
-                    {userModeLabel}
-                  </Typography>
-                </Box>
-              </Button>
-            )}
-            <Menu
-              anchorEl={userAnchorEl}
-              open={Boolean(userAnchorEl)}
-              onClose={handleClose}
-              PaperProps={{
-                sx: {
-                  bgcolor: 'background.paper',
-                  color: 'text.primary',
-                  border: 1,
-                  borderColor: 'divider',
-                  minWidth: 260,
-                  mt: 1,
-                  overflow: 'hidden',
-                },
-              }}
-            >
+                    Advanced
+                  </Button>
+                )}
+                <Menu
+                  anchorEl={advancedAnchorEl}
+                  open={Boolean(advancedAnchorEl)}
+                  onClose={handleAdvancedMenuClose}
+                  PaperProps={{
+                    sx: {
+                      bgcolor: 'background.paper',
+                      color: 'text.primary',
+                      border: 1,
+                      borderColor: 'divider',
+                      minWidth: 230,
+                      mt: 1,
+                    },
+                  }}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      openCreateDashboard()
+                      handleAdvancedMenuClose()
+                    }}
+                    disabled={!isAdmin}
+                    data-tutorial-id="create-dashboard-button"
+                    data-onboarding-id="create-dashboard"
+                    sx={{ p: 1.5 }}
+                  >
+                    <ListItemIcon>
+                      <DashboardCustomizeIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Create Dashboard
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      openCreateWidget()
+                      handleAdvancedMenuClose()
+                    }}
+                    disabled={!isAdmin}
+                    data-tutorial-id="create-widget-button"
+                    data-onboarding-id="dashboard-widget-create"
+                    sx={{ p: 1.5 }}
+                  >
+                    <ListItemIcon>
+                      <ConstructionIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Create Widget
+                  </MenuItem>
+                  {!isAdmin && (
+                    <Box sx={{ px: 2, py: 1, maxWidth: 260 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Viewer mode cannot create dashboards or widgets.
+                      </Typography>
+                    </Box>
+                  )}
+                </Menu>
+              </Box>
+
+              {/* Right Side Elements */}
               <Box
                 sx={{
-                  px: 2,
-                  pt: 1.5,
-                  pb: 1,
-                  bgcolor: 'background.default',
-                  borderBottom: 1,
-                  borderColor: 'divider',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isPhone ? 1.5 : 1,
                 }}
               >
-                <Typography variant="subtitle2" fontWeight={800}>
-                  {userData.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {userModeLabel}
-                </Typography>
+                {/* User Menu */}
+                {isPhone || isTablet ? (
+                  <ButtonWithLabel
+                    icon={
+                      <Avatar
+                        src={avatarSrc || undefined}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          bgcolor: 'primary.main',
+                          fontSize: '0.9rem',
+                        }}
+                      >
+                        {userData.id.substring(0, 2).toUpperCase()}
+                      </Avatar>
+                    }
+                    label="User"
+                    onClick={handleUserMenuOpen}
+                    sx={{ minWidth: '45px' }}
+                  />
+                ) : (
+                  <Button
+                    onClick={handleUserMenuOpen}
+                    sx={{
+                      color: 'foreground.contrastPrimary',
+                      textTransform: 'none',
+                      minWidth: 'auto',
+                      px: 2,
+                      display: 'flex',
+                    }}
+                    endIcon={<KeyboardArrowDownIcon />}
+                  >
+                    <Avatar
+                      src={avatarSrc || undefined}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        bgcolor: 'primary.main',
+                        mr: 1,
+                        fontSize: '0.9rem',
+                      }}
+                    >
+                      {userData.id.substring(0, 2).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ textAlign: 'left' }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.2 }}>
+                        {userData.name}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ opacity: 0.7, lineHeight: 1 }}
+                      >
+                        {userModeLabel}
+                      </Typography>
+                    </Box>
+                  </Button>
+                )}
+                <Menu
+                  anchorEl={userAnchorEl}
+                  open={Boolean(userAnchorEl)}
+                  onClose={handleClose}
+                  PaperProps={{
+                    sx: {
+                      bgcolor: 'background.paper',
+                      color: 'text.primary',
+                      border: 1,
+                      borderColor: 'divider',
+                      minWidth: 260,
+                      mt: 1,
+                      overflow: 'hidden',
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      px: 2,
+                      pt: 1.5,
+                      pb: 1,
+                      bgcolor: 'background.default',
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      {userData.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {userModeLabel}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ px: 2, py: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Brightness6Icon
+                        fontSize="small"
+                        sx={{ color: 'primary.main', mr: 1 }}
+                      />
+                      <Typography variant="body2" fontWeight="medium">
+                        Light / dark mode
+                      </Typography>
+                    </Box>
+                    <ThemeModeToggle compact />
+                  </Box>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  <Box sx={{ px: 2, py: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <ColorLensIcon
+                        fontSize="small"
+                        sx={{ color: 'primary.main', mr: 1 }}
+                      />
+                      <Typography variant="body2" fontWeight="medium">
+                        Accent color
+                      </Typography>
+                    </Box>
+                    <AccentColorPicker dense />
+                  </Box>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  <MenuItem
+                    onClick={openUserSettings}
+                    sx={{ color: 'text.primary', marginTop: 1 }}
+                  >
+                    <ListItemIcon>
+                      <PersonIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    User settings
+                  </MenuItem>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  <MenuItem
+                    onClick={() => {
+                      setIsSettingsOpen(true)
+                      handleClose()
+                    }}
+                    sx={{
+                      marginTop: 1,
+                      paddingTop: 0.5,
+                      paddingBottom: 0.5,
+                      color: 'text.primary',
+                    }}
+                  >
+                    <ListItemIcon>
+                      <SettingsIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Settings
+                  </MenuItem>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  <MenuItem
+                    onClick={() => {
+                      setIsHelpOpen(true)
+                      handleClose()
+                    }}
+                    sx={{ color: 'text.primary' }}
+                  >
+                    <ListItemIcon>
+                      <HelpOutlineIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Help / tutorial
+                  </MenuItem>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  <MenuItem
+                    onClick={() => switchUser(isAdmin ? viewerUser : adminUser)}
+                    sx={{ color: 'text.primary' }}
+                  >
+                    <ListItemIcon>
+                      <SwitchAccountIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    {isAdmin ? 'Log in as Viewer' : 'Log in as Admin'}
+                  </MenuItem>
+                  <Divider sx={{ borderColor: 'divider' }} />
+                  <MenuItem
+                    onClick={handleLogout}
+                    sx={{ color: 'text.primary' }}
+                  >
+                    <ListItemIcon>
+                      <LogoutIcon
+                        fontSize="small"
+                        sx={{ color: 'text.secondary' }}
+                      />
+                    </ListItemIcon>
+                    Logout
+                  </MenuItem>
+                </Menu>
               </Box>
-              <Box sx={{ px: 2, py: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Brightness6Icon
-                    fontSize="small"
-                    sx={{ color: 'primary.main', mr: 1 }}
-                  />
-                  <Typography variant="body2" fontWeight="medium">
-                    Light / dark mode
-                  </Typography>
-                </Box>
-                <ThemeModeToggle compact />
-              </Box>
-              <Divider sx={{ borderColor: 'divider' }} />
-              <Box sx={{ px: 2, py: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <ColorLensIcon
-                    fontSize="small"
-                    sx={{ color: 'primary.main', mr: 1 }}
-                  />
-                  <Typography variant="body2" fontWeight="medium">
-                    Accent color
-                  </Typography>
-                </Box>
-                <AccentColorPicker dense />
-              </Box>
-              <Divider sx={{ borderColor: 'divider' }} />
-              <MenuItem
-                onClick={openUserSettings}
-                sx={{ color: 'text.primary', marginTop: 1 }}
-              >
-                <ListItemIcon>
-                  <PersonIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                User settings
-              </MenuItem>
-              <Divider sx={{ borderColor: 'divider' }} />
-              <MenuItem
-                onClick={() => {
-                  setIsSettingsOpen(true)
-                  handleClose()
-                }}
-                sx={{
-                  marginTop: 1,
-                  paddingTop: 0.5,
-                  paddingBottom: 0.5,
-                  color: 'text.primary',
-                }}
-              >
-                <ListItemIcon>
-                  <SettingsIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                Settings
-              </MenuItem>
-              <Divider sx={{ borderColor: 'divider' }} />
-              <MenuItem
-                onClick={() => {
-                  setIsHelpOpen(true)
-                  handleClose()
-                }}
-                sx={{ color: 'text.primary' }}
-              >
-                <ListItemIcon>
-                  <HelpOutlineIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                Help / tutorial
-              </MenuItem>
-              <Divider sx={{ borderColor: 'divider' }} />
-              <MenuItem
-                onClick={() => switchUser(isAdmin ? viewerUser : adminUser)}
-                sx={{ color: 'text.primary' }}
-              >
-                <ListItemIcon>
-                  <SwitchAccountIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                {isAdmin ? 'Log in as Viewer' : 'Log in as Admin'}
-              </MenuItem>
-              <Divider sx={{ borderColor: 'divider' }} />
-              <MenuItem onClick={handleLogout} sx={{ color: 'text.primary' }}>
-                <ListItemIcon>
-                  <LogoutIcon
-                    fontSize="small"
-                    sx={{ color: 'text.secondary' }}
-                  />
-                </ListItemIcon>
-                Logout
-              </MenuItem>
-            </Menu>
-          </Box>
+            </>
+          )}
         </Toolbar>
       </AppBar>
+
+      <Drawer
+        anchor="bottom"
+        open={isPhone && dashboardSelectorOpen}
+        onClose={() => setDashboardSelectorOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '20px 20px 0 0',
+            bgcolor: 'background.paper',
+            maxHeight: '72dvh',
+            pb: 'calc(12px + env(safe-area-inset-bottom))',
+          },
+        }}
+      >
+        <Box sx={{ p: 2, pb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={900}>
+            Your dashboards
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Switch the active dashboard or create a new one.
+          </Typography>
+        </Box>
+        <Box sx={{ overflowY: 'auto', px: 1, pb: 1 }}>
+          {openDashboards.map((dashboard, index) => {
+            const dashboardTitle =
+              dashboard.studyPath?.title ||
+              dashboard.name ||
+              'Untitled dashboard'
+            const selected = index === selectedDashboard
+
+            return (
+              <MenuItem
+                key={dashboard.id}
+                selected={selected}
+                onClick={() => {
+                  setSelectedDashboard(index)
+                  setDashboardSelectorOpen(false)
+                }}
+                sx={{
+                  minHeight: 48,
+                  borderRadius: 2,
+                  mb: 0.5,
+                  alignItems: 'center',
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 34 }}>
+                  {selected ? (
+                    <CheckCircleIcon fontSize="small" color="primary" />
+                  ) : (
+                    <Box sx={{ width: 20 }} />
+                  )}
+                </ListItemIcon>
+                <ListItemText
+                  primary={dashboardTitle}
+                  primaryTypographyProps={{
+                    noWrap: true,
+                    fontWeight: selected ? 800 : 500,
+                  }}
+                />
+              </MenuItem>
+            )
+          })}
+          <Divider sx={{ my: 1 }} />
+          <MenuItem
+            onClick={() => {
+              addDashboard()
+              setDashboardSelectorOpen(false)
+            }}
+            sx={{ minHeight: 48, borderRadius: 2 }}
+          >
+            <ListItemIcon sx={{ minWidth: 34 }}>
+              <AddCircleOutlineIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText primary="Create new dashboard" />
+          </MenuItem>
+        </Box>
+      </Drawer>
 
       <DashboardWidgetExplanationModal
         open={isHelpOpen}

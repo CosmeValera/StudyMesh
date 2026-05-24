@@ -117,14 +117,7 @@
   overflow: visible;
 
   .react-tabs__tab-list {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    scroll-snap-type: x proximity;
-    background-color: var(--background-default, #f4f7f8);
+    display: none;
   }
 
   .react-tabs__tab {
@@ -146,8 +139,8 @@
   .react-tabs__tab-panel {
     flex: 0 0 auto;
     height: auto;
-    min-height: calc(100dvh - 82px);
+    min-height: calc(100dvh - 136px);
     overflow: visible;
-    padding: 0 0 80px;
+    padding: 0;
   }
 }
