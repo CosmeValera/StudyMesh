@@ -92,6 +92,8 @@ const geminiDetailTargets: Record<
   },
 }
 
+export type QuizQuestionStyle = 'mixed' | 'conceptual' | 'examLike'
+
 export interface GenerateStudyPackWithAiOptions {
   apiToken: string
   model: string
@@ -102,6 +104,7 @@ export interface GenerateStudyPackWithAiOptions {
   generationAmount?: 'few' | 'medium' | 'many'
   resourceType?: StudyMaterialResourceType
   detailLevel?: StudyMaterialDetailLevel
+  quizQuestionStyle?: QuizQuestionStyle
   promptMode?: boolean
   studyPathMode?: boolean
 }
@@ -989,6 +992,7 @@ export const generateStudyPackWithAi = async ({
   generationAmount = 'medium',
   resourceType,
   detailLevel = 'medium',
+  quizQuestionStyle = 'mixed',
   promptMode = false,
   studyPathMode = false,
 }: GenerateStudyPackWithAiOptions): Promise<AiStudyPackDraft> => {
@@ -1022,6 +1026,12 @@ export const generateStudyPackWithAi = async ({
   const hardDetailInstruction = resourceType
     ? `The selected detail level is a hard constraint. Target ${geminiDetailTargets[resourceType][detailLevel]}. Match the target length/count exactly or as close as possible. Do not ignore it.`
     : 'The selected detail level is a hard constraint. Match the requested amount as closely as possible. Do not ignore it.'
+  const quizStyleInstruction =
+    quizQuestionStyle === 'conceptual'
+      ? 'Quiz style preference: Conceptual. Prioritize why/how questions, comparisons, cause/effect, inference, and common misconceptions. Include only enough recall to anchor the reasoning.'
+      : quizQuestionStyle === 'examLike'
+        ? 'Quiz style preference: Exam-like. Write assessment-style questions that require applying concepts under realistic test conditions. Mix multiple-choice and short-answer when appropriate, with clear plausible distractors.'
+        : 'Quiz style preference: Mixed. Use a balanced mix of recall and reasoning questions, including conceptual understanding, applied scenarios, comparisons, and common mistakes.'
   const sourceInstruction = promptMode
     ? 'The raw input is a learning prompt, not notes. Teach the requested topic from scratch. Because the input is not source notes, you may use accurate general knowledge for this topic. First create concise source notes/explanations, then generate practice grounded in those generated explanations. Include explanation/theory objects before exercises.'
     : 'The raw input is source notes. Stay grounded in those notes.'
@@ -1067,8 +1077,9 @@ Rules:
 - Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
 - Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?"
-- Quiz questions must paraphrase the source. Do not copy exact source sentences as questions or answers.
-- Quiz questions must test understanding, not only memorization. Mix conceptual understanding, applying the idea to a new situation, comparing concepts, cause/effect, inference, identifying common mistakes, and fixing errors.
+- ${quizStyleInstruction}
+- Quiz and flashcard prompts must paraphrase the source. Do not copy exact source sentences as questions, answers, or distractors.
+- Quiz questions must test conceptual understanding and application, not only memorization. Mix recall and reasoning questions: definitions/facts, applied scenarios, comparisons, cause/effect, inference, identifying common mistakes, and fixing errors.
 - Distractors must be plausible but clearly wrong. Avoid answers that are too short, vague, repeated, or obvious because they reuse exact source wording.
 - Avoid "According to the text..." style questions unless strictly necessary.
 - Every quiz explanation must teach why the correct answer is correct.

@@ -46,6 +46,7 @@ import {
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
+  QuizQuestionStyle,
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
   StudyPackAiProvider,
@@ -116,6 +117,9 @@ interface CreateStudyPackModalProps {
     resourceType?: StudyMaterialResourceType | null
     detailLevel: StudyMaterialDetailLevel
   }) => void
+  initialResourceType?: StudyMaterialResourceType | null
+  initialSourceText?: string
+  initialTitle?: string
 }
 
 const supportedImageExtensions = [
@@ -182,6 +186,15 @@ const detailLevelOptions: Array<{
   { value: 'short', label: 'Short' },
   { value: 'medium', label: 'Medium' },
   { value: 'long', label: 'Long' },
+]
+
+const quizQuestionStyleOptions: Array<{
+  value: QuizQuestionStyle
+  label: string
+}> = [
+  { value: 'mixed', label: 'Mixed' },
+  { value: 'conceptual', label: 'Conceptual' },
+  { value: 'examLike', label: 'Exam-like' },
 ]
 
 const resourceTypeTargets: Record<StudyMaterialResourceType, string[]> = {
@@ -573,6 +586,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   onCollapse,
   onStatusChange,
   onDraftMetaChange,
+  initialResourceType,
+  initialSourceText,
+  initialTitle,
 }) => {
   const [step, setStep] = useState<'source' | 'review'>('source')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
@@ -610,6 +626,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<StudyMaterialResourceType | null>(null)
   const [detailLevel, setDetailLevel] =
     useState<StudyMaterialDetailLevel>('medium')
+  const [quizQuestionStyle, setQuizQuestionStyle] =
+    useState<QuizQuestionStyle>('mixed')
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const [widgetGroups, setWidgetGroups] = useState<PreviewWidgetGroup[]>([])
   const [aiSourceSummary, setAiSourceSummary] =
@@ -618,6 +636,29 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     useState<StudyPackDashboardLayoutMode>('orchestrator')
   const [error, setError] = useState('')
   const activeOperationRef = useRef<AbortController | null>(null)
+  const appliedInitialSourceRef = useRef(false)
+
+  useEffect(() => {
+    if (appliedInitialSourceRef.current) {
+      return
+    }
+
+    appliedInitialSourceRef.current = true
+
+    if (initialResourceType) {
+      setResourceType(initialResourceType)
+    }
+
+    if (initialSourceText?.trim()) {
+      setSourceText(initialSourceText.trim())
+      setSourceFormat('text')
+      setSourceInputType('text')
+      setPackTitle(initialTitle?.trim() || 'Current Dashboard')
+      setTextSourceNames(['Current dashboard'])
+    } else if (initialTitle?.trim()) {
+      setPackTitle(initialTitle.trim())
+    }
+  }, [initialResourceType, initialSourceText, initialTitle])
 
   useEffect(() => {
     const sourceCount =
@@ -764,6 +805,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }, [imageFiles])
 
   const reset = () => {
+    appliedInitialSourceRef.current = false
     setStep('source')
     setSourceInputType('text')
     setSourceText('')
@@ -790,6 +832,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setPackTitle('Notes Dashboard')
     setResourceType(null)
     setDetailLevel('medium')
+    setQuizQuestionStyle('mixed')
     setReviewItems([])
     setWidgetGroups([])
     setAiSourceSummary(null)
@@ -1138,6 +1181,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         generationAmount,
         resourceType,
         detailLevel,
+        quizQuestionStyle,
         promptMode: false,
         studyPathMode: false,
         signal: generationController.signal,
@@ -1688,6 +1732,30 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                     </Button>
                   ))}
                 </Stack>
+                {resourceType === 'quiz' && (
+                  <Stack spacing={0.75}>
+                    <Typography variant="caption" color="text.secondary">
+                      Question style
+                    </Typography>
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      {quizQuestionStyleOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          size="small"
+                          variant={
+                            quizQuestionStyle === option.value
+                              ? 'contained'
+                              : 'outlined'
+                          }
+                          onClick={() => setQuizQuestionStyle(option.value)}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </Stack>
+                  </Stack>
+                )}
               </Stack>
             </Paper>
 

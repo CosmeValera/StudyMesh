@@ -55,9 +55,8 @@ import {
 import useTopNavBarWidgets from '../../customHooks/useTopNavBarWidgets'
 import {
   ensureStarterDashboards,
+  OPEN_CREATE_HUB_EVENT,
   OPEN_DASHBOARD_EDITOR_EVENT,
-  OPEN_STUDY_PACK_EVENT,
-  OPEN_STUDY_PATH_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
   STARTER_STUDY_PATH_FOLDER_NAME,
 } from '../../customHooks/useWorkspaceActions'
@@ -68,6 +67,10 @@ import {
   normalizeFolderName,
 } from './folderColors'
 import { OPEN_STUDY_PATH_REVIEW_DASHBOARD_EVENT } from '../../studyPack/progress'
+import {
+  CLOSE_DASHBOARD_CHAT_EVENT,
+  OPEN_DASHBOARD_CHAT_EVENT,
+} from '../workspace/workspaceEvents'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import './tabs.scss'
 
@@ -324,31 +327,42 @@ const DashboardEmptyState = ({
   return (
     <Box
       sx={{
-        minHeight: 'calc(100dvh - 130px)',
+        height: { xs: '100%', md: 'auto' },
+        minHeight: { xs: '100%', md: 'calc(100dvh - 130px)' },
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', md: 'center' },
         justifyContent: 'center',
-        p: { xs: 1.5, md: 2.5 },
+        p: { xs: 1, sm: 1.5, md: 2.5 },
+        pb: { xs: 1.25, md: 2.5 },
         bgcolor: 'background.default',
+        width: '100%',
+        maxWidth: '100%',
+        overflow: { xs: 'hidden', md: 'visible' },
+        boxSizing: 'border-box',
       }}
     >
       <Box
         sx={{
           width: 'min(1280px, 100%)',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box',
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
             lg: 'minmax(240px, 3fr) minmax(320px, 4fr) minmax(240px, 3fr)',
           },
-          gap: { xs: 1.5, lg: 2 },
+          gap: { xs: 1, sm: 1.5, lg: 2 },
           alignItems: 'stretch',
+          maxHeight: { xs: '100%', lg: 'none' },
+          overflowY: { xs: 'auto', lg: 'visible' },
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 260, lg: 520 },
-            p: { xs: 2, md: 2.5 },
+            minHeight: { xs: 'auto', lg: 520 },
+            p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'primary.light',
@@ -357,17 +371,35 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            gap: 2.5,
+            gap: { xs: 1, md: 2.5 },
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <Box>
-            <RouteIcon sx={{ fontSize: 44, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h5" fontWeight={900} sx={{ lineHeight: 1.15 }}>
+            <RouteIcon
+              sx={{
+                fontSize: { xs: 30, md: 44 },
+                color: 'primary.main',
+                mb: { xs: 0.5, md: 1 },
+              }}
+            />
+            <Typography
+              variant="h5"
+              fontWeight={900}
+              sx={{
+                lineHeight: 1.15,
+                fontSize: { xs: '1.12rem', md: '1.5rem' },
+              }}
+            >
               Create a Study Path
             </Typography>
             <Typography
               variant="body2"
-              sx={{ mt: 1, color: 'foreground.contrastSecondary' }}
+              sx={{
+                mt: { xs: 0.5, md: 1 },
+                color: 'foreground.contrastSecondary',
+              }}
             >
               Start from a topic or prompt and generate ordered tutorial
               dashboards.
@@ -392,15 +424,17 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 320, lg: 520 },
-            p: { xs: 2, md: 2.5 },
+            minHeight: { xs: 'auto', lg: 520 },
+            p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            gap: { xs: 1, md: 2 },
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <Stack direction="row" alignItems="center" spacing={1}>
@@ -409,7 +443,10 @@ const DashboardEmptyState = ({
               <Typography
                 variant="h5"
                 fontWeight={900}
-                sx={{ lineHeight: 1.15 }}
+                sx={{
+                  lineHeight: 1.15,
+                  fontSize: { xs: '1.12rem', md: '1.5rem' },
+                }}
               >
                 Open study material
               </Typography>
@@ -453,7 +490,7 @@ const DashboardEmptyState = ({
                           : firstDashboard && onOpenDashboard(firstDashboard)
                       }
                       sx={{
-                        minHeight: 54,
+                        minHeight: { xs: 42, md: 54 },
                         justifyContent: 'flex-start',
                         textAlign: 'left',
                         textTransform: 'none',
@@ -461,6 +498,8 @@ const DashboardEmptyState = ({
                         borderColor: 'divider',
                         borderRadius: 1.25,
                         px: 1.25,
+                        minWidth: 0,
+                        maxWidth: '100%',
                         color: 'text.primary',
                         bgcolor: 'background.paper',
                         '&:hover': {
@@ -531,25 +570,42 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 280, lg: 520 },
-            p: { xs: 2, md: 2.5 },
+            minHeight: { xs: 'auto', lg: 520 },
+            p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            gap: { xs: 1, md: 2 },
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           <Box>
             <AutoStoriesIcon
-              sx={{ fontSize: 44, color: 'primary.main', mb: 1 }}
+              sx={{
+                fontSize: { xs: 30, md: 44 },
+                color: 'primary.main',
+                mb: { xs: 0.5, md: 1 },
+              }}
             />
-            <Typography variant="h5" fontWeight={900} sx={{ lineHeight: 1.15 }}>
+            <Typography
+              variant="h5"
+              fontWeight={900}
+              sx={{
+                lineHeight: 1.15,
+                fontSize: { xs: '1.12rem', md: '1.5rem' },
+              }}
+            >
               Create From Notes
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: { xs: 0.5, md: 1 } }}
+            >
               Upload notes, screenshots, PDFs, or slides and turn them into a
               widget-based study dashboard.
             </Typography>
@@ -571,8 +627,8 @@ const DashboardEmptyState = ({
               disabled={!isAdmin}
               sx={{
                 width: '100%',
-                minHeight: 170,
-                p: 2,
+                minHeight: { xs: 92, md: 170 },
+                p: { xs: 1.25, md: 2 },
                 borderRadius: 2,
                 border: '1.5px dashed',
                 borderColor: 'primary.main',
@@ -582,6 +638,7 @@ const DashboardEmptyState = ({
                 textAlign: 'center',
                 display: 'grid',
                 placeItems: 'center',
+                boxSizing: 'border-box',
                 '&:hover': {
                   bgcolor: isAdmin ? 'action.hover' : 'background.default',
                   borderColor: isAdmin ? 'primary.dark' : 'primary.main',
@@ -591,8 +648,8 @@ const DashboardEmptyState = ({
               <Stack spacing={1.25} alignItems="center">
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
+                    width: { xs: 36, md: 48 },
+                    height: { xs: 36, md: 48 },
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -686,6 +743,7 @@ const Dashboards = () => {
     'workspace' | 'builder'
   >('workspace')
   const [dashboardChatOpen, setDashboardChatOpen] = useState(false)
+  const [dashboardChatWidth, setDashboardChatWidth] = useState(420)
   const [dashboardChatMessages, setDashboardChatMessages] = useState<
     Record<string, DashboardChatMessage[]>
   >({})
@@ -694,12 +752,59 @@ const Dashboards = () => {
     setDashboardLibraryInitialSearchKey,
   ] = useState(0)
   const dashboardEditorTitleCancelRef = useRef(false)
+
+  useEffect(() => {
+    const openDashboardChat = () => setDashboardChatOpen(true)
+    const closeDashboardChat = () => setDashboardChatOpen(false)
+
+    window.addEventListener(OPEN_DASHBOARD_CHAT_EVENT, openDashboardChat)
+    window.addEventListener(CLOSE_DASHBOARD_CHAT_EVENT, closeDashboardChat)
+
+    return () => {
+      window.removeEventListener(OPEN_DASHBOARD_CHAT_EVENT, openDashboardChat)
+      window.removeEventListener(CLOSE_DASHBOARD_CHAT_EVENT, closeDashboardChat)
+    }
+  }, [])
+
+  const startDashboardChatResize = (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = dashboardChatWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const nextWidth = Math.max(
+        360,
+        Math.min(620, startWidth + startX - moveEvent.clientX),
+      )
+      setDashboardChatWidth(nextWidth)
+    }
+
+    const stopResize = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopResize)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopResize)
+  }
+
+  const dashboardChatRailWidth = 44
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const currentDashboard = openDashboards[selectedDashboard]
-  const selectedDashboardIsEmpty = !hasDashboardContent(
-    currentDashboard?.layout,
+  const selectedDashboardIsStudyPath = Boolean(
+    currentDashboard?.kind === 'studyPathContainer' &&
+      currentDashboard.studyPath,
   )
+  const selectedDashboardIsEmpty =
+    !selectedDashboardIsStudyPath &&
+    !hasDashboardContent(currentDashboard?.layout)
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
         (dashboard) => dashboard.id === dashboardEditorId,
@@ -794,11 +899,19 @@ const Dashboards = () => {
   }
 
   const openCreateStudyPath = () => {
-    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PATH_EVENT))
+    window.dispatchEvent(
+      new CustomEvent(OPEN_CREATE_HUB_EVENT, {
+        detail: { intent: 'study-path' },
+      }),
+    )
   }
 
   const openCreateFromNotes = () => {
-    window.dispatchEvent(new CustomEvent(OPEN_STUDY_PACK_EVENT))
+    window.dispatchEvent(
+      new CustomEvent(OPEN_CREATE_HUB_EVENT, {
+        detail: { intent: 'improvedNotes' },
+      }),
+    )
   }
 
   const updateDashboardChatMessages = (
@@ -1739,9 +1852,9 @@ const Dashboards = () => {
         height: '100%',
         minHeight: 0,
         overflowX: 'hidden',
-        overflowY: isMobileDashboardView ? 'auto' : 'hidden',
+        overflowY: 'hidden',
         WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
-        display: isMobileDashboardView ? 'block' : 'flex',
+        display: 'flex',
         bgcolor: 'background.default',
       }}
     >
@@ -1751,7 +1864,7 @@ const Dashboards = () => {
           flex: 1,
           minWidth: 0,
           minHeight: 0,
-          overflow: isMobileDashboardView ? 'visible' : 'hidden',
+          overflow: 'hidden',
         }}
       >
         <Tabs
@@ -1762,7 +1875,7 @@ const Dashboards = () => {
           }`.trim()}
           selectedIndex={selectedDashboard}
           onSelect={(index) => setSelectedDashboard(index)}
-          style={{ position: 'relative' }}
+          style={{ position: 'relative', height: '100%' }}
         >
           <TabList
             onDragOver={
@@ -1878,11 +1991,11 @@ const Dashboards = () => {
                 data-testid="add-dashboard-button"
                 sx={{
                   position: 'relative',
-                  top: '3px',
-                  marginBottom: '8px',
+                  top: 0,
+                  marginBottom: 0,
                   minWidth: 'fit-content',
                   display: 'flex',
-                  alignItems: 'middle',
+                  alignItems: 'center',
                   gap: '8px',
                   fontSize: '13px',
                   p: '4px 12px',
@@ -1917,8 +2030,8 @@ const Dashboards = () => {
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    height: isMobileDashboardView ? 'auto' : '100%',
-                    minHeight: isMobileDashboardView ? '100dvh' : undefined,
+                    height: '100%',
+                    minHeight: 0,
                     backgroundColor: 'background.default',
                   }}
                 >
@@ -1927,7 +2040,10 @@ const Dashboards = () => {
                       position: 'relative',
                       flex: 1,
                       minHeight: 0,
-                      overflow: 'visible',
+                      overflow: isMobileDashboardView ? 'auto' : 'visible',
+                      WebkitOverflowScrolling: isMobileDashboardView
+                        ? 'touch'
+                        : undefined,
                     }}
                   >
                     {isStudyPathContainer && dashboard.studyPath ? (
@@ -1973,46 +2089,23 @@ const Dashboards = () => {
             )
           })}
         </Tabs>
-
-        {!dashboardChatOpen && (
-          <TooltipStyled title="Ask this dashboard">
-            <Button
-              variant="contained"
-              size={isMobileDashboardView ? 'small' : 'medium'}
-              startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />}
-              onClick={() => setDashboardChatOpen(true)}
-              sx={{
-                position: isMobileDashboardView ? 'fixed' : 'absolute',
-                right: isMobileDashboardView ? 16 : 24,
-                bottom: isMobileDashboardView ? 18 : 24,
-                zIndex: isMobileDashboardView ? 1301 : 12,
-                borderRadius: 999,
-                px: isMobileDashboardView ? 1.25 : 1.75,
-                py: isMobileDashboardView ? 0.75 : 0.9,
-                minWidth: 'fit-content',
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 12px 30px rgba(0,0,0,0.45)'
-                    : '0 12px 28px rgba(16,24,40,0.16)',
-              }}
-            >
-              {isMobileDashboardView ? 'Ask' : 'Ask Sources'}
-            </Button>
-          </TooltipStyled>
-        )}
       </Box>
 
       {isMobileDashboardView ? (
         <Drawer
           anchor="right"
+          variant="persistent"
           open={dashboardChatOpen}
           onClose={() => setDashboardChatOpen(false)}
+          hideBackdrop
           ModalProps={{ keepMounted: true }}
           PaperProps={{
             sx: {
               width: '100%',
               maxWidth: '100%',
-              height: '100dvh',
+              top: 62,
+              bottom: 'calc(64px + env(safe-area-inset-bottom))',
+              height: 'auto',
               bgcolor: 'background.paper',
             },
           }}
@@ -2021,42 +2114,108 @@ const Dashboards = () => {
         </Drawer>
       ) : (
         <Box
-          aria-hidden={!dashboardChatOpen}
           sx={{
-            width: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
-            maxWidth: dashboardChatOpen ? 'min(460px, 40vw)' : 0,
-            minWidth: dashboardChatOpen ? 380 : 0,
+            width: dashboardChatOpen
+              ? dashboardChatWidth
+              : dashboardChatRailWidth,
             flex: '0 0 auto',
             minHeight: 0,
             overflow: 'hidden',
-            p: dashboardChatOpen ? '8px 8px 8px 0' : 0,
+            p: '8px 8px 8px 0',
             boxSizing: 'border-box',
             bgcolor: 'background.default',
-            transition: theme.transitions.create(
-              ['width', 'max-width', 'min-width', 'padding'],
-              {
-                duration: theme.transitions.duration.shorter,
-                easing: theme.transitions.easing.easeInOut,
-              },
-            ),
+            position: 'relative',
+            transition: theme.transitions.create(['width'], {
+              duration: theme.transitions.duration.shorter,
+              easing: theme.transitions.easing.easeInOut,
+            }),
           }}
         >
-          <Box
-            sx={{
-              height: '100%',
-              overflow: 'hidden',
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 2.5,
-              bgcolor: 'background.paper',
-              boxShadow:
-                theme.palette.mode === 'dark'
-                  ? '0 18px 40px rgba(0,0,0,0.42)'
-                  : '0 18px 42px rgba(16,24,40,0.10)',
-            }}
-          >
-            {dashboardChatOpen ? dashboardChatPanel : null}
-          </Box>
+          {dashboardChatOpen ? (
+            <Box
+              sx={{
+                height: '100%',
+                overflow: 'hidden',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'background.paper',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 18px 40px rgba(0,0,0,0.42)'
+                    : '0 18px 42px rgba(16,24,40,0.10)',
+              }}
+            >
+              {dashboardChatPanel}
+            </Box>
+          ) : (
+            <TooltipStyled title="Open AI Chat">
+              <Box
+                component="button"
+                type="button"
+                aria-label="Open AI Chat panel"
+                onClick={() => setDashboardChatOpen(true)}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2.5,
+                  bgcolor: 'background.paper',
+                  color: 'primary.main',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 12px 32px rgba(0,0,0,0.32)'
+                      : '0 12px 30px rgba(16,24,40,0.12)',
+                }}
+              >
+                <ChatBubbleOutlineIcon fontSize="small" />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    writingMode: 'vertical-rl',
+                    fontWeight: 800,
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  AI Chat
+                </Typography>
+              </Box>
+            </TooltipStyled>
+          )}
+          {dashboardChatOpen && (
+            <Box
+              role="separator"
+              aria-label="Resize AI Chat panel"
+              onMouseDown={startDashboardChatResize}
+              sx={{
+                position: 'absolute',
+                top: 14,
+                left: -3,
+                width: 8,
+                height: 'calc(100% - 28px)',
+                cursor: 'col-resize',
+                zIndex: 2,
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: 3,
+                  width: 2,
+                  borderRadius: 999,
+                  bgcolor: 'divider',
+                },
+                '&:hover::after': { bgcolor: 'primary.main' },
+              }}
+            />
+          )}
         </Box>
       )}
 

@@ -115,7 +115,13 @@ const hasDashboardContent = (layout?: DashboardLayout): boolean => {
   return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
 }
 
-const DashboardOptionsMenu: React.FC = () => {
+interface DashboardOptionsMenuProps {
+  compactMobile?: boolean
+}
+
+const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
+  compactMobile = false,
+}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [customDashboards, setCustomDashboards] = useState<SavedDashboard[]>([])
   const [expandedDashboardFolders, setExpandedDashboardFolders] = useState<
@@ -284,8 +290,8 @@ const DashboardOptionsMenu: React.FC = () => {
         (folderName === 'Mathematics'
           ? '#1976D2'
           : folderName === 'Tutorial'
-          ? DEFAULT_FOLDER_COLOR
-          : undefined),
+            ? DEFAULT_FOLDER_COLOR
+            : undefined),
     )
 
   // Handle opening and closing dropdown
@@ -469,13 +475,29 @@ const DashboardOptionsMenu: React.FC = () => {
   return (
     <>
       {isPhone || isTablet ? (
-        <ButtonWithLabel
-          icon={<AutoStoriesIcon />}
-          label={'Library'}
-          onClick={handleMenuOpen}
-          data-tutorial-id="dashboards-button"
-          data-onboarding-id="topnav-dashboards"
-        />
+        compactMobile ? (
+          <IconButton
+            onClick={handleMenuOpen}
+            aria-label="Open library"
+            data-tutorial-id="dashboards-button"
+            data-onboarding-id="topnav-dashboards"
+            sx={{
+              color: 'foreground.contrastPrimary',
+              width: 44,
+              height: 44,
+            }}
+          >
+            <AutoStoriesIcon />
+          </IconButton>
+        ) : (
+          <ButtonWithLabel
+            icon={<AutoStoriesIcon />}
+            label={'Library'}
+            onClick={handleMenuOpen}
+            data-tutorial-id="dashboards-button"
+            data-onboarding-id="topnav-dashboards"
+          />
+        )
       ) : (
         <Button
           onClick={handleMenuOpen}

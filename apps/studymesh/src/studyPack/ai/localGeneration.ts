@@ -1295,6 +1295,7 @@ const localStudyPackPrompt = ({
   rawNotes,
   resourceType,
   detailLevel = 'medium',
+  quizQuestionStyle = 'mixed',
   promptMode = false,
 }: GenerateStudyPackWithAiOptions): string => {
   const compactNotes = rawNotes.replace(/\s+/g, ' ').trim().slice(0, 1800)
@@ -1304,6 +1305,12 @@ const localStudyPackPrompt = ({
     detailLevel === 'short' ? '3-4' : detailLevel === 'long' ? '8-13' : '4-6'
   const localHardRule =
     'The selected detail level is a hard constraint. Match this count or length as closely as possible. Do not ignore it.'
+  const quizStyleRule =
+    quizQuestionStyle === 'conceptual'
+      ? 'Style preference: Conceptual. Prioritize why/how, comparison, cause/effect, inference, and common-mistake questions.'
+      : quizQuestionStyle === 'examLike'
+        ? 'Style preference: Exam-like. Use realistic assessment-style questions with plausible distractors and applied scenarios.'
+        : 'Style preference: Mixed. Balance recall with reasoning, conceptual understanding, applied scenarios, and common mistakes.'
   const resourceRules =
     resourceType === 'improvedNotes'
       ? `Create one improved notes resource. Allowed kind only: markdown.
@@ -1325,7 +1332,7 @@ Rules: qa objects only. No markdown. No quizzes. Each flashcard has one atomic q
           ? `Create ${quizCount} quiz questions. Allowed kind only: quiz.
 Use this shape:
 {"title":"${title.replace(/"/g, '')}","objects":[{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"}]}
-Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders. ${localHardRule} Questions must be paraphrased, conceptual or applied, and include teaching explanations. Do not copy source sentences.`
+Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders. ${localHardRule} ${quizStyleRule} Questions must be paraphrased, conceptual or applied, and include teaching explanations. Do not copy source sentences.`
           : `Create exactly 6 simple study objects from the source.
 Allowed kinds only: markdown, qa, quiz, list.
 Use this shape:
@@ -1336,7 +1343,7 @@ Use this shape:
 
   return `Return JSON only. No prose. No markdown fences.
 ${resourceRules}
-Rules: No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say. Do not copy exact source sentences into questions or answers. Use conceptual, applied, comparison, cause/effect, inference, and common-mistake question styles where possible.
+Rules: No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say. Do not copy exact source sentences into questions or answers. Use a mix of recall and reasoning questions. Prefer conceptual understanding, applied scenarios, comparison, cause/effect, inference, and common-mistake question styles where possible.
 Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }
