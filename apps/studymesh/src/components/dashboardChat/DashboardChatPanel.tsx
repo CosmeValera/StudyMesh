@@ -13,7 +13,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import SendIcon from '@mui/icons-material/Send'
 import { StateDashboard } from '../../state/store'
@@ -275,8 +275,15 @@ const DashboardChatPanel = ({
               size="small"
               onClick={onClose}
               aria-label="Close Ask Sources"
+              sx={{
+                mt: 0.25,
+                border: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.default',
+                flex: '0 0 auto',
+              }}
             >
-              <CloseIcon />
+              <ChevronRightIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Stack>

@@ -1854,6 +1854,10 @@ const Dashboards = () => {
     setDraggedDashboardIndex(null)
   }
 
+  const closeDashboardChatPanel = () => {
+    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+  }
+
   const dashboardChatPanel = (
     <DashboardChatPanel
       dashboard={currentDashboard}
@@ -1863,7 +1867,7 @@ const Dashboards = () => {
       onMessagesChange={(messages) =>
         updateDashboardChatMessages(currentDashboard, messages)
       }
-      onClose={() => setDashboardChatOpen(false)}
+      onClose={closeDashboardChatPanel}
     />
   )
 
@@ -2268,7 +2272,7 @@ const Dashboards = () => {
           anchor="right"
           variant="persistent"
           open={dashboardChatOpen}
-          onClose={() => setDashboardChatOpen(false)}
+          onClose={closeDashboardChatPanel}
           hideBackdrop
           ModalProps={{ keepMounted: true }}
           PaperProps={{

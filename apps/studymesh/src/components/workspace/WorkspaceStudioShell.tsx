@@ -222,6 +222,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     'from-notes': initialDrafts[1].id,
   }))
   const autoCollapsedDraftIds = useRef<Set<string>>(new Set())
+  const openingMobileAiChatRef = useRef(false)
   const [aiProvider, setAiProvider] = useState(
     () => readStudyPackAiSettings().provider || 'basic',
   )
@@ -269,6 +270,26 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       canCreateWidget: isAdmin,
     }
   }, [aiProvider])
+
+  useEffect(() => {
+    const showDashboardAfterChatClose = () => {
+      if (isMobile) {
+        setMobileSection('dashboard')
+      }
+    }
+
+    window.addEventListener(
+      CLOSE_DASHBOARD_CHAT_EVENT,
+      showDashboardAfterChatClose,
+    )
+
+    return () => {
+      window.removeEventListener(
+        CLOSE_DASHBOARD_CHAT_EVENT,
+        showDashboardAfterChatClose,
+      )
+    }
+  }, [isMobile])
 
   useEffect(() => {
     const refreshAiProvider = () => {
@@ -333,9 +354,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
     const handleCloseCreateStudio = () => {
       setIsStudioOpen(false)
-      if (isMobile) {
-        setMobileSection('dashboard')
+      if (isMobile && mobileSection === 'creation') {
+        setMobileSection(
+          openingMobileAiChatRef.current ? 'ai-chat' : 'dashboard',
+        )
       }
+      openingMobileAiChatRef.current = false
       dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
     }
 
@@ -363,7 +387,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         handleCloseCreateStudio,
       )
     }
-  }, [isMobile, permissions.canCreateFromNotes, permissions.canCreateStudyPath])
+  }, [
+    isMobile,
+    mobileSection,
+    permissions.canCreateFromNotes,
+    permissions.canCreateStudyPath,
+  ])
 
   const resetOrCloseStudio = () => {
     setIsStudioOpen(false)
@@ -920,6 +949,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const openMobileAiChat = () => {
+    openingMobileAiChatRef.current = true
     setIsStudioOpen(false)
     setMobileSection('ai-chat')
     window.dispatchEvent(new Event(OPEN_DASHBOARD_CHAT_EVENT))

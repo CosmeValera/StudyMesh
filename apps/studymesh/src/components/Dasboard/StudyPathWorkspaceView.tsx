@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Box,
   Button,
@@ -134,6 +140,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
   onStudyPathChange,
   mobileView = false,
 }) => {
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const [navigatorOpen, setNavigatorOpen] = useState(false)
   const [navigatorDock, setNavigatorDock] = useState<NavigatorDock>('right')
   const selectedIndex = Math.min(
@@ -207,6 +214,41 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
     }
   }, [navigatorDock, studyPath.pathId])
 
+  useLayoutEffect(() => {
+    if (!mobileView) {
+      return undefined
+    }
+
+    const resetStudyPathScroll = () => {
+      let element = rootRef.current?.parentElement
+
+      while (element) {
+        const overflowY = window.getComputedStyle(element).overflowY
+        const canScroll =
+          (overflowY === 'auto' || overflowY === 'scroll') &&
+          element.scrollHeight > element.clientHeight
+
+        if (canScroll || element.scrollTop > 0) {
+          element.scrollTo({ top: 0, behavior: 'auto' })
+          return
+        }
+
+        element = element.parentElement
+      }
+
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }
+
+    resetStudyPathScroll()
+    const frame = window.requestAnimationFrame(resetStudyPathScroll)
+    const timeout = window.setTimeout(resetStudyPathScroll, 80)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
+  }, [currentLesson?.dashboardKey, mobileView, selectedIndex])
+
   const selectLesson = (index: number) => {
     onStudyPathChange({ ...studyPath, selectedIndex: index })
   }
@@ -252,6 +294,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
 
   return (
     <Box
+      ref={rootRef}
       data-testid="study-path-workspace"
       sx={{
         height: '100%',
