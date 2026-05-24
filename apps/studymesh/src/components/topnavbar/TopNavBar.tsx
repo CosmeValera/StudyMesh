@@ -765,8 +765,8 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                 </Typography>
               </Button>
               <IconButton
-                onClick={() => setIsSettingsOpen(true)}
-                aria-label="Open application settings"
+                onClick={handleUserMenuOpen}
+                aria-label="Open user menu"
                 sx={{
                   width: 44,
                   height: 44,
@@ -1130,6 +1130,127 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
           )}
         </Toolbar>
       </AppBar>
+
+      {isPhone && (
+        <Menu
+          anchorEl={userAnchorEl}
+          open={Boolean(userAnchorEl)}
+          onClose={handleClose}
+          PaperProps={{
+            sx: {
+              bgcolor: 'background.paper',
+              color: 'text.primary',
+              border: 1,
+              borderColor: 'divider',
+              minWidth: 260,
+              mt: 1,
+              overflow: 'hidden',
+            },
+          }}
+        >
+          <Box
+            sx={{
+              px: 2,
+              pt: 1.5,
+              pb: 1,
+              bgcolor: 'background.default',
+              borderBottom: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Typography variant="subtitle2" fontWeight={800}>
+              {userData.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {userModeLabel}
+            </Typography>
+          </Box>
+          <Box sx={{ px: 2, py: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Brightness6Icon
+                fontSize="small"
+                sx={{ color: 'primary.main', mr: 1 }}
+              />
+              <Typography variant="body2" fontWeight="medium">
+                Light / dark mode
+              </Typography>
+            </Box>
+            <ThemeModeToggle compact />
+          </Box>
+          <Divider sx={{ borderColor: 'divider' }} />
+          <Box sx={{ px: 2, py: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <ColorLensIcon
+                fontSize="small"
+                sx={{ color: 'primary.main', mr: 1 }}
+              />
+              <Typography variant="body2" fontWeight="medium">
+                Accent color
+              </Typography>
+            </Box>
+            <AccentColorPicker dense />
+          </Box>
+          <Divider sx={{ borderColor: 'divider' }} />
+          <MenuItem
+            onClick={openUserSettings}
+            sx={{ color: 'text.primary', marginTop: 1 }}
+          >
+            <ListItemIcon>
+              <PersonIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </ListItemIcon>
+            User settings
+          </MenuItem>
+          <Divider sx={{ borderColor: 'divider' }} />
+          <MenuItem
+            onClick={() => {
+              setIsSettingsOpen(true)
+              handleClose()
+            }}
+            sx={{ color: 'text.primary' }}
+          >
+            <ListItemIcon>
+              <SettingsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </ListItemIcon>
+            Settings
+          </MenuItem>
+          <Divider sx={{ borderColor: 'divider' }} />
+          <MenuItem
+            onClick={() => {
+              setIsHelpOpen(true)
+              handleClose()
+            }}
+            sx={{ color: 'text.primary' }}
+          >
+            <ListItemIcon>
+              <HelpOutlineIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary' }}
+              />
+            </ListItemIcon>
+            Help / tutorial
+          </MenuItem>
+          <Divider sx={{ borderColor: 'divider' }} />
+          <MenuItem
+            onClick={() => switchUser(isAdmin ? viewerUser : adminUser)}
+            sx={{ color: 'text.primary' }}
+          >
+            <ListItemIcon>
+              <SwitchAccountIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary' }}
+              />
+            </ListItemIcon>
+            {isAdmin ? 'Log in as Viewer' : 'Log in as Admin'}
+          </MenuItem>
+          <Divider sx={{ borderColor: 'divider' }} />
+          <MenuItem onClick={handleLogout} sx={{ color: 'text.primary' }}>
+            <ListItemIcon>
+              <LogoutIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </ListItemIcon>
+            Logout
+          </MenuItem>
+        </Menu>
+      )}
 
       <Drawer
         anchor="bottom"
