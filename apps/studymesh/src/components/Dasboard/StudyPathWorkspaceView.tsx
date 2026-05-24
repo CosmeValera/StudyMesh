@@ -296,8 +296,11 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
             sx={{
               position: { xs: 'fixed', md: 'absolute' },
               top: { xs: 'auto', md: 14 },
-              bottom: { xs: 12, md: 'auto' },
-              zIndex: { xs: 1300, md: 'auto' },
+              bottom: {
+                xs: 'calc(76px + env(safe-area-inset-bottom))',
+                md: 'auto',
+              },
+              zIndex: { xs: 1400, md: 'auto' },
               ...pillHorizontalSx,
               pointerEvents: 'auto',
               borderRadius: 999,
@@ -405,15 +408,21 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
             sx={{
               position: { xs: 'fixed', md: 'absolute' },
               top: { xs: 'auto', md: 14 },
-              bottom: { xs: 12, md: 14 },
+              bottom: {
+                xs: 'calc(76px + env(safe-area-inset-bottom))',
+                md: 14,
+              },
               ...panelHorizontalSx,
-              zIndex: { xs: 1300, md: 'auto' },
+              zIndex: { xs: 1400, md: 'auto' },
               width: {
                 xs: 'min(288px, calc(100% - 20px))',
                 sm: NAVIGATOR_PANEL_WIDTH,
               },
               maxWidth: { xs: 288, sm: NAVIGATOR_PANEL_WIDTH },
-              maxHeight: { xs: 'calc(100dvh - 96px)', md: 'none' },
+              maxHeight: {
+                xs: 'calc(100dvh - 148px - env(safe-area-inset-bottom))',
+                md: 'none',
+              },
               pointerEvents: 'auto',
               display: 'flex',
               flexDirection: 'column',
