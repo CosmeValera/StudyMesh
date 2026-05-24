@@ -386,6 +386,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const {
     addDashboard,
     openDashboards,
+    removeDashboard,
     selectedDashboard,
     setSelectedDashboard,
   } = useDashboards()
@@ -1172,6 +1173,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                   borderRadius: 2,
                   mb: 0.5,
                   alignItems: 'center',
+                  pr: 0.5,
                 }}
               >
                 <ListItemIcon sx={{ minWidth: 34 }}>
@@ -1187,7 +1189,28 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                     noWrap: true,
                     fontWeight: selected ? 800 : 500,
                   }}
+                  sx={{ minWidth: 0, mr: 1 }}
                 />
+                <IconButton
+                  aria-label={`Close ${dashboardTitle}`}
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    removeDashboard(dashboard.id)
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    color: 'text.secondary',
+                    flex: '0 0 auto',
+                    '&:hover': {
+                      color: 'error.main',
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
               </MenuItem>
             )
           })}
