@@ -734,9 +734,10 @@ const Dashboards = () => {
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const currentDashboard = openDashboards[selectedDashboard]
-  const selectedDashboardIsEmpty = !hasDashboardContent(
-    currentDashboard?.layout,
-  )
+  const selectedDashboardIsStudyPath =
+    currentDashboard?.kind === 'studyPathContainer' && currentDashboard.studyPath
+  const selectedDashboardIsEmpty =
+    !selectedDashboardIsStudyPath && !hasDashboardContent(currentDashboard?.layout)
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
         (dashboard) => dashboard.id === dashboardEditorId,
@@ -1784,7 +1785,8 @@ const Dashboards = () => {
         height: '100%',
         minHeight: 0,
         overflowX: 'hidden',
-        overflowY: 'hidden',
+        overflowY:
+          isMobileDashboardView && !selectedDashboardIsEmpty ? 'auto' : 'hidden',
         WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
         display: isMobileDashboardView ? 'block' : 'flex',
         bgcolor: 'background.default',
@@ -1972,7 +1974,10 @@ const Dashboards = () => {
                       position: 'relative',
                       flex: 1,
                       minHeight: 0,
-                      overflow: isMobileDashboardView ? 'hidden' : 'visible',
+                      overflow:
+                        isMobileDashboardView && selectedDashboardIsEmpty
+                          ? 'hidden'
+                          : 'visible',
                     }}
                   >
                     {isStudyPathContainer && dashboard.studyPath ? (
