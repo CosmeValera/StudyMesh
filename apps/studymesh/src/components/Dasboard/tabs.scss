@@ -110,11 +110,13 @@
 }
 
 .react-tabs--mobile-dashboard {
-  height: auto;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   margin: 0;
   background-color: var(--background-default, #f4f7f8);
-  overflow: visible;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
   .react-tabs__tab-list {
     display: none;
@@ -137,10 +139,11 @@
   }
 
   .react-tabs__tab-panel {
-    flex: 0 0 auto;
-    height: auto;
-    min-height: calc(100dvh - 136px);
-    overflow: visible;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
     padding: 0;
+    -webkit-overflow-scrolling: touch;
   }
 }

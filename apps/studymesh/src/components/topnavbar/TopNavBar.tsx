@@ -764,8 +764,8 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                 </Typography>
               </Button>
               <IconButton
-                onClick={handleUserMenuOpen}
-                aria-label="Open user menu"
+                onClick={() => setIsUserSettingsOpen(true)}
+                aria-label="Open user settings"
                 sx={{
                   width: 44,
                   height: 44,

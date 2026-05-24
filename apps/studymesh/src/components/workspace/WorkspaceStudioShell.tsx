@@ -1131,7 +1131,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             display: mobileSection === 'creation' ? 'block' : 'none',
             overflow: 'hidden',
             p: '8px',
-            pb: 'calc(76px + env(safe-area-inset-bottom))',
             boxSizing: 'border-box',
           }}
         >
@@ -1154,7 +1153,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             minHeight: 0,
             display: mobileSection === 'creation' ? 'none' : 'block',
             ...workspaceCanvasSx,
-            pb: 'calc(76px + env(safe-area-inset-bottom))',
           }}
         >
           {children}

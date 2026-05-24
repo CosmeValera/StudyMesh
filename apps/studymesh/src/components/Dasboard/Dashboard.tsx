@@ -1852,12 +1852,9 @@ const Dashboards = () => {
         height: '100%',
         minHeight: 0,
         overflowX: 'hidden',
-        overflowY:
-          isMobileDashboardView && !selectedDashboardIsEmpty
-            ? 'auto'
-            : 'hidden',
+        overflowY: 'hidden',
         WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
-        display: isMobileDashboardView ? 'block' : 'flex',
+        display: 'flex',
         bgcolor: 'background.default',
       }}
     >
@@ -1867,7 +1864,7 @@ const Dashboards = () => {
           flex: 1,
           minWidth: 0,
           minHeight: 0,
-          overflow: isMobileDashboardView ? 'visible' : 'hidden',
+          overflow: 'hidden',
         }}
       >
         <Tabs
@@ -1878,7 +1875,7 @@ const Dashboards = () => {
           }`.trim()}
           selectedIndex={selectedDashboard}
           onSelect={(index) => setSelectedDashboard(index)}
-          style={{ position: 'relative' }}
+          style={{ position: 'relative', height: '100%' }}
         >
           <TabList
             onDragOver={
@@ -2043,10 +2040,10 @@ const Dashboards = () => {
                       position: 'relative',
                       flex: 1,
                       minHeight: 0,
-                      overflow:
-                        isMobileDashboardView && selectedDashboardIsEmpty
-                          ? 'hidden'
-                          : 'visible',
+                      overflow: isMobileDashboardView ? 'auto' : 'visible',
+                      WebkitOverflowScrolling: isMobileDashboardView
+                        ? 'touch'
+                        : undefined,
                     }}
                   >
                     {isStudyPathContainer && dashboard.studyPath ? (
