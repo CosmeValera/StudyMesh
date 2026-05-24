@@ -314,11 +314,11 @@ const DashboardEmptyState = ({
   return (
     <Box
       sx={{
-        minHeight: 'calc(100dvh - 130px)',
+        minHeight: { xs: 'calc(100dvh - 176px)', md: 'calc(100dvh - 130px)' },
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        p: { xs: 2, md: 4 },
+        p: { xs: 1.25, sm: 2, md: 4 },
         bgcolor: 'background.default',
       }}
     >
@@ -326,7 +326,9 @@ const DashboardEmptyState = ({
         elevation={0}
         sx={{
           width: 'min(980px, 100%)',
-          p: { xs: 2.5, sm: 4 },
+          maxHeight: { xs: 'calc(100dvh - 196px)', sm: 'none' },
+          overflowY: { xs: 'auto', sm: 'visible' },
+          p: { xs: 1.75, sm: 4 },
           borderRadius: 2,
           border: '1px solid',
           borderColor: 'primary.light',
@@ -335,13 +337,28 @@ const DashboardEmptyState = ({
           textAlign: 'center',
         }}
       >
-        <RouteIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+        <RouteIcon
+          sx={{
+            fontSize: { xs: 34, sm: 48 },
+            color: 'primary.main',
+            mb: { xs: 0.5, sm: 1 },
+          }}
+        />
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          gutterBottom
+          sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+        >
           {hasDashboard ? 'Empty study workspace' : 'Start studying'}
         </Typography>
         <Typography
           variant="body1"
-          sx={{ color: 'foreground.contrastSecondary', mb: 3 }}
+          sx={{
+            color: 'foreground.contrastSecondary',
+            mb: { xs: 1.75, sm: 3 },
+            fontSize: { xs: '0.9rem', sm: '1rem' },
+          }}
         >
           {hasDashboard
             ? 'Create a study path, turn notes into a study dashboard, or open existing material from a folder below.'
@@ -386,7 +403,7 @@ const DashboardEmptyState = ({
           )}
         </Stack>
         {Object.keys(dashboardsByFolder).length > 0 && (
-          <Box sx={{ mt: 3, textAlign: 'left' }}>
+          <Box sx={{ mt: { xs: 2, sm: 3 }, textAlign: 'left' }}>
             <Typography
               variant="subtitle2"
               sx={{ color: 'foreground.contrastSecondary', mb: 1.5 }}
@@ -400,7 +417,7 @@ const DashboardEmptyState = ({
                   xs: '1fr',
                   md: 'repeat(3, minmax(0, 1fr))',
                 },
-                gap: 1.5,
+                gap: { xs: 1, sm: 1.5 },
               }}
             >
               {folderEntries.slice(0, 3).map(([folderName, dashboards]) => {
@@ -437,7 +454,7 @@ const DashboardEmptyState = ({
                           startIcon={<RouteIcon />}
                           onClick={() => onOpenStudyGuide(dashboards)}
                           sx={{
-                            minHeight: 52,
+                            minHeight: { xs: 44, sm: 52 },
                             justifyContent: 'flex-start',
                             textTransform: 'none',
                             bgcolor: 'primary.dark',
@@ -454,7 +471,7 @@ const DashboardEmptyState = ({
                             variant="outlined"
                             onClick={() => onOpenDashboard(dashboard)}
                             sx={{
-                              minHeight: 52,
+                              minHeight: { xs: 44, sm: 52 },
                               justifyContent: 'flex-start',
                               alignItems: 'center',
                               textTransform: 'none',
@@ -1681,11 +1698,11 @@ const Dashboards = () => {
               data-testid="add-dashboard-button"
               sx={{
                 position: 'relative',
-                top: '3px',
-                marginBottom: '8px',
+                top: 0,
+                marginBottom: 0,
                 minWidth: 'fit-content',
                 display: 'flex',
-                alignItems: 'middle',
+                alignItems: 'center',
                 gap: '8px',
                 fontSize: '13px',
                 p: '4px 12px',
