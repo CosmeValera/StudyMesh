@@ -1008,7 +1008,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         >
           {studioContent}
         </Drawer>
-        {creationStatusMarkers}
+        {!isStudioOpen && creationStatusMarkers}
         {widgetBuilderDialog}
       </Box>
     )

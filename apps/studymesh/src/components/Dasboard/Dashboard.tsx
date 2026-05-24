@@ -2030,7 +2030,7 @@ const Dashboards = () => {
                 right: 0,
                 top: 96,
                 bottom: 'auto',
-                zIndex: isMobileDashboardView ? 1301 : 12,
+                zIndex: isMobileDashboardView ? 1100 : 12,
                 width: 34,
                 height: 82,
                 border: 0,
