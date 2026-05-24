@@ -323,11 +323,12 @@ const DashboardEmptyState = ({
   return (
     <Box
       sx={{
-        minHeight: 'calc(100dvh - 130px)',
+        minHeight: { xs: 'auto', md: 'calc(100dvh - 130px)' },
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', md: 'center' },
         justifyContent: 'center',
-        p: { xs: 1.5, md: 2.5 },
+        p: { xs: 1, sm: 1.5, md: 2.5 },
+        pb: { xs: 8, md: 2.5 },
         bgcolor: 'background.default',
       }}
     >
@@ -339,15 +340,15 @@ const DashboardEmptyState = ({
             xs: '1fr',
             lg: 'minmax(240px, 3fr) minmax(320px, 4fr) minmax(240px, 3fr)',
           },
-          gap: { xs: 1.5, lg: 2 },
+          gap: { xs: 1, sm: 1.5, lg: 2 },
           alignItems: 'stretch',
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 260, lg: 520 },
-            p: { xs: 2, md: 2.5 },
+            minHeight: { xs: 'auto', lg: 520 },
+            p: { xs: 1.5, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'primary.light',
@@ -356,12 +357,18 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            gap: 2.5,
+            gap: { xs: 1.5, md: 2.5 },
           }}
         >
           <Box>
-            <RouteIcon sx={{ fontSize: 44, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h5" fontWeight={900} sx={{ lineHeight: 1.15 }}>
+            <RouteIcon
+              sx={{ fontSize: { xs: 34, md: 44 }, color: 'primary.main', mb: 1 }}
+            />
+            <Typography
+              variant="h5"
+              fontWeight={900}
+              sx={{ lineHeight: 1.15, fontSize: { xs: '1.25rem', md: '1.5rem' } }}
+            >
               Create a Study Path
             </Typography>
             <Typography
@@ -391,15 +398,15 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 320, lg: 520 },
-            p: { xs: 2, md: 2.5 },
+            minHeight: { xs: 'auto', lg: 520 },
+            p: { xs: 1.5, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            gap: { xs: 1.25, md: 2 },
           }}
         >
           <Stack direction="row" alignItems="center" spacing={1}>
@@ -408,7 +415,7 @@ const DashboardEmptyState = ({
               <Typography
                 variant="h5"
                 fontWeight={900}
-                sx={{ lineHeight: 1.15 }}
+                sx={{ lineHeight: 1.15, fontSize: { xs: '1.25rem', md: '1.5rem' } }}
               >
                 Open study material
               </Typography>
@@ -452,7 +459,7 @@ const DashboardEmptyState = ({
                           : firstDashboard && onOpenDashboard(firstDashboard)
                       }
                       sx={{
-                        minHeight: 54,
+                        minHeight: { xs: 48, md: 54 },
                         justifyContent: 'flex-start',
                         textAlign: 'left',
                         textTransform: 'none',
@@ -530,8 +537,8 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 280, lg: 520 },
-            p: { xs: 2, md: 2.5 },
+            minHeight: { xs: 'auto', lg: 520 },
+            p: { xs: 1.5, sm: 2, md: 2.5 },
             borderRadius: 2,
             border: 1,
             borderColor: 'divider',
@@ -543,9 +550,13 @@ const DashboardEmptyState = ({
         >
           <Box>
             <AutoStoriesIcon
-              sx={{ fontSize: 44, color: 'primary.main', mb: 1 }}
+              sx={{ fontSize: { xs: 34, md: 44 }, color: 'primary.main', mb: 1 }}
             />
-            <Typography variant="h5" fontWeight={900} sx={{ lineHeight: 1.15 }}>
+            <Typography
+              variant="h5"
+              fontWeight={900}
+              sx={{ lineHeight: 1.15, fontSize: { xs: '1.25rem', md: '1.5rem' } }}
+            >
               Create From Notes
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -570,8 +581,8 @@ const DashboardEmptyState = ({
               disabled={!isAdmin}
               sx={{
                 width: '100%',
-                minHeight: 170,
-                p: 2,
+                minHeight: { xs: 116, md: 170 },
+                p: { xs: 1.5, md: 2 },
                 borderRadius: 2,
                 border: '1.5px dashed',
                 borderColor: 'primary.main',
@@ -590,8 +601,8 @@ const DashboardEmptyState = ({
               <Stack spacing={1.25} alignItems="center">
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
+                    width: { xs: 42, md: 48 },
+                    height: { xs: 42, md: 48 },
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
