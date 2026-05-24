@@ -60,7 +60,9 @@ import {
 type StudioFlow = 'hub' | 'study-path' | 'from-notes'
 type CreateIntent = 'study-path' | StudyMaterialResourceType
 type GenerationDraftStatus = 'generating' | 'ready' | 'failed' | 'cancelled'
-type GenerationMarkerState = Exclude<WorkspaceCreationTaskState, 'idle'>
+type GenerationMarkerState =
+  | 'editing'
+  | Exclude<WorkspaceCreationTaskState, 'idle'>
 
 interface GenerationDraft {
   id: string
@@ -72,28 +74,29 @@ interface GenerationDraft {
   selectedResourceType?: string | null
   detailLevel?: string
   error?: string
+  isPlaceholder?: boolean
 }
 
-const statusMarkerLabels: Record<WorkspaceCreationTaskState, string> = {
+const statusMarkerLabels: Record<
+  WorkspaceCreationTaskState | 'editing',
+  string
+> = {
+  editing: 'Creation draft open',
   idle: '',
   running: 'Generating study material…',
   complete: 'Study material ready to review',
   error: 'Generation failed. Click to review.',
 }
 
-const statusMarkerColors: Record<
-  Exclude<WorkspaceCreationTaskState, 'idle'>,
-  string
-> = {
+const statusMarkerColors: Record<GenerationMarkerState, string> = {
+  editing: 'primary.main',
   running: 'warning.main',
   complete: 'success.main',
   error: 'error.main',
 }
 
-const statusMarkerGlow: Record<
-  Exclude<WorkspaceCreationTaskState, 'idle'>,
-  string
-> = {
+const statusMarkerGlow: Record<GenerationMarkerState, string> = {
+  editing: '0 0 0 6px rgba(59, 130, 246, 0.14)',
   running: '0 0 0 6px rgba(245, 158, 11, 0.14)',
   complete: '0 0 0 7px rgba(34, 197, 94, 0.18)',
   error: '0 0 0 6px rgba(239, 68, 68, 0.16)',
@@ -127,6 +130,7 @@ const readIsAdmin = () => {
 
 const createGenerationDraft = (
   flow: Exclude<StudioFlow, 'hub'>,
+  options: { isPlaceholder?: boolean } = {},
 ): GenerationDraft => ({
   id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   flow,
@@ -134,6 +138,7 @@ const createGenerationDraft = (
   title: flow === 'study-path' ? 'Study Path draft' : 'Notes draft',
   createdAt: new Date().toISOString(),
   inputSummary: flow === 'study-path' ? 'Learning prompt' : 'Sources',
+  isPlaceholder: options.isPlaceholder,
 })
 
 const resourceTypeTitle = (resourceType?: string | null) => {
@@ -166,8 +171,14 @@ const formatDraftTitle = (draft: GenerationDraft) => {
 }
 
 const getDraftMarkerState = (
-  status: GenerationDraft['status'],
+  draft: GenerationDraft,
 ): GenerationMarkerState | null => {
+  if (draft.status === 'editing' && !draft.isPlaceholder) {
+    return 'editing'
+  }
+
+  const { status } = draft
+
   if (status === 'generating') {
     return 'running'
   }
@@ -188,8 +199,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const initialDrafts = useMemo(
     () => [
-      createGenerationDraft('study-path'),
-      createGenerationDraft('from-notes'),
+      createGenerationDraft('study-path', { isPlaceholder: true }),
+      createGenerationDraft('from-notes', { isPlaceholder: true }),
     ],
     [],
   )
@@ -430,7 +441,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       const remaining = current.filter((draft) => draft.id !== draftId)
       const flowDrafts = remaining.filter((draft) => draft.flow === flow)
       if (flowDrafts.length === 0) {
-        const replacement = createGenerationDraft(flow)
+        const replacement = createGenerationDraft(flow, {
+          isPlaceholder: true,
+        })
         nextActiveDraftId = replacement.id
         return [...remaining, replacement]
       }
@@ -852,7 +865,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const visibleCreationMarkers = generationDrafts
     .map((draft) => {
-      const state = getDraftMarkerState(draft.status)
+      const state = getDraftMarkerState(draft)
+      if (!isStudioOpen && state === 'editing') {
+        return null
+      }
+
       return state ? { draft, state } : null
     })
     .filter(
@@ -977,40 +994,42 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         }),
       }}
     >
-      <Tooltip title="Create" placement="right">
-        <Box
-          component="button"
-          type="button"
-          aria-label="Create"
-          onClick={openCreateHub}
-          sx={{
-            width: isMobile ? 34 : 34,
-            height: isMobile ? 82 : 82,
-            border: 0,
-            borderRadius: '0 20px 20px 0',
-            bgcolor:
-              activeFlow === 'hub' && isStudioOpen
-                ? 'primary.main'
-                : 'background.paper',
-            color:
-              activeFlow === 'hub' && isStudioOpen
-                ? 'primary.contrastText'
-                : 'primary.main',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 12px 32px rgba(0,0,0,0.42)'
-                : '0 12px 30px rgba(16,24,40,0.18)',
-            outline: 1,
-            outlineColor: 'divider',
-          }}
-        >
-          <AddIcon fontSize="small" />
-        </Box>
-      </Tooltip>
+      {isStudioOpen && (
+        <Tooltip title="Create" placement="right">
+          <Box
+            component="button"
+            type="button"
+            aria-label="Create"
+            onClick={openCreateHub}
+            sx={{
+              width: isMobile ? 34 : 34,
+              height: isMobile ? 82 : 82,
+              border: 0,
+              borderRadius: '0 20px 20px 0',
+              bgcolor:
+                activeFlow === 'hub' && isStudioOpen
+                  ? 'primary.main'
+                  : 'background.paper',
+              color:
+                activeFlow === 'hub' && isStudioOpen
+                  ? 'primary.contrastText'
+                  : 'primary.main',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? '0 12px 32px rgba(0,0,0,0.42)'
+                  : '0 12px 30px rgba(16,24,40,0.18)',
+              outline: 1,
+              outlineColor: 'divider',
+            }}
+          >
+            <AddIcon fontSize="small" />
+          </Box>
+        </Tooltip>
+      )}
       {visibleCreationMarkers.map(({ draft, state }) => (
         <Tooltip
           key={draft.id}
@@ -1253,23 +1272,23 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           }),
         }}
       >
-        {isStudioOpen ? (
-          <Box
-            sx={{
-              height: '100%',
-              overflow: 'hidden',
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 2.5,
-              boxShadow:
-                theme.palette.mode === 'dark'
-                  ? '0 18px 40px rgba(0,0,0,0.42)'
-                  : '0 18px 42px rgba(16,24,40,0.10)',
-            }}
-          >
-            {studioContent}
-          </Box>
-        ) : (
+        <Box
+          sx={{
+            height: '100%',
+            overflow: 'hidden',
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 2.5,
+            boxShadow:
+              theme.palette.mode === 'dark'
+                ? '0 18px 40px rgba(0,0,0,0.42)'
+                : '0 18px 42px rgba(16,24,40,0.10)',
+            display: isStudioOpen ? 'block' : 'none',
+          }}
+        >
+          {studioContent}
+        </Box>
+        {!isStudioOpen && (
           <Tooltip title="Open Create" placement="right">
             <Box
               component="button"
@@ -1294,6 +1313,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   theme.palette.mode === 'dark'
                     ? '0 12px 32px rgba(0,0,0,0.32)'
                     : '0 12px 30px rgba(16,24,40,0.12)',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: 'action.hover',
+                },
               }}
             >
               <AddIcon fontSize="small" />
@@ -1363,7 +1386,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           {children}
         </Box>
       </Box>
-      {isStudioOpen && creationStatusMarkers}
+      {creationStatusMarkers}
       {widgetBuilderDialog}
     </Box>
   )
