@@ -795,7 +795,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     <Box
       sx={{
         position: 'absolute',
-        left: isMobile ? 12 : isStudioOpen ? studioPanelClamp : 0,
+        left: isMobile ? 0 : isStudioOpen ? studioPanelClamp : 0,
         top: isMobile ? 72 : 96,
         zIndex: 20,
         display: 'flex',
@@ -815,10 +815,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           aria-label="Create"
           onClick={openCreateHub}
           sx={{
-            width: isMobile ? 46 : 34,
-            height: isMobile ? 42 : 82,
+            width: isMobile ? 34 : 34,
+            height: isMobile ? 82 : 82,
             border: 0,
-            borderRadius: isMobile ? 999 : '0 20px 20px 0',
+            borderRadius: '0 20px 20px 0',
             bgcolor: activeFlow === 'hub' && isStudioOpen ? 'primary.main' : 'background.paper',
             color: activeFlow === 'hub' && isStudioOpen ? 'primary.contrastText' : 'primary.main',
             cursor: 'pointer',
@@ -848,10 +848,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             aria-label={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
             onClick={() => openCreationMarker(draft)}
             sx={{
-              width: isMobile ? 46 : 30,
-              height: isMobile ? 42 : 76,
+              width: isMobile ? 30 : 30,
+              height: isMobile ? 76 : 76,
               border: 0,
-              borderRadius: isMobile ? 999 : '0 18px 18px 0',
+              borderRadius: '0 18px 18px 0',
               bgcolor: 'background.paper',
               color: 'text.primary',
               cursor: 'pointer',
