@@ -222,6 +222,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     'from-notes': initialDrafts[1].id,
   }))
   const autoCollapsedDraftIds = useRef<Set<string>>(new Set())
+  const openingMobileAiChatRef = useRef(false)
   const [aiProvider, setAiProvider] = useState(
     () => readStudyPackAiSettings().provider || 'basic',
   )
@@ -354,8 +355,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     const handleCloseCreateStudio = () => {
       setIsStudioOpen(false)
       if (isMobile && mobileSection === 'creation') {
-        setMobileSection('dashboard')
+        setMobileSection(
+          openingMobileAiChatRef.current ? 'ai-chat' : 'dashboard',
+        )
       }
+      openingMobileAiChatRef.current = false
       dispatchWorkspaceOnboardingEvent({ type: 'widget-editor-closed' })
     }
 
@@ -945,6 +949,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const openMobileAiChat = () => {
+    openingMobileAiChatRef.current = true
     setIsStudioOpen(false)
     setMobileSection('ai-chat')
     window.dispatchEvent(new Event(OPEN_DASHBOARD_CHAT_EVENT))
