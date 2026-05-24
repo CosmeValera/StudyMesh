@@ -797,7 +797,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         position: isMobile ? 'fixed' : 'absolute',
         left: isMobile ? 0 : isStudioOpen ? studioPanelClamp : 0,
         top: 96,
-        zIndex: isMobile ? 1301 : 20,
+        zIndex: isMobile ? 1100 : 20,
         display: 'flex',
         flexDirection: 'column',
         gap: 1,

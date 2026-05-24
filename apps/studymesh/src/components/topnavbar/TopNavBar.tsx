@@ -172,29 +172,14 @@ const ButtonWithLabel: React.FC<ButtonWithLabelProps> = ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'flex-start',
         minWidth: '44px',
-        minHeight: '52px',
         mx: 0.25,
         px: 0.5,
-        pt: 0.5,
         ...sx,
       }}
       {...props}
     >
-      <Box
-        component="span"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: 24,
-          lineHeight: 0,
-          '& .MuiSvgIcon-root': { fontSize: 24 },
-        }}
-      >
-        {icon}
-      </Box>
+      {icon}
       <Typography
         variant="caption"
         sx={{
@@ -869,7 +854,13 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
           </Box>
 
           {/* Right Side Elements */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: isPhone ? 1.5 : 1,
+            }}
+          >
             {/* User Menu */}
             {isPhone || isTablet ? (
               <ButtonWithLabel

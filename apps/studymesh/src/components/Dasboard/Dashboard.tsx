@@ -1784,7 +1784,7 @@ const Dashboards = () => {
         height: '100%',
         minHeight: 0,
         overflowX: 'hidden',
-        overflowY: isMobileDashboardView ? 'auto' : 'hidden',
+        overflowY: 'hidden',
         WebkitOverflowScrolling: isMobileDashboardView ? 'touch' : undefined,
         display: isMobileDashboardView ? 'block' : 'flex',
         bgcolor: 'background.default',
@@ -1962,8 +1962,8 @@ const Dashboards = () => {
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    height: isMobileDashboardView ? 'auto' : '100%',
-                    minHeight: isMobileDashboardView ? '100dvh' : undefined,
+                    height: '100%',
+                    minHeight: 0,
                     backgroundColor: 'background.default',
                   }}
                 >
@@ -1972,7 +1972,7 @@ const Dashboards = () => {
                       position: 'relative',
                       flex: 1,
                       minHeight: 0,
-                      overflow: 'visible',
+                      overflow: isMobileDashboardView ? 'hidden' : 'visible',
                     }}
                   >
                     {isStudyPathContainer && dashboard.studyPath ? (
