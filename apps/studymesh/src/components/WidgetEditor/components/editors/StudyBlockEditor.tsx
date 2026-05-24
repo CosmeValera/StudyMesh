@@ -58,6 +58,34 @@ const StudyBlockEditor: React.FC<StudyBlockEditorProps> = ({
   const blockType = propBlockType || String(props.__blockType || '')
   const update = (key: string, value: unknown) => onChange({ [key]: value })
 
+  if (
+    blockType === 'FlashcardCarouselBlock' ||
+    blockType === 'QuizCarouselBlock' ||
+    blockType === 'FocusedFlashcardSessionBlock' ||
+    blockType === 'FocusedQuizSessionBlock'
+  ) {
+    const itemCount = Array.isArray(props.items) ? props.items.length : 0
+
+    return (
+      <Stack spacing={2} sx={{ p: 3 }}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          {blockType.includes('Flashcard')
+            ? 'Flashcard carousel'
+            : 'Quiz carousel'}
+        </Typography>
+        <TextField
+          label="Title"
+          value={(props.title as string) || ''}
+          onChange={(event) => update('title', event.target.value)}
+          fullWidth
+        />
+        <Typography variant="body2" color="text.secondary">
+          {itemCount} generated item{itemCount === 1 ? '' : 's'}
+        </Typography>
+      </Stack>
+    )
+  }
+
   if (blockType === 'FlashcardBlock') {
     return (
       <Stack spacing={2} sx={{ p: 3 }}>

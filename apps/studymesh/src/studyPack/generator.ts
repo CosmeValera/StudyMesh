@@ -392,13 +392,13 @@ const createFocusedStudySessionWidget = (
         id: `${widgetId}-focused-session`,
         type:
           options.focusedResourceType === 'flashcards'
-            ? 'FocusedFlashcardSessionBlock'
-            : 'FocusedQuizSessionBlock',
+            ? 'FlashcardCarouselBlock'
+            : 'QuizCarouselBlock',
         props: {
           __blockType:
             options.focusedResourceType === 'flashcards'
-              ? 'FocusedFlashcardSessionBlock'
-              : 'FocusedQuizSessionBlock',
+              ? 'FlashcardCarouselBlock'
+              : 'QuizCarouselBlock',
           title: pack.title,
           items: objects,
         },
@@ -990,6 +990,7 @@ export const createStudyPackWidgetsFromGroups = (
     author: options.author || STUDY_PACK_AUTHOR,
     category: options.category || STUDY_PACK_CATEGORY,
     createdAt: options.createdAt || DEFAULT_CREATED_AT,
+    focusedResourceType: options.focusedResourceType,
     forceQuizBlockComponent: options.forceQuizBlockComponent ?? false,
     includeSummaryChart: options.includeSummaryChart ?? true,
     maxObjectsPerWidget: Math.max(1, options.maxObjectsPerWidget || 1000),
@@ -1004,13 +1005,19 @@ export const createStudyPackWidgetsFromGroups = (
 
   return effectiveGroups.map((group, index) =>
     normalizedOptions.focusedResourceType
-      ? createFocusedStudySessionWidget(pack, group.objects, index, {
-          author: normalizedOptions.author,
-          category: normalizedOptions.category,
-          createdAt: normalizedOptions.createdAt,
-          focusedResourceType: normalizedOptions.focusedResourceType,
-          widgetIdPrefix: normalizedOptions.widgetIdPrefix,
-        }, group.name)
+      ? createFocusedStudySessionWidget(
+          pack,
+          group.objects,
+          index,
+          {
+            author: normalizedOptions.author,
+            category: normalizedOptions.category,
+            createdAt: normalizedOptions.createdAt,
+            focusedResourceType: normalizedOptions.focusedResourceType,
+            widgetIdPrefix: normalizedOptions.widgetIdPrefix,
+          },
+          group.name,
+        )
       : createWidgetRecord(
           pack,
           group.objects,

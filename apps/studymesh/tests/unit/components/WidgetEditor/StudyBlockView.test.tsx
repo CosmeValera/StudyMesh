@@ -95,4 +95,86 @@ describe('StudyBlockView', () => {
       '"missed":true',
     )
   })
+
+  it('renders flashcard carousel with one card and grade counters', () => {
+    render(
+      <StudyBlockView
+        type="FlashcardCarouselBlock"
+        props={{
+          title: 'History Flashcards',
+          items: [
+            {
+              question: 'What changed factory work?',
+              answer: 'Time clocks and shifts',
+              title: 'Factory work',
+            },
+            {
+              question: 'What did workers repeat?',
+              answer: 'Small specialized tasks',
+              title: 'Specialization',
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('What changed factory work?')).toBeInTheDocument()
+    expect(
+      screen.queryByText('What did workers repeat?'),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('What changed factory work?'))
+    expect(screen.getByText('Time clocks and shifts')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Known' }))
+    expect(screen.getByText('Known 1')).toBeInTheDocument()
+    expect(screen.getByText('Missed 0')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('What did workers repeat?')).toBeInTheDocument()
+  })
+
+  it('renders quiz carousel with multiple-choice and short-answer scoring', () => {
+    render(
+      <StudyBlockView
+        type="QuizCarouselBlock"
+        props={{
+          title: 'Mixed Quiz',
+          items: [
+            {
+              quizMode: 'multipleChoice',
+              question: 'Which one is correct?',
+              options: ['Wrong option', 'Correct option'],
+              correctIndex: 1,
+              answer: 'Correct option',
+              explanation: 'Second option is right.',
+            },
+            {
+              quizMode: 'shortAnswer',
+              question: 'What is the key term?',
+              options: [],
+              correctIndex: 0,
+              answer: 'industrialization',
+              explanation: 'That is the process.',
+            },
+          ],
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wrong option' }))
+    expect(screen.getByText('Answered 1/2')).toBeInTheDocument()
+    expect(screen.getByText('Correct 0')).toBeInTheDocument()
+    expect(screen.getByText('Wrong 1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    fireEvent.change(screen.getByLabelText('Answer'), {
+      target: { value: 'industrialization' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }))
+
+    expect(screen.getByText('Answered 2/2')).toBeInTheDocument()
+    expect(screen.getByText('Correct 1')).toBeInTheDocument()
+    expect(screen.getByText('Wrong 1')).toBeInTheDocument()
+  })
 })

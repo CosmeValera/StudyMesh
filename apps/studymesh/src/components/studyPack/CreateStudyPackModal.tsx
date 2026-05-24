@@ -668,7 +668,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     [],
   )
 
-  const generationTargets = resourceType ? resourceTypeTargets[resourceType] : []
+  const generationTargets = resourceType
+    ? resourceTypeTargets[resourceType]
+    : []
   const generationAmount = detailLevelToGenerationAmount[detailLevel]
   const practiceProfile = useMemo(
     () => createStudyPackPracticeProfile(generationAmount, generationTargets),
@@ -1479,14 +1481,24 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           : undefined,
       )
     const objectsById = new Map(objects.map((object) => [object.id, object]))
-    const groups = widgetGroups
-      .map((group, index) => ({
-        name: group.name.trim() || `${packTitle} ${index + 1}`,
-        objects: group.objectIds
-          .map((objectId) => objectsById.get(objectId))
-          .filter((object): object is StudyObject => Boolean(object)),
-      }))
-      .filter((group) => group.objects.length > 0)
+    const groups =
+      resourceType === 'flashcards' || resourceType === 'quiz'
+        ? [
+            {
+              name: `${packTitle.trim() || 'Notes Dashboard'} ${
+                resourceTypeLabels[resourceType]
+              }`,
+              objects,
+            },
+          ]
+        : widgetGroups
+            .map((group, index) => ({
+              name: group.name.trim() || `${packTitle} ${index + 1}`,
+              objects: group.objectIds
+                .map((objectId) => objectsById.get(objectId))
+                .filter((object): object is StudyObject => Boolean(object)),
+            }))
+            .filter((group) => group.objects.length > 0)
 
     if (groups.length === 0) {
       setError('Add at least one generated study section.')

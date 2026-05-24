@@ -28,44 +28,46 @@ vi.mock('../../../../src/studyPack/ai', () => ({
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT:
     'studymesh-study-pack-ai-settings-changed',
   cancelAllLocalAiSessions: vi.fn(),
-  applyStudyMaterialResourceTypeToDraft: vi.fn((draft, packId, resourceType) => {
-    if (resourceType === 'improvedNotes') {
-      return {
-        ...draft,
-        objects: [
-          {
-            id: `${packId}-improved-notes-1`,
-            kind: 'markdown',
-            title: 'Improved notes',
-            sourceLine: 1,
-            tags: [],
-            markdown: draft.rawNotes || 'Improved notes',
-          },
-        ],
+  applyStudyMaterialResourceTypeToDraft: vi.fn(
+    (draft, packId, resourceType) => {
+      if (resourceType === 'improvedNotes') {
+        return {
+          ...draft,
+          objects: [
+            {
+              id: `${packId}-improved-notes-1`,
+              kind: 'markdown',
+              title: 'Improved notes',
+              sourceLine: 1,
+              tags: [],
+              markdown: draft.rawNotes || 'Improved notes',
+            },
+          ],
+        }
       }
-    }
 
-    if (resourceType === 'flashcards') {
-      return {
-        ...draft,
-        objects: draft.objects.filter(
-          (object: { kind: string }) =>
-            object.kind === 'qa' || object.kind === 'reveal',
-        ),
+      if (resourceType === 'flashcards') {
+        return {
+          ...draft,
+          objects: draft.objects.filter(
+            (object: { kind: string }) =>
+              object.kind === 'qa' || object.kind === 'reveal',
+          ),
+        }
       }
-    }
 
-    if (resourceType === 'quiz') {
-      return {
-        ...draft,
-        objects: draft.objects.filter(
-          (object: { kind: string }) => object.kind === 'quiz',
-        ),
+      if (resourceType === 'quiz') {
+        return {
+          ...draft,
+          objects: draft.objects.filter(
+            (object: { kind: string }) => object.kind === 'quiz',
+          ),
+        }
       }
-    }
 
-    return draft
-  }),
+      return draft
+    },
+  ),
   extractRawNotesWithAi: vi.fn(),
   extractNotesFromImageWithLocalLanguageModel: vi.fn(),
   generateStudyPackWithAi: vi.fn(),
@@ -347,6 +349,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
       expect.objectContaining({ sourceFormat: 'text' }),
       expect.objectContaining({
         forceQuizBlockComponent: true,
+        focusedResourceType: 'quiz',
         includeSourceWidget: false,
         includeSummaryChart: false,
         rawSource: 'Quiz:: What is derivative? | Rate of change',
@@ -401,9 +404,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
         }),
       )
     })
-    expect(
-      await screen.findByText('AI Study Pack Quiz'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('AI Study Pack Quiz')).toBeInTheDocument()
   })
 
   it('combines multiple uploaded text files', async () => {

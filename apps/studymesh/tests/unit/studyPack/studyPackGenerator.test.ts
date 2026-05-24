@@ -554,4 +554,39 @@ A: Back`,
     expect(serialized).not.toContain('QuizzSingle')
     expect(serialized).not.toContain('quiz-single')
   })
+
+  it('renders focused study sessions as carousel blocks', () => {
+    const pack = parseStudyPack(
+      `Quiz:: One? | A | B | C
+Q: Front
+A: Back`,
+      { sourceFormat: 'text' },
+    )
+    const quizWidgets = createStudyPackOrchestratorWidgets(pack, {
+      focusedResourceType: 'quiz',
+      includeSourceWidget: false,
+      widgetGroups: [
+        {
+          name: 'Practice Quiz',
+          objects: pack.objects.filter((object) => object.kind === 'quiz'),
+        },
+      ],
+    })
+    const flashcardWidgets = createStudyPackOrchestratorWidgets(pack, {
+      focusedResourceType: 'flashcards',
+      includeSourceWidget: false,
+      widgetGroups: [
+        {
+          name: 'Practice Flashcards',
+          objects: pack.objects.filter((object) => object.kind === 'qa'),
+        },
+      ],
+    })
+
+    expect(JSON.stringify(quizWidgets)).toContain('QuizCarouselBlock')
+    expect(JSON.stringify(quizWidgets)).not.toContain('QuizBlock')
+    expect(JSON.stringify(quizWidgets)).not.toContain('QuizzSingle')
+    expect(JSON.stringify(flashcardWidgets)).toContain('FlashcardCarouselBlock')
+    expect(JSON.stringify(flashcardWidgets)).not.toContain('FlashcardBlock')
+  })
 })

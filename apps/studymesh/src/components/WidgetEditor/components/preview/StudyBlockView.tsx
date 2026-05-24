@@ -43,6 +43,8 @@ const STUDY_BLOCK_TYPES = [
   'ReviewPromptBlock',
   'MarkdownBlock',
   'StudyPathProgressBlock',
+  'FlashcardCarouselBlock',
+  'QuizCarouselBlock',
   'FocusedFlashcardSessionBlock',
   'FocusedQuizSessionBlock',
 ]
@@ -498,6 +500,15 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
   const [focusedQuizAnswers, setFocusedQuizAnswers] = useState<
     Record<number, number>
   >({})
+  const [focusedFlashcardGrades, setFocusedFlashcardGrades] = useState<
+    Record<number, 'known' | 'missed'>
+  >({})
+  const [focusedQuizShortAnswers, setFocusedQuizShortAnswers] = useState<
+    Record<number, string>
+  >({})
+  const [focusedQuizShortResults, setFocusedQuizShortResults] = useState<
+    Record<number, boolean>
+  >({})
   const [shortAnswer, setShortAnswer] = useState('')
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
   const [definitionStudy, setDefinitionStudy] = useState(false)
@@ -655,7 +666,10 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     )
   }
 
-  if (type === 'FocusedFlashcardSessionBlock') {
+  if (
+    type === 'FlashcardCarouselBlock' ||
+    type === 'FocusedFlashcardSessionBlock'
+  ) {
     const title = String(props.title || 'Flashcards')
     const cards = toFocusedItems(props.items)
       .map((item) => ({
@@ -666,6 +680,19 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
       .filter((item) => item.front && item.back)
     const safeIndex = Math.min(focusedCardIndex, Math.max(0, cards.length - 1))
     const card = cards[safeIndex]
+    const answered = Object.keys(focusedFlashcardGrades).length
+    const known = Object.values(focusedFlashcardGrades).filter(
+      (grade) => grade === 'known',
+    ).length
+    const missed = Object.values(focusedFlashcardGrades).filter(
+      (grade) => grade === 'missed',
+    ).length
+    const gradeCard = (grade: 'known' | 'missed') => {
+      setFocusedFlashcardGrades((current) => ({
+        ...current,
+        [safeIndex]: grade,
+      }))
+    }
 
     if (!card) {
       return (
@@ -697,7 +724,12 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                 {safeIndex + 1} / {cards.length}
               </Typography>
             </Box>
-            {card.tag && <Chip label={card.tag} />}
+            <Stack direction="row" gap={1} flexWrap="wrap" justifyContent="end">
+              <Chip label={`Answered ${answered}/${cards.length}`} />
+              <Chip color="success" label={`Known ${known}`} />
+              <Chip color="error" label={`Missed ${missed}`} />
+              {card.tag && <Chip label={card.tag} />}
+            </Stack>
           </Stack>
           <Paper
             variant="outlined"
@@ -728,6 +760,30 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
               </Typography>
             </Stack>
           </Paper>
+          <Stack direction="row" spacing={1.25} justifyContent="center">
+            <Button
+              variant={
+                focusedFlashcardGrades[safeIndex] === 'known'
+                  ? 'contained'
+                  : 'outlined'
+              }
+              color="success"
+              onClick={() => gradeCard('known')}
+            >
+              Known
+            </Button>
+            <Button
+              variant={
+                focusedFlashcardGrades[safeIndex] === 'missed'
+                  ? 'contained'
+                  : 'outlined'
+              }
+              color="error"
+              onClick={() => gradeCard('missed')}
+            >
+              Missed
+            </Button>
+          </Stack>
           <Stack direction="row" spacing={1.25} justifyContent="center">
             <Button
               variant="outlined"
@@ -800,8 +856,8 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
               const resultColor = isCorrect
                 ? 'success.main'
                 : isSelected
-                ? 'error.main'
-                : 'divider'
+                  ? 'error.main'
+                  : 'divider'
 
               return (
                 <Button
@@ -844,7 +900,7 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
     )
   }
 
-  if (type === 'FocusedQuizSessionBlock') {
+  if (type === 'QuizCarouselBlock' || type === 'FocusedQuizSessionBlock') {
     const title = String(props.title || 'Quiz')
     const questions = toFocusedItems(props.items)
       .map((item) => {
@@ -855,27 +911,65 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           0,
           Math.min(options.length - 1, Number(item.correctIndex || 0)),
         )
+        const answer = String(item.answer || options[correctIndex] || '')
+        const quizMode =
+          String(item.quizMode || '') === 'shortAnswer' || options.length < 2
+            ? 'shortAnswer'
+            : 'multipleChoice'
 
         return {
           question: String(item.question || item.title || ''),
           options,
           correctIndex,
-          answer: String(item.answer || options[correctIndex] || ''),
+          answer,
           explanation: String(item.explanation || ''),
+          quizMode,
         }
       })
-      .filter((item) => item.question && item.options.length >= 2)
+      .filter(
+        (item) =>
+          item.question &&
+          (item.quizMode === 'shortAnswer' || item.options.length >= 2),
+      )
     const safeIndex = Math.min(
       focusedQuestionIndex,
       Math.max(0, questions.length - 1),
     )
     const question = questions[safeIndex]
     const selected = focusedQuizAnswers[safeIndex]
-    const score = questions.reduce(
-      (total, item, index) =>
-        focusedQuizAnswers[index] === item.correctIndex ? total + 1 : total,
-      0,
-    )
+    const submittedShortAnswer = focusedQuizShortAnswers[safeIndex] || ''
+    const hasMultipleChoiceAnswer = selected !== undefined
+    const hasShortAnswer =
+      question?.quizMode === 'shortAnswer' &&
+      focusedQuizShortResults[safeIndex] !== undefined
+    const hasAnswered = hasMultipleChoiceAnswer || hasShortAnswer
+    const answered = questions.reduce((total, item, index) => {
+      if (item.quizMode === 'shortAnswer') {
+        return focusedQuizShortResults[index] !== undefined ? total + 1 : total
+      }
+
+      return focusedQuizAnswers[index] !== undefined ? total + 1 : total
+    }, 0)
+    const correct = questions.reduce((total, item, index) => {
+      if (item.quizMode === 'shortAnswer') {
+        return focusedQuizShortResults[index] === true ? total + 1 : total
+      }
+
+      return focusedQuizAnswers[index] === item.correctIndex ? total + 1 : total
+    }, 0)
+    const wrong = answered - correct
+    const checkShortAnswer = () => {
+      if (!question || question.quizMode !== 'shortAnswer') {
+        return
+      }
+
+      setFocusedQuizShortResults((current) => ({
+        ...current,
+        [safeIndex]:
+          normalizeAnswer(focusedQuizShortAnswers[safeIndex] || '') ===
+          normalizeAnswer(question.answer),
+      }))
+    }
 
     if (!question) {
       return (
@@ -907,7 +1001,11 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
                 {safeIndex + 1} / {questions.length}
               </Typography>
             </Box>
-            <Chip label={`Score ${score}/${questions.length}`} />
+            <Stack direction="row" gap={1} flexWrap="wrap" justifyContent="end">
+              <Chip label={`Answered ${answered}/${questions.length}`} />
+              <Chip color="success" label={`Correct ${correct}`} />
+              <Chip color="error" label={`Wrong ${wrong}`} />
+            </Stack>
           </Stack>
           <Paper
             variant="outlined"
@@ -921,49 +1019,72 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
               <Typography variant="h5" sx={{ lineHeight: 1.35 }}>
                 {question.question}
               </Typography>
-              <Stack spacing={1.25}>
-                {question.options.map((option, index) => {
-                  const hasAnswered = selected !== undefined
-                  const isCorrect = index === question.correctIndex
-                  const isSelected = selected === index
+              {question.quizMode === 'shortAnswer' ? (
+                <Stack spacing={1.25}>
+                  <TextField
+                    label="Answer"
+                    value={submittedShortAnswer}
+                    onChange={(event) =>
+                      setFocusedQuizShortAnswers((current) => ({
+                        ...current,
+                        [safeIndex]: event.target.value,
+                      }))
+                    }
+                    fullWidth
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={checkShortAnswer}
+                    disabled={!submittedShortAnswer.trim()}
+                    sx={{ alignSelf: 'flex-start' }}
+                  >
+                    Check answer
+                  </Button>
+                </Stack>
+              ) : (
+                <Stack spacing={1.25}>
+                  {question.options.map((option, index) => {
+                    const isCorrect = index === question.correctIndex
+                    const isSelected = selected === index
 
-                  return (
-                    <Button
-                      key={`${option}-${index}`}
-                      variant="outlined"
-                      onClick={() =>
-                        setFocusedQuizAnswers((current) => ({
-                          ...current,
-                          [safeIndex]: index,
-                        }))
-                      }
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textAlign: 'left',
-                        minHeight: 52,
-                        whiteSpace: 'normal',
-                        color: 'text.primary',
-                        borderColor: hasAnswered
-                          ? isCorrect
-                            ? 'success.main'
-                            : isSelected
-                            ? 'error.main'
-                            : 'divider'
-                          : 'divider',
-                        bgcolor:
-                          hasAnswered && (isCorrect || isSelected)
+                    return (
+                      <Button
+                        key={`${option}-${index}`}
+                        variant="outlined"
+                        onClick={() =>
+                          setFocusedQuizAnswers((current) => ({
+                            ...current,
+                            [safeIndex]: index,
+                          }))
+                        }
+                        sx={{
+                          justifyContent: 'flex-start',
+                          textAlign: 'left',
+                          minHeight: 52,
+                          whiteSpace: 'normal',
+                          color: 'text.primary',
+                          borderColor: hasAnswered
                             ? isCorrect
-                              ? 'success.light'
-                              : 'error.light'
-                            : 'transparent',
-                      }}
-                    >
-                      {option}
-                    </Button>
-                  )
-                })}
-              </Stack>
-              {selected !== undefined && (
+                              ? 'success.main'
+                              : isSelected
+                                ? 'error.main'
+                                : 'divider'
+                            : 'divider',
+                          bgcolor:
+                            hasAnswered && (isCorrect || isSelected)
+                              ? isCorrect
+                                ? 'success.light'
+                                : 'error.light'
+                              : 'transparent',
+                        }}
+                      >
+                        {option}
+                      </Button>
+                    )
+                  })}
+                </Stack>
+              )}
+              {hasAnswered && (
                 <Typography variant="body2" color="text.secondary">
                   {question.explanation || `Correct answer: ${question.answer}`}
                 </Typography>
