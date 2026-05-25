@@ -1262,8 +1262,17 @@ const Dashboards = () => {
         return
       }
 
-      const customEvent = event as CustomEvent<{ host?: string }>
+      const customEvent = event as CustomEvent<{
+        host?: string
+        dashboard?: SavedDashboard
+      }>
       if (customEvent.detail?.host === 'studio') {
+        return
+      }
+
+      if (customEvent.detail?.dashboard) {
+        loadSavedDashboardInBuilder(customEvent.detail.dashboard)
+        dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
         return
       }
 

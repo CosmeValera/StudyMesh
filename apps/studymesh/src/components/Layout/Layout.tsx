@@ -121,6 +121,8 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
         tabEnableDrag: !readOnly,
         tabEnableFloat: !readOnly,
         tabSetEnableDrag: !readOnly,
+        tabSetEnableDrop: !readOnly,
+        tabSetEnableDivide: !readOnly,
         tabEnableClose: !readOnly,
         tabSetEnableClose: !readOnly,
         splitterEnableHandle: !readOnly,
