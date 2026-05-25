@@ -2119,8 +2119,7 @@ const Dashboards = () => {
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {!isMobileDashboardView &&
-                isAdmin &&
-                !isEmptyDashboard && (
+                isAdmin && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
@@ -2265,8 +2264,7 @@ const Dashboards = () => {
               </Typography>
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {isAdmin &&
-                !isEmptyDashboard && (
+              {isAdmin && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}

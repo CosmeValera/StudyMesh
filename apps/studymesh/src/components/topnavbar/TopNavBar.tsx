@@ -91,27 +91,6 @@ interface UserData {
   role: string
 }
 
-const hasDashboardContent = (layout?: {
-  type?: string
-  component?: string
-  children?: Array<{
-    type?: string
-    component?: string
-    children?: unknown[]
-  }>
-}): boolean => {
-  if (!layout) {
-    return false
-  }
-
-  if (layout.type === 'tab' && Boolean(layout.component)) {
-    return true
-  }
-
-  return Boolean(
-    layout.children?.some((child) => hasDashboardContent(child as never)),
-  )
-}
 
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 
@@ -1280,7 +1259,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               isAdmin &&
               (dashboard.kind === 'studyPathContainer'
                 ? Boolean(dashboard.studyPath?.dashboards.length)
-                : hasDashboardContent(dashboard.layout))
+                : true)
 
             return (
               <MenuItem
