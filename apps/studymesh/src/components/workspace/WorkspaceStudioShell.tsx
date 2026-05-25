@@ -595,13 +595,24 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const studyPathOption = createOptions[0]
   const materialOptions = createOptions.slice(1)
 
-  const returnToCreateHub = (
+  const returnToCreateHub = () => {
+    setActiveFlow('hub')
+    setSelectedIntent(null)
+    if (isMobile) {
+      setMobileSection('creation')
+    }
+  }
+
+  const cancelDraftAndReturnToHub = (
     draftId: string,
     flow: Exclude<StudioFlow, 'hub'>,
   ) => {
     removeDraft(draftId, flow)
     setActiveFlow('hub')
     setSelectedIntent(null)
+    if (isMobile) {
+      setMobileSection('creation')
+    }
   }
 
   const creationHubContent = (
@@ -802,8 +813,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPathModal
                 open
                 presentation="embedded"
-                onCollapse={() => returnToCreateHub(draft.id, 'study-path')}
-                onClose={() => removeDraft(draft.id, 'study-path')}
+                onCollapse={returnToCreateHub}
+                onClose={() =>
+                  cancelDraftAndReturnToHub(draft.id, 'study-path')
+                }
                 onCreatePath={(payload) => {
                   const dashboards = createStudyPackDashboards(payload)
                   removeDraft(draft.id, 'study-path')
@@ -857,8 +870,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPackModal
                 open
                 presentation="embedded"
-                onCollapse={() => returnToCreateHub(draft.id, 'from-notes')}
-                onClose={() => removeDraft(draft.id, 'from-notes')}
+                onCollapse={returnToCreateHub}
+                onClose={() =>
+                  cancelDraftAndReturnToHub(draft.id, 'from-notes')
+                }
                 onCreatePack={(payload) => {
                   const dashboard = createStudyPackDashboard(payload)
                   removeDraft(draft.id, 'from-notes')
@@ -900,6 +915,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     const isActiveMarker = activeDraftByFlow[draft.flow] === draft.id
 
     if (isStudioOpen && activeFlow === draft.flow && isActiveMarker) {
+      if (isMobile) {
+        setMobileSection('creation')
+        return
+      }
+
       closeStudio()
       return
     }
@@ -911,6 +931,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       [draft.flow]: draft.id,
     }))
     setIsStudioOpen(true)
+    if (isMobile) {
+      setMobileSection('creation')
+    }
   }
 
   const visibleCreationMarkers = generationDrafts
@@ -964,6 +987,93 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     setMobileSection('ai-chat')
     window.dispatchEvent(new Event(OPEN_DASHBOARD_CHAT_EVENT))
   }
+
+  const mobileCreationStatusTray = visibleCreationMarkers.length ? (
+    <Box
+      aria-label="Creation generation status"
+      sx={{
+        display: 'flex',
+        gap: 0.75,
+        px: 0.75,
+        py: 0.75,
+        minHeight: 'var(--studymesh-mobile-generation-tray-height)',
+        overflowX: 'auto',
+        bgcolor: 'background.paper',
+        borderTop: 1,
+        borderColor: 'divider',
+        flexShrink: 0,
+        '&::-webkit-scrollbar': { display: 'none' },
+        scrollbarWidth: 'none',
+      }}
+    >
+      {visibleCreationMarkers.map(({ draft, state }) => {
+        const isActiveMarker = activeDraftByFlow[draft.flow] === draft.id
+        const isSelected =
+          isStudioOpen && mobileSection === 'creation' && activeFlow === draft.flow && isActiveMarker
+
+        return (
+          <Button
+            key={draft.id}
+            size="small"
+            variant={isSelected ? 'contained' : 'outlined'}
+            onClick={() => openCreationMarker(draft)}
+            aria-label={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
+            sx={{
+              flex: '0 0 auto',
+              maxWidth: 220,
+              minWidth: 0,
+              px: 1,
+              borderRadius: 999,
+              textTransform: 'none',
+              justifyContent: 'flex-start',
+              gap: 0.75,
+            }}
+          >
+            <Box
+              sx={{
+                position: 'relative',
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                bgcolor: statusMarkerColors[state],
+                boxShadow: statusMarkerGlow[state],
+                flex: '0 0 auto',
+                '&::after':
+                  state === 'running'
+                    ? {
+                        content: '""',
+                        position: 'absolute',
+                        inset: -4,
+                        borderRadius: '50%',
+                        border: 1.5,
+                        borderColor: 'warning.main',
+                        borderTopColor: 'transparent',
+                        animation:
+                          'studymesh-mobile-marker-spin 900ms linear infinite',
+                      }
+                    : undefined,
+                '@keyframes studymesh-mobile-marker-spin': {
+                  to: { transform: 'rotate(360deg)' },
+                },
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontWeight: 800,
+              }}
+            >
+              {formatDraftTitle(draft)}
+            </Typography>
+          </Button>
+        )
+      })}
+    </Box>
+  ) : null
 
   const mobileSectionTabs = (
     <Box
@@ -1235,6 +1345,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
+          '--studymesh-mobile-generation-tray-height': visibleCreationMarkers.length
+            ? '48px'
+            : '0px',
           ...(isStudioOpen && mobileSection === 'creation'
             ? {
                 '& [data-testid="study-path-navigator-overlay"]': {
@@ -1265,7 +1378,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             direction="right"
             in={mobileSection === 'creation'}
             mountOnEnter
-            unmountOnExit
             timeout={{ enter: 260, exit: 220 }}
           >
             <Box
@@ -1298,6 +1410,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             </Box>
           </Slide>
         </Box>
+        {mobileCreationStatusTray}
         {mobileSectionTabs}
         {widgetBuilderDialog}
       </Box>

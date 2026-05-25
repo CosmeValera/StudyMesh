@@ -2201,7 +2201,10 @@ const Dashboards = () => {
             const isEmptyDashboard =
               !isStudyPathContainer && !hasDashboardContent(dashboard.layout)
             return (
-              <TabPanel key={dashboard.id}>
+              <TabPanel
+                key={dashboard.id}
+                forceRender={isMobileDashboardView}
+              >
                 <Box
                   sx={{
                     display: 'flex',

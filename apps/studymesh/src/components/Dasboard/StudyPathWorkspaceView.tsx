@@ -340,7 +340,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               position: { xs: 'fixed', md: 'absolute' },
               top: { xs: 'auto', md: 14 },
               bottom: {
-                xs: 'calc(76px + env(safe-area-inset-bottom))',
+                xs: 'calc(76px + var(--studymesh-mobile-generation-tray-height, 0px) + env(safe-area-inset-bottom))',
                 md: 'auto',
               },
               zIndex: { xs: 1400, md: 'auto' },
@@ -452,7 +452,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               position: { xs: 'fixed', md: 'absolute' },
               top: { xs: 'auto', md: 14 },
               bottom: {
-                xs: 'calc(76px + env(safe-area-inset-bottom))',
+                xs: 'calc(76px + var(--studymesh-mobile-generation-tray-height, 0px) + env(safe-area-inset-bottom))',
                 md: 14,
               },
               ...panelHorizontalSx,
@@ -463,7 +463,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               },
               maxWidth: { xs: 288, sm: NAVIGATOR_PANEL_WIDTH },
               maxHeight: {
-                xs: 'calc(100dvh - 148px - env(safe-area-inset-bottom))',
+                xs: 'calc(100dvh - 148px - var(--studymesh-mobile-generation-tray-height, 0px) - env(safe-area-inset-bottom))',
                 md: 'none',
               },
               pointerEvents: 'auto',
