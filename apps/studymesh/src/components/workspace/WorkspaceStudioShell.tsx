@@ -196,7 +196,7 @@ const getDraftMarkerState = (
 
 const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'))
   const initialDrafts = useMemo(
     () => [
       createGenerationDraft('study-path', { isPlaceholder: true }),
