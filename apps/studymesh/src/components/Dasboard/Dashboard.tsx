@@ -1362,8 +1362,16 @@ const Dashboards = () => {
         return
       }
 
-      const customEvent = event as CustomEvent<{ host?: string }>
+      const customEvent = event as CustomEvent<{
+        host?: string
+        dashboardId?: string
+      }>
       if (customEvent.detail?.host === 'studio') {
+        return
+      }
+
+      if (customEvent.detail?.dashboardId) {
+        openDashboardEditor(customEvent.detail.dashboardId)
         return
       }
 
