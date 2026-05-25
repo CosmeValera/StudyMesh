@@ -22,6 +22,7 @@ import { DashboardLayout, StudyPathContainerState } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import {
   ensureStarterDashboards,
+  OPEN_DASHBOARD_EDITOR_EVENT,
   OPEN_SAVED_DASHBOARDS_EVENT,
 } from '../../customHooks/useWorkspaceActions'
 import {
@@ -342,6 +343,19 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
       dashboardId: dashboard.id,
       dashboardName: dashboard.name,
     })
+  }
+
+  const openDashboardInBuilder = (
+    event: React.MouseEvent<HTMLElement>,
+    dashboard: SavedDashboard,
+  ) => {
+    event.stopPropagation()
+    handleClose()
+    window.dispatchEvent(
+      new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT, {
+        detail: { host: 'workspace-builder', dashboard },
+      }),
+    )
   }
 
   const loadDashboardFolder = (dashboards: SavedDashboard[]) => {
@@ -827,7 +841,24 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
                         },
                       }}
                     >
-                      {dashboard.name}
+                      <ListItemText
+                        primary={dashboard.name}
+                        primaryTypographyProps={{ noWrap: true }}
+                      />
+                      {isAdmin && (
+                        <Tooltip title={`Edit ${dashboard.name}`}>
+                          <IconButton
+                            size="small"
+                            aria-label={`Edit ${dashboard.name}`}
+                            onClick={(event) =>
+                              openDashboardInBuilder(event, dashboard)
+                            }
+                            sx={{ color: folderColor, p: 0.5, ml: 1 }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </MenuItem>
                   ))}
                   {!isFolderExpanded &&
@@ -972,7 +1003,24 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
                         },
                       }}
                     >
-                      {dashboard.name}
+                      <ListItemText
+                        primary={dashboard.name}
+                        primaryTypographyProps={{ noWrap: true }}
+                      />
+                      {isAdmin && (
+                        <Tooltip title={`Edit ${dashboard.name}`}>
+                          <IconButton
+                            size="small"
+                            aria-label={`Edit ${dashboard.name}`}
+                            onClick={(event) =>
+                              openDashboardInBuilder(event, dashboard)
+                            }
+                            sx={{ color: folderColor, p: 0.5, ml: 1 }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </MenuItem>
                   ))}
                   {!isFolderExpanded &&

@@ -958,6 +958,31 @@ const Dashboards = () => {
     dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
   }
 
+  const openStudyPathDashboardEditor = (dashboard: StateDashboard) => {
+    if (!isAdmin || !dashboard.studyPath) {
+      return
+    }
+
+    const selectedLessonIndex = Math.min(
+      Math.max(dashboard.studyPath.selectedIndex || 0, 0),
+      Math.max(dashboard.studyPath.dashboards.length - 1, 0),
+    )
+    const selectedLesson = dashboard.studyPath.dashboards[selectedLessonIndex]
+
+    if (!selectedLesson) {
+      return
+    }
+
+    setDashboardEditorId(null)
+    setDraftDashboard({
+      id: `draft-dashboard-${Date.now()}`,
+      name: selectedLesson.name,
+      layout: selectedLesson.layout,
+      savedDashboardId: selectedLesson.id,
+    })
+    dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
+  }
+
   const createDashboardInEditor = () => {
     if (!isAdmin) {
       return
@@ -1365,6 +1390,7 @@ const Dashboards = () => {
       const customEvent = event as CustomEvent<{
         host?: string
         dashboardId?: string
+        dashboard?: SavedDashboard
       }>
       if (customEvent.detail?.host === 'studio') {
         return
@@ -1372,6 +1398,12 @@ const Dashboards = () => {
 
       if (customEvent.detail?.dashboardId) {
         openDashboardEditor(customEvent.detail.dashboardId)
+        return
+      }
+
+      if (customEvent.detail?.dashboard) {
+        loadSavedDashboardInBuilder(customEvent.detail.dashboard)
+        dispatchWorkspaceOnboardingEvent({ type: 'dashboard-editor-opened' })
         return
       }
 
@@ -1787,6 +1819,36 @@ const Dashboards = () => {
         }
 
         DashboardStorage.save(dashboardToSave)
+        openDashboards.forEach((openDashboard) => {
+          if (
+            openDashboard.kind !== 'studyPathContainer' ||
+            !openDashboard.studyPath ||
+            !draftDashboard.savedDashboardId
+          ) {
+            return
+          }
+
+          const lessonIndex = openDashboard.studyPath.dashboards.findIndex(
+            (lesson) => lesson.id === draftDashboard.savedDashboardId,
+          )
+
+          if (lessonIndex < 0) {
+            return
+          }
+
+          updateStudyPathContainer(openDashboard.id, (studyPath) => ({
+            ...studyPath,
+            dashboards: studyPath.dashboards.map((lesson, index) =>
+              index === lessonIndex
+                ? {
+                    ...lesson,
+                    name: dashboardToSave.name,
+                    layout: dashboardToSave.layout,
+                  }
+                : lesson,
+            ),
+          }))
+        })
         loadDashboardOptions()
         dispatchWorkspaceOnboardingEvent({
           type: 'dashboard-saved',
@@ -2010,10 +2072,11 @@ const Dashboards = () => {
       onDrop={isMobileDashboardView ? undefined : dropDashboardTabAtEnd}
     >
       {openDashboards.map((dashboard, index) => {
-        const isOnlyEmptyDashboard =
-          openDashboards.length === 1 &&
+        const isEmptyDashboard =
           dashboard.kind !== 'studyPathContainer' &&
           !hasDashboardContent(dashboard.layout)
+        const isOnlyEmptyDashboard =
+          openDashboards.length === 1 && isEmptyDashboard
 
         return (
           <Tab
@@ -2057,14 +2120,17 @@ const Dashboards = () => {
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {!isMobileDashboardView &&
                 isAdmin &&
-                dashboard.layout?.children &&
-                dashboard.layout.children.length > 0 && (
+                !isEmptyDashboard && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
                       size="small"
                       onClick={(ev) => {
                         ev.stopPropagation()
+                        if (dashboard.kind === 'studyPathContainer') {
+                          openStudyPathDashboardEditor(dashboard)
+                          return
+                        }
                         openDashboardEditor(dashboard.id)
                       }}
                       sx={{
@@ -2153,10 +2219,11 @@ const Dashboards = () => {
       onDrop={dropDashboardTabAtEnd}
     >
       {openDashboards.map((dashboard, index) => {
-        const isOnlyEmptyDashboard =
-          openDashboards.length === 1 &&
+        const isEmptyDashboard =
           dashboard.kind !== 'studyPathContainer' &&
           !hasDashboardContent(dashboard.layout)
+        const isOnlyEmptyDashboard =
+          openDashboards.length === 1 && isEmptyDashboard
         const isSelected = selectedDashboard === index
 
         return (
@@ -2199,14 +2266,17 @@ const Dashboards = () => {
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {isAdmin &&
-                dashboard.layout?.children &&
-                dashboard.layout.children.length > 0 && (
+                !isEmptyDashboard && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
                       size="small"
                       onClick={(ev) => {
                         ev.stopPropagation()
+                        if (dashboard.kind === 'studyPathContainer') {
+                          openStudyPathDashboardEditor(dashboard)
+                          return
+                        }
                         openDashboardEditor(dashboard.id)
                       }}
                       sx={{
