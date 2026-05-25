@@ -43,11 +43,13 @@ import AddToPhotosIcon from '@mui/icons-material/AddToPhotos'
 import WidgetsIcon from '@mui/icons-material/Widgets'
 import SettingsApplicationsIcon from '@mui/icons-material/SettingsApplications'
 import ExtensionIcon from '@mui/icons-material/Extension'
+import EditIcon from '@mui/icons-material/Edit'
 
 import AccentColorPicker from '../../theme/AccentColorPicker'
 import DashboardOptionsMenu from '../Dasboard/DashboardOptionsMenu'
 import { useDashboards } from '../Dasboard/DashboardProvider'
 import {
+  OPEN_DASHBOARD_EDITOR_EVENT,
   OPEN_STUDY_PACK_EVENT,
   OPEN_STUDY_PATH_EVENT,
   OPEN_WIDGET_EDITOR_EVENT,
@@ -88,6 +90,7 @@ interface UserData {
   name: string
   role: string
 }
+
 
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 
@@ -1252,6 +1255,11 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
               dashboard.name ||
               'Untitled dashboard'
             const selected = index === selectedDashboard
+            const canEditDashboard =
+              isAdmin &&
+              (dashboard.kind === 'studyPathContainer'
+                ? Boolean(dashboard.studyPath?.dashboards.length)
+                : true)
 
             return (
               <MenuItem
@@ -1284,6 +1292,36 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                   }}
                   sx={{ minWidth: 0, mr: 1 }}
                 />
+                {canEditDashboard && (
+                  <IconButton
+                    aria-label={`Edit ${dashboardTitle}`}
+                    size="small"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      window.dispatchEvent(
+                        new CustomEvent(OPEN_DASHBOARD_EDITOR_EVENT, {
+                          detail: {
+                            host: 'workspace-builder',
+                            dashboardId: dashboard.id,
+                          },
+                        }),
+                      )
+                      setDashboardSelectorOpen(false)
+                    }}
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      color: 'text.secondary',
+                      flex: '0 0 auto',
+                      '&:hover': {
+                        color: 'primary.main',
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                )}
                 <IconButton
                   aria-label={`Close ${dashboardTitle}`}
                   size="small"

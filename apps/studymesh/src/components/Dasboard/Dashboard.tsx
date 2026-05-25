@@ -40,6 +40,8 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import RouteIcon from '@mui/icons-material/Route'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout, StateDashboard } from '../../state/store'
@@ -83,6 +85,17 @@ interface DashboardEditorWidgetConfig {
   customProps?: Record<string, unknown>
 }
 
+const createDashboardTabFromWidget = (
+  componentConfig: DashboardEditorWidgetConfig,
+): DashboardLayout => ({
+  type: 'tab',
+  name: componentConfig.name,
+  component: componentConfig.component,
+  config: componentConfig.customProps
+    ? { customProps: componentConfig.customProps }
+    : undefined,
+})
+
 const createLayoutWithComponent = (
   componentConfig: DashboardEditorWidgetConfig,
 ): DashboardLayout => ({
@@ -93,18 +106,38 @@ const createLayoutWithComponent = (
       type: 'tabset',
       weight: 100,
       active: true,
-      children: [
-        {
-          type: 'tab',
-          name: componentConfig.name,
-          component: componentConfig.component,
-          config: componentConfig.customProps
-            ? { customProps: componentConfig.customProps }
-            : undefined,
-        },
-      ],
+      children: [createDashboardTabFromWidget(componentConfig)],
     },
   ],
+})
+
+const collectDashboardWidgetTabs = (
+  layout?: DashboardLayout,
+): DashboardLayout[] => {
+  if (!layout) {
+    return []
+  }
+
+  if (layout.type === 'tab' && layout.component) {
+    return [layout]
+  }
+
+  return (layout.children || []).flatMap((child) =>
+    collectDashboardWidgetTabs(child),
+  )
+}
+
+const createMobileOrderedWidgetLayout = (
+  widgetTabs: DashboardLayout[],
+): DashboardLayout => ({
+  type: 'row',
+  weight: 100,
+  children: widgetTabs.map((widgetTab, index) => ({
+    type: 'tabset',
+    weight: 100 / Math.max(widgetTabs.length, 1),
+    active: index === 0,
+    children: [widgetTab],
+  })),
 })
 
 // Define custom dashboard type for localStorage
@@ -861,6 +894,10 @@ const Dashboards = () => {
   const customWidgetPanels = topNavBarWidgets.filter((widget) =>
     widget.name.includes('Custom'),
   )
+  const dashboardEditorWidgetTabs = useMemo(
+    () => collectDashboardWidgetTabs(dashboardEditorDashboard?.layout),
+    [dashboardEditorDashboard?.layout],
+  )
   const savedDashboardsLabel = isPhone ? 'Saved' : 'Saved Dashboards'
   const visibleDashboardOptions = isAdmin
     ? dashboardOptions
@@ -1133,6 +1170,51 @@ const Dashboards = () => {
     updateDashboardEditorTitle(dashboardEditorTitleInput)
   }
 
+  const updateDashboardEditorLayout = (nextLayout: DashboardLayout) => {
+    if (dashboardEditorIsDraft) {
+      setDraftDashboard((currentDraft) =>
+        currentDraft ? { ...currentDraft, layout: nextLayout } : currentDraft,
+      )
+      return
+    }
+
+    if (dashboardEditorIndex >= 0) {
+      updateDashboardLayout(dashboardEditorIndex, nextLayout)
+      setHasChanges((prev) => ({
+        ...prev,
+        [dashboardEditorIndex]: true,
+      }))
+    }
+  }
+
+  const updateMobileDashboardWidgetOrder = (nextTabs: DashboardLayout[]) => {
+    const nextLayout = createMobileOrderedWidgetLayout(nextTabs)
+    updateDashboardEditorLayout(nextLayout)
+    dispatchWorkspaceOnboardingEvent({
+      type: 'dashboard-layout-changed',
+      ...countDashboardNodes(nextLayout),
+    })
+  }
+
+  const moveMobileDashboardWidget = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction
+
+    if (targetIndex < 0 || targetIndex >= dashboardEditorWidgetTabs.length) {
+      return
+    }
+
+    const nextTabs = [...dashboardEditorWidgetTabs]
+    const [movedTab] = nextTabs.splice(index, 1)
+    nextTabs.splice(targetIndex, 0, movedTab)
+    updateMobileDashboardWidgetOrder(nextTabs)
+  }
+
+  const removeMobileDashboardWidget = (index: number) => {
+    updateMobileDashboardWidgetOrder(
+      dashboardEditorWidgetTabs.filter((_, tabIndex) => tabIndex !== index),
+    )
+  }
+
   const addWidgetToDashboardEditor = (
     item: DashboardEditorWidgetConfig & { id?: string },
   ) => {
@@ -1144,17 +1226,35 @@ const Dashboards = () => {
       return
     }
 
+    if (isMobileDashboardView) {
+      const nextLayout = createMobileOrderedWidgetLayout([
+        ...collectDashboardWidgetTabs(dashboardEditorDashboard.layout),
+        createDashboardTabFromWidget(item),
+      ])
+      const counts = countDashboardNodes(nextLayout)
+
+      updateDashboardEditorLayout(nextLayout)
+      dispatchWorkspaceOnboardingEvent({
+        type: 'saved-widget-added',
+        widgetId:
+          typeof item.customProps?.widgetId === 'string'
+            ? item.customProps.widgetId
+            : item.id,
+        widgetName: item.name,
+        ...counts,
+      })
+      dispatchWorkspaceOnboardingEvent({
+        type: 'dashboard-layout-changed',
+        ...counts,
+      })
+      return
+    }
+
     if (dashboardEditorIsEmpty) {
       const nextLayout = createLayoutWithComponent(item)
       const counts = countDashboardNodes(nextLayout)
 
-      if (dashboardEditorIsDraft) {
-        setDraftDashboard((currentDraft) =>
-          currentDraft ? { ...currentDraft, layout: nextLayout } : currentDraft,
-        )
-      } else if (dashboardEditorIndex >= 0) {
-        updateDashboardLayout(dashboardEditorIndex, nextLayout)
-      }
+      updateDashboardEditorLayout(nextLayout)
 
       dispatchWorkspaceOnboardingEvent({
         type: 'saved-widget-added',
@@ -1289,9 +1389,15 @@ const Dashboards = () => {
 
       const customEvent = event as CustomEvent<{
         host?: string
+        dashboardId?: string
         dashboard?: SavedDashboard
       }>
       if (customEvent.detail?.host === 'studio') {
+        return
+      }
+
+      if (customEvent.detail?.dashboardId) {
+        openDashboardEditor(customEvent.detail.dashboardId)
         return
       }
 
@@ -2013,8 +2119,7 @@ const Dashboards = () => {
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {!isMobileDashboardView &&
-                isAdmin &&
-                !isEmptyDashboard && (
+                isAdmin && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
@@ -2159,8 +2264,7 @@ const Dashboards = () => {
               </Typography>
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {isAdmin &&
-                !isEmptyDashboard && (
+              {isAdmin && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
@@ -2863,7 +2967,155 @@ const Dashboards = () => {
             </Stack>
           </Box>
           <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {dashboardEditorDashboard &&
+            {dashboardEditorDashboard && isMobileDashboardView ? (
+              <Box
+                sx={{
+                  height: '100%',
+                  overflow: 'auto',
+                  p: 2,
+                  bgcolor: 'background.default',
+                }}
+              >
+                <Stack spacing={2}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Typography variant="subtitle1" fontWeight={800}>
+                      Phone dashboard widgets
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Pick the widgets to show on phone and arrange the order
+                      they appear in the dashboard.
+                    </Typography>
+                  </Paper>
+
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight={800} mb={1}>
+                      Selected widgets
+                    </Typography>
+                    {dashboardEditorWidgetTabs.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No widgets selected yet. Add widgets below to build this
+                        phone dashboard.
+                      </Typography>
+                    ) : (
+                      <Stack spacing={1}>
+                        {dashboardEditorWidgetTabs.map((widgetTab, index) => (
+                          <Paper
+                            key={`${widgetTab.name}-${widgetTab.component}-${index}`}
+                            variant="outlined"
+                            sx={{
+                              p: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              bgcolor: 'background.default',
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              fontWeight={700}
+                              sx={{ flex: 1, minWidth: 0 }}
+                              noWrap
+                            >
+                              {index + 1}. {widgetTab.name}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              aria-label={`Move ${widgetTab.name} up`}
+                              disabled={index === 0}
+                              onClick={() => moveMobileDashboardWidget(index, -1)}
+                            >
+                              <ArrowUpwardIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              aria-label={`Move ${widgetTab.name} down`}
+                              disabled={
+                                index === dashboardEditorWidgetTabs.length - 1
+                              }
+                              onClick={() => moveMobileDashboardWidget(index, 1)}
+                            >
+                              <ArrowDownwardIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              aria-label={`Remove ${widgetTab.name}`}
+                              onClick={() => removeMobileDashboardWidget(index)}
+                            >
+                              <CloseIcon width={16} height={16} />
+                            </IconButton>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
+                  </Paper>
+
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight={800} mb={1}>
+                      Add widgets
+                    </Typography>
+                    {customWidgetPanels.length > 0 ? (
+                      <Stack spacing={1}>
+                        {customWidgetPanels.flatMap((topNavBarWidget) =>
+                          topNavBarWidget.items.map((item) => (
+                            <Button
+                              key={`${topNavBarWidget.name}-${item.name}`}
+                              variant="outlined"
+                              fullWidth
+                              startIcon={<ExtensionIcon />}
+                              onClick={() =>
+                                addWidgetToDashboardEditor({
+                                  id: `panel-${Date.now()}`,
+                                  ...item,
+                                })
+                              }
+                              sx={{
+                                justifyContent: 'flex-start',
+                                textTransform: 'none',
+                              }}
+                            >
+                              {item.name}
+                            </Button>
+                          )),
+                        )}
+                      </Stack>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No saved widgets yet. Create a widget first, then return
+                        here to place it on a dashboard.
+                      </Typography>
+                    )}
+                  </Paper>
+                </Stack>
+              </Box>
+            ) : (
+              dashboardEditorDashboard &&
               (dashboardEditorIsEmpty ? (
                 <Box
                   sx={{
@@ -2911,23 +3163,11 @@ const Dashboards = () => {
                       return
                     }
 
-                    if (dashboardEditorIsDraft) {
-                      setDraftDashboard((currentDraft) =>
-                        currentDraft
-                          ? { ...currentDraft, layout: model.toJson().layout }
-                          : currentDraft,
-                      )
-                      return
-                    }
-
-                    updateLayout(model)
-                    setHasChanges((prev) => ({
-                      ...prev,
-                      [selectedDashboard]: true,
-                    }))
+                    updateDashboardEditorLayout(model.toJson().layout)
                   }}
                 />
-              ))}
+              ))
+            )}
           </Box>
         </Box>
       </Dialog>
