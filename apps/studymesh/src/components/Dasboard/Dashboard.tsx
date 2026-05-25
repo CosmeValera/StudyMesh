@@ -1911,10 +1911,11 @@ const Dashboards = () => {
       onDrop={isMobileDashboardView ? undefined : dropDashboardTabAtEnd}
     >
       {openDashboards.map((dashboard, index) => {
-        const isOnlyEmptyDashboard =
-          openDashboards.length === 1 &&
+        const isEmptyDashboard =
           dashboard.kind !== 'studyPathContainer' &&
           !hasDashboardContent(dashboard.layout)
+        const isOnlyEmptyDashboard =
+          openDashboards.length === 1 && isEmptyDashboard
 
         return (
           <Tab
@@ -1958,6 +1959,7 @@ const Dashboards = () => {
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {!isMobileDashboardView &&
                 isAdmin &&
+                !isEmptyDashboard &&
                 dashboard.kind !== 'studyPathContainer' && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
@@ -2053,10 +2055,11 @@ const Dashboards = () => {
       onDrop={dropDashboardTabAtEnd}
     >
       {openDashboards.map((dashboard, index) => {
-        const isOnlyEmptyDashboard =
-          openDashboards.length === 1 &&
+        const isEmptyDashboard =
           dashboard.kind !== 'studyPathContainer' &&
           !hasDashboardContent(dashboard.layout)
+        const isOnlyEmptyDashboard =
+          openDashboards.length === 1 && isEmptyDashboard
         const isSelected = selectedDashboard === index
 
         return (
@@ -2098,7 +2101,9 @@ const Dashboards = () => {
               </Typography>
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {isAdmin && dashboard.kind !== 'studyPathContainer' && (
+              {isAdmin &&
+                !isEmptyDashboard &&
+                dashboard.kind !== 'studyPathContainer' && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
