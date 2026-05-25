@@ -777,12 +777,34 @@ const Dashboards = () => {
   useEffect(() => {
     if (isMobileDashboardView) {
       setWorkspaceTabsSlot(null)
-      return
+      return undefined
     }
 
-    setWorkspaceTabsSlot(
-      document.getElementById(WORKSPACE_DASHBOARD_TABS_SLOT_ID),
-    )
+    let animationFrameId = 0
+    let timeoutId = 0
+
+    const refreshWorkspaceTabsSlot = () => {
+      const slot = document.getElementById(WORKSPACE_DASHBOARD_TABS_SLOT_ID)
+      setWorkspaceTabsSlot(slot)
+
+      if (!slot) {
+        animationFrameId = window.requestAnimationFrame(() => {
+          setWorkspaceTabsSlot(
+            document.getElementById(WORKSPACE_DASHBOARD_TABS_SLOT_ID),
+          )
+        })
+      }
+    }
+
+    refreshWorkspaceTabsSlot()
+    timeoutId = window.setTimeout(refreshWorkspaceTabsSlot, 0)
+    window.addEventListener('resize', refreshWorkspaceTabsSlot)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId)
+      window.clearTimeout(timeoutId)
+      window.removeEventListener('resize', refreshWorkspaceTabsSlot)
+    }
   }, [isMobileDashboardView])
 
   const startDashboardChatResize = (
@@ -1869,10 +1891,9 @@ const Dashboards = () => {
     />
   )
 
-  const dashboardTabsListClassName =
-    !isMobileDashboardView && workspaceTabsSlot
-      ? 'react-tabs__tab-list react-tabs__tab-list--workspace-hidden'
-      : 'react-tabs__tab-list'
+  const dashboardTabsListClassName = !isMobileDashboardView
+    ? 'react-tabs__tab-list react-tabs__tab-list--workspace-hidden'
+    : 'react-tabs__tab-list'
 
   const dashboardTabsList = (
     <TabList
