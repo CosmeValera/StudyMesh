@@ -310,13 +310,20 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) =>
+    const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) => {
       createNewDraft(flow)
+      if (isMobile) {
+        setMobileSection('creation')
+      }
+    }
     const handleOpenCreateHub = (event: Event) => {
       const customEvent = event as CustomEvent<{ intent?: CreateIntent }>
       setSelectedIntent(customEvent.detail?.intent || null)
       setActiveFlow('hub')
       setIsStudioOpen(true)
+      if (isMobile) {
+        setMobileSection('creation')
+      }
     }
 
     const handleOpenWidgetEditor = (event: Event) => {
@@ -458,6 +465,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     setActiveDraftByFlow((current) => ({ ...current, [flow]: draft.id }))
     setActiveFlow(flow)
     setIsStudioOpen(true)
+    if (isMobile) {
+      setMobileSection('creation')
+    }
   }
 
   const removeDraft = (draftId: string, flow: Exclude<StudioFlow, 'hub'>) => {
@@ -1225,6 +1235,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
+          ...(isStudioOpen && mobileSection === 'creation'
+            ? {
+                '& [data-testid="study-path-navigator-overlay"]': {
+                  display: 'none',
+                },
+              }
+            : {}),
         }}
       >
         <Box
