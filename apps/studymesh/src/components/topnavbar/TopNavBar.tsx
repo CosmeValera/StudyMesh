@@ -1278,8 +1278,9 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             const selected = index === selectedDashboard
             const canEditDashboard =
               isAdmin &&
-              dashboard.kind !== 'studyPathContainer' &&
-              hasDashboardContent(dashboard.layout)
+              (dashboard.kind === 'studyPathContainer'
+                ? Boolean(dashboard.studyPath?.dashboards.length)
+                : hasDashboardContent(dashboard.layout))
 
             return (
               <MenuItem
