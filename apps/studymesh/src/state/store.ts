@@ -41,6 +41,9 @@ export interface DashboardLayout {
   active?: boolean
   selected?: number
   weight?: number
+  enableDrag?: boolean
+  enableDrop?: boolean
+  enableDivide?: boolean
   children?: DashboardLayout[]
 }
 
