@@ -67,6 +67,8 @@ interface CreateStudyPathModalProps {
   }) => void
   presentation?: 'dialog' | 'embedded'
   onCollapse?: () => void
+  onContinueCreating?: () => void
+  onContinueInBackground?: () => void
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
   onDraftMetaChange?: (metadata: {
     title: string
@@ -117,7 +119,6 @@ const LOCAL_AI_ESTIMATE_COPY =
   'Local AI runs on your device and can be slow. Super small usually takes 12-15 min, Compact 14-17 min, Average 15-20 min. For faster/deeper paths, use Own Gemini token.'
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
-const DEFAULT_STUDY_PATH_PROMPT = 'I want to learn Spanish vocabulary level B2'
 const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
   ReturnType<typeof normalizeStudyPathGenerationAmount>,
   number
@@ -512,6 +513,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onCreatePath,
   presentation = 'dialog',
   onCollapse,
+  onContinueCreating,
+  onContinueInBackground,
   onStatusChange,
   onDraftMetaChange,
   initialPrompt,
@@ -521,9 +524,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
   const [sourceMode, setSourceMode] = useState<'prompt' | 'dashboard'>('prompt')
-  const [prompt, setPrompt] = useState(
-    initialPrompt || DEFAULT_STUDY_PATH_PROMPT,
-  )
+  const [prompt, setPrompt] = useState(initialPrompt || '')
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
@@ -652,7 +653,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const reset = () => {
     setStep('prompt')
     setSourceMode('prompt')
-    setPrompt(initialPrompt || DEFAULT_STUDY_PATH_PROMPT)
+    setPrompt(initialPrompt || '')
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
     setAdvancedOpen(false)
     setMustInclude('')
@@ -675,20 +676,19 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   }
 
   const generatePath = async () => {
-    const effectivePrompt =
+    const effectivePrompt = [
+      prompt.trim(),
       sourceMode === 'dashboard'
-        ? [
-            `Use current dashboard as source context: ${currentDashboardTitle}`,
-            currentDashboardContext,
-            mustInclude.trim()
-              ? `Optional focus / instructions: ${mustInclude.trim()}`
-              : '',
-          ]
-            .filter(Boolean)
-            .join('\n\n')
-        : prompt
+        ? `Use current dashboard as source context: ${currentDashboardTitle}\n\n${currentDashboardContext}`
+        : '',
+      mustInclude.trim()
+        ? `Optional focus / instructions: ${mustInclude.trim()}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n')
 
-    if (!effectivePrompt.trim()) {
+    if (!prompt.trim()) {
       setError('Describe what you want StudyMesh to teach.')
       return
     }
@@ -826,6 +826,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     }
   }
 
+  const cancelGeneration = () => {
+    cancelActiveGeneration()
+    setIsGenerating(false)
+    setLocalAiProgress(null)
+    setGeminiProgress(null)
+    setError('')
+    onStatusChange?.('idle')
+  }
+
   const createPath = () => {
     if (!draft) {
       return
@@ -960,59 +969,19 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 }}
               >
                 <Stack spacing={2}>
-                  <Stack spacing={1}>
-                    <Typography variant="subtitle2" fontWeight={900}>
-                      Source
-                    </Typography>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
-                      <Button
-                        variant={
-                          sourceMode === 'prompt' ? 'contained' : 'outlined'
-                        }
-                        onClick={() => {
-                          setSourceMode('prompt')
-                          setError('')
-                        }}
-                        sx={{ textTransform: 'none', flex: 1 }}
-                      >
-                        Topic / prompt
-                      </Button>
-                      <Button
-                        variant={
-                          sourceMode === 'dashboard' ? 'contained' : 'outlined'
-                        }
-                        disabled={!hasCurrentDashboardContext}
-                        onClick={() => {
-                          setSourceMode('dashboard')
-                          setError('')
-                        }}
-                        sx={{ textTransform: 'none', flex: 1 }}
-                      >
-                        Current dashboard
-                      </Button>
-                    </Stack>
-                    {!hasCurrentDashboardContext && (
-                      <Typography variant="caption" color="text.secondary">
-                        Current dashboard has no usable study content.
-                      </Typography>
-                    )}
-                  </Stack>
-
-                  {sourceMode === 'dashboard' ? (
-                    <Alert severity="info">
-                      Using current dashboard: {currentDashboardTitle}
-                    </Alert>
-                  ) : (
-                    <TextField
-                      label="What should StudyMesh teach?"
-                      value={prompt}
-                      onChange={(event) => setPrompt(event.target.value)}
-                      placeholder="Example: Teach me Spanish vocabulary level B2."
-                      multiline
-                      minRows={presentation === 'embedded' ? 4 : 5}
-                      fullWidth
-                    />
-                  )}
+                  <TextField
+                    label="Study Path prompt"
+                    inputProps={{
+                      'aria-label': 'What should StudyMesh teach?',
+                    }}
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    placeholder="Example: Create a 7-day study path to learn React hooks from these notes..."
+                    multiline
+                    minRows={presentation === 'embedded' ? 5 : 6}
+                    required
+                    fullWidth
+                  />
                   <Stack spacing={presentation === 'embedded' ? 1.25 : 2}>
                     <TextField
                       select
@@ -1083,6 +1052,63 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     </Button>
                     <Collapse in={advancedOpen} unmountOnExit>
                       <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={700}
+                          >
+                            Source override
+                          </Typography>
+                          <Stack
+                            direction={{ xs: 'column', sm: 'row' }}
+                            gap={1}
+                            sx={{ mt: 0.75 }}
+                          >
+                            <Button
+                              variant={
+                                sourceMode === 'prompt'
+                                  ? 'contained'
+                                  : 'outlined'
+                              }
+                              onClick={() => {
+                                setSourceMode('prompt')
+                                setError('')
+                              }}
+                              sx={{ textTransform: 'none', flex: 1 }}
+                            >
+                              Prompt only
+                            </Button>
+                            <Button
+                              variant={
+                                sourceMode === 'dashboard'
+                                  ? 'contained'
+                                  : 'outlined'
+                              }
+                              disabled={!hasCurrentDashboardContext}
+                              onClick={() => {
+                                setSourceMode('dashboard')
+                                setError('')
+                              }}
+                              sx={{ textTransform: 'none', flex: 1 }}
+                            >
+                              Current dashboard
+                            </Button>
+                          </Stack>
+                          {sourceMode === 'dashboard' ? (
+                            <Alert severity="info" sx={{ mt: 1 }}>
+                              Using current dashboard: {currentDashboardTitle}
+                            </Alert>
+                          ) : !hasCurrentDashboardContext ? (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ mt: 0.75, display: 'block' }}
+                            >
+                              Current dashboard has no usable study content.
+                            </Typography>
+                          ) : null}
+                        </Box>
                         <TextField
                           label="Must include / I want to learn"
                           value={mustInclude}
@@ -1335,6 +1361,36 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                   </Stack>
                 </Paper>
               )}
+              {isGenerating && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    border: 1,
+                    borderColor: 'warning.main',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" fontWeight={900}>
+                      Study Path generation running
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+                      <Button onClick={cancelGeneration}>Cancel</Button>
+                      <Button onClick={onContinueCreating}>
+                        Continue Creating
+                      </Button>
+                      <Button
+                        variant="contained"
+                        onClick={onContinueInBackground}
+                      >
+                        Continue in Background
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              )}
               {localAiFailureDebug ? (
                 <Paper
                   component="details"
@@ -1546,6 +1602,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             onClick={generatePath}
             disabled={
               isGenerating ||
+              !prompt.trim() ||
               (sourceMode === 'dashboard' && !hasCurrentDashboardContext)
             }
           >
