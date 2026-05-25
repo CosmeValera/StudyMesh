@@ -682,9 +682,7 @@ const DashboardEmptyState = ({
 const Dashboards = () => {
   const theme = useTheme()
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  const isMobileDashboardView = useMediaQuery(
-    '(max-width:768px), (pointer: coarse)',
-  )
+  const isMobileDashboardView = useMediaQuery(theme.breakpoints.down('lg'))
   const {
     openDashboards,
     selectedDashboard,

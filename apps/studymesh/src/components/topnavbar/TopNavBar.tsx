@@ -397,9 +397,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
-  const isMobileWorkspaceHeader = useMediaQuery(
-    '(max-width:768px), (pointer: coarse)',
-  )
+  const isMobileWorkspaceHeader = useMediaQuery(theme.breakpoints.down('lg'))
 
   // Load user data from localStorage on component mount
   useEffect(() => {
@@ -709,18 +707,18 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         sx={{
           backgroundColor: 'background.header',
           boxShadow: 2,
-          height: isPhone ? '56px' : '52px',
+          height: isMobileWorkspaceHeader ? '56px' : '52px',
         }}
       >
         <Toolbar
           sx={{
-            minHeight: isPhone ? '56px' : '52px',
-            height: isPhone ? '56px' : '52px',
-            px: isPhone ? 0.75 : 1.25,
-            gap: isPhone ? 0.75 : 0,
+            minHeight: isMobileWorkspaceHeader ? '56px' : '52px',
+            height: isMobileWorkspaceHeader ? '56px' : '52px',
+            px: isMobileWorkspaceHeader ? 0.75 : 1.25,
+            gap: isMobileWorkspaceHeader ? 0.75 : 0,
           }}
         >
-          {isPhone ? (
+          {isMobileWorkspaceHeader ? (
             <>
               <Box sx={{ flex: '0 0 44px', display: 'flex' }}>
                 <DashboardOptionsMenu compactMobile />
@@ -1082,7 +1080,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         </Toolbar>
       </AppBar>
 
-      {isPhone && (
+      {isMobileWorkspaceHeader && (
         <Menu
           anchorEl={userAnchorEl}
           open={Boolean(userAnchorEl)}
@@ -1228,7 +1226,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
 
       <Drawer
         anchor="bottom"
-        open={isPhone && dashboardSelectorOpen}
+        open={isMobileWorkspaceHeader && dashboardSelectorOpen}
         onClose={() => setDashboardSelectorOpen(false)}
         PaperProps={{
           sx: {
