@@ -69,6 +69,41 @@ const CONFIG = {
   borders: [],
 }
 
+const withDesktopTabMovementEnabled = (
+  node: DashboardLayout | undefined,
+): DashboardLayout | undefined => {
+  if (!node) {
+    return node
+  }
+
+  const children = node.children?.map((child) =>
+    withDesktopTabMovementEnabled(child),
+  ) as DashboardLayout[] | undefined
+
+  if (node.type === 'tab') {
+    return {
+      ...node,
+      children,
+      enableDrag: true,
+    } as DashboardLayout
+  }
+
+  if (node.type === 'tabset') {
+    return {
+      ...node,
+      children,
+      enableDrag: true,
+      enableDrop: true,
+      enableDivide: true,
+    } as DashboardLayout
+  }
+
+  return {
+    ...node,
+    children,
+  }
+}
+
 const EmptyWidget = () => (
   <div
     style={{
@@ -127,7 +162,9 @@ const DashboardLayoutView: React.FC<DashboardLayoutViewProps> = ({
         tabSetEnableClose: !readOnly,
         splitterEnableHandle: !readOnly,
       },
-      layout: layout || {},
+      layout: readOnly
+        ? layout || {}
+        : withDesktopTabMovementEnabled(layout) || {},
     })
     return Model.fromJson(config)
   }, [layout, readOnly])

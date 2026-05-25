@@ -1958,8 +1958,7 @@ const Dashboards = () => {
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {!isMobileDashboardView &&
                 isAdmin &&
-                dashboard.layout?.children &&
-                dashboard.layout.children.length > 0 && (
+                dashboard.kind !== 'studyPathContainer' && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
@@ -2099,9 +2098,7 @@ const Dashboards = () => {
               </Typography>
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {isAdmin &&
-                dashboard.layout?.children &&
-                dashboard.layout.children.length > 0 && (
+              {isAdmin && dashboard.kind !== 'studyPathContainer' && (
                   <TooltipStyled title="Edit Dashboard">
                     <IconButton
                       aria-label={`Edit dashboard ${dashboard.name}`}
