@@ -379,16 +379,16 @@ const DashboardEmptyState = ({
     >
       <Box
         sx={{
-          width: 'min(1280px, 100%)',
+          width: 'min(1180px, 100%)',
           maxWidth: '100%',
           minWidth: 0,
           boxSizing: 'border-box',
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            lg: 'minmax(240px, 3fr) minmax(320px, 4fr) minmax(240px, 3fr)',
+            lg: 'minmax(0, 3fr) minmax(320px, 2fr)',
           },
-          gap: { xs: 1, sm: 1.5, lg: 2 },
+          gap: { xs: 1.25, sm: 1.5, lg: 2 },
           alignItems: 'stretch',
           maxHeight: { xs: '100%', lg: 'none' },
           overflowY: { xs: 'auto', lg: 'visible' },
@@ -397,9 +397,9 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
+            minHeight: { xs: 'auto', lg: 540 },
+            p: { xs: 1.5, sm: 2, md: 3 },
+            borderRadius: 2.5,
             border: 1,
             borderColor: 'primary.light',
             bgcolor: 'background.accentSurface',
@@ -407,68 +407,156 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            gap: { xs: 1, md: 2.5 },
+            gap: { xs: 1.5, md: 3 },
             minWidth: 0,
             boxSizing: 'border-box',
           }}
         >
           <Box>
-            <RouteIcon
-              sx={{
-                fontSize: { xs: 30, md: 44 },
-                color: 'primary.main',
-                mb: { xs: 0.5, md: 1 },
-              }}
-            />
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{
-                lineHeight: 1.15,
-                fontSize: { xs: '1.12rem', md: '1.5rem' },
-              }}
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1.25}
+              sx={{ mb: 1 }}
             >
-              Create a Study Path
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                mt: { xs: 0.5, md: 1 },
-                color: 'foreground.contrastSecondary',
-              }}
-            >
-              Start from a topic or prompt and generate ordered tutorial
-              dashboards.
-            </Typography>
+              <DashboardCustomizeIcon
+                sx={{
+                  fontSize: { xs: 32, md: 44 },
+                  color: 'primary.main',
+                }}
+              />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  variant="h4"
+                  fontWeight={950}
+                  sx={{
+                    lineHeight: 1.1,
+                    fontSize: { xs: '1.35rem', md: '2rem' },
+                  }}
+                >
+                  Build new study material
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 0.5, color: 'foreground.contrastSecondary' }}
+                >
+                  Creation is now the starting point for Study Paths and
+                  note-based dashboards.
+                </Typography>
+              </Box>
+            </Stack>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<RouteIcon />}
-            onClick={onCreateStudyPath}
-            disabled={!isAdmin}
+
+          <Box
             sx={{
-              textTransform: 'none',
-              bgcolor: 'primary.dark',
-              color: 'primary.contrastText',
-              '&:hover': { bgcolor: 'primary.main' },
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: { xs: 1, md: 1.5 },
+              flex: 1,
+              minHeight: 0,
             }}
           >
-            Create Study Path
-          </Button>
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 1.25, md: 2 },
+                borderRadius: 2,
+                border: 1,
+                borderColor: 'primary.main',
+                bgcolor: 'background.paper',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: 1.5,
+              }}
+            >
+              <Box>
+                <RouteIcon
+                  sx={{
+                    color: 'primary.main',
+                    fontSize: { xs: 30, md: 38 },
+                    mb: 0.5,
+                  }}
+                />
+                <Typography variant="h6" fontWeight={900}>
+                  Create Study Path
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                  Generate a structured learning path from a topic, prompt, or
+                  goal.
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<RouteIcon />}
+                onClick={onCreateStudyPath}
+                disabled={!isAdmin}
+                sx={{ textTransform: 'none', alignSelf: 'flex-start' }}
+              >
+                Start Study Path
+              </Button>
+            </Paper>
+
+            <Paper
+              component="button"
+              type="button"
+              elevation={0}
+              onClick={onCreateFromNotes}
+              disabled={!isAdmin}
+              sx={{
+                p: { xs: 1.25, md: 2 },
+                borderRadius: 2,
+                border: '1.5px dashed',
+                borderColor: 'primary.main',
+                bgcolor: 'background.default',
+                color: 'text.primary',
+                cursor: isAdmin ? 'pointer' : 'default',
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: 1.5,
+                '&:hover': {
+                  bgcolor: isAdmin ? 'action.hover' : 'background.default',
+                  borderColor: isAdmin ? 'primary.dark' : 'primary.main',
+                },
+              }}
+            >
+              <Box>
+                <CloudUploadIcon
+                  sx={{
+                    color: 'primary.main',
+                    fontSize: { xs: 30, md: 38 },
+                    mb: 0.5,
+                  }}
+                />
+                <Typography variant="h6" fontWeight={900}>
+                  Create from notes
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                  Upload notes, screenshots, PDFs, or slides and turn them into a
+                  dashboard.
+                </Typography>
+              </Box>
+              <Typography variant="subtitle2" fontWeight={900} color="primary.main">
+                Add sources →
+              </Typography>
+            </Paper>
+          </Box>
         </Paper>
 
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
+            minHeight: { xs: 'auto', lg: 540 },
+            p: { xs: 1.5, sm: 2, md: 3 },
+            borderRadius: 2.5,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: { xs: 1, md: 2 },
+            gap: { xs: 1.25, md: 2 },
             minWidth: 0,
             boxSizing: 'border-box',
           }}
@@ -484,15 +572,10 @@ const DashboardEmptyState = ({
                   fontSize: { xs: '1.12rem', md: '1.5rem' },
                 }}
               >
-                Open study material
+                Continue dashboards
               </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Continue existing Study Paths, Study Packs, or custom
-                dashboards.
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Reopen saved Study Paths, Study Packs, or custom dashboards.
               </Typography>
             </Box>
           </Stack>
@@ -601,111 +684,6 @@ const DashboardEmptyState = ({
           >
             {openExistingLabel}
           </Button>
-        </Paper>
-
-        <Paper
-          elevation={0}
-          sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
-            border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: 1, md: 2 },
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <Box>
-            <AutoStoriesIcon
-              sx={{
-                fontSize: { xs: 30, md: 44 },
-                color: 'primary.main',
-                mb: { xs: 0.5, md: 1 },
-              }}
-            />
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{
-                lineHeight: 1.15,
-                fontSize: { xs: '1.12rem', md: '1.5rem' },
-              }}
-            >
-              Create From Notes
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: { xs: 0.5, md: 1 } }}
-            >
-              Upload notes, screenshots, PDFs, or slides and turn them into a
-              widget-based study dashboard.
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <Paper
-              component="button"
-              type="button"
-              elevation={0}
-              onClick={onCreateFromNotes}
-              disabled={!isAdmin}
-              sx={{
-                width: '100%',
-                minHeight: { xs: 92, md: 170 },
-                p: { xs: 1.25, md: 2 },
-                borderRadius: 2,
-                border: '1.5px dashed',
-                borderColor: 'primary.main',
-                bgcolor: 'background.default',
-                color: 'text.primary',
-                cursor: isAdmin ? 'pointer' : 'default',
-                textAlign: 'center',
-                display: 'grid',
-                placeItems: 'center',
-                boxSizing: 'border-box',
-                '&:hover': {
-                  bgcolor: isAdmin ? 'action.hover' : 'background.default',
-                  borderColor: isAdmin ? 'primary.dark' : 'primary.main',
-                },
-              }}
-            >
-              <Stack spacing={1.25} alignItems="center">
-                <Box
-                  sx={{
-                    width: { xs: 36, md: 48 },
-                    height: { xs: 36, md: 48 },
-                    borderRadius: '50%',
-                    display: 'grid',
-                    placeItems: 'center',
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                  }}
-                >
-                  <CloudUploadIcon fontSize="large" />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={900}>
-                    Add sources
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Text, images, PDFs, and slides.
-                  </Typography>
-                </Box>
-              </Stack>
-            </Paper>
-          </Box>
         </Paper>
       </Box>
     </Box>
