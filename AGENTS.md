@@ -16,29 +16,38 @@ StudyMesh is a student knowledge wiki. The main product goal is helping students
 
 Keep the main StudyMesh experience clear about the current primary workflows:
 
-- Create Study Path: creates a tutorial from a user prompt using the selected generation mode.
-- Create From Notes: previously Create Study Pack. Translates messy text notes or camera pictures into a clearer study dashboard with exercises. Future iterations should let users choose the output shape, such as ordered markdown notes, exercise/exam-style practice, or a mix of clearer notes and exercises based on the notes.
+- Creation panel: Create Study Path and Create From Notes have been merged into one Creation section in the workspace shell. This is the main creation entry point future work should preserve. In code, the old `study-path` and `from-notes` flows still exist as branches inside this panel, and older Create Study Pack names still appear in some files.
+- Fast creations: the Quick Create actions in the Creation panel correspond to the old Create From Notes direction. They default to one-click generation from the currently active dashboard context and produce focused widgets/dashboards such as quizzes, flashcards, or clearer notes. The advanced/options area can override the source with pasted text and attachments, including text, images, PDFs, and PowerPoint files.
+- Slow creation: the Study Path path maps one-to-one to the old Create Study Path workflow. It intentionally requires the user to write a prompt. Treat it as the app's highest-value feature: a user can write only a learning goal and receive a full tutorial-style, multi-dashboard Study Path with lessons, study widgets, and exercises for whatever they want to learn.
 - Advanced path: manually create a widget or dashboard. This is the least ideal path for beginner students and should gradually become less prominent. In the future, it may be hidden behind a settings option that enables advanced creation actions in the top navigation menu.
 - Workspace path: open an existing Study Path tutorial, Study Pack, or custom dashboard in the main workspace for study, editing, and reuse.
 
-Create Study Path and Create From Notes should support several generation modes. Use Create From Notes as the forward-looking name, while still recognizing older Create Study Pack references in existing code or UI until the rename is complete.
+Creation flows should support several generation modes. Use Create From Notes as the forward-looking name for source-driven fast creation, while still recognizing older Create Study Pack references in existing code or UI until the rename is complete.
+
+Responsive workspace model:
+
+- Phone and tablet: the app behaves like three peer sections with equal navigation weight: Creation, Dashboards, and AI Chat. The bottom section switcher in `WorkspaceStudioShell` is the mental model to preserve.
+- Desktop: Dashboards are the primary workspace. The dashboard canvas uses `flexlayout-react` so users can position widgets inside dashboards. Creation sits as a left rail/resizable panel and AI Chat sits as a right rail/resizable panel. Users may keep both side panels open, one open, or both collapsed to focus on dashboards.
+
+Generation modes:
 
 - Basic fallback: does not use AI. It parses notes programmatically from keywords and obvious structure. It is instantaneous, but usually produces weak results. This mode only supports Create From Notes/Create Study Pack flows, not Study Path. For images, it relies on basic OCR such as Tesseract, so it works best on clear screenshots, slides, or obvious printed text and performs poorly on messy handwritten notes.
 - Gemini API token: bring-your-own Gemini token/key. This is the preferred high-quality path for users who already have an API key and want richer AI-generated study materials.
 - Google local AI: runs free and locally, with no internet connection required. Results are usually worse than Gemini API mode, but better than Basic fallback. It can still help with image discovery and can turn messy handwritten-note images into usable notes better than the basic OCR fallback.
 - Hoisted tokens: not implemented yet. The intended product direction is to give new users a small free allowance, such as 5-10 generations using the app owner's Gemini token. After that, users should switch to local AI, provide their own API token, or optionally make a small payment for continued hosted-token usage, for example a low one-time payment with an hourly usage allowance. This needs payment integration such as Stripe and should avoid feeling like a subscription unless the product direction changes.
 
-Generation flows can remain modal-driven when they are setup tasks. Opening an existing Study Path tutorial, Study Pack, or custom dashboard should take the user into the main workspace rather than sharing the same modal flow.
+Generation flows are currently embedded in the Creation panel, though the older components still use `Modal` in their names. Opening an existing Study Path tutorial, Study Pack, or custom dashboard should take the user into the main workspace rather than sharing the same creation setup flow.
 
 ## AI Generation File Map
 
-Most current AI-mode work is in the StudyMesh app under `apps/StudyMesh/src/studyPack/ai/` and the two creation modals under `apps/StudyMesh/src/components/studyPack/`.
+Most current AI-mode work is in the StudyMesh app under `apps/StudyMesh/src/studyPack/ai/`, the unified workspace creation shell, and the two older creation components under `apps/StudyMesh/src/components/studyPack/`.
 
 - Provider selection and routing: `apps/StudyMesh/src/studyPack/ai/provider.ts` chooses Basic fallback, Google local AI, Own Gemini API token, or the future hosted-token provider for Study Pack and Study Path generation. Start here when changing mode behavior or fallback rules.
 - Provider settings: `apps/StudyMesh/src/studyPack/ai/settings.ts` stores the selected provider, Gemini token, model, and `GEMINI_API_KEY` environment fallback. Settings UI lives in `apps/StudyMesh/src/components/WidgetEditor/components/dialogs/SettingsDialog.tsx`.
 - Public AI exports: `apps/StudyMesh/src/studyPack/ai/index.ts` re-exports the AI helpers used by UI and tests.
-- Create From Notes/Create Study Pack UI: `apps/StudyMesh/src/components/studyPack/CreateStudyPackModal.tsx` handles pasted notes, uploaded text files, image extraction, provider-specific progress, and final Study Pack creation.
-- Create Study Path UI: `apps/StudyMesh/src/components/studyPack/CreateStudyPathModal.tsx` handles prompt-to-tutorial generation, Study Path size choices, local-AI concurrency, provider-specific progress, and Local AI failure debug output.
+- Unified Creation panel and workspace responsive shell: `apps/StudyMesh/src/components/workspace/WorkspaceStudioShell.tsx` owns the left Creation panel, mobile/tablet Creation/Dashboards/AI Chat switcher, quick-create actions, creation drafts/status markers, and embedding of the older Study Path and Create From Notes components.
+- Create From Notes/Create Study Pack UI: `apps/StudyMesh/src/components/studyPack/CreateStudyPackModal.tsx` is now embedded in the Creation panel for source-driven creation. It handles pasted notes, uploaded text files, image extraction, provider-specific progress, and final Study Pack creation.
+- Create Study Path UI: `apps/StudyMesh/src/components/studyPack/CreateStudyPathModal.tsx` is now embedded in the Creation panel for the prompt-required slow creation path. It handles prompt-to-tutorial generation, Study Path size choices, local-AI concurrency, provider-specific progress, and Local AI failure debug output.
 - Gemini API mode: `apps/StudyMesh/src/studyPack/ai/gemini.ts` contains Gemini prompts, strict JSON parsing, retry/repair behavior, image note extraction, Study Pack generation, and Study Path dashboard generation. Use this for Own Gemini API token changes.
 - Google local AI mode: `apps/StudyMesh/src/studyPack/ai/localLanguageModel.ts` wraps Chrome built-in AI availability checks, session creation, prompting, timeouts, smoke tests, cooldowns, and image input. `apps/StudyMesh/src/studyPack/ai/localGeneration.ts` contains Local AI JSON parsing/repair, Study Pack generation, Study Path planning, dashboard generation, concurrency, and Basic fallback Study Path generation.
 - Basic fallback mode: `apps/StudyMesh/src/studyPack/parser.ts`, `apps/StudyMesh/src/studyPack/generator.ts`, `apps/StudyMesh/src/studyPack/practice.ts`, and the Basic branches in `apps/StudyMesh/src/studyPack/ai/provider.ts` provide non-AI parsing and exercise generation. Basic image extraction uses `apps/StudyMesh/src/studyPack/imageOcr.ts`.
