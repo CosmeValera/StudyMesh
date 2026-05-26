@@ -37,10 +37,11 @@ import {
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
-import CreateStudyPackModal from '../studyPack/CreateStudyPackModal'
 import CreateStudyPathModal from '../studyPack/CreateStudyPathModal'
 import {
+  generateStudyPackWithAi,
   readStudyPackAiSettings,
+  resolveStudyPackAiCredentials,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
@@ -77,7 +78,9 @@ import {
   QuickSourceFocus,
   readIsAdmin,
   quickCreateAccents,
+  quickCreateDetailToAmount,
   quickCreateLabels,
+  quickCreateTargets,
   quickSourceAcceptValue,
   statusMarkerColors,
   statusMarkerGlow,
@@ -91,6 +94,9 @@ import {
   WorkspaceDesktopLayout,
   WorkspaceMobileLayout,
 } from './WorkspaceStudioLayouts'
+import { createStudyPackOrchestratorWidgets } from '../../studyPack'
+import { augmentStudyPackPracticeObjects } from '../../studyPack/practice'
+import { StudyObject } from '../../studyPack/types'
 import WidgetEditorDialog from './WidgetEditorDialog'
 import { useResponsiveWorkspaceMode } from './useResponsiveWorkspaceMode'
 
@@ -111,6 +117,61 @@ const statusMarkerLabels: Record<
   running: 'Generating study material…',
   complete: 'Study material saved to dashboards',
   error: 'Generation failed. Click to review.',
+}
+
+const detailLevelCountLimits: Record<
+  StudyMaterialResourceType,
+  Record<StudyMaterialDetailLevel, { max: number }>
+> = {
+  improvedNotes: {
+    short: { max: 700 },
+    medium: { max: 1400 },
+    long: { max: 2600 },
+  },
+  flashcards: {
+    short: { max: 10 },
+    medium: { max: 18 },
+    long: { max: 35 },
+  },
+  quiz: {
+    short: { max: 7 },
+    medium: { max: 12 },
+    long: { max: 25 },
+  },
+}
+
+const getPackId = (title: string) =>
+  title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-pack'
+
+const isReviewableStudyObject = (object: StudyObject) =>
+  object.kind === 'qa' ||
+  object.kind === 'quiz' ||
+  object.kind === 'term' ||
+  object.kind === 'code' ||
+  object.kind === 'comparison' ||
+  object.kind === 'list' ||
+  object.kind === 'table' ||
+  object.kind === 'reviewPrompt'
+
+const getReviewableObjects = (
+  objects: StudyObject[],
+  resourceType: StudyMaterialResourceType,
+  detailLevel: StudyMaterialDetailLevel,
+) => {
+  const filtered = objects.filter((object) =>
+    resourceType === 'improvedNotes'
+      ? object.kind === 'markdown'
+      : isReviewableStudyObject(object),
+  )
+
+  if (resourceType !== 'flashcards' && resourceType !== 'quiz') {
+    return filtered
+  }
+
+  return filtered.slice(
+    0,
+    detailLevelCountLimits[resourceType][detailLevel].max,
+  )
 }
 
 const resourceTypeTitle = (resourceType?: string | null) => {
@@ -184,12 +245,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [selectedIntent, setSelectedIntent] = useState<CreateIntent | null>(
     null,
   )
-  const [initialStudyPackSourceText, setInitialStudyPackSourceText] = useState<
-    string | undefined
-  >(undefined)
-  const [initialStudyPackTitle, setInitialStudyPackTitle] = useState<
-    string | undefined
-  >(undefined)
   const [generationDrafts, setGenerationDrafts] =
     useState<GenerationDraft[]>(initialDrafts)
   const [activeDraftByFlow, setActiveDraftByFlow] = useState<
@@ -722,15 +777,141 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     return ''
   }
 
-  const openStudyPackCreator = (
+  const runDirectStudyPackCreate = async (
     resourceType: StudyMaterialResourceType,
-    sourceText?: string,
-    title?: string,
+    sourceText: string,
+    title: string,
   ) => {
-    setSelectedIntent(resourceType)
-    setInitialStudyPackSourceText(sourceText)
-    setInitialStudyPackTitle(title)
-    createNewDraft('from-notes')
+    const draft = createGenerationDraft('from-notes', {
+      quickCreate: true,
+      title,
+      inputSummary:
+        quickSourceMode === 'dashboard' ? 'current dashboard' : 'sources',
+      selectedResourceType: resourceType,
+      detailLevel: quickDetailLevel,
+    })
+
+    setActiveFlow('hub')
+    setQuickOptionsOpen(false)
+    setSelectedIntent(null)
+    setQuickSourceStatus('')
+    setGenerationDrafts((current) => [
+      ...current.filter(
+        (existingDraft) =>
+          existingDraft.flow !== 'from-notes' ||
+          existingDraft.status !== 'editing',
+      ),
+      { ...draft, status: 'generating' },
+    ])
+    setActiveDraftByFlow((current) => ({ ...current, 'from-notes': draft.id }))
+    dispatchWorkspaceCreationStatus({
+      task: 'from-notes',
+      state: 'running',
+      message: 'Creating study material…',
+    })
+
+    try {
+      const credentials = resolveStudyPackAiCredentials()
+      const generated = await generateStudyPackWithAi({
+        provider: aiProvider,
+        apiToken: credentials.apiToken,
+        model: credentials.model,
+        title,
+        rawNotes: sourceText,
+        packId: getPackId(title),
+        generationTargets: quickCreateTargets[resourceType],
+        generationAmount: quickCreateDetailToAmount[quickDetailLevel],
+        resourceType,
+        detailLevel: quickDetailLevel,
+        quizQuestionStyle:
+          resourceType === 'quiz' && quickDifficulty === 'challenge'
+            ? 'advanced'
+            : 'mixed',
+        promptMode: false,
+        studyPathMode: false,
+      })
+
+      const nextTitle = generated.title || title
+      const augmented = augmentStudyPackPracticeObjects(generated.objects, {
+        packId: getPackId(nextTitle),
+        title: nextTitle,
+        rawNotes: sourceText,
+        generationTargets: quickCreateTargets[resourceType],
+        generationAmount: quickCreateDetailToAmount[quickDetailLevel],
+      })
+      const objects = getReviewableObjects(
+        augmented.objects,
+        resourceType,
+        quickDetailLevel,
+      )
+
+      if (objects.length === 0) {
+        throw new Error(
+          'AI did not create any reviewable study material from these notes.',
+        )
+      }
+
+      const groups = [
+        {
+          name: `${nextTitle} ${quickCreateLabels[resourceType]}`,
+          objects,
+        },
+      ]
+      const pack = {
+        id: getPackId(nextTitle),
+        title: nextTitle,
+        sourceFormat: generated.sourceFormat || 'text',
+        objects,
+        warnings: [],
+        sourceSummary: generated.sourceSummary || undefined,
+      }
+      const widgets = createStudyPackOrchestratorWidgets(pack, {
+        forceQuizBlockComponent: resourceType === 'quiz',
+        focusedResourceType:
+          resourceType === 'flashcards' || resourceType === 'quiz'
+            ? resourceType
+            : undefined,
+        includeSourceWidget: false,
+        includeSummaryChart: false,
+        rawSource: sourceText,
+        widgetGroups: groups,
+      })
+
+      const dashboard = createStudyPackDashboard({
+        name: nextTitle,
+        widgets,
+        layoutMode:
+          resourceType === 'flashcards' || resourceType === 'quiz'
+            ? 'tabs'
+            : 'tabs',
+      })
+      updateDraft(draft.id, {
+        status: 'ready',
+        title: dashboard.name,
+        inputSummary: 'saved to dashboards',
+      })
+      dispatchWorkspaceCreationStatus({
+        task: 'from-notes',
+        state: 'complete',
+        message: 'Saved to dashboards',
+      })
+      setIsStudioOpen(false)
+      if (isMobile) {
+        setMobileSection('dashboard')
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : `Could not create ${quickCreateLabels[resourceType]}.`
+      updateDraft(draft.id, { status: 'failed', error: message })
+      dispatchWorkspaceCreationStatus({
+        task: 'from-notes',
+        state: 'error',
+        message,
+      })
+      setQuickSourceStatus(message)
+    }
   }
 
   const runQuickCreate = async (
@@ -758,7 +939,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         return
       }
 
-      openStudyPackCreator(
+      await runDirectStudyPackCreate(
         resourceType,
         sourceText,
         `${currentDashboardTitle} ${titleBase}`.trim(),
@@ -1025,6 +1206,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           key={resourceType}
                           component="button"
                           type="button"
+                          aria-label={`Quick Create ${quickCreateLabels[resourceType]}`}
                           elevation={0}
                           onClick={() =>
                             handleQuickCreateCardClick(resourceType)
@@ -1755,49 +1937,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     : 'none',
                 flexDirection: 'column',
               }}
-            >
-              <CreateStudyPackModal
-                open
-                presentation="embedded"
-                onCollapse={returnToCreateHub}
-                onClose={() => {
-                  setInitialStudyPackSourceText(undefined)
-                  setInitialStudyPackTitle(undefined)
-                  cancelDraftAndReturnToHub(draft.id, 'from-notes')
-                }}
-                onCreatePack={(payload) => {
-                  const dashboard = createStudyPackDashboard(payload)
-                  setInitialStudyPackSourceText(undefined)
-                  setInitialStudyPackTitle(undefined)
-                  removeDraft(draft.id, 'from-notes')
-                  reportCreationStatus(
-                    'from-notes',
-                    'idle',
-                    'Study material created.',
-                  )
-                  return dashboard
-                }}
-                initialResourceType={
-                  selectedIntent && selectedIntent !== 'study-path'
-                    ? selectedIntent
-                    : undefined
-                }
-                initialSourceText={initialStudyPackSourceText}
-                initialTitle={initialStudyPackTitle}
-                currentDashboardContext={currentDashboardContext}
-                currentDashboardTitle={currentDashboardTitle}
-                hasCurrentDashboardContext={hasCurrentDashboardContext}
-                onStatusChange={makeDraftStatusHandler(draft.id, 'from-notes')}
-                onDraftMetaChange={(metadata) =>
-                  updateDraft(draft.id, {
-                    title: metadata.title,
-                    inputSummary: metadata.inputSummary,
-                    selectedResourceType: metadata.resourceType,
-                    detailLevel: metadata.detailLevel,
-                  })
-                }
-              />
-            </Box>
+            ></Box>
           ))}
       </Box>
     </Box>

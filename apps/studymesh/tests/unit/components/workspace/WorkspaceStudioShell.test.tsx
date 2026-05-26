@@ -28,7 +28,29 @@ vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
       {
         id: 'dashboard-1',
         name: 'Biology Dashboard',
-        layout: { type: 'row', children: [] },
+        layout: {
+          type: 'tabset',
+          children: [
+            {
+              type: 'tab',
+              name: 'Notes',
+              component: 'custom-widget',
+              config: {
+                customWidget: {
+                  id: 'widget-1',
+                  name: 'Notes',
+                  components: [
+                    {
+                      id: 'label-1',
+                      type: 'Label',
+                      props: { text: 'Dashboard notes about photosynthesis' },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
       },
     ],
     selectedDashboard: 0,
@@ -54,6 +76,14 @@ vi.mock('../../../../src/studyPack', () => ({
   createStudyPackOrchestratorWidgets: vi.fn(() => []),
 }))
 
+vi.mock('../../../../src/studyPack/practice', () => ({
+  __esModule: true,
+  augmentStudyPackPracticeObjects: (objects: unknown[]) => ({
+    objects,
+    warnings: [],
+  }),
+}))
+
 vi.mock('../../../../src/studyPack/documentExtraction', () => ({
   __esModule: true,
   extractTextFromPdf: vi.fn(),
@@ -63,21 +93,6 @@ vi.mock('../../../../src/studyPack/documentExtraction', () => ({
 vi.mock('../../../../src/studyPack/imageOcr', () => ({
   __esModule: true,
   extractRawNotesFromImage: vi.fn(),
-}))
-
-vi.mock('../../../../src/components/studyPack/CreateStudyPackModal', () => ({
-  __esModule: true,
-  default: (props: {
-    initialResourceType?: string
-    initialSourceText?: string
-    initialTitle?: string
-  }) => (
-    <div data-testid="create-study-pack-modal">
-      <span>resource:{props.initialResourceType || ''}</span>
-      <span>source:{props.initialSourceText || ''}</span>
-      <span>title:{props.initialTitle || ''}</span>
-    </div>
-  ),
 }))
 
 vi.mock('../../../../src/components/studyPack/CreateStudyPathModal', () => ({
@@ -101,7 +116,7 @@ const openCreation = (detail: Record<string, unknown> = {}) => {
 }
 
 const clickQuickCard = (label: string) => {
-  const button = screen.getAllByRole('button', { name: label })[0]
+  const button = screen.getByRole('button', { name: `Quick Create ${label}` })
   if (!button) {
     throw new Error(`Could not find ${label} quick card button`)
   }
@@ -132,13 +147,22 @@ describe('WorkspaceStudioShell Quick Create', () => {
       id: 'draft-pack',
       title: 'Generated Dashboard',
       sourceFormat: 'text',
-      objects: [],
+      objects: [
+        {
+          id: 'quiz-1',
+          kind: 'quiz',
+          question: 'What is photosynthesis?',
+          options: ['A plant process', 'A mineral', 'A planet'],
+          answer: 'A plant process',
+          correctIndex: 0,
+        },
+      ],
       warnings: [],
       sourceSummary: { title: 'Summary', bullets: [] },
     })
   })
 
-  it('opens the Create from notes command with dashboard context for quick creation', async () => {
+  it('runs direct AI generation with dashboard context for quick creation', async () => {
     render(
       <WorkspaceStudioShell>
         <div>Dashboard canvas</div>
@@ -148,15 +172,16 @@ describe('WorkspaceStudioShell Quick Create', () => {
     openCreation()
     clickQuickCard('Quiz')
 
-    await waitFor(() =>
-      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-        'resource:quiz',
-      ),
+    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
+    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'quiz',
+        rawNotes: expect.stringContaining(
+          'Dashboard notes about photosynthesis',
+        ),
+      }),
     )
-    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-      'Dashboard notes about photosynthesis',
-    )
-    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
+    await waitFor(() => expect(createStudyPackDashboardMock).toHaveBeenCalled())
   })
 
   it('opens a separate Create from Material flow from the hub link', () => {
@@ -191,7 +216,7 @@ describe('WorkspaceStudioShell Quick Create', () => {
 
     openCreation()
     openCreateFromMaterial()
-    clickQuickCard('Flashcards')
+    fireEvent.click(screen.getByRole('button', { name: /^Flashcards$/i }))
 
     expect(screen.getByText(/Flashcards selected/i)).toBeInTheDocument()
     expect(generateStudyPackWithAi).not.toHaveBeenCalled()
@@ -208,15 +233,14 @@ describe('WorkspaceStudioShell Quick Create', () => {
     addCopiedMaterial('Custom source notes about enzymes')
     fireEvent.click(screen.getByRole('button', { name: /^Create Quiz$/i }))
 
-    await waitFor(() =>
-      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-        'Custom source notes about enzymes',
-      ),
+    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
+    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'quiz',
+        rawNotes: expect.stringContaining('Custom source notes about enzymes'),
+      }),
     )
-    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-      'resource:quiz',
-    )
-    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
+    await waitFor(() => expect(createStudyPackDashboardMock).toHaveBeenCalled())
   })
 
   it('keeps Quick Create wired to dashboard source after returning from Create from Material', async () => {
@@ -231,15 +255,15 @@ describe('WorkspaceStudioShell Quick Create', () => {
     fireEvent.click(screen.getByRole('button', { name: /Back to Creation/i }))
     clickQuickCard('Quiz')
 
-    await waitFor(() =>
-      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-        'Dashboard notes about photosynthesis',
-      ),
+    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
+    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'quiz',
+        rawNotes: expect.stringContaining(
+          'Dashboard notes about photosynthesis',
+        ),
+      }),
     )
-    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-      'resource:quiz',
-    )
-    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
   it('routes empty-dashboard quick card clicks into Create from Material with the output preselected', () => {
@@ -319,15 +343,15 @@ describe('WorkspaceStudioShell Quick Create', () => {
     openCreateFromMaterial()
     fireEvent.click(screen.getByRole('button', { name: /^Create Quiz$/i }))
 
-    await waitFor(() =>
-      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-        'Dashboard notes about photosynthesis',
-      ),
+    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
+    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'quiz',
+        rawNotes: expect.stringContaining(
+          'Dashboard notes about photosynthesis',
+        ),
+      }),
     )
-    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
-      'resource:quiz',
-    )
-    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
   it('shows source controls after Sources is selected inside Create from Material', () => {
