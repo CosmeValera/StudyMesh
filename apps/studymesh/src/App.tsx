@@ -120,6 +120,8 @@ const WorkspacePage = () => {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        background:
+          'radial-gradient(circle at 8% -8%, rgba(34,197,94,0.22), transparent 32%), radial-gradient(circle at 92% 0%, rgba(14,165,233,0.16), transparent 30%), #020617',
       }}
     >
       <TopNavBar

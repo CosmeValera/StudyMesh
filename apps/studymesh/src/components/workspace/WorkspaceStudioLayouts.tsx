@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, Slide, Tooltip, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import type { Theme } from '@mui/material/styles'
+import { alpha, type Theme } from '@mui/material/styles'
 
 import { studioPanelRailWidth, workspaceCanvasSx } from './workspaceStudioModel'
 
@@ -37,6 +37,10 @@ export const WorkspaceMobileLayout = ({
       display: 'flex',
       flexDirection: 'column',
       bgcolor: 'background.default',
+      background:
+        theme.palette.mode === 'dark'
+          ? `radial-gradient(circle at 50% -10%, ${alpha(theme.palette.primary.main, 0.24)}, transparent 34%), #020617`
+          : `radial-gradient(circle at 50% -10%, ${alpha(theme.palette.primary.main, 0.14)}, transparent 34%), #f8fff9`,
       '--studymesh-mobile-generation-tray-height': visibleCreationMarkerCount
         ? '48px'
         : '0px',
@@ -77,7 +81,7 @@ export const WorkspaceMobileLayout = ({
             position: 'absolute',
             inset: 0,
             overflow: 'hidden',
-            p: '8px',
+            p: '12px',
             boxSizing: 'border-box',
             zIndex: 2,
             bgcolor: 'background.default',
@@ -89,7 +93,7 @@ export const WorkspaceMobileLayout = ({
               overflow: 'hidden',
               border: 1,
               borderColor: 'divider',
-              borderRadius: 2,
+              borderRadius: 4,
               bgcolor: 'background.paper',
               boxShadow:
                 theme.palette.mode === 'dark'
@@ -138,6 +142,10 @@ export const WorkspaceDesktopLayout = ({
       display: 'flex',
       overflow: 'hidden',
       bgcolor: 'background.default',
+      background:
+        theme.palette.mode === 'dark'
+          ? `radial-gradient(circle at 0% 0%, ${alpha(theme.palette.primary.main, 0.22)}, transparent 30%), radial-gradient(circle at 88% 12%, ${alpha(theme.palette.warning.main, 0.14)}, transparent 28%), linear-gradient(135deg, ${alpha('#020617', 0.98)}, ${alpha('#07111f', 0.96)})`
+          : `radial-gradient(circle at 0% 0%, ${alpha(theme.palette.primary.main, 0.14)}, transparent 30%), radial-gradient(circle at 88% 12%, ${alpha(theme.palette.warning.main, 0.12)}, transparent 28%), linear-gradient(135deg, #f8fff9, #eef7ff)`,
     }}
   >
     <Box
@@ -146,7 +154,7 @@ export const WorkspaceDesktopLayout = ({
         flex: '0 0 auto',
         minHeight: 0,
         overflow: 'hidden',
-        p: '8px 0 8px 8px',
+        p: '14px 0 14px 14px',
         boxSizing: 'border-box',
         position: 'relative',
         transition: theme.transitions.create(['width'], {
@@ -161,11 +169,15 @@ export const WorkspaceDesktopLayout = ({
           overflow: 'hidden',
           border: 1,
           borderColor: 'divider',
-          borderRadius: 2.5,
+          borderRadius: 4,
+          background:
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.94)}, ${alpha('#07111f', 0.98)})`
+              : `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)}, ${alpha('#f2fbf5', 0.94)})`,
           boxShadow:
             theme.palette.mode === 'dark'
-              ? '0 18px 40px rgba(0,0,0,0.42)'
-              : '0 18px 42px rgba(16,24,40,0.10)',
+              ? `0 30px 90px ${alpha('#000', 0.58)}, 0 0 0 1px ${alpha(theme.palette.primary.main, 0.12)}`
+              : `0 30px 80px ${alpha('#0f172a', 0.14)}, 0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
           display: isStudioOpen ? 'block' : 'none',
         }}
       >
@@ -183,8 +195,12 @@ export const WorkspaceDesktopLayout = ({
               height: '100%',
               border: 1,
               borderColor: 'divider',
-              borderRadius: 2.5,
+              borderRadius: 999,
               bgcolor: 'background.paper',
+              background:
+                theme.palette.mode === 'dark'
+                  ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.2)}, ${alpha(theme.palette.background.paper, 0.95)})`
+                  : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.14)}, ${alpha(theme.palette.background.paper, 0.98)})`,
               color: 'primary.main',
               cursor: 'pointer',
               display: 'flex',
@@ -249,6 +265,7 @@ export const WorkspaceDesktopLayout = ({
       sx={{
         flex: 1,
         minWidth: 0,
+        p: '14px',
         ...workspaceCanvasSx,
         transition: theme.transitions.create('padding', {
           duration: theme.transitions.duration.shorter,
@@ -260,10 +277,14 @@ export const WorkspaceDesktopLayout = ({
           height: '100%',
           minHeight: 0,
           overflow: 'hidden',
-          borderRadius: 2,
+          borderRadius: 4,
           bgcolor: 'background.paper',
           border: 1,
-          borderColor: 'divider',
+          borderColor: alpha(theme.palette.primary.main, 0.16),
+          boxShadow:
+            theme.palette.mode === 'dark'
+              ? `0 28px 90px ${alpha('#000', 0.48)}`
+              : `0 24px 70px ${alpha('#0f172a', 0.12)}`,
         }}
       >
         {children}
