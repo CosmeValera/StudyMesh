@@ -1006,8 +1006,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 color="text.secondary"
                 sx={{ mt: 0.4 }}
               >
-                Creates lessons, dashboards, exercises, flashcards, and review
-                structure.
+                Creates lessons, dashboards, exercises and flashcards.
               </Typography>
             </Box>
             <Button
