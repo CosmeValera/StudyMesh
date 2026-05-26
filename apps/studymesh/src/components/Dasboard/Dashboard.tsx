@@ -22,10 +22,9 @@ import {
   Stack,
   Autocomplete,
 } from '@mui/material'
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
+import { Tabs, TabList, TabPanel } from 'react-tabs'
 import TooltipStyled from '../TooltipStyled'
 
-import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
 import ConstructionIcon from '@mui/icons-material/Construction'
@@ -33,9 +32,6 @@ import EditIcon from '@mui/icons-material/Edit'
 import ExtensionIcon from '@mui/icons-material/Extension'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
-import AutoStoriesIcon from '@mui/icons-material/AutoStories'
-import RouteIcon from '@mui/icons-material/Route'
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
@@ -75,634 +71,26 @@ import { useResponsiveWorkspaceMode } from '../workspace/useResponsiveWorkspaceM
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
 import { DashboardEditorResponsivePanels } from './DashboardEditorResponsivePanels'
 import type { DashboardEditorWidgetConfig } from './dashboardEditorTypes'
+import DashboardEmptyState from './DashboardEmptyState'
+import DashboardTabsBar from './DashboardTabsBar'
+import {
+  collectDashboardWidgetTabs,
+  countDashboardNodes,
+  createDashboardTabFromWidget,
+  createLayoutWithComponent,
+  createMobileOrderedWidgetLayout,
+  hasDashboardContent,
+} from './dashboardLayoutUtils'
+import {
+  DashboardStorage,
+  DEFAULT_DASHBOARD_NAME,
+  getUniqueDashboardName,
+  type SavedDashboard,
+} from './dashboardStorage'
 import './tabs.scss'
-
-const createDashboardTabFromWidget = (
-  componentConfig: DashboardEditorWidgetConfig,
-): DashboardLayout => ({
-  type: 'tab',
-  name: componentConfig.name,
-  component: componentConfig.component,
-  config: componentConfig.customProps
-    ? { customProps: componentConfig.customProps }
-    : undefined,
-})
-
-const createLayoutWithComponent = (
-  componentConfig: DashboardEditorWidgetConfig,
-): DashboardLayout => ({
-  type: 'row',
-  weight: 100,
-  children: [
-    {
-      type: 'tabset',
-      weight: 100,
-      active: true,
-      children: [createDashboardTabFromWidget(componentConfig)],
-    },
-  ],
-})
-
-const collectDashboardWidgetTabs = (
-  layout?: DashboardLayout,
-): DashboardLayout[] => {
-  if (!layout) {
-    return []
-  }
-
-  if (layout.type === 'tab' && layout.component) {
-    return [layout]
-  }
-
-  return (layout.children || []).flatMap((child) =>
-    collectDashboardWidgetTabs(child),
-  )
-}
-
-const createMobileOrderedWidgetLayout = (
-  widgetTabs: DashboardLayout[],
-): DashboardLayout => ({
-  type: 'row',
-  weight: 100,
-  children: widgetTabs.map((widgetTab, index) => ({
-    type: 'tabset',
-    weight: 100 / Math.max(widgetTabs.length, 1),
-    active: index === 0,
-    children: [widgetTab],
-  })),
-})
-
-// Define custom dashboard type for localStorage
-interface SavedDashboard {
-  id: string
-  name: string
-  folder?: string
-  folderColor?: string
-  layout: DashboardLayout
-  description?: string
-  tags?: string[]
-  isPublic?: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
 const DEFAULT_STUDY_PATH_OPENED_KEY = 'studymesh-default-study-path-opened-v1'
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 const OPEN_SAVED_DASHBOARDS_EVENT = 'studymesh-open-saved-dashboards'
-
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-const getUniqueDashboardName = (
-  requestedName: string,
-  dashboards: SavedDashboard[],
-  ignoreDashboardId?: string,
-) => {
-  const baseName = requestedName.trim() || DEFAULT_DASHBOARD_NAME
-  const usedNames = new Set(
-    dashboards
-      .filter((dashboard) => dashboard.id !== ignoreDashboardId)
-      .map((dashboard) => dashboard.name),
-  )
-
-  if (!usedNames.has(baseName)) {
-    return baseName
-  }
-
-  const suffixPattern = new RegExp(`^${escapeRegExp(baseName)} \\((\\d+)\\)$`)
-  let nextSuffix = 2
-
-  usedNames.forEach((name) => {
-    const match = name.match(suffixPattern)
-    if (match) {
-      nextSuffix = Math.max(nextSuffix, Number(match[1]) + 1)
-    }
-  })
-
-  let candidate = `${baseName} (${nextSuffix})`
-  while (usedNames.has(candidate)) {
-    nextSuffix += 1
-    candidate = `${baseName} (${nextSuffix})`
-  }
-
-  return candidate
-}
-
-const hasDashboardContent = (layout?: DashboardLayout): boolean => {
-  if (!layout) {
-    return false
-  }
-
-  if (layout.type === 'tab' && Boolean(layout.component)) {
-    return true
-  }
-
-  return Boolean(layout.children?.some((child) => hasDashboardContent(child)))
-}
-
-const countDashboardNodes = (
-  layout?: DashboardLayout,
-): { tabCount: number; tabsetCount: number } => {
-  if (!layout) {
-    return { tabCount: 0, tabsetCount: 0 }
-  }
-
-  const childCounts = (layout.children || []).reduce(
-    (counts, child) => {
-      const next = countDashboardNodes(child)
-      return {
-        tabCount: counts.tabCount + next.tabCount,
-        tabsetCount: counts.tabsetCount + next.tabsetCount,
-      }
-    },
-    { tabCount: 0, tabsetCount: 0 },
-  )
-
-  return {
-    tabCount: childCounts.tabCount + (layout.type === 'tab' ? 1 : 0),
-    tabsetCount: childCounts.tabsetCount + (layout.type === 'tabset' ? 1 : 0),
-  }
-}
-
-// Dashboard Storage utilities
-const DashboardStorage = {
-  getAll: (): SavedDashboard[] => {
-    try {
-      const dashboards = localStorage.getItem('customDashboards')
-      return dashboards ? JSON.parse(dashboards) : []
-    } catch (error) {
-      console.error('Failed to parse saved dashboards', error)
-      return []
-    }
-  },
-
-  getByName: (name: string): SavedDashboard | null => {
-    try {
-      const dashboards = DashboardStorage.getAll()
-      return dashboards.find((dashboard) => dashboard.name === name) || null
-    } catch (error) {
-      console.error('Failed to find dashboard by name', error)
-      return null
-    }
-  },
-
-  save: (dashboard: SavedDashboard): SavedDashboard => {
-    try {
-      const dashboards = DashboardStorage.getAll()
-      // Check if a dashboard with this id already exists and update it
-      const existingIndex = dashboards.findIndex((d) => d.id === dashboard.id)
-
-      if (existingIndex >= 0) {
-        dashboards[existingIndex] = dashboard
-      } else {
-        dashboards.push(dashboard)
-      }
-
-      localStorage.setItem('customDashboards', JSON.stringify(dashboards))
-      return dashboard
-    } catch (error) {
-      console.error('Failed to save dashboard', error)
-      throw error
-    }
-  },
-
-  delete: (id: string): void => {
-    try {
-      const dashboards = DashboardStorage.getAll()
-      const filteredDashboards = dashboards.filter(
-        (dashboard) => dashboard.id !== id,
-      )
-      localStorage.setItem(
-        'customDashboards',
-        JSON.stringify(filteredDashboards),
-      )
-    } catch (error) {
-      console.error('Failed to delete dashboard', error)
-    }
-  },
-
-  getFolderColor: (folder: string): string => {
-    const folderName = normalizeFolderName(folder)
-    const dashboard = DashboardStorage.getAll().find(
-      (savedDashboard) =>
-        normalizeFolderName(savedDashboard.folder) === folderName &&
-        savedDashboard.folderColor,
-    )
-
-    return normalizeFolderColor(dashboard?.folderColor)
-  },
-
-  // Check if the current layout is different from the saved one
-  hasChanges: (name: string, currentLayout?: DashboardLayout): boolean => {
-    const savedDashboard = DashboardStorage.getByName(name)
-    if (!savedDashboard) {
-      return true
-    } // If no saved dashboard exists, then there are changes
-    if (!currentLayout) {
-      return false
-    } // If no current layout, no changes
-
-    // Deep comparison between the current layout and saved layout
-    return (
-      JSON.stringify(currentLayout) !== JSON.stringify(savedDashboard.layout)
-    )
-  },
-}
-
-interface DashboardEmptyStateProps {
-  isAdmin: boolean
-  hasDashboard: boolean
-  onCreateStudyPath: () => void
-  onCreateFromNotes: () => void
-  onOpenSavedLibrary: () => void
-  dashboardOptions: SavedDashboard[]
-  onOpenDashboard: (dashboard: SavedDashboard) => void
-  onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
-}
-
-const DashboardEmptyState = ({
-  isAdmin,
-  onCreateStudyPath,
-  onCreateFromNotes,
-  onOpenSavedLibrary,
-  dashboardOptions,
-  onOpenDashboard,
-  onOpenStudyGuide,
-}: DashboardEmptyStateProps) => {
-  const dashboardsByFolder = dashboardOptions.reduce<
-    Record<string, SavedDashboard[]>
-  >((folders, dashboard) => {
-    const folderName = dashboard.folder?.trim() || 'Default'
-    folders[folderName] = folders[folderName] || []
-    folders[folderName].push(dashboard)
-    return folders
-  }, {})
-  const folderEntries = Object.entries(dashboardsByFolder)
-  const hasStudyGuides = folderEntries.some(([, dashboards]) =>
-    Boolean(createStudyPathContainerState(dashboards)),
-  )
-  const hasStandaloneDashboards = folderEntries.some(
-    ([, dashboards]) => !createStudyPathContainerState(dashboards),
-  )
-  const openExistingLabel = hasStudyGuides
-    ? hasStandaloneDashboards
-      ? 'Open existing dashboard or study guide'
-      : 'Open existing study guide'
-    : 'Open existing dashboard'
-  const featuredFolders = folderEntries.slice(0, 4)
-
-  return (
-    <Box
-      sx={{
-        height: { xs: '100%', md: 'auto' },
-        minHeight: { xs: '100%', md: 'calc(100dvh - 130px)' },
-        display: 'flex',
-        alignItems: { xs: 'flex-start', md: 'center' },
-        justifyContent: 'center',
-        p: { xs: 1, sm: 1.5, md: 2.5 },
-        pb: { xs: 1.25, md: 2.5 },
-        bgcolor: 'background.default',
-        width: '100%',
-        maxWidth: '100%',
-        overflow: { xs: 'hidden', md: 'visible' },
-        boxSizing: 'border-box',
-      }}
-    >
-      <Box
-        sx={{
-          width: 'min(1280px, 100%)',
-          maxWidth: '100%',
-          minWidth: 0,
-          boxSizing: 'border-box',
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            lg: 'minmax(240px, 3fr) minmax(320px, 4fr) minmax(240px, 3fr)',
-          },
-          gap: { xs: 1, sm: 1.5, lg: 2 },
-          alignItems: 'stretch',
-          maxHeight: { xs: '100%', lg: 'none' },
-          overflowY: { xs: 'auto', lg: 'visible' },
-        }}
-      >
-        <Paper
-          elevation={0}
-          sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
-            border: 1,
-            borderColor: 'primary.light',
-            bgcolor: 'background.accentSurface',
-            color: 'foreground.contrastPrimary',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: { xs: 1, md: 2.5 },
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <Box>
-            <RouteIcon
-              sx={{
-                fontSize: { xs: 30, md: 44 },
-                color: 'primary.main',
-                mb: { xs: 0.5, md: 1 },
-              }}
-            />
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{
-                lineHeight: 1.15,
-                fontSize: { xs: '1.12rem', md: '1.5rem' },
-              }}
-            >
-              Create a Study Path
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                mt: { xs: 0.5, md: 1 },
-                color: 'foreground.contrastSecondary',
-              }}
-            >
-              Start from a topic or prompt and generate ordered tutorial
-              dashboards.
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<RouteIcon />}
-            onClick={onCreateStudyPath}
-            disabled={!isAdmin}
-            sx={{
-              textTransform: 'none',
-              bgcolor: 'primary.dark',
-              color: 'primary.contrastText',
-              '&:hover': { bgcolor: 'primary.main' },
-            }}
-          >
-            Create Study Path
-          </Button>
-        </Paper>
-
-        <Paper
-          elevation={0}
-          sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
-            border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: 1, md: 2 },
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <FolderOpenIcon color="primary" />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h5"
-                fontWeight={900}
-                sx={{
-                  lineHeight: 1.15,
-                  fontSize: { xs: '1.12rem', md: '1.5rem' },
-                }}
-              >
-                Open study material
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Continue existing Study Paths, Study Packs, or custom
-                dashboards.
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Box sx={{ flex: 1, minHeight: 0 }}>
-            <Typography
-              variant="subtitle2"
-              fontWeight={800}
-              sx={{ mb: 1, color: 'text.secondary' }}
-            >
-              Recent folders
-            </Typography>
-            {featuredFolders.length > 0 ? (
-              <Stack spacing={1}>
-                {featuredFolders.map(([folderName, dashboards]) => {
-                  const studyGuide = createStudyPathContainerState(dashboards)
-                  const folderColor = normalizeFolderColor(
-                    dashboards.find((dashboard) => dashboard.folderColor)
-                      ?.folderColor ||
-                      DashboardStorage.getFolderColor(folderName),
-                  )
-                  const firstDashboard = dashboards[0]
-
-                  return (
-                    <Button
-                      key={folderName}
-                      variant="text"
-                      onClick={() =>
-                        studyGuide
-                          ? onOpenStudyGuide(dashboards)
-                          : firstDashboard && onOpenDashboard(firstDashboard)
-                      }
-                      sx={{
-                        minHeight: { xs: 42, md: 54 },
-                        justifyContent: 'flex-start',
-                        textAlign: 'left',
-                        textTransform: 'none',
-                        border: 1,
-                        borderColor: 'divider',
-                        borderRadius: 1.25,
-                        px: 1.25,
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        color: 'text.primary',
-                        bgcolor: 'background.paper',
-                        '&:hover': {
-                          borderColor: folderColor,
-                          bgcolor: 'action.hover',
-                        },
-                      }}
-                    >
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            display: 'block',
-                            color: folderColor,
-                            fontWeight: 900,
-                            textTransform: 'uppercase',
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {folderName}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          fontWeight={800}
-                          sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {studyGuide?.title || firstDashboard?.name}
-                        </Typography>
-                      </Box>
-                    </Button>
-                  )
-                })}
-              </Stack>
-            ) : (
-              <Box
-                sx={{
-                  minHeight: 190,
-                  display: 'grid',
-                  placeItems: 'center',
-                  textAlign: 'center',
-                  px: 2,
-                  color: 'text.secondary',
-                }}
-              >
-                <Box>
-                  <FolderOpenIcon sx={{ fontSize: 38, mb: 1, opacity: 0.65 }} />
-                  <Typography variant="body2" fontWeight={700}>
-                    Saved Study Paths and dashboards appear here.
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-          </Box>
-          <Button
-            variant="outlined"
-            startIcon={<FolderOpenIcon />}
-            onClick={onOpenSavedLibrary}
-            sx={{ textTransform: 'none', bgcolor: 'background.default' }}
-          >
-            {openExistingLabel}
-          </Button>
-        </Paper>
-
-        <Paper
-          elevation={0}
-          sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
-            border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: 1, md: 2 },
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <Box>
-            <AutoStoriesIcon
-              sx={{
-                fontSize: { xs: 30, md: 44 },
-                color: 'primary.main',
-                mb: { xs: 0.5, md: 1 },
-              }}
-            />
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{
-                lineHeight: 1.15,
-                fontSize: { xs: '1.12rem', md: '1.5rem' },
-              }}
-            >
-              Create From Notes
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: { xs: 0.5, md: 1 } }}
-            >
-              Upload notes, screenshots, PDFs, or slides and turn them into a
-              widget-based study dashboard.
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <Paper
-              component="button"
-              type="button"
-              elevation={0}
-              onClick={onCreateFromNotes}
-              disabled={!isAdmin}
-              sx={{
-                width: '100%',
-                minHeight: { xs: 92, md: 170 },
-                p: { xs: 1.25, md: 2 },
-                borderRadius: 2,
-                border: '1.5px dashed',
-                borderColor: 'primary.main',
-                bgcolor: 'background.default',
-                color: 'text.primary',
-                cursor: isAdmin ? 'pointer' : 'default',
-                textAlign: 'center',
-                display: 'grid',
-                placeItems: 'center',
-                boxSizing: 'border-box',
-                '&:hover': {
-                  bgcolor: isAdmin ? 'action.hover' : 'background.default',
-                  borderColor: isAdmin ? 'primary.dark' : 'primary.main',
-                },
-              }}
-            >
-              <Stack spacing={1.25} alignItems="center">
-                <Box
-                  sx={{
-                    width: { xs: 36, md: 48 },
-                    height: { xs: 36, md: 48 },
-                    borderRadius: '50%',
-                    display: 'grid',
-                    placeItems: 'center',
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                  }}
-                >
-                  <CloudUploadIcon fontSize="large" />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={900}>
-                    Add sources
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Text, images, PDFs, and slides.
-                  </Typography>
-                </Box>
-              </Stack>
-            </Paper>
-          </Box>
-        </Paper>
-      </Box>
-    </Box>
-  )
-}
 
 const Dashboards = () => {
   const {
@@ -2055,297 +1443,63 @@ const Dashboards = () => {
     />
   )
 
-  const dashboardTabsListClassName = !isMobileDashboardView
-    ? 'react-tabs__tab-list react-tabs__tab-list--workspace-hidden'
-    : 'react-tabs__tab-list'
+  const editDashboardFromTabs = (dashboard: StateDashboard) => {
+    if (dashboard.kind === 'studyPathContainer') {
+      openStudyPathDashboardEditor(dashboard)
+      return
+    }
+
+    openDashboardEditor(dashboard.id)
+  }
 
   const dashboardTabsList = (
     <TabList
-      className={dashboardTabsListClassName}
+      className={
+        isMobileDashboardView
+          ? 'react-tabs__tab-list'
+          : 'react-tabs__tab-list react-tabs__tab-list--workspace-hidden'
+      }
       onDragOver={isMobileDashboardView ? undefined : allowDashboardTabListDrop}
       onDrop={isMobileDashboardView ? undefined : dropDashboardTabAtEnd}
     >
-      {openDashboards.map((dashboard, index) => {
-        const isEmptyDashboard =
-          dashboard.kind !== 'studyPathContainer' &&
-          !hasDashboardContent(dashboard.layout)
-        const isOnlyEmptyDashboard =
-          openDashboards.length === 1 && isEmptyDashboard
-
-        return (
-          <Tab
-            key={dashboard.id}
-            draggable={!isMobileDashboardView}
-            onDragStart={(event) =>
-              !isMobileDashboardView && startDashboardTabDrag(event, index)
-            }
-            onDragOver={(event) => {
-              if (isMobileDashboardView) {
-                return
-              }
-              event.preventDefault()
-              event.dataTransfer.dropEffect = 'move'
-            }}
-            onDrop={(event) =>
-              !isMobileDashboardView && dropDashboardTab(event, index)
-            }
-            onDragEnd={() => setDraggedDashboardIndex(null)}
-            onContextMenu={(event) => openDashboardTabMenu(event, index)}
-          >
-            <TooltipStyled
-              title={dashboard.name}
-              placement="bottom"
-              enterTouchDelay={1000}
-            >
-              <Typography
-                component="span"
-                variant="subtitle2"
-                sx={{
-                  flex: '1 0 0',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  marginLeft: '0.5rem',
-                }}
-              >
-                {dashboard.name}
-              </Typography>
-            </TooltipStyled>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {!isMobileDashboardView && isAdmin && (
-                <TooltipStyled title="Edit Dashboard">
-                  <IconButton
-                    aria-label={`Edit dashboard ${dashboard.name}`}
-                    size="small"
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      if (dashboard.kind === 'studyPathContainer') {
-                        openStudyPathDashboardEditor(dashboard)
-                        return
-                      }
-                      openDashboardEditor(dashboard.id)
-                    }}
-                    sx={{
-                      p: 0.5,
-                      mr: 0.5,
-                      color: 'text.secondary',
-                      '&:hover': { color: 'primary.main' },
-                    }}
-                  >
-                    <EditIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </TooltipStyled>
-              )}
-              {!isOnlyEmptyDashboard && (
-                <Box
-                  className="close"
-                  sx={{
-                    display: 'flex',
-                    p: 0.5,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderRadius: '999px',
-                    transition: 'all .25s ease',
-                    '&:hover': {
-                      backgroundColor: 'action.contrastHover',
-                    },
-                  }}
-                >
-                  <CloseIcon
-                    width={16}
-                    height={16}
-                    onClick={(ev) => {
-                      // NOTE prevent the tab being closed from being selected too!
-                      ev.stopPropagation()
-                      removeDashboard(dashboard.id)
-                    }}
-                  />
-                </Box>
-              )}
-            </Box>
-          </Tab>
-        )
+      {DashboardTabsBar({
+        dashboards: openDashboards,
+        selectedDashboard,
+        isAdmin,
+        isMobileDashboardView,
+        variant: 'mobile-list',
+        onSelectDashboard: setSelectedDashboard,
+        onCreateDashboard: createEmptyDashboardTab,
+        onEditDashboard: editDashboardFromTabs,
+        onRemoveDashboard: removeDashboard,
+        onOpenTabMenu: openDashboardTabMenu,
+        onDragStart: startDashboardTabDrag,
+        onDragOverList: allowDashboardTabListDrop,
+        onDropAtEnd: dropDashboardTabAtEnd,
+        onDropTab: dropDashboardTab,
+        onDragEnd: () => setDraggedDashboardIndex(null),
       })}
-      {isAdmin && (
-        <Button
-          size="small"
-          variant="text"
-          disableRipple
-          data-testid="add-dashboard-button"
-          sx={{
-            position: 'relative',
-            top: 0,
-            marginBottom: 0,
-            minWidth: 'fit-content',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '13px',
-            p: '4px 12px',
-            color: 'primary.light',
-            transition: 'all .25s ease',
-            '.MuiButton-startIcon': {
-              transition: 'all .25s ease',
-              m: 0,
-              color: 'primary.light',
-            },
-            ':hover': {
-              backgroundColor: 'transparent',
-              color: 'primary.main',
-              '.MuiButton-startIcon': {
-                color: 'primary.main',
-              },
-            },
-          }}
-          startIcon={<AddIcon width={16} height={16} />}
-          onClick={createEmptyDashboardTab}
-        />
-      )}
     </TabList>
   )
 
   const workspaceHeaderDashboardTabs = (
-    <Box
-      className="react-tabs__tab-list react-tabs__tab-list--workspace-header"
-      onDragOver={allowDashboardTabListDrop}
-      onDrop={dropDashboardTabAtEnd}
-    >
-      {openDashboards.map((dashboard, index) => {
-        const isEmptyDashboard =
-          dashboard.kind !== 'studyPathContainer' &&
-          !hasDashboardContent(dashboard.layout)
-        const isOnlyEmptyDashboard =
-          openDashboards.length === 1 && isEmptyDashboard
-        const isSelected = selectedDashboard === index
-
-        return (
-          <Box
-            key={dashboard.id}
-            component="button"
-            type="button"
-            draggable
-            className={`react-tabs__tab ${
-              isSelected ? 'react-tabs__tab--selected' : ''
-            }`.trim()}
-            onClick={() => setSelectedDashboard(index)}
-            onDragStart={(event) => startDashboardTabDrag(event, index)}
-            onDragOver={(event) => {
-              event.preventDefault()
-              event.dataTransfer.dropEffect = 'move'
-            }}
-            onDrop={(event) => dropDashboardTab(event, index)}
-            onDragEnd={() => setDraggedDashboardIndex(null)}
-            onContextMenu={(event) => openDashboardTabMenu(event, index)}
-          >
-            <TooltipStyled
-              title={dashboard.name}
-              placement="bottom"
-              enterTouchDelay={1000}
-            >
-              <Typography
-                component="span"
-                variant="subtitle2"
-                sx={{
-                  flex: '1 0 0',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  marginLeft: '0.5rem',
-                }}
-              >
-                {dashboard.name}
-              </Typography>
-            </TooltipStyled>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {isAdmin && (
-                <TooltipStyled title="Edit Dashboard">
-                  <IconButton
-                    aria-label={`Edit dashboard ${dashboard.name}`}
-                    size="small"
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      if (dashboard.kind === 'studyPathContainer') {
-                        openStudyPathDashboardEditor(dashboard)
-                        return
-                      }
-                      openDashboardEditor(dashboard.id)
-                    }}
-                    sx={{
-                      p: 0.5,
-                      mr: 0.5,
-                      color: 'text.secondary',
-                      '&:hover': { color: 'primary.main' },
-                    }}
-                  >
-                    <EditIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </TooltipStyled>
-              )}
-              {!isOnlyEmptyDashboard && (
-                <Box
-                  className="close"
-                  sx={{
-                    display: 'flex',
-                    p: 0.5,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderRadius: '999px',
-                    transition: 'all .25s ease',
-                    '&:hover': {
-                      backgroundColor: 'action.contrastHover',
-                    },
-                  }}
-                >
-                  <CloseIcon
-                    width={16}
-                    height={16}
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      removeDashboard(dashboard.id)
-                    }}
-                  />
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )
-      })}
-      {isAdmin && (
-        <Button
-          size="small"
-          variant="text"
-          disableRipple
-          data-testid="add-dashboard-button"
-          className="react-tabs__add-tab-button"
-          sx={{
-            minWidth: 34,
-            width: 34,
-            height: 34,
-            alignSelf: 'center',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 0,
-            color: 'primary.light',
-            borderRadius: 999,
-            transition: 'all .25s ease',
-            '.MuiButton-startIcon': {
-              m: 0,
-              color: 'primary.light',
-            },
-            ':hover': {
-              backgroundColor: 'action.hover',
-              color: 'primary.main',
-              '.MuiButton-startIcon': {
-                color: 'primary.main',
-              },
-            },
-          }}
-          startIcon={<AddIcon width={16} height={16} />}
-          onClick={createEmptyDashboardTab}
-        />
-      )}
-    </Box>
+    <DashboardTabsBar
+      dashboards={openDashboards}
+      selectedDashboard={selectedDashboard}
+      isAdmin={isAdmin}
+      isMobileDashboardView={false}
+      variant="workspace-header"
+      onSelectDashboard={setSelectedDashboard}
+      onCreateDashboard={createEmptyDashboardTab}
+      onEditDashboard={editDashboardFromTabs}
+      onRemoveDashboard={removeDashboard}
+      onOpenTabMenu={openDashboardTabMenu}
+      onDragStart={startDashboardTabDrag}
+      onDragOverList={allowDashboardTabListDrop}
+      onDropAtEnd={dropDashboardTabAtEnd}
+      onDropTab={dropDashboardTab}
+      onDragEnd={() => setDraggedDashboardIndex(null)}
+    />
   )
 
   return (
