@@ -707,9 +707,13 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
       <AppBar
         position="static"
         sx={{
-          backgroundColor: 'background.header',
-          boxShadow: 2,
+          background:
+            'linear-gradient(180deg, var(--background-header), color-mix(in srgb, var(--background-header) 88%, var(--background-default)))',
+          borderBottom: 1,
+          borderColor: 'var(--studymesh-panel-border)',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12)',
           height: isMobileWorkspaceHeader ? '56px' : '52px',
+          zIndex: (theme) => theme.zIndex.appBar,
         }}
       >
         <Toolbar

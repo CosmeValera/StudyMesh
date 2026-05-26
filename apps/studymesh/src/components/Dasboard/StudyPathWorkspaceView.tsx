@@ -302,7 +302,8 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
         width: '100%',
         position: 'relative',
         overflow: 'visible',
-        backgroundColor: 'background.default',
+        background:
+          'radial-gradient(circle at top right, var(--accent-soft) 0, transparent 28rem), var(--background-default)',
       }}
     >
       <Box
@@ -348,9 +349,10 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               pointerEvents: 'auto',
               borderRadius: 999,
               border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+              borderColor: 'var(--studymesh-panel-border)',
+              bgcolor: 'var(--studymesh-panel-bg)',
               overflow: 'hidden',
+              boxShadow: 'var(--studymesh-shadow-card)',
             }}
           >
             <Stack direction="row" alignItems="center" spacing={0.25}>
@@ -470,12 +472,12 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              borderRadius: 3,
+              borderRadius: 'var(--studymesh-radius-lg)',
               border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+              borderColor: 'var(--studymesh-panel-border)',
+              bgcolor: 'var(--studymesh-panel-bg)',
               backdropFilter: 'blur(10px)',
-              boxShadow: '0 16px 44px rgba(0, 0, 0, 0.22)',
+              boxShadow: 'var(--studymesh-shadow-raised)',
             }}
           >
             <Stack
@@ -529,7 +531,7 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                       height: 30,
                       color: 'text.primary',
                       border: 1,
-                      borderColor: 'divider',
+                      borderColor: 'var(--studymesh-panel-border)',
                       bgcolor:
                         theme.palette.mode === 'dark'
                           ? alpha(theme.palette.common.white, 0.08)
@@ -584,8 +586,9 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 sx={{
                   px: { xs: 1, sm: 1.25 },
                   py: { xs: 0.65, sm: 1 },
-                  borderRadius: 2,
-                  bgcolor: 'action.hover',
+                  borderRadius: 'var(--studymesh-radius-sm)',
+                  borderColor: 'var(--studymesh-panel-border)',
+                  bgcolor: 'var(--studymesh-muted-bg)',
                 }}
               >
                 <Typography

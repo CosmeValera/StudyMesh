@@ -5,20 +5,16 @@
 
 .flexlayout__layout {
   overflow: visible;
-  background-color: var(--background-bar-medium);
+  background-color: var(--background-default);
 }
 
 /* popup menu */
 .flexlayout__popup_menu_container {
   padding: 8px 0px;
   border: 0px;
-  border-radius: 4px;
-  box-shadow:
-    0px 3px 14px 2px rgba(0, 0, 0, 0.12),
-    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
-    0px 5px 5px -3px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--grey-200);
-  border-color: var(--grey-200);
+  border-radius: var(--studymesh-radius-md);
+  box-shadow: var(--studymesh-shadow-raised);
+  border: 1px solid var(--other-hairline-border, var(--grey-200));
   background-color: var(--background-paper);
 }
 
@@ -38,28 +34,30 @@
 }
 
 .flexlayout__tabset_tabbar_inner_tab_container {
-  background-color: var(--background-bar-medium);
+  background-color: var(--background-default);
   padding: 0px 0px 1px 0px;
 }
 
 .flexlayout__tabset_tabbar_outer_top {
   border-bottom: 0px;
-  background-color: var(--background-bar-medium);
+  background-color: var(--background-default);
 }
 
 .flexlayout__tabset {
-  border-radius: 8px;
-  background-color: var(--background-paper);
-  border: 1px solid var(--surface-border, var(--grey-200));
+  border-radius: var(--studymesh-radius-md);
+  background-color: var(--studymesh-panel-bg, var(--background-paper));
+  border: 1px solid
+    var(--other-hairline-border, var(--surface-border, var(--grey-200)));
+  box-shadow: var(--studymesh-shadow-card);
 
   &
     .flexlayout__tabset-selected
     .flexlayout__tabset_tabbar_inner_tab_container {
-    background-color: var(--background-paper);
+    background-color: var(--studymesh-panel-bg, var(--background-paper));
   }
 
   &.flexlayout__tabset-maximized {
-    background-color: var(--background-paper);
+    background-color: var(--studymesh-panel-bg, var(--background-paper));
   }
 
   &:has(.flexlayout__tabset-selected) {
@@ -138,19 +136,19 @@
 }
 
 .flexlayout__tabset_content {
-  background-color: var(--background-paper);
-  border-radius: 0px 0px 8px 8px;
+  background-color: var(--studymesh-panel-bg, var(--background-paper));
+  border-radius: 0 0 var(--studymesh-radius-md) var(--studymesh-radius-md);
 }
 
 /* tab */
 
 .flexlayout__tab {
-  border-radius: 0px 0px 8px 8px;
-  background-color: var(--background-paper);
+  border-radius: 0 0 var(--studymesh-radius-md) var(--studymesh-radius-md);
+  background-color: var(--studymesh-panel-bg, var(--background-paper));
 }
 
 .flexlayout__tab_button {
-  background-color: var(--background-bar-medium);
+  background-color: var(--studymesh-muted-bg, var(--background-bar-medium));
   height: 32px;
   line-height: 1;
   min-width: 132px;
@@ -159,7 +157,7 @@
   color: var(--foreground-secondary);
 
   &:only-child {
-    background-color: var(--background-paper);
+    background-color: var(--studymesh-panel-bg, var(--background-paper));
     padding-left: 16px;
 
     .flexlayout__tab_button_trailing {
@@ -172,7 +170,7 @@
 
     &.flexlayout__tab_button--selected {
       color: var(--foreground-primary);
-      background-color: var(--background-paper);
+      background-color: var(--studymesh-panel-bg, var(--background-paper));
     }
 
     .flexlayout__tab_button_trailing {
@@ -190,7 +188,7 @@
 }
 
 .flexlayout__tab_toolbar {
-  background-color: var(--background-bar-medium);
+  background-color: var(--background-default);
   gap: 8px;
   padding: 0 8px;
 
@@ -215,7 +213,7 @@
 }
 
 .flexlayout__tab_floating {
-  background-color: var(--background-paper);
+  background-color: var(--studymesh-panel-bg, var(--background-paper));
 }
 
 .flexlayout__tab_button:hover {
@@ -248,12 +246,17 @@
   width: 100%;
   min-width: 0;
   overflow: visible;
+  border-radius: var(--studymesh-radius-lg);
+  background: var(--studymesh-card-bg, var(--surface-card, #fff));
+  border: 1px solid var(--other-hairline-border, var(--surface-border));
+  box-shadow: var(--studymesh-shadow-card);
 }
 
 .studymesh-mobile-dashboard-empty {
   min-height: 220px;
-  border-radius: 16px;
-  background: var(--surface-card, #fff);
+  border-radius: var(--studymesh-radius-lg);
+  background: var(--studymesh-card-bg, var(--surface-card, #fff));
+  border: 1px solid var(--other-hairline-border, var(--surface-border));
 }
 
 @media (max-width: 768px) {

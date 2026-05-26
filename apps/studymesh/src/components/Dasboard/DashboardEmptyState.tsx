@@ -62,6 +62,8 @@ const DashboardEmptyState = ({
         p: { xs: 1, sm: 1.5, md: 2.5 },
         pb: { xs: 1.25, md: 2.5 },
         bgcolor: 'background.default',
+        background:
+          'radial-gradient(circle at 50% 0%, var(--accent-soft) 0, transparent 30rem), var(--background-default)',
         width: '100%',
         maxWidth: '100%',
         overflow: { xs: 'hidden', md: 'visible' },
@@ -90,11 +92,12 @@ const DashboardEmptyState = ({
           sx={{
             minHeight: { xs: 'auto', lg: 520 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
+            borderRadius: 'var(--studymesh-radius-lg)',
             border: 1,
-            borderColor: 'primary.light',
+            borderColor: 'primary.main',
             bgcolor: 'background.accentSurface',
             color: 'foreground.contrastPrimary',
+            boxShadow: 'var(--studymesh-shadow-card)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -141,6 +144,7 @@ const DashboardEmptyState = ({
               textTransform: 'none',
               bgcolor: 'primary.dark',
               color: 'primary.contrastText',
+              borderRadius: 999,
               '&:hover': { bgcolor: 'primary.main' },
             }}
           >
@@ -153,10 +157,11 @@ const DashboardEmptyState = ({
           sx={{
             minHeight: { xs: 'auto', lg: 520 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
+            borderRadius: 'var(--studymesh-radius-lg)',
             border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+            borderColor: 'var(--studymesh-panel-border)',
+            bgcolor: 'var(--studymesh-card-bg)',
+            boxShadow: 'var(--studymesh-shadow-card)',
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1, md: 2 },
@@ -223,16 +228,19 @@ const DashboardEmptyState = ({
                         textTransform: 'none',
                         border: 1,
                         borderColor: 'divider',
-                        borderRadius: 1.25,
+                        borderRadius: 'var(--studymesh-radius-sm)',
                         px: 1.25,
                         minWidth: 0,
                         maxWidth: '100%',
                         color: 'text.primary',
-                        bgcolor: 'background.paper',
+                        bgcolor: 'var(--studymesh-muted-bg)',
                         '&:hover': {
                           borderColor: folderColor,
-                          bgcolor: 'action.hover',
+                          bgcolor: 'var(--studymesh-card-hover-bg)',
+                          transform: 'translateY(-1px)',
                         },
+                        transition:
+                          'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
                       }}
                     >
                       <Box sx={{ minWidth: 0 }}>
@@ -288,7 +296,7 @@ const DashboardEmptyState = ({
             variant="outlined"
             startIcon={<FolderOpenIcon />}
             onClick={onOpenSavedLibrary}
-            sx={{ textTransform: 'none', bgcolor: 'background.default' }}
+            sx={{ bgcolor: 'var(--studymesh-muted-bg)' }}
           >
             {openExistingLabel}
           </Button>
@@ -299,10 +307,11 @@ const DashboardEmptyState = ({
           sx={{
             minHeight: { xs: 'auto', lg: 520 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
+            borderRadius: 'var(--studymesh-radius-lg)',
             border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+            borderColor: 'var(--studymesh-panel-border)',
+            bgcolor: 'var(--studymesh-card-bg)',
+            boxShadow: 'var(--studymesh-shadow-card)',
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1, md: 2 },
@@ -356,10 +365,10 @@ const DashboardEmptyState = ({
                 width: '100%',
                 minHeight: { xs: 92, md: 170 },
                 p: { xs: 1.25, md: 2 },
-                borderRadius: 2,
+                borderRadius: 'var(--studymesh-radius-md)',
                 border: '1.5px dashed',
                 borderColor: 'primary.main',
-                bgcolor: 'background.default',
+                bgcolor: 'var(--studymesh-muted-bg)',
                 color: 'text.primary',
                 cursor: isAdmin ? 'pointer' : 'default',
                 textAlign: 'center',
@@ -367,9 +376,14 @@ const DashboardEmptyState = ({
                 placeItems: 'center',
                 boxSizing: 'border-box',
                 '&:hover': {
-                  bgcolor: isAdmin ? 'action.hover' : 'background.default',
+                  bgcolor: isAdmin
+                    ? 'var(--studymesh-card-hover-bg)'
+                    : 'var(--studymesh-muted-bg)',
                   borderColor: isAdmin ? 'primary.dark' : 'primary.main',
+                  transform: isAdmin ? 'translateY(-1px)' : 'none',
                 },
+                transition:
+                  'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
               }}
             >
               <Stack spacing={1.25} alignItems="center">

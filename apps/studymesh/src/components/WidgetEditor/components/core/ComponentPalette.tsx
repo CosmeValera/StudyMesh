@@ -162,10 +162,10 @@ const ComponentPalette = ({
         minWidth: isPhone ? 0 : drawerWidth,
         maxWidth: drawerWidth,
         flex: isPhone ? '0 0 auto' : `0 0 ${drawerWidth}px`,
-        bgcolor: 'background.paper',
+        bgcolor: 'var(--studymesh-panel-bg)',
         borderRight: 0,
         borderBottom: { xs: 1, sm: 0 },
-        borderColor: 'divider',
+        borderColor: 'var(--studymesh-panel-border)',
         height: { xs: 'auto', sm: '100%' },
         maxHeight: { xs: 236, sm: 'none' },
         overflow: 'hidden',
@@ -183,7 +183,7 @@ const ComponentPalette = ({
           color: 'text.primary',
           fontWeight: 'bold',
           borderBottom: 1,
-          borderColor: 'divider',
+          borderColor: 'var(--studymesh-panel-border)',
           fontSize: isPhone ? '0.875rem' : undefined,
         }}
       >
@@ -197,7 +197,7 @@ const ComponentPalette = ({
             p: isPhone ? 0.75 : 1,
             bgcolor: 'background.accentSurface',
             borderBottom: 1,
-            borderColor: 'divider',
+            borderColor: 'var(--studymesh-panel-border)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -295,8 +295,8 @@ const ComponentPalette = ({
                   : 'initial',
                 minWidth: isPhone ? 0 : undefined,
                 border: isPhone ? 1 : 0,
-                borderColor: 'divider',
-                borderRadius: isPhone ? 1 : 0,
+                borderColor: 'var(--studymesh-panel-border)',
+                borderRadius: isPhone ? 'var(--studymesh-radius-sm)' : 0,
                 overflow: 'hidden',
               }}
             >
@@ -306,7 +306,7 @@ const ComponentPalette = ({
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   textAlign: 'center',
-                  bgcolor: 'background.default',
+                  bgcolor: 'var(--studymesh-muted-bg)',
                   color: 'foreground.contrastSecondary',
                   fontWeight: 'bold',
                   cursor: 'pointer',
@@ -370,7 +370,7 @@ const ComponentPalette = ({
                               flex: '0 0 22px',
                               alignSelf: 'center',
                               borderTop: '1px solid',
-                              borderColor: 'divider',
+                              borderColor: 'var(--studymesh-panel-border)',
                               opacity: 0.8,
                             }}
                             aria-hidden="true"
@@ -408,7 +408,7 @@ const ComponentPalette = ({
           sx={{
             p: isPhone ? 1 : 2,
             borderTop: 1,
-            borderColor: 'divider',
+            borderColor: 'var(--studymesh-panel-border)',
             fontSize: isPhone ? '0.5rem' : '0.65rem',
           }}
         >
