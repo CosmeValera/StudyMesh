@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import TopNavBar from '../../../../src/components/topnavbar/TopNavBar'
 import * as useTopNavBarWidgetsModule from '../../../../src/customHooks/useTopNavBarWidgets'
@@ -9,6 +9,7 @@ import * as DashboardProviderModule from '../../../../src/components/Dasboard/Da
 import {
   OPEN_DASHBOARD_EDITOR_EVENT,
   OPEN_STUDY_PACK_EVENT,
+  OPEN_STUDY_PATH_EVENT,
 } from '../../../../src/customHooks/useWorkspaceActions'
 import { STUDYMESH_ONBOARDING_RESET_EVENT } from '../../../../src/components/onboarding/onboardingEvents'
 import { STUDY_PACK_AI_SETTINGS_KEY } from '../../../../src/studyPack/ai'
@@ -48,6 +49,12 @@ vi.mock('../../../../src/components/studyPack/CreateStudyPackModal', () => ({
   __esModule: true,
   default: ({ open }: { open: boolean }) =>
     open ? <div data-testid="study-pack-modal">Study Pack Modal</div> : null,
+}))
+
+vi.mock('../../../../src/components/studyPack/CreateStudyPathModal', () => ({
+  __esModule: true,
+  default: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="study-path-modal">Study Path Modal</div> : null,
 }))
 
 vi.mock('../../../../src/components/shared/ThemeModeToggle', () => ({
@@ -97,6 +104,13 @@ describe('TopNavBar Component', () => {
   const addDashboardMock = vi.fn()
   const updateDashboardLayoutMock = vi.fn()
   const addComponentMock = vi.fn()
+  const openUserMenu = () => {
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Admin User Own Gemini API token/i,
+      }),
+    )
+  }
 
   // Setup common mocks before each test
   beforeEach(() => {
@@ -208,14 +222,14 @@ describe('TopNavBar Component', () => {
     expect(screen.getByTestId('logo')).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-options-menu')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create from notes/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: /create from notes/i }),
+    ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create study path/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: /create study path/i }),
+    ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /advanced/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: /advanced/i }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /create widget/i }),
     ).not.toBeInTheDocument()
@@ -228,29 +242,17 @@ describe('TopNavBar Component', () => {
     ).not.toBeInTheDocument()
 
     const libraryButton = screen.getByTestId('dashboard-options-menu')
-    const createStudyPathButton = screen.getByRole('button', {
-      name: /create study path/i,
+    const userButton = screen.getByRole('button', {
+      name: /Admin User Own Gemini API token/i,
     })
-    const createFromNotesButton = screen.getByRole('button', {
-      name: /create from notes/i,
-    })
-    const advancedButton = screen.getByRole('button', { name: /advanced/i })
 
     expect(
-      libraryButton.compareDocumentPosition(createStudyPathButton) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      createStudyPathButton.compareDocumentPosition(createFromNotesButton) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      createFromNotesButton.compareDocumentPosition(advancedButton) &
+      libraryButton.compareDocumentPosition(userButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 
-  it('keeps Study Path and Create From Notes available in Basic fallback mode', () => {
+  it('keeps Study Path and Create From Notes event entry points available in Basic fallback mode', async () => {
     localStorage.getItem.mockImplementation((key: string) => {
       if (key === 'userData') {
         return JSON.stringify({
@@ -277,12 +279,15 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    expect(
-      screen.getByRole('button', { name: /create study path/i }),
-    ).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: /create from notes/i }),
-    ).toBeEnabled()
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_STUDY_PATH_EVENT))
+    })
+    expect(await screen.findByText('Study Path Modal')).toBeInTheDocument()
+
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_STUDY_PACK_EVENT))
+    })
+    expect(await screen.findByTestId('study-pack-modal')).toBeInTheDocument()
   })
 
   it('disables Study Path and Create From Notes in Hosted AI tokens mode', () => {
@@ -312,12 +317,13 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    expect(
-      screen.getByRole('button', { name: /create study path/i }),
-    ).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: /create from notes/i }),
-    ).toBeDisabled()
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_STUDY_PATH_EVENT))
+      window.dispatchEvent(new Event(OPEN_STUDY_PACK_EVENT))
+    })
+
+    expect(screen.queryByText('Study Path Modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('study-pack-modal')).not.toBeInTheDocument()
   })
 
   it('renders the StudyMesh logo', () => {
@@ -337,13 +343,15 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
-    fireEvent.click(await screen.findByText('Create Widget'))
+    openUserMenu()
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: /create widget/i }),
+    )
 
     expect(await screen.findByTestId('widget-editor')).toBeInTheDocument()
   })
 
-  it('dispatches the dashboard builder event when Create Dashboard is clicked', () => {
+  it('dispatches the dashboard builder event when Create Dashboard is clicked', async () => {
     const dashboardEditorListener = vi.fn()
     window.addEventListener(
       OPEN_DASHBOARD_EDITOR_EVENT,
@@ -356,8 +364,10 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
-    fireEvent.click(screen.getByText('Create Dashboard'))
+    openUserMenu()
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: /create dashboard/i }),
+    )
 
     expect(dashboardEditorListener).toHaveBeenCalledTimes(1)
     window.removeEventListener(
@@ -367,13 +377,25 @@ describe('TopNavBar Component', () => {
   })
 
   it('disables Advanced for viewers without opening its menu', () => {
-    localStorage.getItem.mockReturnValue(
-      JSON.stringify({
-        id: 'viewer',
-        name: 'Viewer User',
-        role: 'VIEWER_ROLE',
-      }),
-    )
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'viewer',
+          name: 'Viewer User',
+          role: 'VIEWER_ROLE',
+        })
+      }
+
+      if (key === STUDY_PACK_AI_SETTINGS_KEY) {
+        return JSON.stringify({
+          provider: 'gemini',
+          apiToken: 'test-token',
+          model: 'gemini-test',
+        })
+      }
+
+      return null
+    })
 
     render(
       <BrowserRouter>
@@ -381,15 +403,21 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    const advancedButton = screen.getByRole('button', { name: /advanced/i })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Viewer User Viewer mode/i,
+      }),
+    )
 
-    expect(advancedButton).toBeDisabled()
-    fireEvent.click(advancedButton)
-    expect(screen.queryByText('Create Dashboard')).not.toBeInTheDocument()
-    expect(screen.queryByText('Create Widget')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: /create dashboard/i }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('menuitem', { name: /create widget/i }),
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('opens Create From Notes without opening Widget or Dashboard', async () => {
+  it('opens Create From Notes from the workspace event without opening Widget or Dashboard', async () => {
     const dashboardEditorListener = vi.fn()
     const studyPackListener = vi.fn()
     window.addEventListener(
@@ -404,7 +432,9 @@ describe('TopNavBar Component', () => {
       </BrowserRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /create from notes/i }))
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_STUDY_PACK_EVENT))
+    })
 
     expect(studyPackListener).toHaveBeenCalledTimes(1)
     expect(dashboardEditorListener).not.toHaveBeenCalled()
@@ -433,7 +463,9 @@ describe('TopNavBar Component', () => {
         name: /Admin User Own Gemini API token/i,
       }),
     )
-    fireEvent.click(await screen.findByText('Settings'))
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: /^settings$/i }),
+    )
     fireEvent.click(await screen.findByRole('button', { name: /^replay$/i }))
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
