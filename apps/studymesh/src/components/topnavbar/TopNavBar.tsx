@@ -22,8 +22,6 @@ import {
   Snackbar,
   Stack,
   TextField,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 
@@ -56,7 +54,6 @@ import {
   useWorkspaceActions,
 } from '../../customHooks/useWorkspaceActions'
 import ThemeModeToggle from '../shared/ThemeModeToggle'
-import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import SettingsDialog from '../WidgetEditor/components/dialogs/SettingsDialog'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
@@ -83,6 +80,8 @@ import {
   WorkspaceCreationTaskState,
 } from '../../workspaceCreationStatus'
 import { WORKSPACE_DASHBOARD_TABS_SLOT_ID } from '../workspace/workspaceEvents'
+import WidgetEditorDialog from '../workspace/WidgetEditorDialog'
+import { useResponsiveWorkspaceMode } from '../workspace/useResponsiveWorkspaceMode'
 
 // Define user data type
 interface UserData {
@@ -90,7 +89,6 @@ interface UserData {
   name: string
   role: string
 }
-
 
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 
@@ -395,12 +393,13 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
     currentDashboard?.studyPath?.title || currentDashboard?.name || 'StudyMesh'
   const navigate = useNavigate()
 
-  // Use theme and media query for responsive design
-  const theme = useTheme()
-  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
-  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
-  const isMobileWorkspaceHeader = useMediaQuery(theme.breakpoints.down('lg'))
+  const {
+    theme,
+    isPhone,
+    isTablet,
+    isDesktopWorkspace: isDesktop,
+    isPhoneOrTablet: isMobileWorkspaceHeader,
+  } = useResponsiveWorkspaceMode()
 
   // Load user data from localStorage on component mount
   useEffect(() => {
@@ -973,7 +972,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                   <MenuItem
                     onClick={openUserSettings}
                     sx={{ color: 'text.primary', marginTop: 1 }}
-                  > 
+                  >
                     <ListItemIcon>
                       <PersonIcon
                         fontSize="small"
@@ -1197,10 +1196,7 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             sx={{ color: 'text.primary' }}
           >
             <ListItemIcon>
-              <WidgetsIcon
-                fontSize="small"
-                sx={{ color: 'text.secondary' }}
-              />
+              <WidgetsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
             </ListItemIcon>
             Create Widget
           </MenuItem>
@@ -1466,80 +1462,16 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
             onCreatePath={createStudyPackDashboards}
             onStatusChange={reportStudyPathStatus}
           />
-          <Dialog
-            fullScreen
+          <WidgetEditorDialog
             open={widgetEditorOpen}
+            payload={widgetEditorPayload}
             onClose={() => {
               setWidgetEditorOpen(false)
               dispatchWorkspaceOnboardingEvent({
                 type: 'widget-editor-closed',
               })
             }}
-            PaperProps={{
-              sx: {
-                bgcolor: 'background.default',
-              },
-            }}
-          >
-            <Box
-              sx={{
-                height: '100dvh',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  height: 48,
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  px: 2,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  bgcolor: 'background.paper',
-                }}
-              >
-                <Typography variant="subtitle1" fontWeight={700}>
-                  Create Widget
-                </Typography>
-                <IconButton
-                  aria-label="Close Create Widget"
-                  data-onboarding-id="close-create-widget"
-                  onClick={() => {
-                    setWidgetEditorOpen(false)
-                    dispatchWorkspaceOnboardingEvent({
-                      type: 'widget-editor-closed',
-                    })
-                  }}
-                  sx={{
-                    color: 'text.primary',
-                    bgcolor: 'background.default',
-                    border: 1,
-                    borderColor: 'divider',
-                    width: 36,
-                    height: 36,
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                      borderColor: 'text.secondary',
-                    },
-                  }}
-                >
-                  <CloseIcon />
-                </IconButton>
-              </Box>
-              <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <WidgetEditor
-                  key={`${widgetEditorOpen}-${
-                    widgetEditorPayload?.loadWidget?.id || 'new'
-                  }`}
-                  customProps={widgetEditorPayload || undefined}
-                />
-              </Box>
-            </Box>
-          </Dialog>
+          />
         </>
       )}
       <Snackbar

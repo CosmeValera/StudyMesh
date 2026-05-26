@@ -14,6 +14,7 @@ vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
 
 vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   __esModule: true,
+  OPEN_CREATE_HUB_EVENT: 'studymesh-open-create-hub',
   OPEN_DASHBOARD_EDITOR_EVENT: 'studymesh-open-dashboard-editor',
   OPEN_WIDGET_EDITOR_EVENT: 'studymesh-open-widget-editor',
   OPEN_STUDY_PACK_EVENT: 'studymesh-open-study-pack',
@@ -231,8 +232,8 @@ describe('Dashboards', () => {
   })
 
   it('opens the Study Path modal when the primary empty workspace action is used', () => {
-    const studyPathListener = vi.fn()
-    window.addEventListener('studymesh-open-study-path', studyPathListener)
+    const createHubListener = vi.fn()
+    window.addEventListener('studymesh-open-create-hub', createHubListener)
     mockDashboardProvider({
       openDashboards: [],
       selectedDashboard: -1,
@@ -242,12 +243,15 @@ describe('Dashboards', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /create study path/i }))
 
-    expect(studyPathListener).toHaveBeenCalledTimes(1)
+    expect(createHubListener).toHaveBeenCalledTimes(1)
+    expect(createHubListener.mock.calls[0][0].detail).toEqual({
+      intent: 'study-path',
+    })
     expect(openCreateWidgetMock).not.toHaveBeenCalled()
     expect(openOperationsExampleMock).not.toHaveBeenCalled()
     expect(openWidgetMenuMock).not.toHaveBeenCalled()
     expect(navigateMock).not.toHaveBeenCalled()
-    window.removeEventListener('studymesh-open-study-path', studyPathListener)
+    window.removeEventListener('studymesh-open-create-hub', createHubListener)
   })
 
   it('opens the default starter Study Path on first empty workspace load', async () => {

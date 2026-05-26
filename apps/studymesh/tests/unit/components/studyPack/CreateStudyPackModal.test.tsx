@@ -260,7 +260,9 @@ describe('CreateStudyPackModal create from notes flow', () => {
 
   const selectImageSource = () => {
     selectResource()
-    expect(screen.getByText('Add sources')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /^add sources$/i }),
+    ).toBeInTheDocument()
   }
 
   const getImageFileInput = () =>
@@ -303,7 +305,9 @@ describe('CreateStudyPackModal create from notes flow', () => {
     expect(screen.getByRole('button', { name: /quiz/i }))
     expect(screen.getByRole('button', { name: /medium/i }))
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled()
-    expect(screen.getByText('Add sources')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /^add sources$/i }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /upload files/i }),
     ).toBeInTheDocument()

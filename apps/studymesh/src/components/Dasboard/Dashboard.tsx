@@ -21,8 +21,6 @@ import {
   Paper,
   Stack,
   Autocomplete,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material'
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
 import TooltipStyled from '../TooltipStyled'
@@ -30,7 +28,6 @@ import TooltipStyled from '../TooltipStyled'
 import { ReactComponent as AddIcon } from '../../icons/add.svg'
 import { ReactComponent as CloseIcon } from '../../icons/close.svg'
 import SaveIcon from '@mui/icons-material/Save'
-import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import ConstructionIcon from '@mui/icons-material/Construction'
 import EditIcon from '@mui/icons-material/Edit'
 import ExtensionIcon from '@mui/icons-material/Extension'
@@ -40,8 +37,6 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import RouteIcon from '@mui/icons-material/Route'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout, StateDashboard } from '../../state/store'
@@ -76,14 +71,11 @@ import {
   OPEN_DASHBOARD_CHAT_EVENT,
   WORKSPACE_DASHBOARD_TABS_SLOT_ID,
 } from '../workspace/workspaceEvents'
+import { useResponsiveWorkspaceMode } from '../workspace/useResponsiveWorkspaceMode'
 import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents'
+import { DashboardEditorResponsivePanels } from './DashboardEditorResponsivePanels'
+import type { DashboardEditorWidgetConfig } from './dashboardEditorTypes'
 import './tabs.scss'
-
-interface DashboardEditorWidgetConfig {
-  name: string
-  component: string
-  customProps?: Record<string, unknown>
-}
 
 const createDashboardTabFromWidget = (
   componentConfig: DashboardEditorWidgetConfig,
@@ -713,9 +705,11 @@ const DashboardEmptyState = ({
 }
 
 const Dashboards = () => {
-  const theme = useTheme()
-  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
-  const isMobileDashboardView = useMediaQuery(theme.breakpoints.down('lg'))
+  const {
+    theme,
+    isPhone,
+    isPhoneOrTablet: isMobileDashboardView,
+  } = useResponsiveWorkspaceMode()
   const {
     openDashboards,
     selectedDashboard,
@@ -2964,211 +2958,18 @@ const Dashboards = () => {
             </Stack>
           </Box>
           <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {dashboardEditorDashboard && isMobileDashboardView ? (
-              <Box
-                sx={{
-                  height: '100%',
-                  overflow: 'auto',
-                  p: 2,
-                  bgcolor: 'background.default',
-                }}
-              >
-                <Stack spacing={2}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    <Typography variant="subtitle1" fontWeight={800}>
-                      Phone dashboard widgets
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Pick the widgets to show on phone and arrange the order
-                      they appear in the dashboard.
-                    </Typography>
-                  </Paper>
-
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    <Typography variant="subtitle2" fontWeight={800} mb={1}>
-                      Selected widgets
-                    </Typography>
-                    {dashboardEditorWidgetTabs.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
-                        No widgets selected yet. Add widgets below to build this
-                        phone dashboard.
-                      </Typography>
-                    ) : (
-                      <Stack spacing={1}>
-                        {dashboardEditorWidgetTabs.map((widgetTab, index) => (
-                          <Paper
-                            key={`${widgetTab.name}-${widgetTab.component}-${index}`}
-                            variant="outlined"
-                            sx={{
-                              p: 1,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                              bgcolor: 'background.default',
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              fontWeight={700}
-                              sx={{ flex: 1, minWidth: 0 }}
-                              noWrap
-                            >
-                              {index + 1}. {widgetTab.name}
-                            </Typography>
-                            <IconButton
-                              size="small"
-                              aria-label={`Move ${widgetTab.name} up`}
-                              disabled={index === 0}
-                              onClick={() =>
-                                moveMobileDashboardWidget(index, -1)
-                              }
-                            >
-                              <ArrowUpwardIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              aria-label={`Move ${widgetTab.name} down`}
-                              disabled={
-                                index === dashboardEditorWidgetTabs.length - 1
-                              }
-                              onClick={() =>
-                                moveMobileDashboardWidget(index, 1)
-                              }
-                            >
-                              <ArrowDownwardIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              aria-label={`Remove ${widgetTab.name}`}
-                              onClick={() => removeMobileDashboardWidget(index)}
-                            >
-                              <CloseIcon width={16} height={16} />
-                            </IconButton>
-                          </Paper>
-                        ))}
-                      </Stack>
-                    )}
-                  </Paper>
-
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    <Typography variant="subtitle2" fontWeight={800} mb={1}>
-                      Add widgets
-                    </Typography>
-                    {customWidgetPanels.length > 0 ? (
-                      <Stack spacing={1}>
-                        {customWidgetPanels.flatMap((topNavBarWidget) =>
-                          topNavBarWidget.items.map((item) => (
-                            <Button
-                              key={`${topNavBarWidget.name}-${item.name}`}
-                              variant="outlined"
-                              fullWidth
-                              startIcon={<ExtensionIcon />}
-                              onClick={() =>
-                                addWidgetToDashboardEditor({
-                                  id: `panel-${Date.now()}`,
-                                  ...item,
-                                })
-                              }
-                              sx={{
-                                justifyContent: 'flex-start',
-                                textTransform: 'none',
-                              }}
-                            >
-                              {item.name}
-                            </Button>
-                          )),
-                        )}
-                      </Stack>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No saved widgets yet. Create a widget first, then return
-                        here to place it on a dashboard.
-                      </Typography>
-                    )}
-                  </Paper>
-                </Stack>
-              </Box>
-            ) : (
-              dashboardEditorDashboard &&
-              (dashboardEditorIsEmpty ? (
-                <Box
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    p: { xs: 2, md: 4 },
-                    bgcolor: 'background.default',
-                  }}
-                >
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      width: 'min(640px, 100%)',
-                      p: { xs: 2.5, sm: 4 },
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: 'background.paper',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <DashboardCustomizeIcon
-                      sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}
-                    />
-                    <Typography variant="h5" fontWeight="bold" gutterBottom>
-                      Empty study dashboard
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      Add a saved study widget from Widgets, or create a
-                      reusable note, exercise, formula, or review block first.
-                    </Typography>
-                  </Paper>
-                </Box>
-              ) : (
-                <DashboardLayoutView
-                  key={dashboardEditorDashboard.id}
-                  layout={dashboardEditorDashboard.layout}
-                  updateLayout={(model) => {
-                    if (!isAdmin) {
-                      return
-                    }
-
-                    updateDashboardEditorLayout(model.toJson().layout)
-                  }}
-                />
-              ))
-            )}
+            <DashboardEditorResponsivePanels
+              dashboard={dashboardEditorDashboard}
+              isPhoneOrTablet={isMobileDashboardView}
+              isAdmin={isAdmin}
+              isEmpty={dashboardEditorIsEmpty}
+              widgetTabs={dashboardEditorWidgetTabs}
+              customWidgetPanels={customWidgetPanels}
+              onMoveMobileWidget={moveMobileDashboardWidget}
+              onRemoveMobileWidget={removeMobileDashboardWidget}
+              onAddWidget={addWidgetToDashboardEditor}
+              onUpdateLayout={updateDashboardEditorLayout}
+            />
           </Box>
         </Box>
       </Dialog>

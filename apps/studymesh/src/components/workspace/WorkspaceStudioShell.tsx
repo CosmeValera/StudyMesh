@@ -5,17 +5,13 @@ import {
   Button,
   Chip,
   Collapse,
-  Dialog,
   IconButton,
   MenuItem,
   Paper,
-  Slide,
   Stack,
   TextField,
   Tooltip,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
@@ -57,7 +53,6 @@ import {
   extractTextFromPptx,
 } from '../../studyPack/documentExtraction'
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
-import WidgetEditor from '../WidgetEditor/WidgetEditor'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import { useDashboards } from '../Dasboard/DashboardProvider'
 import {
@@ -74,81 +69,39 @@ import {
   CLOSE_DASHBOARD_CHAT_EVENT,
   OPEN_DASHBOARD_CHAT_EVENT,
 } from './workspaceEvents'
-
-type StudioFlow = 'hub' | 'study-path' | 'from-notes'
-type CreationFlow = Exclude<StudioFlow, 'hub'>
-type CreateIntent = 'study-path' | StudyMaterialResourceType
-type GenerationDraftStatus = 'generating' | 'ready' | 'failed' | 'cancelled'
-type GenerationMarkerState =
-  | 'editing'
-  | Exclude<WorkspaceCreationTaskState, 'idle'>
-
-interface GenerationDraft {
-  id: string
-  flow: CreationFlow
-  status: GenerationDraftStatus | 'editing'
-  title: string
-  createdAt: string
-  inputSummary: string
-  selectedResourceType?: string | null
-  detailLevel?: string
-  error?: string
-  isPlaceholder?: boolean
-  quickCreate?: boolean
-}
-
-const quickCreateLabels: Record<StudyMaterialResourceType, string> = {
-  quiz: 'Quiz',
-  flashcards: 'Flashcards',
-  improvedNotes: 'Clear Notes',
-}
+import {
+  appendQuickSourceText,
+  createGenerationDraft,
+  CreateIntent,
+  CreationFlow,
+  GenerationDraft,
+  GenerationMarkerState,
+  readIsAdmin,
+  quickCreateAccents,
+  quickCreateDetailToAmount,
+  quickCreateLabels,
+  quickCreateTargets,
+  quickSourceAcceptValue,
+  statusMarkerColors,
+  statusMarkerGlow,
+  studioPanelMaxWidth,
+  studioPanelMinWidth,
+  studioPanelRailWidth,
+  studioPanelWidth,
+  StudioFlow,
+} from './workspaceStudioModel'
+import {
+  WorkspaceDesktopLayout,
+  WorkspaceMobileLayout,
+} from './WorkspaceStudioLayouts'
+import WidgetEditorDialog from './WidgetEditorDialog'
+import { useResponsiveWorkspaceMode } from './useResponsiveWorkspaceMode'
 
 const quickCreateIcons: Record<StudyMaterialResourceType, React.ReactNode> = {
   quiz: <QuizIcon fontSize="small" />,
   flashcards: <StyleIcon fontSize="small" />,
   improvedNotes: <AutoStoriesIcon fontSize="small" />,
 }
-
-const quickCreateTargets: Record<StudyMaterialResourceType, string[]> = {
-  quiz: ['quizzes'],
-  flashcards: ['flashcards'],
-  improvedNotes: ['summaries', 'definitions', 'lists'],
-}
-
-const quickCreateAccents: Record<StudyMaterialResourceType, string> = {
-  quiz: '#5b9dff',
-  flashcards: '#b66cff',
-  improvedNotes: '#18b992',
-}
-
-const quickCreateDetailToAmount: Record<
-  StudyMaterialDetailLevel,
-  'few' | 'medium' | 'many'
-> = {
-  short: 'few',
-  medium: 'medium',
-  long: 'many',
-}
-
-const quickSourceAcceptValue = [
-  '.md',
-  '.txt',
-  '.csv',
-  '.pdf',
-  '.pptx',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'text/markdown',
-  'text/plain',
-  'text/csv',
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-].join(',')
-
-const appendQuickSourceText = (current: string, next: string) =>
-  [current.trim(), next.trim()].filter(Boolean).join('\n\n---\n\n')
 
 const statusMarkerLabels: Record<
   WorkspaceCreationTaskState | 'editing',
@@ -160,59 +113,6 @@ const statusMarkerLabels: Record<
   complete: 'Study material ready to review',
   error: 'Generation failed. Click to review.',
 }
-
-const statusMarkerColors: Record<GenerationMarkerState, string> = {
-  editing: 'primary.main',
-  running: 'warning.main',
-  complete: 'success.main',
-  error: 'error.main',
-}
-
-const statusMarkerGlow: Record<GenerationMarkerState, string> = {
-  editing: '0 0 0 6px rgba(59, 130, 246, 0.14)',
-  running: '0 0 0 6px rgba(245, 158, 11, 0.14)',
-  complete: '0 0 0 7px rgba(34, 197, 94, 0.18)',
-  error: '0 0 0 6px rgba(239, 68, 68, 0.16)',
-}
-
-const studioPanelWidth = 424
-const studioPanelRailWidth = 44
-const studioPanelMinWidth = 360
-const studioPanelMaxWidth = 620
-const workspaceCanvasSx = {
-  minHeight: 0,
-  overflow: 'hidden',
-  p: '8px',
-  boxSizing: 'border-box',
-}
-
-const readIsAdmin = () => {
-  try {
-    const storedUserData = localStorage.getItem('userData')
-    if (!storedUserData) {
-      return true
-    }
-
-    const userData = JSON.parse(storedUserData)
-    return userData.id === 'admin' && userData.role === 'ADMIN_ROLE'
-  } catch (error) {
-    console.error('Failed to read user data', error)
-    return false
-  }
-}
-
-const createGenerationDraft = (
-  flow: Exclude<StudioFlow, 'hub'>,
-  options: { isPlaceholder?: boolean } = {},
-): GenerationDraft => ({
-  id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  flow,
-  status: 'editing',
-  title: flow === 'study-path' ? 'Study Path draft' : 'Notes draft',
-  createdAt: new Date().toISOString(),
-  inputSummary: flow === 'study-path' ? 'Learning prompt' : 'Sources',
-  isPlaceholder: options.isPlaceholder,
-})
 
 const resourceTypeTitle = (resourceType?: string | null) => {
   if (resourceType === 'flashcards') {
@@ -268,8 +168,7 @@ const getDraftMarkerState = (
 }
 
 const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('lg'))
+  const { theme, isPhoneOrTablet: isMobile } = useResponsiveWorkspaceMode()
   const initialDrafts = useMemo(
     () => [
       createGenerationDraft('study-path', { isPlaceholder: true }),
@@ -1964,297 +1863,44 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   )
 
   const widgetBuilderDialog = (
-    <Dialog
-      fullScreen
+    <WidgetEditorDialog
       open={Boolean(fullScreenWidgetPayload)}
+      payload={fullScreenWidgetPayload}
       onClose={closeFullScreenWidgetEditor}
-      PaperProps={{
-        sx: {
-          bgcolor: 'background.default',
-        },
-      }}
-    >
-      <Box
-        sx={{
-          height: '100dvh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            height: 48,
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            px: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-          }}
-        >
-          <Typography variant="subtitle1" fontWeight={700}>
-            Create Widget
-          </Typography>
-          <IconButton
-            aria-label="Close Create Widget"
-            data-onboarding-id="close-create-widget"
-            onClick={closeFullScreenWidgetEditor}
-            sx={{
-              color: 'text.primary',
-              bgcolor: 'background.default',
-              border: 1,
-              borderColor: 'divider',
-              width: 36,
-              height: 36,
-              '&:hover': {
-                bgcolor: 'action.hover',
-                borderColor: 'text.secondary',
-              },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <WidgetEditor
-            key={`full-screen-widget-${
-              fullScreenWidgetPayload?.loadWidget?.id || 'new'
-            }`}
-            customProps={fullScreenWidgetPayload || undefined}
-            onSaveComplete={closeFullScreenWidgetEditor}
-          />
-        </Box>
-      </Box>
-    </Dialog>
+      onSaveComplete={closeFullScreenWidgetEditor}
+    />
   )
 
   if (isMobile) {
     return (
-      <Box
-        sx={{
-          position: 'relative',
-          height: '100%',
-          minHeight: 0,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          bgcolor: 'background.default',
-          '--studymesh-mobile-generation-tray-height':
-            visibleCreationMarkers.length ? '48px' : '0px',
-          ...(isStudioOpen && mobileSection === 'creation'
-            ? {
-                '& [data-testid="study-path-navigator-overlay"]': {
-                  display: 'none',
-                },
-              }
-            : {}),
-        }}
+      <WorkspaceMobileLayout
+        studioContent={studioContent}
+        mobileCreationStatusTray={mobileCreationStatusTray}
+        mobileSectionTabs={mobileSectionTabs}
+        widgetBuilderDialog={widgetBuilderDialog}
+        isStudioOpen={isStudioOpen}
+        mobileSection={mobileSection}
+        visibleCreationMarkerCount={visibleCreationMarkers.length}
+        theme={theme}
       >
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              ...workspaceCanvasSx,
-            }}
-          >
-            {children}
-          </Box>
-          <Slide
-            direction="right"
-            in={mobileSection === 'creation'}
-            mountOnEnter
-            timeout={{ enter: 260, exit: 220 }}
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                overflow: 'hidden',
-                p: '8px',
-                boxSizing: 'border-box',
-                zIndex: 2,
-                bgcolor: 'background.default',
-              }}
-            >
-              <Box
-                sx={{
-                  height: '100%',
-                  overflow: 'hidden',
-                  border: 1,
-                  borderColor: 'divider',
-                  borderRadius: 2,
-                  bgcolor: 'background.paper',
-                  boxShadow:
-                    theme.palette.mode === 'dark'
-                      ? '0 18px 40px rgba(0,0,0,0.42)'
-                      : '0 18px 42px rgba(16,24,40,0.10)',
-                }}
-              >
-                {studioContent}
-              </Box>
-            </Box>
-          </Slide>
-        </Box>
-        {mobileCreationStatusTray}
-        {mobileSectionTabs}
-        {widgetBuilderDialog}
-      </Box>
+        {children}
+      </WorkspaceMobileLayout>
     )
   }
 
   return (
-    <Box
-      sx={{
-        position: 'relative',
-        height: '100%',
-        display: 'flex',
-        overflow: 'hidden',
-        bgcolor: 'background.default',
-      }}
+    <WorkspaceDesktopLayout
+      studioContent={studioContent}
+      creationStatusMarkers={creationStatusMarkers}
+      widgetBuilderDialog={widgetBuilderDialog}
+      isStudioOpen={isStudioOpen}
+      studioWidth={studioWidth}
+      openCreateHub={openCreateHub}
+      startStudioResize={startStudioResize}
+      theme={theme}
     >
-      <Box
-        sx={{
-          width: isStudioOpen ? studioWidth : studioPanelRailWidth,
-          flex: '0 0 auto',
-          minHeight: 0,
-          overflow: 'hidden',
-          p: '8px 0 8px 8px',
-          boxSizing: 'border-box',
-          position: 'relative',
-          transition: theme.transitions.create(['width'], {
-            duration: theme.transitions.duration.shorter,
-            easing: theme.transitions.easing.easeInOut,
-          }),
-        }}
-      >
-        <Box
-          sx={{
-            height: '100%',
-            overflow: 'hidden',
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: 2.5,
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 18px 40px rgba(0,0,0,0.42)'
-                : '0 18px 42px rgba(16,24,40,0.10)',
-            display: isStudioOpen ? 'block' : 'none',
-          }}
-        >
-          {studioContent}
-        </Box>
-        {!isStudioOpen && (
-          <Tooltip title="Open Create" placement="right">
-            <Box
-              component="button"
-              type="button"
-              aria-label="Open Create panel"
-              onClick={openCreateHub}
-              sx={{
-                width: '100%',
-                height: '100%',
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 2.5,
-                bgcolor: 'background.paper',
-                color: 'primary.main',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1,
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 12px 32px rgba(0,0,0,0.32)'
-                    : '0 12px 30px rgba(16,24,40,0.12)',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <AddIcon fontSize="small" />
-              <Typography
-                variant="caption"
-                sx={{
-                  writingMode: 'vertical-rl',
-                  transform: 'rotate(180deg)',
-                  fontWeight: 800,
-                  letterSpacing: 0.4,
-                }}
-              >
-                Create
-              </Typography>
-            </Box>
-          </Tooltip>
-        )}
-        {isStudioOpen && (
-          <Box
-            role="separator"
-            aria-label="Resize Create panel"
-            onMouseDown={startStudioResize}
-            sx={{
-              position: 'absolute',
-              top: 14,
-              right: -3,
-              width: 8,
-              height: 'calc(100% - 28px)',
-              cursor: 'col-resize',
-              zIndex: 2,
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: 3,
-                width: 2,
-                borderRadius: 999,
-                bgcolor: 'divider',
-              },
-              '&:hover::after': { bgcolor: 'primary.main' },
-            }}
-          />
-        )}
-      </Box>
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          ...workspaceCanvasSx,
-          transition: theme.transitions.create('padding', {
-            duration: theme.transitions.duration.shorter,
-          }),
-        }}
-      >
-        <Box
-          sx={{
-            height: '100%',
-            minHeight: 0,
-            overflow: 'hidden',
-            borderRadius: 2,
-            bgcolor: 'background.paper',
-            border: 1,
-            borderColor: 'divider',
-          }}
-        >
-          {children}
-        </Box>
-      </Box>
-      {creationStatusMarkers}
-      {widgetBuilderDialog}
-    </Box>
+      {children}
+    </WorkspaceDesktopLayout>
   )
 }
 
