@@ -13,6 +13,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import SendIcon from '@mui/icons-material/Send'
@@ -213,9 +214,9 @@ const DashboardChatPanel = ({
     >
       <Box
         sx={{
-          minHeight: 76,
+          minHeight: 112,
           px: 2,
-          py: 1.5,
+          py: 1.75,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -224,12 +225,25 @@ const DashboardChatPanel = ({
           borderColor: 'divider',
           background:
             theme.palette.mode === 'dark'
-              ? 'linear-gradient(135deg, rgba(34,197,94,0.14), rgba(14,165,233,0.08))'
-              : 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(14,165,233,0.06))',
+              ? 'radial-gradient(circle at 0% 0%, rgba(34,197,94,0.28), transparent 38%), linear-gradient(135deg, rgba(34,197,94,0.14), rgba(14,165,233,0.10))'
+              : 'radial-gradient(circle at 0% 0%, rgba(34,197,94,0.22), transparent 38%), linear-gradient(135deg, rgba(34,197,94,0.12), rgba(14,165,233,0.08))',
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={900} noWrap>
+          <Typography
+            variant="caption"
+            color="primary"
+            fontWeight={950}
+            sx={{ textTransform: 'uppercase', letterSpacing: 1 }}
+          >
+            Source intelligence
+          </Typography>
+          <Typography
+            variant="h5"
+            fontWeight={950}
+            noWrap
+            sx={{ lineHeight: 1.02 }}
+          >
             Ask Sources
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
@@ -309,23 +323,45 @@ const DashboardChatPanel = ({
           <Stack spacing={2.25}>
             <Box
               sx={{
-                p: 2,
+                p: 2.4,
                 border: 1,
-                borderColor: 'divider',
-                borderRadius: 2.5,
+                borderColor: alpha(theme.palette.primary.main, 0.22),
+                borderRadius: 3.5,
                 bgcolor: 'background.paper',
+                background:
+                  theme.palette.mode === 'dark'
+                    ? 'radial-gradient(circle at 100% 0%, rgba(14,165,233,0.18), transparent 34%), linear-gradient(135deg, rgba(34,197,94,0.12), rgba(14,165,233,0.07))'
+                    : 'radial-gradient(circle at 100% 0%, rgba(14,165,233,0.14), transparent 34%), linear-gradient(135deg, rgba(34,197,94,0.10), rgba(14,165,233,0.06))',
               }}
             >
-              <Typography variant="h6" fontWeight={900}>
-                What do you want to understand?
+              <Typography
+                variant="caption"
+                color="primary"
+                fontWeight={900}
+                sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+              >
+                Grounded chat
+              </Typography>
+              <Typography
+                variant="h4"
+                fontWeight={950}
+                sx={{ lineHeight: 1.02, mt: 0.5 }}
+              >
+                Interrogate your dashboard.
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Ask questions based on the sources and study material in this
                 dashboard. I’ll keep answers grounded in what’s here.
               </Typography>
             </Box>
-            <Stack spacing={1}>
-              {suggestions.map((suggestion) => (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 1,
+              }}
+            >
+              {suggestions.map((suggestion, index) => (
                 <Button
                   key={suggestion}
                   variant="outlined"
@@ -333,11 +369,12 @@ const DashboardChatPanel = ({
                   onClick={() => sendQuestion(suggestion)}
                   sx={{
                     justifyContent: 'flex-start',
-                    borderRadius: 2,
-                    py: 1,
-                    px: 1.25,
+                    minHeight: 76,
+                    borderRadius: 2.75,
+                    py: 1.25,
+                    px: 1.35,
                     bgcolor: 'background.paper',
-                    borderColor: 'divider',
+                    borderColor: alpha(theme.palette.primary.main, 0.16),
                     color: 'text.primary',
                     textTransform: 'none',
                   }}
@@ -345,7 +382,7 @@ const DashboardChatPanel = ({
                   {suggestion}
                 </Button>
               ))}
-            </Stack>
+            </Box>
           </Stack>
         ) : (
           <Stack spacing={1.5}>

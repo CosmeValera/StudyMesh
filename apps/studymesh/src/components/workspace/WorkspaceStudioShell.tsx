@@ -898,6 +898,30 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   ]
 
   const studyPathOption = createOptions[0]
+  const commandStats = [
+    { label: 'Primary route', value: 'Study Path' },
+    {
+      label: 'Fast lane',
+      value: hasCurrentDashboardContext ? '1-click ready' : 'Needs source',
+    },
+    { label: 'Material lab', value: quickSourceLabel },
+  ]
+  const sourceFlowSteps = [
+    {
+      label: 'Output',
+      value: selectedQuickCreateIntent
+        ? quickCreateLabels[selectedQuickCreateIntent]
+        : 'Pick a target',
+    },
+    {
+      label: 'Source',
+      value: quickSourceMode === 'dashboard' ? 'Dashboard' : quickSourceLabel,
+    },
+    {
+      label: 'Finish',
+      value: quickCanCreateFromActiveSource ? 'Ready' : 'Waiting',
+    },
+  ]
 
   const returnToCreateHub = () => {
     setActiveFlow('hub')
@@ -929,34 +953,108 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       }}
     >
       <Stack spacing={2.5}>
-        <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography variant="h5" fontWeight={900}>
-              Creation
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.35, maxWidth: 340 }}
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 1.75, sm: 2 },
+            borderRadius: 3.5,
+            border: 1,
+            borderColor: alpha(theme.palette.primary.main, 0.26),
+            bgcolor: alpha(
+              theme.palette.primary.main,
+              theme.palette.mode === 'dark' ? 0.11 : 0.07,
+            ),
+            backgroundImage: `radial-gradient(circle at 8% 0%, ${alpha(theme.palette.primary.main, 0.25)}, transparent 34%), radial-gradient(circle at 92% 16%, ${alpha(theme.palette.warning.main, 0.16)}, transparent 30%)`,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Stack direction="row" gap={1.25} alignItems="flex-start">
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="primary"
+                  fontWeight={950}
+                  sx={{ textTransform: 'uppercase', letterSpacing: 1 }}
+                >
+                  StudyMesh command center
+                </Typography>
+                <Typography
+                  variant="h4"
+                  fontWeight={950}
+                  sx={{
+                    lineHeight: 0.98,
+                    mt: 0.5,
+                    fontSize: { xs: '1.7rem', sm: '2rem' },
+                  }}
+                >
+                  Build the next learning surface.
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.9, maxWidth: 430 }}
+                >
+                  Big guided paths, instant review material, or a focused source
+                  lab — all from one launch deck.
+                </Typography>
+              </Box>
+              <IconButton
+                aria-label="Close Create panel"
+                onClick={closeStudio}
+                size="small"
+                sx={{
+                  mt: 0.25,
+                  border: 1,
+                  borderColor: alpha(theme.palette.primary.main, 0.24),
+                  bgcolor: alpha(theme.palette.background.paper, 0.72),
+                  flex: '0 0 auto',
+                }}
+              >
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(3, minmax(0, 1fr))',
+                },
+                gap: 1,
+              }}
             >
-              Create a guided study path or quick material from your dashboard.
-            </Typography>
-          </Box>
-          <IconButton
-            aria-label="Close Create panel"
-            onClick={closeStudio}
-            size="small"
-            sx={{
-              mt: 0.25,
-              border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.default',
-              flex: '0 0 auto',
-            }}
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-        </Box>
+              {commandStats.map((stat) => (
+                <Paper
+                  key={stat.label}
+                  elevation={0}
+                  sx={{
+                    p: 1.1,
+                    borderRadius: 2,
+                    border: 1,
+                    borderColor: alpha(theme.palette.primary.main, 0.14),
+                    bgcolor: alpha(
+                      theme.palette.background.paper,
+                      theme.palette.mode === 'dark' ? 0.5 : 0.72,
+                    ),
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={800}
+                  >
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={950} noWrap>
+                    {stat.value}
+                  </Typography>
+                </Paper>
+              ))}
+            </Box>
+          </Stack>
+        </Paper>
 
         {!quickOptionsOpen ? (
           <>
@@ -967,18 +1065,31 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               elevation={0}
               sx={{
                 width: '100%',
-                p: { xs: 2, sm: 2.25 },
+                p: { xs: 2.4, sm: 3 },
                 textAlign: 'left',
-                borderRadius: 3,
+                borderRadius: 4,
                 border: 1,
                 borderColor: alpha(theme.palette.primary.main, 0.42),
-                bgcolor: alpha(theme.palette.primary.main, 0.075),
+                bgcolor: alpha(
+                  theme.palette.primary.main,
+                  theme.palette.mode === 'dark' ? 0.16 : 0.1,
+                ),
                 color: 'text.primary',
                 cursor: 'pointer',
                 display: 'block',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: `0 14px 36px ${alpha(theme.palette.primary.main, 0.1)}`,
+                boxShadow: `0 28px 80px ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.14)}`,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: -80,
+                  background: `radial-gradient(circle at 85% 8%, ${alpha(
+                    theme.palette.primary.main,
+                    theme.palette.mode === 'dark' ? 0.22 : 0.16,
+                  )}, transparent 34%)`,
+                  pointerEvents: 'none',
+                },
                 '&:hover': {
                   borderColor: 'primary.main',
                   bgcolor: alpha(theme.palette.primary.main, 0.105),
@@ -992,7 +1103,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
               }}
             >
-              <Stack spacing={1.75}>
+              <Stack spacing={2.25} sx={{ position: 'relative' }}>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <Box
                     sx={{
@@ -1017,7 +1128,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     >
                       Recommended
                     </Typography>
-                    <Typography variant="h5" fontWeight={950} lineHeight={1.15}>
+                    <Typography variant="h4" fontWeight={950} lineHeight={1.02}>
                       Study Path
                     </Typography>
                   </Box>
@@ -1033,6 +1144,25 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   >
                     Creates lessons, dashboards, exercises and flashcards.
                   </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                    gap: 0.75,
+                  }}
+                >
+                  {['01 Lessons', '02 Exercises', '03 Review'].map((label) => (
+                    <Chip
+                      key={label}
+                      size="small"
+                      label={label}
+                      sx={{
+                        fontWeight: 800,
+                        bgcolor: alpha(theme.palette.primary.main, 0.09),
+                      }}
+                    />
+                  ))}
                 </Box>
                 <Button
                   component="span"
@@ -1051,178 +1181,209 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               </Stack>
             </Paper>
 
-            <Stack spacing={1.25}>
-              <Box>
-                <Typography variant="subtitle1" fontWeight={900}>
-                  Quick Create
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.3 }}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                borderRadius: 3,
+                border: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+              }}
+            >
+              <Stack spacing={1.25}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="primary"
+                    fontWeight={950}
+                    sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+                  >
+                    Quick Create runway
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight={900}>
+                    Instant material cards
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.3 }}
+                  >
+                    {hasCurrentDashboardContext
+                      ? 'One click, no setup: generate focused material from your current dashboard.'
+                      : 'This dashboard is empty, so these open Create from Material.'}
+                  </Typography>
+                </Box>
+                {!hasCurrentDashboardContext ? (
+                  <Alert severity="info" sx={{ py: 0.5 }}>
+                    The current dashboard is empty. Pick a card to create from
+                    material instead.
+                  </Alert>
+                ) : null}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(3, minmax(0, 1fr))',
+                    },
+                    gap: 1,
+                  }}
                 >
-                  {hasCurrentDashboardContext
-                    ? 'Generate focused material from your current dashboard.'
-                    : 'Add material first, then generate focused study material.'}
-                </Typography>
-              </Box>
-              {!hasCurrentDashboardContext ? (
-                <Alert severity="info" sx={{ py: 0.5 }}>
-                  The current dashboard is empty. Pick a card to create from
-                  material instead.
-                </Alert>
-              ) : null}
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(3, minmax(0, 1fr))',
-                  },
-                  gap: 1,
-                }}
-              >
-                {(['quiz', 'flashcards', 'improvedNotes'] as const).map(
-                  (resourceType) => {
-                    const accent = quickCreateAccents[resourceType]
-                    const selected = false
+                  {(['quiz', 'flashcards', 'improvedNotes'] as const).map(
+                    (resourceType) => {
+                      const accent = quickCreateAccents[resourceType]
+                      const selected = false
 
-                    return (
-                      <Paper
-                        key={resourceType}
-                        component="button"
-                        type="button"
-                        elevation={0}
-                        onClick={() => handleQuickCreateCardClick(resourceType)}
-                        sx={{
-                          minHeight: { xs: 82, sm: 110 },
-                          p: { xs: 1.15, sm: 1.35 },
-                          borderRadius: 2,
-                          border: selected ? 2 : 1,
-                          borderColor: selected
-                            ? accent
-                            : !hasCurrentDashboardContext
-                              ? alpha(theme.palette.warning.main, 0.55)
-                              : alpha(
-                                  accent,
-                                  theme.palette.mode === 'dark' ? 0.3 : 0.22,
-                                ),
-                          bgcolor: alpha(
-                            accent,
-                            selected
-                              ? theme.palette.mode === 'dark'
-                                ? 0.2
-                                : 0.12
-                              : theme.palette.mode === 'dark'
-                                ? 0.12
-                                : 0.07,
-                          ),
-                          color: 'text.primary',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          display: 'flex',
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          gap: 1.25,
-                          boxShadow: `0 10px 26px ${alpha(
-                            accent,
-                            theme.palette.mode === 'dark' ? 0.08 : 0.05,
-                          )}`,
-                          '&:hover': {
-                            borderColor: alpha(accent, 0.72),
+                      return (
+                        <Paper
+                          key={resourceType}
+                          component="button"
+                          type="button"
+                          aria-label={quickCreateLabels[resourceType]}
+                          elevation={0}
+                          onClick={() =>
+                            handleQuickCreateCardClick(resourceType)
+                          }
+                          sx={{
+                            minHeight: { xs: 82, sm: 110 },
+                            p: { xs: 1.15, sm: 1.35 },
+                            borderRadius: 2,
+                            border: selected ? 2 : 1,
+                            borderColor: selected
+                              ? accent
+                              : !hasCurrentDashboardContext
+                                ? alpha(theme.palette.warning.main, 0.55)
+                                : alpha(
+                                    accent,
+                                    theme.palette.mode === 'dark' ? 0.3 : 0.22,
+                                  ),
                             bgcolor: alpha(
                               accent,
-                              theme.palette.mode === 'dark' ? 0.18 : 0.1,
+                              selected
+                                ? theme.palette.mode === 'dark'
+                                  ? 0.2
+                                  : 0.12
+                                : theme.palette.mode === 'dark'
+                                  ? 0.12
+                                  : 0.07,
                             ),
-                            transform: 'translateY(-1px)',
-                          },
-                          '&:focus-visible': {
-                            outline: `3px solid ${alpha(accent, 0.26)}`,
-                            outlineOffset: 2,
-                          },
-                          transition:
-                            'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
-                        }}
-                      >
-                        <Stack spacing={1} sx={{ minWidth: 0 }}>
-                          <Box
-                            sx={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: 1.5,
-                              display: 'grid',
-                              placeItems: 'center',
+                            color: 'text.primary',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            display: 'flex',
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 1.25,
+                            boxShadow: `0 10px 26px ${alpha(
+                              accent,
+                              theme.palette.mode === 'dark' ? 0.08 : 0.05,
+                            )}`,
+                            '&:hover': {
+                              borderColor: alpha(accent, 0.72),
                               bgcolor: alpha(
                                 accent,
-                                theme.palette.mode === 'dark' ? 0.2 : 0.14,
+                                theme.palette.mode === 'dark' ? 0.18 : 0.1,
                               ),
-                              color: accent,
+                              transform: 'translateY(-1px)',
+                            },
+                            '&:focus-visible': {
+                              outline: `3px solid ${alpha(accent, 0.26)}`,
+                              outlineOffset: 2,
+                            },
+                            transition:
+                              'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
+                          }}
+                        >
+                          <Stack spacing={1} sx={{ minWidth: 0 }}>
+                            <Box
+                              sx={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: 1.5,
+                                display: 'grid',
+                                placeItems: 'center',
+                                bgcolor: alpha(
+                                  accent,
+                                  theme.palette.mode === 'dark' ? 0.2 : 0.14,
+                                ),
+                                color: accent,
+                                flex: '0 0 auto',
+                              }}
+                            >
+                              {quickCreateIcons[resourceType]}
+                            </Box>
+                            {selected ? (
+                              <Typography
+                                variant="caption"
+                                fontWeight={900}
+                                sx={{ color: accent, lineHeight: 1 }}
+                              >
+                                Selected
+                              </Typography>
+                            ) : null}
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={900}
+                              sx={{ lineHeight: 1.15 }}
+                            >
+                              {quickCreateLabels[resourceType]}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              fontWeight={800}
+                            >
+                              {hasCurrentDashboardContext
+                                ? '1-click'
+                                : 'Needs material'}
+                            </Typography>
+                          </Stack>
+                          <Box
+                            sx={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: '50%',
+                              display: 'grid',
+                              placeItems: 'center',
+                              alignSelf: 'center',
+                              color: alpha(
+                                accent,
+                                theme.palette.mode === 'dark' ? 0.95 : 0.9,
+                              ),
+                              border: 1,
+                              borderColor: alpha(accent, 0.24),
+                              bgcolor: alpha(
+                                accent,
+                                theme.palette.mode === 'dark' ? 0.12 : 0.08,
+                              ),
                               flex: '0 0 auto',
                             }}
                           >
-                            {quickCreateIcons[resourceType]}
+                            <ChevronRightIcon fontSize="small" />
                           </Box>
-                          {selected ? (
-                            <Typography
-                              variant="caption"
-                              fontWeight={900}
-                              sx={{ color: accent, lineHeight: 1 }}
-                            >
-                              Selected
-                            </Typography>
-                          ) : null}
-                          <Typography
-                            variant="subtitle2"
-                            fontWeight={900}
-                            sx={{ lineHeight: 1.15 }}
-                          >
-                            {quickCreateLabels[resourceType]}
-                          </Typography>
-                        </Stack>
-                        <Box
-                          sx={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: '50%',
-                            display: 'grid',
-                            placeItems: 'center',
-                            alignSelf: 'center',
-                            color: alpha(
-                              accent,
-                              theme.palette.mode === 'dark' ? 0.95 : 0.9,
-                            ),
-                            border: 1,
-                            borderColor: alpha(accent, 0.24),
-                            bgcolor: alpha(
-                              accent,
-                              theme.palette.mode === 'dark' ? 0.12 : 0.08,
-                            ),
-                            flex: '0 0 auto',
-                          }}
-                        >
-                          <ChevronRightIcon fontSize="small" />
-                        </Box>
-                      </Paper>
-                    )
-                  },
-                )}
-              </Box>
-              <Button
-                size="small"
-                onClick={() => openCreateFromMaterial()}
-                aria-expanded={quickOptionsOpen}
-                sx={{
-                  alignSelf: 'flex-start',
-                  textTransform: 'none',
-                  borderRadius: 999,
-                  px: 0.5,
-                  fontWeight: 800,
-                }}
-              >
-                Create from material
-              </Button>
-            </Stack>
+                        </Paper>
+                      )
+                    },
+                  )}
+                </Box>
+                <Button
+                  size="small"
+                  onClick={() => openCreateFromMaterial()}
+                  aria-expanded={quickOptionsOpen}
+                  sx={{
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    borderRadius: 999,
+                    px: 0.5,
+                    fontWeight: 800,
+                  }}
+                >
+                  Create from material
+                </Button>
+              </Stack>
+            </Paper>
           </>
         ) : (
           <Stack spacing={1.5}>
@@ -1241,8 +1402,28 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             >
               ← Back to Creation
             </Button>
-            <Box>
-              <Typography variant="h5" fontWeight={900}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                borderRadius: 3,
+                border: 1,
+                borderColor: alpha(theme.palette.warning.main, 0.28),
+                bgcolor: alpha(
+                  theme.palette.warning.main,
+                  theme.palette.mode === 'dark' ? 0.1 : 0.06,
+                ),
+              }}
+            >
+              <Typography
+                variant="caption"
+                color="warning.main"
+                fontWeight={950}
+                sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+              >
+                Material lab
+              </Typography>
+              <Typography variant="h5" fontWeight={950}>
                 Create from Material
               </Typography>
               <Typography
@@ -1253,7 +1434,40 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 Add files, pasted notes, images, PDFs, or slides, then choose
                 what StudyMesh should create.
               </Typography>
-            </Box>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                  gap: 0.75,
+                  mt: 1.25,
+                }}
+              >
+                {sourceFlowSteps.map((step, index) => (
+                  <Paper
+                    key={step.label}
+                    elevation={0}
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      border: 1,
+                      borderColor: alpha(theme.palette.warning.main, 0.18),
+                      bgcolor: alpha(theme.palette.background.paper, 0.65),
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      fontWeight={900}
+                      color="text.secondary"
+                    >
+                      0{index + 1} · {step.label}
+                    </Typography>
+                    <Typography variant="subtitle2" fontWeight={950} noWrap>
+                      {step.value}
+                    </Typography>
+                  </Paper>
+                ))}
+              </Box>
+            </Paper>
           </Stack>
         )}
 
@@ -1262,22 +1476,37 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             ref={quickOptionsPanelRef}
             elevation={0}
             sx={{
-              p: { xs: 1.5, sm: 1.75 },
+              p: { xs: 1.6, sm: 2 },
               border: 1,
               borderColor: quickHasCustomSources
                 ? alpha(theme.palette.primary.main, 0.45)
                 : hasCurrentDashboardContext
                   ? 'divider'
                   : alpha(theme.palette.warning.main, 0.65),
-              borderRadius: 2.5,
-              bgcolor: 'background.paper',
+              borderRadius: 3.5,
+              bgcolor:
+                theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.background.paper, 0.92)
+                  : 'background.paper',
+              backgroundImage:
+                theme.palette.mode === 'dark'
+                  ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.06)}, transparent 220px)`
+                  : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.045)}, transparent 220px)`,
             }}
           >
             <Stack spacing={1.5}>
               <Box>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Step 1: Choose output
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Chip
+                    label="1"
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 900 }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Step 1: Choose output
+                  </Typography>
+                </Stack>
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -1346,9 +1575,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 )}
               </Box>
               <Box>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Step 2: Choose source
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Chip
+                    label="2"
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 900 }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Step 2: Choose source
+                  </Typography>
+                </Stack>
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -1360,6 +1597,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                 <Button
+                  aria-label="Current dashboard"
                   variant={
                     quickSourceMode === 'dashboard' ? 'contained' : 'outlined'
                   }
@@ -1371,13 +1609,33 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   sx={{
                     textTransform: 'none',
                     flex: 1,
-                    borderRadius: 1.5,
+                    borderRadius: 2.5,
+                    minHeight: 72,
                     fontWeight: 900,
                   }}
                 >
-                  Current dashboard
+                  <Stack
+                    spacing={0.15}
+                    alignItems="flex-start"
+                    sx={{ width: '100%' }}
+                  >
+                    <Typography
+                      variant="button"
+                      fontWeight={900}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Current dashboard
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{ opacity: 0.78, textTransform: 'none' }}
+                    >
+                      Fastest path, uses visible study content
+                    </Typography>
+                  </Stack>
                 </Button>
                 <Button
+                  aria-label="Sources"
                   variant={
                     quickSourceMode === 'sources' ? 'contained' : 'outlined'
                   }
@@ -1388,11 +1646,30 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   sx={{
                     textTransform: 'none',
                     flex: 1,
-                    borderRadius: 1.5,
+                    borderRadius: 2.5,
+                    minHeight: 72,
                     fontWeight: 900,
                   }}
                 >
-                  Sources
+                  <Stack
+                    spacing={0.15}
+                    alignItems="flex-start"
+                    sx={{ width: '100%' }}
+                  >
+                    <Typography
+                      variant="button"
+                      fontWeight={900}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Sources
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{ opacity: 0.78, textTransform: 'none' }}
+                    >
+                      Upload or paste new material
+                    </Typography>
+                  </Stack>
                 </Button>
               </Stack>
               {!hasCurrentDashboardContext &&
@@ -1406,9 +1683,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   onDrop={handleQuickSourceDrop}
                   onDragOver={(event) => event.preventDefault()}
                   sx={{
-                    minHeight: 210,
-                    p: 2,
-                    border: '1.5px dashed',
+                    minHeight: 270,
+                    p: 2.5,
+                    border: '2px dashed',
                     borderColor: quickSourceFiles.length
                       ? 'primary.main'
                       : 'divider',
@@ -1433,9 +1710,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   >
                     <Box
                       sx={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 2.25,
+                        width: 72,
+                        height: 72,
+                        borderRadius: 3,
                         display: 'grid',
                         placeItems: 'center',
                         bgcolor: 'background.paper',
@@ -1456,7 +1733,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         sx={{ maxWidth: 300 }}
                       >
                         Drop notes here, or upload text, images, PDFs, and
-                        slides.
+                        slides. Your selected files stay in this Creation panel.
                       </Typography>
                     </Box>
                     <Button
@@ -1576,9 +1853,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 </Paper>
               </Collapse>
               <Box>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Step 3: Options
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Chip
+                    label="3"
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 900 }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Step 3: Options
+                  </Typography>
+                </Stack>
               </Box>
               <Box
                 sx={{

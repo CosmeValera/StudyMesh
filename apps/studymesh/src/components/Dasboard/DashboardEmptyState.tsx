@@ -127,10 +127,14 @@ const DashboardEmptyState = ({
           sx={{
             minHeight: { xs: 'auto', lg: 560 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 3,
+            borderRadius: 4,
             border: 1,
-            borderColor: 'divider',
+            borderColor: (theme) => alpha(theme.palette.primary.main, 0.18),
             bgcolor: 'background.paper',
+            backgroundImage: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'linear-gradient(180deg, rgba(34,197,94,0.08), transparent 320px)'
+                : 'linear-gradient(180deg, rgba(34,197,94,0.055), transparent 320px)',
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1.5, md: 2 },
@@ -142,25 +146,40 @@ const DashboardEmptyState = ({
                 : '0 20px 56px rgba(15,23,42,0.08)',
           }}
         >
-          <Box>
+          <Box
+            sx={{
+              p: { xs: 1.5, md: 2 },
+              mx: { xs: -0.25, md: -0.5 },
+              mt: { xs: -0.25, md: -0.5 },
+              borderRadius: 3,
+              background: (theme) =>
+                `radial-gradient(circle at 0% 0%, ${alpha(theme.palette.primary.main, 0.22)}, transparent 38%), radial-gradient(circle at 100% 18%, ${alpha('#b66cff', 0.18)}, transparent 34%)`,
+              border: 1,
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.18),
+            }}
+          >
             <Typography
               variant="caption"
               color="primary"
-              fontWeight={900}
-              sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+              fontWeight={950}
+              sx={{ textTransform: 'uppercase', letterSpacing: 1 }}
             >
-              Start creating
+              Empty dashboard mission control
+            </Typography>
+            <Typography variant="h5" fontWeight={950} sx={{ mt: 0.75 }}>
+              What do you want to build?
             </Typography>
             <Typography
-              variant="h4"
+              variant="h3"
               fontWeight={950}
               sx={{
                 mt: 0.5,
-                lineHeight: 1.08,
-                fontSize: { xs: '1.45rem', sm: '1.85rem', md: '2.2rem' },
+                lineHeight: 0.96,
+                fontSize: { xs: '1.8rem', sm: '2.25rem', md: '2.8rem' },
+                maxWidth: 620,
               }}
             >
-              What do you want to build?
+              Turn a blank page into a learning cockpit.
             </Typography>
             <Typography
               variant="body2"
@@ -170,6 +189,30 @@ const DashboardEmptyState = ({
               Create a guided Study Path, or add material first to generate a
               focused quiz, flashcards, or clean notes.
             </Typography>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              flexWrap="wrap"
+              sx={{ mt: 1.25 }}
+            >
+              {['1 Add material', '2 Pick output', '3 Review dashboard'].map(
+                (label) => (
+                  <Chip
+                    key={label}
+                    size="small"
+                    label={label}
+                    sx={{
+                      fontWeight: 800,
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.08),
+                      border: 1,
+                      borderColor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.16),
+                    }}
+                  />
+                ),
+              )}
+            </Stack>
           </Box>
 
           <Paper
@@ -180,8 +223,8 @@ const DashboardEmptyState = ({
             disabled={!isAdmin}
             sx={{
               width: '100%',
-              p: { xs: 1.5, sm: 2 },
-              borderRadius: 2.5,
+              p: { xs: 1.75, sm: 2.35 },
+              borderRadius: 3,
               border: 1,
               borderColor: (theme) => alpha(theme.palette.primary.main, 0.42),
               bgcolor: (theme) => alpha(theme.palette.primary.main, 0.075),
@@ -189,7 +232,10 @@ const DashboardEmptyState = ({
               cursor: isAdmin ? 'pointer' : 'default',
               textAlign: 'left',
               display: 'grid',
-              gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+              gridTemplateColumns: {
+                xs: 'auto minmax(0, 1fr)',
+                sm: 'auto minmax(0, 1fr) auto',
+              },
               alignItems: 'center',
               gap: { xs: 1.25, sm: 1.5 },
               boxShadow: (theme) =>
@@ -230,7 +276,7 @@ const DashboardEmptyState = ({
                   Recommended
                 </Typography>
               </Stack>
-              <Typography variant="h5" fontWeight={950} lineHeight={1.12}>
+              <Typography variant="h4" fontWeight={950} lineHeight={1.02}>
                 Create Study Path
               </Typography>
               <Typography
@@ -265,7 +311,16 @@ const DashboardEmptyState = ({
                 fontWeight: 900,
               }}
             >
-              Upload material
+              <Stack alignItems="flex-start" spacing={0}>
+                <span>Upload material</span>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{ opacity: 0.78, fontWeight: 700 }}
+                >
+                  PDF, slides, images, text
+                </Typography>
+              </Stack>
             </Button>
             <Button
               variant="outlined"
@@ -281,7 +336,17 @@ const DashboardEmptyState = ({
                 bgcolor: 'background.paper',
               }}
             >
-              Paste notes
+              <Stack alignItems="flex-start" spacing={0}>
+                <span>Paste notes</span>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 700 }}
+                >
+                  Fastest for copied text
+                </Typography>
+              </Stack>
             </Button>
           </Box>
 
@@ -298,14 +363,15 @@ const DashboardEmptyState = ({
             <Stack spacing={1.25}>
               <Box>
                 <Typography variant="subtitle1" fontWeight={900}>
-                  Fast creation from material
+                  Material launch bay · fast creation from material
                 </Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ mt: 0.3 }}
                 >
-                  This dashboard is empty, so add sources in Creation first.
+                  This dashboard is empty, so these actions open Create from
+                  Material with the right setup ready.
                 </Typography>
               </Box>
               <Box
@@ -327,9 +393,9 @@ const DashboardEmptyState = ({
                     onClick={() => onQuickCreate(action.intent)}
                     disabled={!isAdmin}
                     sx={{
-                      minHeight: 92,
-                      p: 1.25,
-                      borderRadius: 2,
+                      minHeight: 124,
+                      p: 1.45,
+                      borderRadius: 2.75,
                       border: 1,
                       borderColor: alpha(action.accent, 0.24),
                       bgcolor: alpha(action.accent, 0.07),
@@ -374,6 +440,17 @@ const DashboardEmptyState = ({
                       <Typography variant="subtitle2" fontWeight={900}>
                         {action.label}
                       </Typography>
+                      <Chip
+                        size="small"
+                        label="opens material flow"
+                        sx={{
+                          alignSelf: 'flex-start',
+                          height: 21,
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          bgcolor: alpha(action.accent, 0.12),
+                        }}
+                      />
                     </Stack>
                     <ChevronRightIcon sx={{ color: action.accent }} />
                   </Paper>
@@ -381,6 +458,44 @@ const DashboardEmptyState = ({
               </Box>
             </Stack>
           </Paper>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: 0.75,
+            }}
+          >
+            {['Source in', 'AI builds', 'Dashboard opens'].map(
+              (label, index) => (
+                <Paper
+                  key={label}
+                  elevation={0}
+                  sx={{
+                    p: 1,
+                    borderRadius: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    bgcolor: 'background.default',
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="primary"
+                    fontWeight={950}
+                  >
+                    0{index + 1}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    display="block"
+                    fontWeight={800}
+                  >
+                    {label}
+                  </Typography>
+                </Paper>
+              ),
+            )}
+          </Box>
         </Paper>
 
         <Paper

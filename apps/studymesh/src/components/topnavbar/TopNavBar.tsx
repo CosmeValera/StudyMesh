@@ -708,14 +708,17 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
         position="static"
         sx={{
           backgroundColor: 'background.header',
-          boxShadow: 2,
-          height: isMobileWorkspaceHeader ? '56px' : '52px',
+          backgroundImage:
+            'linear-gradient(90deg, rgba(34,197,94,0.22), rgba(14,165,233,0.12) 38%, rgba(182,108,255,0.14))',
+          borderBottom: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: '0 18px 48px rgba(2, 6, 23, 0.24)',
+          height: isMobileWorkspaceHeader ? '64px' : '60px',
         }}
       >
         <Toolbar
           sx={{
-            minHeight: isMobileWorkspaceHeader ? '56px' : '52px',
-            height: isMobileWorkspaceHeader ? '56px' : '52px',
+            minHeight: isMobileWorkspaceHeader ? '64px' : '60px',
+            height: isMobileWorkspaceHeader ? '64px' : '60px',
             px: isMobileWorkspaceHeader ? 0.75 : 1.25,
             gap: isMobileWorkspaceHeader ? 0.75 : 0,
           }}
@@ -736,7 +739,9 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ creationHost = 'navbar' }) => {
                   color: 'foreground.contrastPrimary',
                   textTransform: 'none',
                   borderRadius: 999,
-                  bgcolor: 'rgba(255,255,255,0.08)',
+                  bgcolor: 'rgba(255,255,255,0.12)',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.14)' },
                   '& .MuiButton-endIcon': { ml: 0.25, mr: 0 },
                 }}
