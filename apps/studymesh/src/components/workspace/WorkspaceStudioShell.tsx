@@ -105,6 +105,8 @@ const quickCreateIcons: Record<StudyMaterialResourceType, React.ReactNode> = {
   improvedNotes: <AutoStoriesIcon fontSize="small" />,
 }
 
+type QuickSourceMode = 'dashboard' | 'sources'
+
 const statusMarkerLabels: Record<
   WorkspaceCreationTaskState | 'editing',
   string
@@ -207,6 +209,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [quickCopiedTextDraft, setQuickCopiedTextDraft] = useState('')
   const [quickCopiedTextOpen, setQuickCopiedTextOpen] = useState(false)
   const [quickSourceFiles, setQuickSourceFiles] = useState<File[]>([])
+  const [quickSourceMode, setQuickSourceMode] =
+    useState<QuickSourceMode>('dashboard')
   const [quickSourceStatus, setQuickSourceStatus] = useState('')
   const [pendingQuickSourceFocus, setPendingQuickSourceFocus] =
     useState<QuickSourceFocus | null>(null)
@@ -312,6 +316,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         setQuickOptionsOpen(true)
       }
       if (detail.quickSourceFocus) {
+        setQuickSourceMode('sources')
         setPendingQuickSourceFocus(detail.quickSourceFocus)
         if (detail.quickSourceFocus === 'paste') {
           setQuickCopiedTextOpen(true)
@@ -550,6 +555,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     'Current dashboard'
   const quickHasCustomSources =
     quickSourceText.trim().length > 0 || quickSourceFiles.length > 0
+  const quickUsesSources = quickSourceMode === 'sources'
+  const quickCanCreateFromActiveSource = quickUsesSources
+    ? quickHasCustomSources
+    : hasCurrentDashboardContext
   const quickCustomSourceCount =
     (quickSourceText.trim() ? 1 : 0) + quickSourceFiles.length
   const quickSourceLabel = quickHasCustomSources
@@ -563,7 +572,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     selectedIntent && selectedIntent !== 'study-path' ? selectedIntent : null
 
   useEffect(() => {
-    if (!pendingQuickSourceFocus || !quickOptionsOpen || activeFlow !== 'hub') {
+    if (
+      !pendingQuickSourceFocus ||
+      !quickOptionsOpen ||
+      quickSourceMode !== 'sources' ||
+      activeFlow !== 'hub'
+    ) {
       return
     }
 
@@ -589,6 +603,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     activeFlow,
     pendingQuickSourceFocus,
     quickOptionsOpen,
+    quickSourceMode,
     quickCopiedTextOpen,
   ])
 
@@ -671,7 +686,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     throw new Error(`${file.name} is not a supported source file.`)
   }
 
-  const buildQuickSourceText = async () => {
+  const buildQuickSourceText = async (sourceMode: QuickSourceMode) => {
+    if (sourceMode === 'dashboard') {
+      setQuickSourceStatus('')
+      return hasCurrentDashboardContext ? currentDashboardContext : ''
+    }
+
     const sourceParts: string[] = []
 
     if (quickSourceText.trim()) {
@@ -698,21 +718,31 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     setQuickSourceStatus('')
-    return hasCurrentDashboardContext ? currentDashboardContext : ''
+    return ''
   }
 
-  const runQuickCreate = async (resourceType: StudyMaterialResourceType) => {
+  const runQuickCreate = async (
+    resourceType: StudyMaterialResourceType,
+    sourceMode: QuickSourceMode = quickSourceMode,
+  ) => {
     const titleBase = quickCreateLabels[resourceType]
-    if (!quickHasCustomSources && !hasCurrentDashboardContext) {
+    const usesSources = sourceMode === 'sources'
+    const hasUsableSource = usesSources
+      ? quickHasCustomSources
+      : hasCurrentDashboardContext
+
+    if (!hasUsableSource) {
       setSelectedIntent(resourceType)
       setQuickOptionsOpen(true)
-      setPendingQuickSourceFocus('upload')
+      if (!hasCurrentDashboardContext || usesSources) {
+        setQuickSourceMode('sources')
+        setPendingQuickSourceFocus('upload')
+      }
       setQuickSourceStatus(`Add material to create ${titleBase}.`)
       return
     }
 
-    const usingAttachedSources =
-      quickSourceText.trim().length > 0 || quickSourceFiles.length > 0
+    const usingAttachedSources = usesSources && quickHasCustomSources
     const draft: GenerationDraft = {
       id: `quick-${resourceType}-${Date.now()}-${Math.random()
         .toString(36)
@@ -733,7 +763,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     reportFromNotesStatus('running', `${titleBase} is generating`)
 
     try {
-      const sourceText = await buildQuickSourceText()
+      const sourceText = await buildQuickSourceText(sourceMode)
 
       if (!sourceText.trim()) {
         updateDraft(draft.id, {
@@ -826,7 +856,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
     if (quickOptionsOpen) {
       setSelectedIntent(resourceType)
-      if (!quickHasCustomSources && !hasCurrentDashboardContext) {
+      if (!quickCanCreateFromActiveSource) {
+        if (!hasCurrentDashboardContext) {
+          setQuickSourceMode('sources')
+        }
         setQuickSourceStatus(`Add material to create ${titleBase}.`)
       } else {
         setQuickSourceStatus('')
@@ -834,7 +867,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    runQuickCreate(resourceType)
+    runQuickCreate(resourceType, 'dashboard')
   }
 
   const createOptions: Array<{
@@ -1014,9 +1047,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 : 'Add material first, then generate focused study material.'}
             </Typography>
           </Box>
-          {!hasCurrentDashboardContext && !quickHasCustomSources ? (
+          {!quickCanCreateFromActiveSource ? (
             <Alert severity="warning" sx={{ py: 0.5 }}>
-              Add sources in options first. The current dashboard is empty.
+              {quickUsesSources
+                ? 'Add sources in options first.'
+                : 'The current dashboard is empty. Open options and choose Sources.'}
             </Alert>
           ) : null}
           {quickOptionsOpen ? (
@@ -1058,7 +1093,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       border: selected ? 2 : 1,
                       borderColor: selected
                         ? accent
-                        : !quickHasCustomSources && !hasCurrentDashboardContext
+                        : !quickCanCreateFromActiveSource
                           ? alpha(theme.palette.warning.main, 0.55)
                           : alpha(
                               accent,
@@ -1209,137 +1244,184 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   color="text.secondary"
                   sx={{ mt: 0.3 }}
                 >
-                  Quick Create uses your current dashboard by default. Add files
-                  when you want to use your sources instead.
+                  Choose whether Quick Create should use the current dashboard
+                  or added material.
                 </Typography>
               </Box>
-              {!hasCurrentDashboardContext && !quickHasCustomSources ? (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button
+                  variant={
+                    quickSourceMode === 'dashboard' ? 'contained' : 'outlined'
+                  }
+                  disabled={!hasCurrentDashboardContext}
+                  onClick={() => {
+                    setQuickSourceMode('dashboard')
+                    setQuickSourceStatus('')
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    flex: 1,
+                    borderRadius: 1.5,
+                    fontWeight: 900,
+                  }}
+                >
+                  Current dashboard
+                </Button>
+                <Button
+                  variant={
+                    quickSourceMode === 'sources' ? 'contained' : 'outlined'
+                  }
+                  onClick={() => {
+                    setQuickSourceMode('sources')
+                    setQuickSourceStatus('')
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    flex: 1,
+                    borderRadius: 1.5,
+                    fontWeight: 900,
+                  }}
+                >
+                  Sources
+                </Button>
+              </Stack>
+              {!hasCurrentDashboardContext &&
+              quickSourceMode === 'dashboard' ? (
                 <Alert severity="warning" sx={{ py: 0.5 }}>
-                  Current dashboard is empty, so add a source before running
-                  Quick Create.
+                  Current dashboard is empty. Choose Sources to add material.
                 </Alert>
               ) : null}
-              <Box
-                onDrop={handleQuickSourceDrop}
-                onDragOver={(event) => event.preventDefault()}
-                sx={{
-                  minHeight: 210,
-                  p: 2,
-                  border: '1.5px dashed',
-                  borderColor: quickSourceFiles.length
-                    ? 'primary.main'
-                    : 'divider',
-                  borderRadius: 2.25,
-                  bgcolor: quickSourceFiles.length
-                    ? alpha(theme.palette.primary.main, 0.025)
-                    : 'background.paper',
-                  cursor: 'default',
-                  display: 'grid',
-                  placeItems: 'center',
-                  textAlign: 'center',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: alpha(theme.palette.primary.main, 0.025),
-                  },
-                }}
-              >
-                <Stack spacing={1.2} alignItems="center" sx={{ width: '100%' }}>
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 2.25,
-                      display: 'grid',
-                      placeItems: 'center',
-                      bgcolor: 'background.paper',
-                      color: 'primary.main',
-                      border: 1,
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <UploadFileIcon />
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={900}>
-                      Add sources
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ maxWidth: 300 }}
-                    >
-                      Drop notes here, or upload text, images, PDFs, and slides.
-                    </Typography>
-                  </Box>
-                  <Button
-                    ref={quickUploadButtonRef}
-                    component="label"
-                    variant="contained"
-                    startIcon={<UploadFileIcon />}
-                    fullWidth
-                    sx={{
-                      mt: 0.5,
-                      borderRadius: 1.5,
-                      textTransform: 'none',
-                      fontWeight: 900,
-                    }}
-                  >
-                    Upload files
-                    <input
-                      hidden
-                      type="file"
-                      multiple
-                      accept={quickSourceAcceptValue}
-                      onChange={(event) => {
-                        if (event.target.files) {
-                          addQuickSourceFiles(event.target.files)
-                        }
-                        event.target.value = ''
-                      }}
-                    />
-                  </Button>
-                  <Button
-                    ref={quickPasteButtonRef}
-                    variant="outlined"
-                    startIcon={<ContentPasteIcon />}
-                    fullWidth
-                    onClick={() => {
-                      setQuickCopiedTextOpen(true)
-                      setQuickSourceStatus('')
-                    }}
-                    sx={{
-                      borderRadius: 1.5,
-                      textTransform: 'none',
-                      fontWeight: 900,
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    Copied text
-                  </Button>
+              {quickUsesSources ? (
+                <Box
+                  onDrop={handleQuickSourceDrop}
+                  onDragOver={(event) => event.preventDefault()}
+                  sx={{
+                    minHeight: 210,
+                    p: 2,
+                    border: '1.5px dashed',
+                    borderColor: quickSourceFiles.length
+                      ? 'primary.main'
+                      : 'divider',
+                    borderRadius: 2.25,
+                    bgcolor: quickSourceFiles.length
+                      ? alpha(theme.palette.primary.main, 0.025)
+                      : 'background.paper',
+                    cursor: 'default',
+                    display: 'grid',
+                    placeItems: 'center',
+                    textAlign: 'center',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.025),
+                    },
+                  }}
+                >
                   <Stack
-                    direction="row"
-                    gap={0.75}
-                    flexWrap="wrap"
-                    justifyContent="center"
+                    spacing={1.2}
+                    alignItems="center"
+                    sx={{ width: '100%' }}
                   >
-                    {['Text', 'Images', 'PDF', 'PPTX'].map((label) => (
-                      <Chip
-                        key={label}
-                        label={label}
-                        size="small"
-                        sx={{
-                          bgcolor: alpha(
-                            theme.palette.warning.main,
-                            theme.palette.mode === 'dark' ? 0.14 : 0.12,
-                          ),
-                          fontWeight: 700,
+                    <Box
+                      sx={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 2.25,
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: 'background.paper',
+                        color: 'primary.main',
+                        border: 1,
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <UploadFileIcon />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={900}>
+                        Add sources
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ maxWidth: 300 }}
+                      >
+                        Drop notes here, or upload text, images, PDFs, and
+                        slides.
+                      </Typography>
+                    </Box>
+                    <Button
+                      ref={quickUploadButtonRef}
+                      component="label"
+                      variant="contained"
+                      startIcon={<UploadFileIcon />}
+                      fullWidth
+                      sx={{
+                        mt: 0.5,
+                        borderRadius: 1.5,
+                        textTransform: 'none',
+                        fontWeight: 900,
+                      }}
+                    >
+                      Upload files
+                      <input
+                        hidden
+                        type="file"
+                        multiple
+                        accept={quickSourceAcceptValue}
+                        onChange={(event) => {
+                          if (event.target.files) {
+                            addQuickSourceFiles(event.target.files)
+                          }
+                          event.target.value = ''
                         }}
                       />
-                    ))}
+                    </Button>
+                    <Button
+                      ref={quickPasteButtonRef}
+                      variant="outlined"
+                      startIcon={<ContentPasteIcon />}
+                      fullWidth
+                      onClick={() => {
+                        setQuickCopiedTextOpen(true)
+                        setQuickSourceStatus('')
+                      }}
+                      sx={{
+                        borderRadius: 1.5,
+                        textTransform: 'none',
+                        fontWeight: 900,
+                        bgcolor: 'background.paper',
+                      }}
+                    >
+                      Copied text
+                    </Button>
+                    <Stack
+                      direction="row"
+                      gap={0.75}
+                      flexWrap="wrap"
+                      justifyContent="center"
+                    >
+                      {['Text', 'Images', 'PDF', 'PPTX'].map((label) => (
+                        <Chip
+                          key={label}
+                          label={label}
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(
+                              theme.palette.warning.main,
+                              theme.palette.mode === 'dark' ? 0.14 : 0.12,
+                            ),
+                            fontWeight: 700,
+                          }}
+                        />
+                      ))}
+                    </Stack>
                   </Stack>
-                </Stack>
-              </Box>
-              <Collapse in={quickCopiedTextOpen} unmountOnExit>
+                </Box>
+              ) : null}
+              <Collapse
+                in={quickUsesSources && quickCopiedTextOpen}
+                unmountOnExit
+              >
                 <Paper
                   elevation={0}
                   sx={{
@@ -1423,15 +1505,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   sx={{
                     p: 1.25,
                     border: 1,
-                    borderColor:
-                      quickHasCustomSources || hasCurrentDashboardContext
-                        ? alpha(theme.palette.primary.main, 0.35)
-                        : alpha(theme.palette.warning.main, 0.55),
+                    borderColor: quickCanCreateFromActiveSource
+                      ? alpha(theme.palette.primary.main, 0.35)
+                      : alpha(theme.palette.warning.main, 0.55),
                     borderRadius: 2,
-                    bgcolor:
-                      quickHasCustomSources || hasCurrentDashboardContext
-                        ? alpha(theme.palette.primary.main, 0.045)
-                        : alpha(theme.palette.warning.main, 0.08),
+                    bgcolor: quickCanCreateFromActiveSource
+                      ? alpha(theme.palette.primary.main, 0.045)
+                      : alpha(theme.palette.warning.main, 0.08),
                   }}
                 >
                   <Stack
@@ -1445,8 +1525,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         {quickCreateLabels[selectedQuickCreateIntent]} selected
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {quickHasCustomSources || hasCurrentDashboardContext
-                          ? quickHasCustomSources
+                        {quickCanCreateFromActiveSource
+                          ? quickUsesSources
                             ? 'Ready to create from your selected material.'
                             : 'Ready to create from your current dashboard.'
                           : `Add material to create ${quickCreateLabels[selectedQuickCreateIntent]}.`}
@@ -1454,10 +1534,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     </Box>
                     <Button
                       variant="contained"
-                      disabled={
-                        !quickHasCustomSources && !hasCurrentDashboardContext
+                      disabled={!quickCanCreateFromActiveSource}
+                      onClick={() =>
+                        runQuickCreate(
+                          selectedQuickCreateIntent,
+                          quickSourceMode,
+                        )
                       }
-                      onClick={() => runQuickCreate(selectedQuickCreateIntent)}
                       sx={{
                         borderRadius: 1.5,
                         textTransform: 'none',
@@ -1470,7 +1553,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   </Stack>
                 </Paper>
               ) : null}
-              {(quickHasCustomSources || quickSourceStatus) && (
+              {((quickUsesSources && quickHasCustomSources) ||
+                quickSourceStatus) && (
                 <Stack spacing={1}>
                   <Stack
                     direction="row"

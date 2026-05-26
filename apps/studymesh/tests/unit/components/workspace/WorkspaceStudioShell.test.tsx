@@ -152,6 +152,7 @@ describe('WorkspaceStudioShell Quick Create', () => {
     expect(
       screen.getByRole('button', { name: /^Create Flashcards$/i }),
     ).toBeEnabled()
+    expect(screen.queryByText(/^Add sources$/i)).not.toBeInTheDocument()
   })
 
   it('generates from the bottom CTA for the selected expanded-options action', async () => {
@@ -183,6 +184,7 @@ describe('WorkspaceStudioShell Quick Create', () => {
     )
 
     openCreation({ intent: 'quiz', openQuickOptions: true })
+    fireEvent.click(screen.getByRole('button', { name: /^Sources$/i }))
     fireEvent.click(screen.getByRole('button', { name: /Copied text/i }))
     fireEvent.change(screen.getByLabelText(/Copied text/i), {
       target: { value: 'Custom source notes about enzymes' },
@@ -199,6 +201,34 @@ describe('WorkspaceStudioShell Quick Create', () => {
     )
   })
 
+  it('returns to dashboard context for quick card clicks after options collapse', async () => {
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation({ openQuickOptions: true })
+    fireEvent.click(screen.getByRole('button', { name: /^Sources$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Copied text/i }))
+    fireEvent.change(screen.getByLabelText(/Copied text/i), {
+      target: { value: 'Custom source notes about enzymes' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Add copied text/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Hide options/i }))
+    clickQuickCard('Quiz')
+
+    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
+    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceType: 'quiz',
+        rawNotes: expect.stringContaining(
+          'Dashboard notes about photosynthesis',
+        ),
+      }),
+    )
+  })
+
   it('disables the selected action CTA when no source or dashboard context exists', () => {
     dashboardContextText = ''
 
@@ -211,12 +241,34 @@ describe('WorkspaceStudioShell Quick Create', () => {
     openCreation({ openQuickOptions: true })
     clickQuickCard('Quiz')
 
-    expect(screen.getAllByText(/Add material to create Quiz/i).length).toBeGreaterThan(
-      0
-    )
+    expect(
+      screen.getAllByText(/Add material to create Quiz/i).length,
+    ).toBeGreaterThan(0)
     expect(
       screen.getByRole('button', { name: /^Create Quiz$/i }),
     ).toBeDisabled()
     expect(generateStudyPackWithAi).not.toHaveBeenCalled()
+  })
+
+  it('shows the source upload area only after Sources is selected', () => {
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation({ openQuickOptions: true })
+
+    expect(
+      screen.getByRole('button', { name: /^Current dashboard$/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^Sources$/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/^Add sources$/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Sources$/i }))
+
+    expect(screen.getByText(/^Add sources$/i)).toBeInTheDocument()
   })
 })
