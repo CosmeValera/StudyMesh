@@ -677,7 +677,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 
   const generatePath = async () => {
     const effectivePrompt = [
-      prompt.trim(),
+      sourceMode === 'dashboard' && !prompt.trim()
+        ? `Create a Study Path from current dashboard: ${currentDashboardTitle}`
+        : prompt.trim(),
       sourceMode === 'dashboard'
         ? `Use current dashboard as source context: ${currentDashboardTitle}\n\n${currentDashboardContext}`
         : '',
@@ -688,7 +690,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       .filter(Boolean)
       .join('\n\n')
 
-    if (!prompt.trim()) {
+    if (sourceMode === 'prompt' && !prompt.trim()) {
       setError('Describe what you want StudyMesh to teach.')
       return
     }
@@ -923,7 +925,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 Create Study Path
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Build an ordered lesson path from one clear prompt.
+                Build an ordered lesson path from a goal or dashboard.
               </Typography>
             </Box>
           </Stack>
@@ -969,17 +971,83 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                 }}
               >
                 <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={900}>
+                      Start from
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.3 }}
+                    >
+                      Use a new learning goal, or let the current dashboard
+                      drive the path.
+                    </Typography>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      gap={1}
+                      sx={{ mt: 1.25 }}
+                    >
+                      <Button
+                        variant={
+                          sourceMode === 'prompt' ? 'contained' : 'outlined'
+                        }
+                        onClick={() => {
+                          setSourceMode('prompt')
+                          setError('')
+                        }}
+                        sx={{ textTransform: 'none', flex: 1 }}
+                      >
+                        Prompt only
+                      </Button>
+                      <Button
+                        variant={
+                          sourceMode === 'dashboard' ? 'contained' : 'outlined'
+                        }
+                        disabled={!hasCurrentDashboardContext}
+                        onClick={() => {
+                          setSourceMode('dashboard')
+                          setError('')
+                        }}
+                        sx={{ textTransform: 'none', flex: 1 }}
+                      >
+                        Current dashboard
+                      </Button>
+                    </Stack>
+                    {sourceMode === 'dashboard' ? (
+                      <Alert severity="info" sx={{ mt: 1.25 }}>
+                        Using current dashboard: {currentDashboardTitle}. The
+                        prompt below is optional.
+                      </Alert>
+                    ) : !hasCurrentDashboardContext ? (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ mt: 0.9, display: 'block' }}
+                      >
+                        Current dashboard has no usable study content.
+                      </Typography>
+                    ) : null}
+                  </Box>
                   <TextField
-                    label="Study Path prompt"
+                    label={
+                      sourceMode === 'dashboard'
+                        ? 'Optional learning focus'
+                        : 'Study Path prompt'
+                    }
                     inputProps={{
                       'aria-label': 'What should StudyMesh teach?',
                     }}
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
-                    placeholder="Example: Create a 7-day study path to learn React hooks from these notes..."
+                    placeholder={
+                      sourceMode === 'dashboard'
+                        ? 'Optional: focus on missed exercises, exam prep, or the next lesson...'
+                        : 'Example: Create a 7-day study path to learn React hooks from these notes...'
+                    }
                     multiline
                     minRows={presentation === 'embedded' ? 5 : 6}
-                    required
+                    required={sourceMode === 'prompt'}
                     fullWidth
                   />
                   <Stack spacing={presentation === 'embedded' ? 1.25 : 2}>
@@ -1052,63 +1120,6 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     </Button>
                     <Collapse in={advancedOpen} unmountOnExit>
                       <Stack spacing={1.5} sx={{ mt: 1.5 }}>
-                        <Box>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            fontWeight={700}
-                          >
-                            Source override
-                          </Typography>
-                          <Stack
-                            direction={{ xs: 'column', sm: 'row' }}
-                            gap={1}
-                            sx={{ mt: 0.75 }}
-                          >
-                            <Button
-                              variant={
-                                sourceMode === 'prompt'
-                                  ? 'contained'
-                                  : 'outlined'
-                              }
-                              onClick={() => {
-                                setSourceMode('prompt')
-                                setError('')
-                              }}
-                              sx={{ textTransform: 'none', flex: 1 }}
-                            >
-                              Prompt only
-                            </Button>
-                            <Button
-                              variant={
-                                sourceMode === 'dashboard'
-                                  ? 'contained'
-                                  : 'outlined'
-                              }
-                              disabled={!hasCurrentDashboardContext}
-                              onClick={() => {
-                                setSourceMode('dashboard')
-                                setError('')
-                              }}
-                              sx={{ textTransform: 'none', flex: 1 }}
-                            >
-                              Current dashboard
-                            </Button>
-                          </Stack>
-                          {sourceMode === 'dashboard' ? (
-                            <Alert severity="info" sx={{ mt: 1 }}>
-                              Using current dashboard: {currentDashboardTitle}
-                            </Alert>
-                          ) : !hasCurrentDashboardContext ? (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ mt: 0.75, display: 'block' }}
-                            >
-                              Current dashboard has no usable study content.
-                            </Typography>
-                          ) : null}
-                        </Box>
                         <TextField
                           label="Must include / I want to learn"
                           value={mustInclude}
@@ -1602,7 +1613,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             onClick={generatePath}
             disabled={
               isGenerating ||
-              !prompt.trim() ||
+              (sourceMode === 'prompt' && !prompt.trim()) ||
               (sourceMode === 'dashboard' && !hasCurrentDashboardContext)
             }
           >

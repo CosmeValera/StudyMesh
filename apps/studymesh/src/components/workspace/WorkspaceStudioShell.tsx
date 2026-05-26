@@ -1203,7 +1203,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   color="text.secondary"
                   sx={{ mt: 0.3 }}
                 >
-                  Quick Create uses your current dashboard by default. Add files when you want to use your sources instead.
+                  Quick Create uses your current dashboard by default. Add files
+                  when you want to use your sources instead.
                 </Typography>
               </Box>
               {!hasCurrentDashboardContext && !quickHasCustomSources ? (
