@@ -534,7 +534,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   )
 
   const createNewDraft = (flow: Exclude<StudioFlow, 'hub'>) => {
-    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+    if (isMobile) {
+      window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+    }
     const draft = createGenerationDraft(flow)
     setGenerationDrafts((current) => [
       ...current.filter(
@@ -1616,7 +1618,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     setActiveFlow(draft.flow)
-    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+    if (isMobile) {
+      window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+    }
     setActiveDraftByFlow((current) => ({
       ...current,
       [draft.flow]: draft.id,
@@ -1659,7 +1663,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     setSelectedIntent(null)
     setActiveFlow('hub')
     setIsStudioOpen(true)
-    window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
     if (isMobile) {
       window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
       setMobileSection('creation')
