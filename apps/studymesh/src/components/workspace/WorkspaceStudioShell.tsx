@@ -41,13 +41,10 @@ import CreateStudyPackModal from '../studyPack/CreateStudyPackModal'
 import CreateStudyPathModal from '../studyPack/CreateStudyPathModal'
 import {
   readStudyPackAiSettings,
-  resolveStudyPackAiCredentials,
-  generateStudyPackWithAi,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
 } from '../../studyPack/ai'
-import { createStudyPackOrchestratorWidgets } from '../../studyPack'
 import {
   extractTextFromPdf,
   extractTextFromPptx,
@@ -80,9 +77,7 @@ import {
   QuickSourceFocus,
   readIsAdmin,
   quickCreateAccents,
-  quickCreateDetailToAmount,
   quickCreateLabels,
-  quickCreateTargets,
   quickSourceAcceptValue,
   statusMarkerColors,
   statusMarkerGlow,
@@ -189,6 +184,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [selectedIntent, setSelectedIntent] = useState<CreateIntent | null>(
     null,
   )
+  const [initialStudyPackSourceText, setInitialStudyPackSourceText] = useState<
+    string | undefined
+  >(undefined)
+  const [initialStudyPackTitle, setInitialStudyPackTitle] = useState<
+    string | undefined
+  >(undefined)
   const [generationDrafts, setGenerationDrafts] =
     useState<GenerationDraft[]>(initialDrafts)
   const [activeDraftByFlow, setActiveDraftByFlow] = useState<
@@ -571,23 +572,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       : 'Sources required'
   const selectedQuickCreateIntent =
     selectedIntent && selectedIntent !== 'study-path' ? selectedIntent : null
-  const quickCreateJobs = generationDrafts.filter((draft) => draft.quickCreate)
-  const quickCreateStatusLabel = (draft: GenerationDraft) => {
-    if (draft.status === 'generating') {
-      return `Creating ${resourceTypeTitle(draft.selectedResourceType).toLowerCase()}…`
-    }
-
-    if (draft.status === 'ready') {
-      return 'Saved to your dashboards. Click to open it.'
-    }
-
-    if (draft.status === 'failed') {
-      return draft.error || 'Generation failed.'
-    }
-
-    return 'Preparing…'
-  }
-
   useEffect(() => {
     if (
       !pendingQuickSourceFocus ||
@@ -738,6 +722,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     return ''
   }
 
+  const openStudyPackCreator = (
+    resourceType: StudyMaterialResourceType,
+    sourceText?: string,
+    title?: string,
+  ) => {
+    setSelectedIntent(resourceType)
+    setInitialStudyPackSourceText(sourceText)
+    setInitialStudyPackTitle(title)
+    createNewDraft('from-notes')
+  }
+
   const runQuickCreate = async (
     resourceType: StudyMaterialResourceType,
     sourceMode: QuickSourceMode = quickSourceMode,
@@ -749,122 +744,32 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       : hasCurrentDashboardContext
 
     if (!hasUsableSource) {
-      setSelectedIntent(resourceType)
-      setQuickOptionsOpen(true)
-      if (!hasCurrentDashboardContext || usesSources) {
-        setQuickSourceMode('sources')
-        setPendingQuickSourceFocus('upload')
-      }
+      openCreateFromMaterial(resourceType, 'upload')
       setQuickSourceStatus(`Add material to create ${titleBase}.`)
       return
     }
-
-    const usingAttachedSources = usesSources && quickHasCustomSources
-    const draft: GenerationDraft = {
-      id: `quick-${resourceType}-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
-      flow: 'from-notes',
-      status: 'generating',
-      title: titleBase,
-      createdAt: new Date().toISOString(),
-      inputSummary: usingAttachedSources
-        ? 'Attached sources'
-        : `Current dashboard: ${currentDashboardTitle}`,
-      selectedResourceType: resourceType,
-      detailLevel: quickDetailLevel,
-      quickCreate: true,
-    }
-
-    setGenerationDrafts((current) => [...current, draft])
-    setActiveFlow('hub')
-    setQuickOptionsOpen(false)
-    reportFromNotesStatus('running', `${titleBase} is generating`)
 
     try {
       const sourceText = await buildQuickSourceText(sourceMode)
 
       if (!sourceText.trim()) {
-        updateDraft(draft.id, {
-          status: 'failed',
-          error:
-            'Add pasted text or attachments in Options, or open a dashboard with study content.',
-        })
-        reportFromNotesStatus('error', 'Quick Create needs source material.')
+        openCreateFromMaterial(resourceType, 'upload')
+        setQuickSourceStatus(`Add material to create ${titleBase}.`)
         return
       }
 
-      const credentials = resolveStudyPackAiCredentials()
-      const generationAmount = quickCreateDetailToAmount[quickDetailLevel]
-      const rawNotes = [
-        sourceText,
-        quickDifficulty === 'standard' ? '' : `Difficulty: ${quickDifficulty}`,
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-      const draftPack = await generateStudyPackWithAi({
-        provider: aiProvider,
-        apiToken: credentials.apiToken,
-        model: credentials.model,
-        title: `${currentDashboardTitle} ${titleBase}`,
-        rawNotes,
-        packId: `${resourceType}-${Date.now()}`,
-        generationTargets: quickCreateTargets[resourceType],
-        generationAmount,
+      openStudyPackCreator(
         resourceType,
-        detailLevel: quickDetailLevel,
-        quizQuestionStyle: 'mixed',
-        promptMode: false,
-        studyPathMode: false,
-      })
-      const widgets = createStudyPackOrchestratorWidgets(
-        {
-          id: `${resourceType}-${Date.now()}`,
-          title: draftPack.title || `${currentDashboardTitle} ${titleBase}`,
-          sourceFormat: draftPack.sourceFormat || 'text',
-          objects: draftPack.objects,
-          warnings: draftPack.warnings || [],
-          sourceSummary: draftPack.sourceSummary,
-        },
-        {
-          forceQuizBlockComponent: resourceType === 'quiz',
-          focusedResourceType:
-            resourceType === 'quiz' || resourceType === 'flashcards'
-              ? resourceType
-              : undefined,
-          includeSourceWidget: false,
-          includeSummaryChart: false,
-          rawSource: sourceText,
-          widgetGroups: [
-            {
-              name: `${draftPack.title || currentDashboardTitle} ${titleBase}`,
-              objects: draftPack.objects,
-            },
-          ],
-        },
+        sourceText,
+        `${currentDashboardTitle} ${titleBase}`.trim(),
       )
-      const dashboard = createStudyPackDashboard({
-        name: draftPack.title || `${currentDashboardTitle} ${titleBase}`,
-        widgets,
-        layoutMode: resourceType === 'improvedNotes' ? 'smart' : 'tabs',
-      })
-      updateDraft(draft.id, {
-        status: 'ready',
-        title: dashboard.name,
-        inputSummary: 'Saved to dashboards',
-      })
-      reportFromNotesStatus('complete', `${titleBase} saved to dashboards.`)
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : `Could not create ${titleBase}.`
-      setQuickSourceStatus('')
-      updateDraft(draft.id, {
-        status: 'failed',
-        error: message,
-      })
-      reportFromNotesStatus('error', message)
+          : `Could not read source material for ${titleBase}.`
+      setQuickSourceStatus(message)
+      openCreateFromMaterial(resourceType, 'upload')
     }
   }
 
@@ -1254,128 +1159,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 </Button>
               </Stack>
             </Paper>
-
-            {quickCreateJobs.length ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 1.25, sm: 1.5 },
-                  borderRadius: 2.5,
-                  border: 1,
-                  borderColor: alpha(theme.palette.primary.main, 0.24),
-                  bgcolor: alpha(theme.palette.primary.main, 0.045),
-                }}
-              >
-                <Stack spacing={1}>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={900}>
-                      Creating now
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      StudyMesh saves finished material directly to your
-                      dashboards, NotebookLM-style.
-                    </Typography>
-                  </Box>
-                  {quickCreateJobs.map((draft) => {
-                    const accent =
-                      draft.selectedResourceType === 'quiz' ||
-                      draft.selectedResourceType === 'flashcards' ||
-                      draft.selectedResourceType === 'improvedNotes'
-                        ? quickCreateAccents[draft.selectedResourceType]
-                        : theme.palette.primary.main
-                    const isReady = draft.status === 'ready'
-                    const isFailed = draft.status === 'failed'
-
-                    return (
-                      <Paper
-                        key={draft.id}
-                        component="button"
-                        type="button"
-                        elevation={0}
-                        onClick={() => {
-                          if (isReady) {
-                            closeStudio()
-                          }
-                        }}
-                        disabled={!isReady}
-                        sx={{
-                          width: '100%',
-                          p: 1.1,
-                          borderRadius: 2,
-                          border: 1,
-                          borderColor: isFailed
-                            ? 'error.main'
-                            : alpha(accent, isReady ? 0.5 : 0.28),
-                          bgcolor: alpha(
-                            accent,
-                            theme.palette.mode === 'dark' ? 0.12 : 0.075,
-                          ),
-                          color: 'text.primary',
-                          textAlign: 'left',
-                          cursor: isReady ? 'pointer' : 'default',
-                        }}
-                      >
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Box
-                            sx={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: 1.5,
-                              display: 'grid',
-                              placeItems: 'center',
-                              bgcolor: alpha(accent, 0.14),
-                              color: accent,
-                              flex: '0 0 auto',
-                            }}
-                          >
-                            {draft.selectedResourceType === 'quiz' ? (
-                              <QuizIcon fontSize="small" />
-                            ) : draft.selectedResourceType === 'flashcards' ? (
-                              <StyleIcon fontSize="small" />
-                            ) : (
-                              <AutoStoriesIcon fontSize="small" />
-                            )}
-                          </Box>
-                          <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography
-                              variant="subtitle2"
-                              fontWeight={900}
-                              noWrap
-                            >
-                              {formatDraftTitle(draft)}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {quickCreateStatusLabel(draft)}
-                            </Typography>
-                          </Box>
-                          <Chip
-                            size="small"
-                            color={
-                              isFailed
-                                ? 'error'
-                                : isReady
-                                  ? 'success'
-                                  : 'primary'
-                            }
-                            label={
-                              isFailed
-                                ? 'Failed'
-                                : isReady
-                                  ? 'Saved'
-                                  : 'Working'
-                            }
-                            sx={{ fontWeight: 800 }}
-                          />
-                        </Stack>
-                      </Paper>
-                    )
-                  })}
-                </Stack>
-              </Paper>
-            ) : null}
           </>
         ) : (
           <Stack spacing={1.5}>
@@ -1977,11 +1760,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 open
                 presentation="embedded"
                 onCollapse={returnToCreateHub}
-                onClose={() =>
+                onClose={() => {
+                  setInitialStudyPackSourceText(undefined)
+                  setInitialStudyPackTitle(undefined)
                   cancelDraftAndReturnToHub(draft.id, 'from-notes')
-                }
+                }}
                 onCreatePack={(payload) => {
                   const dashboard = createStudyPackDashboard(payload)
+                  setInitialStudyPackSourceText(undefined)
+                  setInitialStudyPackTitle(undefined)
                   removeDraft(draft.id, 'from-notes')
                   reportCreationStatus(
                     'from-notes',
@@ -1995,8 +1782,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     ? selectedIntent
                     : undefined
                 }
-                initialSourceText={undefined}
-                initialTitle={undefined}
+                initialSourceText={initialStudyPackSourceText}
+                initialTitle={initialStudyPackTitle}
                 currentDashboardContext={currentDashboardContext}
                 currentDashboardTitle={currentDashboardTitle}
                 hasCurrentDashboardContext={hasCurrentDashboardContext}

@@ -67,7 +67,17 @@ vi.mock('../../../../src/studyPack/imageOcr', () => ({
 
 vi.mock('../../../../src/components/studyPack/CreateStudyPackModal', () => ({
   __esModule: true,
-  default: () => <div data-testid="create-study-pack-modal" />,
+  default: (props: {
+    initialResourceType?: string
+    initialSourceText?: string
+    initialTitle?: string
+  }) => (
+    <div data-testid="create-study-pack-modal">
+      <span>resource:{props.initialResourceType || ''}</span>
+      <span>source:{props.initialSourceText || ''}</span>
+      <span>title:{props.initialTitle || ''}</span>
+    </div>
+  ),
 }))
 
 vi.mock('../../../../src/components/studyPack/CreateStudyPathModal', () => ({
@@ -128,7 +138,7 @@ describe('WorkspaceStudioShell Quick Create', () => {
     })
   })
 
-  it('runs quick creation immediately from the dashboard', async () => {
+  it('opens the Create from notes command with dashboard context for quick creation', async () => {
     render(
       <WorkspaceStudioShell>
         <div>Dashboard canvas</div>
@@ -138,15 +148,15 @@ describe('WorkspaceStudioShell Quick Create', () => {
     openCreation()
     clickQuickCard('Quiz')
 
-    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
-    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resourceType: 'quiz',
-        rawNotes: expect.stringContaining(
-          'Dashboard notes about photosynthesis',
-        ),
-      }),
+    await waitFor(() =>
+      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+        'resource:quiz',
+      ),
     )
+    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+      'Dashboard notes about photosynthesis',
+    )
+    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
   it('opens a separate Create from Material flow from the hub link', () => {
@@ -198,16 +208,18 @@ describe('WorkspaceStudioShell Quick Create', () => {
     addCopiedMaterial('Custom source notes about enzymes')
     fireEvent.click(screen.getByRole('button', { name: /^Create Quiz$/i }))
 
-    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
-    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resourceType: 'quiz',
-        rawNotes: expect.stringContaining('Custom source notes about enzymes'),
-      }),
+    await waitFor(() =>
+      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+        'Custom source notes about enzymes',
+      ),
     )
+    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+      'resource:quiz',
+    )
+    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
-  it('keeps Quick Create one-click after returning from Create from Material', async () => {
+  it('keeps Quick Create wired to dashboard source after returning from Create from Material', async () => {
     render(
       <WorkspaceStudioShell>
         <div>Dashboard canvas</div>
@@ -219,15 +231,15 @@ describe('WorkspaceStudioShell Quick Create', () => {
     fireEvent.click(screen.getByRole('button', { name: /Back to Creation/i }))
     clickQuickCard('Quiz')
 
-    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
-    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resourceType: 'quiz',
-        rawNotes: expect.stringContaining(
-          'Dashboard notes about photosynthesis',
-        ),
-      }),
+    await waitFor(() =>
+      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+        'Dashboard notes about photosynthesis',
+      ),
     )
+    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+      'resource:quiz',
+    )
+    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
   it('routes empty-dashboard quick card clicks into Create from Material with the output preselected', () => {
@@ -307,15 +319,15 @@ describe('WorkspaceStudioShell Quick Create', () => {
     openCreateFromMaterial()
     fireEvent.click(screen.getByRole('button', { name: /^Create Quiz$/i }))
 
-    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
-    expect(generateStudyPackWithAi).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resourceType: 'quiz',
-        rawNotes: expect.stringContaining(
-          'Dashboard notes about photosynthesis',
-        ),
-      }),
+    await waitFor(() =>
+      expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+        'Dashboard notes about photosynthesis',
+      ),
     )
+    expect(screen.getByTestId('create-study-pack-modal')).toHaveTextContent(
+      'resource:quiz',
+    )
+    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
   it('shows source controls after Sources is selected inside Create from Material', () => {
