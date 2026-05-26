@@ -819,6 +819,24 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  const handleQuickCreateCardClick = (
+    resourceType: StudyMaterialResourceType,
+  ) => {
+    const titleBase = quickCreateLabels[resourceType]
+
+    if (quickOptionsOpen) {
+      setSelectedIntent(resourceType)
+      if (!quickHasCustomSources && !hasCurrentDashboardContext) {
+        setQuickSourceStatus(`Add material to create ${titleBase}.`)
+      } else {
+        setQuickSourceStatus('')
+      }
+      return
+    }
+
+    runQuickCreate(resourceType)
+  }
+
   const createOptions: Array<{
     intent: CreateIntent
     title: string
@@ -1001,6 +1019,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               Add sources in options first. The current dashboard is empty.
             </Alert>
           ) : null}
+          {quickOptionsOpen ? (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              fontWeight={800}
+            >
+              Select what to create. Then add sources or adjust options before
+              generating.
+            </Typography>
+          ) : null}
           <Box
             sx={{
               display: 'grid',
@@ -1022,7 +1050,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     component="button"
                     type="button"
                     elevation={0}
-                    onClick={() => runQuickCreate(resourceType)}
+                    onClick={() => handleQuickCreateCardClick(resourceType)}
                     sx={{
                       minHeight: { xs: 82, sm: 110 },
                       p: { xs: 1.15, sm: 1.35 },
@@ -1418,8 +1446,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {quickHasCustomSources || hasCurrentDashboardContext
-                          ? `Ready to create from ${quickSourceLabel}.`
-                          : 'Add material above before generating.'}
+                          ? quickHasCustomSources
+                            ? 'Ready to create from your selected material.'
+                            : 'Ready to create from your current dashboard.'
+                          : `Add material to create ${quickCreateLabels[selectedQuickCreateIntent]}.`}
                       </Typography>
                     </Box>
                     <Button
