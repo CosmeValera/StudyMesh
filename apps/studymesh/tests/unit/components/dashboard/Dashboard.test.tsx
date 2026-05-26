@@ -205,17 +205,32 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     expect(
-      screen.getByRole('heading', { name: /create a study path/i }),
+      screen.getByRole('heading', { name: /what do you want to build/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /create study path/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /open study material/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/create from notes/i)).toBeInTheDocument()
+    expect(screen.getByText(/fast creation from material/i)).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /create study path/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add sources/i }),
+      screen.getByRole('button', { name: /upload material/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /paste notes/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create quiz/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create flashcards/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create clean notes/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /open existing dashboard/i }),
@@ -251,6 +266,69 @@ describe('Dashboards', () => {
     expect(openOperationsExampleMock).not.toHaveBeenCalled()
     expect(openWidgetMenuMock).not.toHaveBeenCalled()
     expect(navigateMock).not.toHaveBeenCalled()
+    window.removeEventListener('studymesh-open-create-hub', createHubListener)
+  })
+
+  it('opens Creation source options from empty dashboard material actions', () => {
+    const createHubListener = vi.fn()
+    window.addEventListener('studymesh-open-create-hub', createHubListener)
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(screen.getByRole('button', { name: /upload material/i }))
+    expect(
+      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
+        .detail,
+    ).toEqual({
+      intent: 'improvedNotes',
+      openQuickOptions: true,
+      quickSourceFocus: 'upload',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /paste notes/i }))
+    expect(
+      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
+        .detail,
+    ).toEqual({
+      intent: 'improvedNotes',
+      openQuickOptions: true,
+      quickSourceFocus: 'paste',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /create quiz/i }))
+    expect(
+      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
+        .detail,
+    ).toEqual({
+      intent: 'quiz',
+      openQuickOptions: true,
+      quickSourceFocus: 'upload',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /create flashcards/i }))
+    expect(
+      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
+        .detail,
+    ).toEqual({
+      intent: 'flashcards',
+      openQuickOptions: true,
+      quickSourceFocus: 'upload',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /create clean notes/i }))
+    expect(
+      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
+        .detail,
+    ).toEqual({
+      intent: 'improvedNotes',
+      openQuickOptions: true,
+      quickSourceFocus: 'upload',
+    })
+
     window.removeEventListener('studymesh-open-create-hub', createHubListener)
   })
 
@@ -312,7 +390,13 @@ describe('Dashboards', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/open study material/i)).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add sources/i }),
+      screen.getByRole('button', { name: /upload material/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /paste notes/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create quiz/i }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /advanced dashboard/i }),

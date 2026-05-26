@@ -76,6 +76,8 @@ import {
   CreationFlow,
   GenerationDraft,
   GenerationMarkerState,
+  OpenCreateHubDetail,
+  QuickSourceFocus,
   readIsAdmin,
   quickCreateAccents,
   quickCreateDetailToAmount,
@@ -206,10 +208,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [quickCopiedTextOpen, setQuickCopiedTextOpen] = useState(false)
   const [quickSourceFiles, setQuickSourceFiles] = useState<File[]>([])
   const [quickSourceStatus, setQuickSourceStatus] = useState('')
+  const [pendingQuickSourceFocus, setPendingQuickSourceFocus] =
+    useState<QuickSourceFocus | null>(null)
   const [fullScreenWidgetPayload, setFullScreenWidgetPayload] = useState<{
     loadWidget?: CustomWidget
     initialEditMode?: boolean
   } | null>(null)
+  const quickOptionsPanelRef = useRef<HTMLDivElement | null>(null)
+  const quickUploadButtonRef = useRef<HTMLLabelElement | null>(null)
+  const quickPasteButtonRef = useRef<HTMLButtonElement | null>(null)
+  const quickCopiedTextInputRef = useRef<HTMLTextAreaElement | null>(null)
   const { createStudyPackDashboard, createStudyPackDashboards } =
     useWorkspaceActions()
   const { openDashboards, selectedDashboard } = useDashboards()
@@ -297,8 +305,18 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       }
     }
     const handleOpenCreateHub = (event: Event) => {
-      const customEvent = event as CustomEvent<{ intent?: CreateIntent }>
-      setSelectedIntent(customEvent.detail?.intent || null)
+      const customEvent = event as CustomEvent<OpenCreateHubDetail>
+      const detail = customEvent.detail || {}
+      setSelectedIntent(detail.intent || null)
+      if (detail.openQuickOptions) {
+        setQuickOptionsOpen(true)
+      }
+      if (detail.quickSourceFocus) {
+        setPendingQuickSourceFocus(detail.quickSourceFocus)
+        if (detail.quickSourceFocus === 'paste') {
+          setQuickCopiedTextOpen(true)
+        }
+      }
       setActiveFlow('hub')
       setIsStudioOpen(true)
       if (isMobile) {
@@ -541,6 +559,38 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     : hasCurrentDashboardContext
       ? currentDashboardTitle
       : 'Sources required'
+  const selectedQuickCreateIntent =
+    selectedIntent && selectedIntent !== 'study-path' ? selectedIntent : null
+
+  useEffect(() => {
+    if (!pendingQuickSourceFocus || !quickOptionsOpen || activeFlow !== 'hub') {
+      return
+    }
+
+    const focusTimer = window.setTimeout(() => {
+      quickOptionsPanelRef.current?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      })
+
+      if (pendingQuickSourceFocus === 'paste') {
+        const target =
+          quickCopiedTextInputRef.current || quickPasteButtonRef.current
+        target?.focus()
+      } else {
+        quickUploadButtonRef.current?.focus()
+      }
+
+      setPendingQuickSourceFocus(null)
+    }, 180)
+
+    return () => window.clearTimeout(focusTimer)
+  }, [
+    activeFlow,
+    pendingQuickSourceFocus,
+    quickOptionsOpen,
+    quickCopiedTextOpen,
+  ])
 
   const startCreateIntent = (intent: CreateIntent) => {
     setSelectedIntent(intent)
@@ -653,6 +703,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const runQuickCreate = async (resourceType: StudyMaterialResourceType) => {
     const titleBase = quickCreateLabels[resourceType]
+    if (!quickHasCustomSources && !hasCurrentDashboardContext) {
+      setSelectedIntent(resourceType)
+      setQuickOptionsOpen(true)
+      setPendingQuickSourceFocus('upload')
+      setQuickSourceStatus(`Add material to create ${titleBase}.`)
+      return
+    }
+
     const usingAttachedSources =
       quickSourceText.trim().length > 0 || quickSourceFiles.length > 0
     const draft: GenerationDraft = {
@@ -933,7 +991,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               Quick Create
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
-              Generate focused material from your current dashboard.
+              {hasCurrentDashboardContext
+                ? 'Generate focused material from your current dashboard.'
+                : 'Add material first, then generate focused study material.'}
             </Typography>
           </Box>
           {!hasCurrentDashboardContext && !quickHasCustomSources ? (
@@ -954,6 +1014,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             {(['quiz', 'flashcards', 'improvedNotes'] as const).map(
               (resourceType) => {
                 const accent = quickCreateAccents[resourceType]
+                const selected = selectedIntent === resourceType
 
                 return (
                   <Paper
@@ -966,9 +1027,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       minHeight: { xs: 82, sm: 110 },
                       p: { xs: 1.15, sm: 1.35 },
                       borderRadius: 2,
-                      border: 1,
-                      borderColor:
-                        !quickHasCustomSources && !hasCurrentDashboardContext
+                      border: selected ? 2 : 1,
+                      borderColor: selected
+                        ? accent
+                        : !quickHasCustomSources && !hasCurrentDashboardContext
                           ? alpha(theme.palette.warning.main, 0.55)
                           : alpha(
                               accent,
@@ -976,7 +1038,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                             ),
                       bgcolor: alpha(
                         accent,
-                        theme.palette.mode === 'dark' ? 0.12 : 0.07,
+                        selected
+                          ? theme.palette.mode === 'dark'
+                            ? 0.2
+                            : 0.12
+                          : theme.palette.mode === 'dark'
+                            ? 0.12
+                            : 0.07,
                       ),
                       color: 'text.primary',
                       cursor: 'pointer',
@@ -1024,6 +1092,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       >
                         {quickCreateIcons[resourceType]}
                       </Box>
+                      {selected ? (
+                        <Typography
+                          variant="caption"
+                          fontWeight={900}
+                          sx={{ color: accent, lineHeight: 1 }}
+                        >
+                          Selected
+                        </Typography>
+                      ) : null}
                       <Typography
                         variant="subtitle2"
                         fontWeight={900}
@@ -1080,6 +1157,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
         <Collapse in={quickOptionsOpen} unmountOnExit>
           <Paper
+            ref={quickOptionsPanelRef}
             elevation={0}
             sx={{
               p: { xs: 1.5, sm: 1.75 },
@@ -1166,6 +1244,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     </Typography>
                   </Box>
                   <Button
+                    ref={quickUploadButtonRef}
                     component="label"
                     variant="contained"
                     startIcon={<UploadFileIcon />}
@@ -1192,6 +1271,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     />
                   </Button>
                   <Button
+                    ref={quickPasteButtonRef}
                     variant="outlined"
                     startIcon={<ContentPasteIcon />}
                     fullWidth
@@ -1245,6 +1325,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   <Stack spacing={1.25}>
                     <TextField
                       label="Copied text"
+                      inputRef={quickCopiedTextInputRef}
                       value={quickCopiedTextDraft}
                       onChange={(event) =>
                         setQuickCopiedTextDraft(event.target.value)
@@ -1308,6 +1389,57 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   <MenuItem value="exam-like">Exam-like</MenuItem>
                 </TextField>
               </Box>
+              {selectedQuickCreateIntent ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.25,
+                    border: 1,
+                    borderColor:
+                      quickHasCustomSources || hasCurrentDashboardContext
+                        ? alpha(theme.palette.primary.main, 0.35)
+                        : alpha(theme.palette.warning.main, 0.55),
+                    borderRadius: 2,
+                    bgcolor:
+                      quickHasCustomSources || hasCurrentDashboardContext
+                        ? alpha(theme.palette.primary.main, 0.045)
+                        : alpha(theme.palette.warning.main, 0.08),
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    alignItems={{ xs: 'stretch', sm: 'center' }}
+                    justifyContent="space-between"
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle2" fontWeight={900}>
+                        {quickCreateLabels[selectedQuickCreateIntent]} selected
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {quickHasCustomSources || hasCurrentDashboardContext
+                          ? `Ready to create from ${quickSourceLabel}.`
+                          : 'Add material above before generating.'}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      disabled={
+                        !quickHasCustomSources && !hasCurrentDashboardContext
+                      }
+                      onClick={() => runQuickCreate(selectedQuickCreateIntent)}
+                      sx={{
+                        borderRadius: 1.5,
+                        textTransform: 'none',
+                        fontWeight: 900,
+                        flex: '0 0 auto',
+                      }}
+                    >
+                      Create {quickCreateLabels[selectedQuickCreateIntent]}
+                    </Button>
+                  </Stack>
+                </Paper>
+              ) : null}
               {(quickHasCustomSources || quickSourceStatus) && (
                 <Stack spacing={1}>
                   <Stack

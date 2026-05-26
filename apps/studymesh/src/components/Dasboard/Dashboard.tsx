@@ -391,10 +391,30 @@ const Dashboards = () => {
     )
   }
 
-  const openCreateFromNotes = () => {
+  const openCreationSources = (
+    quickSourceFocus: 'upload' | 'paste' = 'upload',
+  ) => {
     window.dispatchEvent(
       new CustomEvent(OPEN_CREATE_HUB_EVENT, {
-        detail: { intent: 'improvedNotes' },
+        detail: {
+          intent: 'improvedNotes',
+          openQuickOptions: true,
+          quickSourceFocus,
+        },
+      }),
+    )
+  }
+
+  const openQuickCreateFromEmptyDashboard = (
+    intent: 'quiz' | 'flashcards' | 'improvedNotes',
+  ) => {
+    window.dispatchEvent(
+      new CustomEvent(OPEN_CREATE_HUB_EVENT, {
+        detail: {
+          intent,
+          openQuickOptions: true,
+          quickSourceFocus: 'upload',
+        },
       }),
     )
   }
@@ -1581,7 +1601,9 @@ const Dashboards = () => {
                         isAdmin={isAdmin}
                         hasDashboard
                         onCreateStudyPath={openCreateStudyPath}
-                        onCreateFromNotes={openCreateFromNotes}
+                        onUploadMaterial={() => openCreationSources('upload')}
+                        onPasteNotes={() => openCreationSources('paste')}
+                        onQuickCreate={openQuickCreateFromEmptyDashboard}
                         onOpenSavedLibrary={openSavedLibraryFromEmptyState}
                         dashboardOptions={visibleDashboardOptions}
                         onOpenDashboard={openSavedDashboardInWorkspace}
@@ -1788,7 +1810,9 @@ const Dashboards = () => {
           isAdmin={isAdmin}
           hasDashboard={false}
           onCreateStudyPath={openCreateStudyPath}
-          onCreateFromNotes={openCreateFromNotes}
+          onUploadMaterial={() => openCreationSources('upload')}
+          onPasteNotes={() => openCreationSources('paste')}
+          onQuickCreate={openQuickCreateFromEmptyDashboard}
           onOpenSavedLibrary={openSavedLibraryFromEmptyState}
           dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}

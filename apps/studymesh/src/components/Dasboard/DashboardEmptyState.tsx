@@ -1,29 +1,66 @@
 import React from 'react'
-import { Box, Button, Paper, Stack, Typography } from '@mui/material'
+import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import QuizIcon from '@mui/icons-material/Quiz'
 import RouteIcon from '@mui/icons-material/Route'
+import StyleIcon from '@mui/icons-material/Style'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 import { createStudyPathContainerState } from './studyPathContainer'
 import { normalizeFolderColor } from './folderColors'
 import { DashboardStorage, SavedDashboard } from './dashboardStorage'
 
+type EmptyDashboardQuickCreate = 'quiz' | 'flashcards' | 'improvedNotes'
+
 interface DashboardEmptyStateProps {
   isAdmin: boolean
   hasDashboard: boolean
   onCreateStudyPath: () => void
-  onCreateFromNotes: () => void
+  onUploadMaterial: () => void
+  onPasteNotes: () => void
+  onQuickCreate: (intent: EmptyDashboardQuickCreate) => void
   onOpenSavedLibrary: () => void
   dashboardOptions: SavedDashboard[]
   onOpenDashboard: (dashboard: SavedDashboard) => void
   onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
 }
 
+const quickActions: Array<{
+  intent: EmptyDashboardQuickCreate
+  label: string
+  icon: React.ReactNode
+  accent: string
+}> = [
+  {
+    intent: 'quiz',
+    label: 'Create Quiz',
+    icon: <QuizIcon fontSize="small" />,
+    accent: '#5b9dff',
+  },
+  {
+    intent: 'flashcards',
+    label: 'Create Flashcards',
+    icon: <StyleIcon fontSize="small" />,
+    accent: '#b66cff',
+  },
+  {
+    intent: 'improvedNotes',
+    label: 'Create Clean Notes',
+    icon: <AutoStoriesIcon fontSize="small" />,
+    accent: '#18b992',
+  },
+]
+
 const DashboardEmptyState = ({
   isAdmin,
   onCreateStudyPath,
-  onCreateFromNotes,
+  onUploadMaterial,
+  onPasteNotes,
+  onQuickCreate,
   onOpenSavedLibrary,
   dashboardOptions,
   onOpenDashboard,
@@ -70,16 +107,16 @@ const DashboardEmptyState = ({
     >
       <Box
         sx={{
-          width: 'min(1280px, 100%)',
+          width: 'min(1240px, 100%)',
           maxWidth: '100%',
           minWidth: 0,
           boxSizing: 'border-box',
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            lg: 'minmax(240px, 3fr) minmax(320px, 4fr) minmax(240px, 3fr)',
+            lg: 'minmax(0, 3fr) minmax(300px, 2fr)',
           },
-          gap: { xs: 1, sm: 1.5, lg: 2 },
+          gap: { xs: 1.25, sm: 1.5, lg: 2 },
           alignItems: 'stretch',
           maxHeight: { xs: '100%', lg: 'none' },
           overflowY: { xs: 'auto', lg: 'visible' },
@@ -88,102 +125,306 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 'auto', lg: 520 },
+            minHeight: { xs: 'auto', lg: 560 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
-            border: 1,
-            borderColor: 'primary.light',
-            bgcolor: 'background.accentSurface',
-            color: 'foreground.contrastPrimary',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: { xs: 1, md: 2.5 },
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <Box>
-            <RouteIcon
-              sx={{
-                fontSize: { xs: 30, md: 44 },
-                color: 'primary.main',
-                mb: { xs: 0.5, md: 1 },
-              }}
-            />
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{
-                lineHeight: 1.15,
-                fontSize: { xs: '1.12rem', md: '1.5rem' },
-              }}
-            >
-              Create a Study Path
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                mt: { xs: 0.5, md: 1 },
-                color: 'foreground.contrastSecondary',
-              }}
-            >
-              Start from a topic or prompt and generate ordered tutorial
-              dashboards.
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<RouteIcon />}
-            onClick={onCreateStudyPath}
-            disabled={!isAdmin}
-            sx={{
-              textTransform: 'none',
-              bgcolor: 'primary.dark',
-              color: 'primary.contrastText',
-              '&:hover': { bgcolor: 'primary.main' },
-            }}
-          >
-            Create Study Path
-          </Button>
-        </Paper>
-
-        <Paper
-          elevation={0}
-          sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
+            borderRadius: 3,
             border: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
             display: 'flex',
             flexDirection: 'column',
-            gap: { xs: 1, md: 2 },
+            gap: { xs: 1.5, md: 2 },
+            minWidth: 0,
+            boxSizing: 'border-box',
+            boxShadow: (theme) =>
+              theme.palette.mode === 'dark'
+                ? '0 20px 56px rgba(0,0,0,0.28)'
+                : '0 20px 56px rgba(15,23,42,0.08)',
+          }}
+        >
+          <Box>
+            <Typography
+              variant="caption"
+              color="primary"
+              fontWeight={900}
+              sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+            >
+              Start creating
+            </Typography>
+            <Typography
+              variant="h4"
+              fontWeight={950}
+              sx={{
+                mt: 0.5,
+                lineHeight: 1.08,
+                fontSize: { xs: '1.45rem', sm: '1.85rem', md: '2.2rem' },
+              }}
+            >
+              What do you want to build?
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1, maxWidth: 620 }}
+            >
+              Create a guided Study Path, or add material first to generate a
+              focused quiz, flashcards, or clean notes.
+            </Typography>
+          </Box>
+
+          <Paper
+            component="button"
+            type="button"
+            elevation={0}
+            onClick={onCreateStudyPath}
+            disabled={!isAdmin}
+            sx={{
+              width: '100%',
+              p: { xs: 1.5, sm: 2 },
+              borderRadius: 2.5,
+              border: 1,
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.42),
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.075),
+              color: 'text.primary',
+              cursor: isAdmin ? 'pointer' : 'default',
+              textAlign: 'left',
+              display: 'grid',
+              gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+              alignItems: 'center',
+              gap: { xs: 1.25, sm: 1.5 },
+              boxShadow: (theme) =>
+                `0 16px 38px ${alpha(theme.palette.primary.main, 0.1)}`,
+              '&:hover': {
+                borderColor: isAdmin ? 'primary.main' : undefined,
+                bgcolor: (theme) =>
+                  isAdmin
+                    ? alpha(theme.palette.primary.main, 0.105)
+                    : alpha(theme.palette.primary.main, 0.075),
+                transform: isAdmin ? 'translateY(-1px)' : undefined,
+              },
+              '&:focus-visible': {
+                outline: (theme) =>
+                  `3px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                outlineOffset: 2,
+              },
+              transition:
+                'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
+            }}
+          >
+            <Box
+              sx={{
+                width: { xs: 44, sm: 52 },
+                height: { xs: 44, sm: 52 },
+                borderRadius: 2,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+              }}
+            >
+              <RouteIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="caption" color="primary" fontWeight={900}>
+                  Recommended
+                </Typography>
+              </Stack>
+              <Typography variant="h5" fontWeight={950} lineHeight={1.12}>
+                Create Study Path
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.4 }}
+              >
+                A guided multi-dashboard tutorial with lessons, exercises,
+                flashcards, and review structure.
+              </Typography>
+            </Box>
+            <ChevronRightIcon color="primary" />
+          </Paper>
+
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gap: 1,
+            }}
+          >
+            <Button
+              variant="contained"
+              startIcon={<CloudUploadIcon />}
+              onClick={onUploadMaterial}
+              disabled={!isAdmin}
+              sx={{
+                justifyContent: 'flex-start',
+                minHeight: 48,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 900,
+              }}
+            >
+              Upload material
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<ContentPasteIcon />}
+              onClick={onPasteNotes}
+              disabled={!isAdmin}
+              sx={{
+                justifyContent: 'flex-start',
+                minHeight: 48,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 900,
+                bgcolor: 'background.paper',
+              }}
+            >
+              Paste notes
+            </Button>
+          </Box>
+
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 1.25, sm: 1.5 },
+              borderRadius: 2.5,
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.default',
+            }}
+          >
+            <Stack spacing={1.25}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={900}>
+                  Fast creation from material
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.3 }}
+                >
+                  This dashboard is empty, so add sources in Creation first.
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(3, minmax(0, 1fr))',
+                  },
+                  gap: 1,
+                }}
+              >
+                {quickActions.map((action) => (
+                  <Paper
+                    key={action.intent}
+                    component="button"
+                    type="button"
+                    elevation={0}
+                    onClick={() => onQuickCreate(action.intent)}
+                    disabled={!isAdmin}
+                    sx={{
+                      minHeight: 92,
+                      p: 1.25,
+                      borderRadius: 2,
+                      border: 1,
+                      borderColor: alpha(action.accent, 0.24),
+                      bgcolor: alpha(action.accent, 0.07),
+                      color: 'text.primary',
+                      cursor: isAdmin ? 'pointer' : 'default',
+                      textAlign: 'left',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      alignItems: 'center',
+                      gap: 1,
+                      '&:hover': {
+                        borderColor: isAdmin
+                          ? alpha(action.accent, 0.72)
+                          : undefined,
+                        bgcolor: isAdmin
+                          ? alpha(action.accent, 0.1)
+                          : undefined,
+                        transform: isAdmin ? 'translateY(-1px)' : undefined,
+                      },
+                      '&:focus-visible': {
+                        outline: `3px solid ${alpha(action.accent, 0.26)}`,
+                        outlineOffset: 2,
+                      },
+                      transition:
+                        'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
+                    }}
+                  >
+                    <Stack spacing={1} sx={{ minWidth: 0 }}>
+                      <Box
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 1.5,
+                          display: 'grid',
+                          placeItems: 'center',
+                          bgcolor: alpha(action.accent, 0.14),
+                          color: action.accent,
+                        }}
+                      >
+                        {action.icon}
+                      </Box>
+                      <Typography variant="subtitle2" fontWeight={900}>
+                        {action.label}
+                      </Typography>
+                    </Stack>
+                    <ChevronRightIcon sx={{ color: action.accent }} />
+                  </Paper>
+                ))}
+              </Box>
+            </Stack>
+          </Paper>
+        </Paper>
+
+        <Paper
+          elevation={0}
+          sx={{
+            minHeight: { xs: 'auto', lg: 560 },
+            p: { xs: 1.25, sm: 2, md: 2.25 },
+            borderRadius: 3,
+            border: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: { xs: 1.25, md: 1.75 },
             minWidth: 0,
             boxSizing: 'border-box',
           }}
         >
           <Stack direction="row" alignItems="center" spacing={1}>
-            <FolderOpenIcon color="primary" />
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: 2,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'background.default',
+                color: 'primary.main',
+                border: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <FolderOpenIcon />
+            </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h5"
-                fontWeight={900}
-                sx={{
-                  lineHeight: 1.15,
-                  fontSize: { xs: '1.12rem', md: '1.5rem' },
-                }}
-              >
+              <Typography variant="h6" fontWeight={900}>
                 Open study material
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
-                sx={{ mt: 0.5 }}
+                sx={{ mt: 0.25 }}
               >
-                Continue existing Study Paths, Study Packs, or custom
-                dashboards.
+                Continue saved Study Paths, packs, or dashboards.
               </Typography>
             </Box>
           </Stack>
@@ -217,13 +458,13 @@ const DashboardEmptyState = ({
                           : firstDashboard && onOpenDashboard(firstDashboard)
                       }
                       sx={{
-                        minHeight: { xs: 42, md: 54 },
+                        minHeight: { xs: 48, md: 58 },
                         justifyContent: 'flex-start',
                         textAlign: 'left',
                         textTransform: 'none',
                         border: 1,
                         borderColor: 'divider',
-                        borderRadius: 1.25,
+                        borderRadius: 1.5,
                         px: 1.25,
                         minWidth: 0,
                         maxWidth: '100%',
@@ -267,136 +508,46 @@ const DashboardEmptyState = ({
             ) : (
               <Box
                 sx={{
-                  minHeight: 190,
+                  minHeight: 220,
                   display: 'grid',
                   placeItems: 'center',
                   textAlign: 'center',
                   px: 2,
                   color: 'text.secondary',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  bgcolor: 'background.default',
                 }}
               >
                 <Box>
                   <FolderOpenIcon sx={{ fontSize: 38, mb: 1, opacity: 0.65 }} />
-                  <Typography variant="body2" fontWeight={700}>
+                  <Typography variant="body2" fontWeight={800}>
                     Saved Study Paths and dashboards appear here.
                   </Typography>
                 </Box>
               </Box>
             )}
           </Box>
+
+          <Stack direction="row" gap={0.75} flexWrap="wrap">
+            <Chip size="small" label="Study Paths" />
+            <Chip size="small" label="Study Packs" />
+            <Chip size="small" label="Dashboards" />
+          </Stack>
           <Button
             variant="outlined"
             startIcon={<FolderOpenIcon />}
             onClick={onOpenSavedLibrary}
-            sx={{ textTransform: 'none', bgcolor: 'background.default' }}
+            sx={{
+              textTransform: 'none',
+              bgcolor: 'background.default',
+              borderRadius: 2,
+              fontWeight: 800,
+            }}
           >
             {openExistingLabel}
           </Button>
-        </Paper>
-
-        <Paper
-          elevation={0}
-          sx={{
-            minHeight: { xs: 'auto', lg: 520 },
-            p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 2,
-            border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: 1, md: 2 },
-            minWidth: 0,
-            boxSizing: 'border-box',
-          }}
-        >
-          <Box>
-            <AutoStoriesIcon
-              sx={{
-                fontSize: { xs: 30, md: 44 },
-                color: 'primary.main',
-                mb: { xs: 0.5, md: 1 },
-              }}
-            />
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{
-                lineHeight: 1.15,
-                fontSize: { xs: '1.12rem', md: '1.5rem' },
-              }}
-            >
-              Create From Notes
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: { xs: 0.5, md: 1 } }}
-            >
-              Upload notes, screenshots, PDFs, or slides and turn them into a
-              widget-based study dashboard.
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <Paper
-              component="button"
-              type="button"
-              elevation={0}
-              onClick={onCreateFromNotes}
-              disabled={!isAdmin}
-              sx={{
-                width: '100%',
-                minHeight: { xs: 92, md: 170 },
-                p: { xs: 1.25, md: 2 },
-                borderRadius: 2,
-                border: '1.5px dashed',
-                borderColor: 'primary.main',
-                bgcolor: 'background.default',
-                color: 'text.primary',
-                cursor: isAdmin ? 'pointer' : 'default',
-                textAlign: 'center',
-                display: 'grid',
-                placeItems: 'center',
-                boxSizing: 'border-box',
-                '&:hover': {
-                  bgcolor: isAdmin ? 'action.hover' : 'background.default',
-                  borderColor: isAdmin ? 'primary.dark' : 'primary.main',
-                },
-              }}
-            >
-              <Stack spacing={1.25} alignItems="center">
-                <Box
-                  sx={{
-                    width: { xs: 36, md: 48 },
-                    height: { xs: 36, md: 48 },
-                    borderRadius: '50%',
-                    display: 'grid',
-                    placeItems: 'center',
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                  }}
-                >
-                  <CloudUploadIcon fontSize="large" />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={900}>
-                    Add sources
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Text, images, PDFs, and slides.
-                  </Typography>
-                </Box>
-              </Stack>
-            </Paper>
-          </Box>
         </Paper>
       </Box>
     </Box>

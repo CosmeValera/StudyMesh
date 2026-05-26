@@ -7,6 +7,12 @@ import type { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
 export type StudioFlow = 'hub' | 'study-path' | 'from-notes'
 export type CreationFlow = Exclude<StudioFlow, 'hub'>
 export type CreateIntent = 'study-path' | StudyMaterialResourceType
+export type QuickSourceFocus = 'upload' | 'paste'
+export interface OpenCreateHubDetail {
+  intent?: CreateIntent
+  openQuickOptions?: boolean
+  quickSourceFocus?: QuickSourceFocus
+}
 export type GenerationDraftStatus =
   | 'generating'
   | 'ready'
