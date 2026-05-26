@@ -2118,31 +2118,30 @@ const Dashboards = () => {
               </Typography>
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {!isMobileDashboardView &&
-                isAdmin && (
-                  <TooltipStyled title="Edit Dashboard">
-                    <IconButton
-                      aria-label={`Edit dashboard ${dashboard.name}`}
-                      size="small"
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        if (dashboard.kind === 'studyPathContainer') {
-                          openStudyPathDashboardEditor(dashboard)
-                          return
-                        }
-                        openDashboardEditor(dashboard.id)
-                      }}
-                      sx={{
-                        p: 0.5,
-                        mr: 0.5,
-                        color: 'text.secondary',
-                        '&:hover': { color: 'primary.main' },
-                      }}
-                    >
-                      <EditIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </TooltipStyled>
-                )}
+              {!isMobileDashboardView && isAdmin && (
+                <TooltipStyled title="Edit Dashboard">
+                  <IconButton
+                    aria-label={`Edit dashboard ${dashboard.name}`}
+                    size="small"
+                    onClick={(ev) => {
+                      ev.stopPropagation()
+                      if (dashboard.kind === 'studyPathContainer') {
+                        openStudyPathDashboardEditor(dashboard)
+                        return
+                      }
+                      openDashboardEditor(dashboard.id)
+                    }}
+                    sx={{
+                      p: 0.5,
+                      mr: 0.5,
+                      color: 'text.secondary',
+                      '&:hover': { color: 'primary.main' },
+                    }}
+                  >
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </TooltipStyled>
+              )}
               {!isOnlyEmptyDashboard && (
                 <Box
                   className="close"
@@ -2265,29 +2264,29 @@ const Dashboards = () => {
             </TooltipStyled>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {isAdmin && (
-                  <TooltipStyled title="Edit Dashboard">
-                    <IconButton
-                      aria-label={`Edit dashboard ${dashboard.name}`}
-                      size="small"
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        if (dashboard.kind === 'studyPathContainer') {
-                          openStudyPathDashboardEditor(dashboard)
-                          return
-                        }
-                        openDashboardEditor(dashboard.id)
-                      }}
-                      sx={{
-                        p: 0.5,
-                        mr: 0.5,
-                        color: 'text.secondary',
-                        '&:hover': { color: 'primary.main' },
-                      }}
-                    >
-                      <EditIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </TooltipStyled>
-                )}
+                <TooltipStyled title="Edit Dashboard">
+                  <IconButton
+                    aria-label={`Edit dashboard ${dashboard.name}`}
+                    size="small"
+                    onClick={(ev) => {
+                      ev.stopPropagation()
+                      if (dashboard.kind === 'studyPathContainer') {
+                        openStudyPathDashboardEditor(dashboard)
+                        return
+                      }
+                      openDashboardEditor(dashboard.id)
+                    }}
+                    sx={{
+                      p: 0.5,
+                      mr: 0.5,
+                      color: 'text.secondary',
+                      '&:hover': { color: 'primary.main' },
+                    }}
+                  >
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </TooltipStyled>
+              )}
               {!isOnlyEmptyDashboard && (
                 <Box
                   className="close"
@@ -2374,6 +2373,7 @@ const Dashboards = () => {
           minWidth: 0,
           minHeight: 0,
           overflow: 'hidden',
+          mr: isMobileDashboardView ? 0 : '8px',
         }}
       >
         <Tabs
@@ -2396,10 +2396,7 @@ const Dashboards = () => {
             const isEmptyDashboard =
               !isStudyPathContainer && !hasDashboardContent(dashboard.layout)
             return (
-              <TabPanel
-                key={dashboard.id}
-                forceRender={isMobileDashboardView}
-              >
+              <TabPanel key={dashboard.id} forceRender={isMobileDashboardView}>
                 <Box
                   sx={{
                     display: 'flex',
@@ -3040,7 +3037,9 @@ const Dashboards = () => {
                               size="small"
                               aria-label={`Move ${widgetTab.name} up`}
                               disabled={index === 0}
-                              onClick={() => moveMobileDashboardWidget(index, -1)}
+                              onClick={() =>
+                                moveMobileDashboardWidget(index, -1)
+                              }
                             >
                               <ArrowUpwardIcon fontSize="small" />
                             </IconButton>
@@ -3050,7 +3049,9 @@ const Dashboards = () => {
                               disabled={
                                 index === dashboardEditorWidgetTabs.length - 1
                               }
-                              onClick={() => moveMobileDashboardWidget(index, 1)}
+                              onClick={() =>
+                                moveMobileDashboardWidget(index, 1)
+                              }
                             >
                               <ArrowDownwardIcon fontSize="small" />
                             </IconButton>
