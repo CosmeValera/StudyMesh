@@ -278,8 +278,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const quickUploadButtonRef = useRef<HTMLLabelElement | null>(null)
   const quickPasteButtonRef = useRef<HTMLButtonElement | null>(null)
   const quickCopiedTextInputRef = useRef<HTMLTextAreaElement | null>(null)
-  const { createStudyPackDashboard, createStudyPackDashboards } =
-    useWorkspaceActions()
+  const { createStudyPackDashboards } = useWorkspaceActions()
   const { openDashboards, selectedDashboard } = useDashboards()
 
   const startStudioResize = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -877,18 +876,26 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         widgetGroups: groups,
       })
 
-      const dashboard = createStudyPackDashboard({
-        name: nextTitle,
-        widgets,
-        layoutMode:
-          resourceType === 'flashcards' || resourceType === 'quiz'
-            ? 'tabs'
-            : 'tabs',
+      createStudyPackDashboards({
+        dashboards: [
+          {
+            name: nextTitle,
+            widgets,
+            layoutMode: 'tabs',
+          },
+        ],
+        openInWorkspace: true,
       })
-      updateDraft(draft.id, {
-        status: 'ready',
-        title: dashboard.name,
-        inputSummary: 'saved to dashboards',
+      setGenerationDrafts((current) =>
+        current.filter((existingDraft) => existingDraft.id !== draft.id),
+      )
+      setActiveDraftByFlow((current) => {
+        if (current['from-notes'] !== draft.id) {
+          return current
+        }
+
+        const { 'from-notes': _removedDraftId, ...remaining } = current
+        return remaining
       })
       dispatchWorkspaceCreationStatus({
         task: 'from-notes',

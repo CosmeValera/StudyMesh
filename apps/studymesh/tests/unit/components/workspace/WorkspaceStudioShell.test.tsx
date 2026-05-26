@@ -5,7 +5,7 @@ import WorkspaceStudioShell from '../../../../src/components/workspace/Workspace
 import { OPEN_CREATE_HUB_EVENT } from '../../../../src/customHooks/useWorkspaceActions'
 import { generateStudyPackWithAi } from '../../../../src/studyPack/ai'
 
-const createStudyPackDashboardMock = vi.fn()
+const createStudyPackDashboardsMock = vi.fn()
 let dashboardContextText = 'Dashboard notes about photosynthesis'
 
 vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
@@ -16,8 +16,7 @@ vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   OPEN_STUDY_PATH_EVENT: 'studymesh-open-study-path',
   OPEN_WIDGET_EDITOR_EVENT: 'studymesh-open-widget-editor',
   useWorkspaceActions: () => ({
-    createStudyPackDashboard: createStudyPackDashboardMock,
-    createStudyPackDashboards: vi.fn(),
+    createStudyPackDashboards: createStudyPackDashboardsMock,
   }),
 }))
 
@@ -139,9 +138,12 @@ describe('WorkspaceStudioShell Quick Create', () => {
   beforeEach(() => {
     dashboardContextText = 'Dashboard notes about photosynthesis'
     Element.prototype.scrollIntoView = vi.fn()
-    createStudyPackDashboardMock.mockReturnValue({
-      name: 'Generated Dashboard',
-    })
+    createStudyPackDashboardsMock.mockClear()
+    createStudyPackDashboardsMock.mockReturnValue([
+      {
+        name: 'Generated Dashboard',
+      },
+    ])
     vi.mocked(generateStudyPackWithAi).mockClear()
     vi.mocked(generateStudyPackWithAi).mockResolvedValue({
       id: 'draft-pack',
@@ -181,7 +183,9 @@ describe('WorkspaceStudioShell Quick Create', () => {
         ),
       }),
     )
-    await waitFor(() => expect(createStudyPackDashboardMock).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(createStudyPackDashboardsMock).toHaveBeenCalled(),
+    )
   })
 
   it('opens a separate Create from Material flow from the hub link', () => {
@@ -240,7 +244,9 @@ describe('WorkspaceStudioShell Quick Create', () => {
         rawNotes: expect.stringContaining('Custom source notes about enzymes'),
       }),
     )
-    await waitFor(() => expect(createStudyPackDashboardMock).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(createStudyPackDashboardsMock).toHaveBeenCalled(),
+    )
   })
 
   it('keeps Quick Create wired to dashboard source after returning from Create from Material', async () => {
