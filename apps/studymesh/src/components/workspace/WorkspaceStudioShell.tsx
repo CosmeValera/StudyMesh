@@ -114,7 +114,7 @@ const statusMarkerLabels: Record<
   editing: 'Creation draft open',
   idle: '',
   running: 'Generating study material…',
-  complete: 'Study material ready to review',
+  complete: 'Study material saved to dashboards',
   error: 'Generation failed. Click to review.',
 }
 
@@ -571,6 +571,22 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       : 'Sources required'
   const selectedQuickCreateIntent =
     selectedIntent && selectedIntent !== 'study-path' ? selectedIntent : null
+  const quickCreateJobs = generationDrafts.filter((draft) => draft.quickCreate)
+  const quickCreateStatusLabel = (draft: GenerationDraft) => {
+    if (draft.status === 'generating') {
+      return `Creating ${resourceTypeTitle(draft.selectedResourceType).toLowerCase()}…`
+    }
+
+    if (draft.status === 'ready') {
+      return 'Saved to your dashboards. Click to open it.'
+    }
+
+    if (draft.status === 'failed') {
+      return draft.error || 'Generation failed.'
+    }
+
+    return 'Preparing…'
+  }
 
   useEffect(() => {
     if (
@@ -761,6 +777,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     setGenerationDrafts((current) => [...current, draft])
+    setActiveFlow('hub')
+    setQuickOptionsOpen(false)
     reportFromNotesStatus('running', `${titleBase} is generating`)
 
     try {
@@ -833,9 +851,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       updateDraft(draft.id, {
         status: 'ready',
         title: dashboard.name,
-        inputSummary: 'Ready in workspace',
+        inputSummary: 'Saved to dashboards',
       })
-      reportFromNotesStatus('complete', `${titleBase} ready.`)
+      reportFromNotesStatus('complete', `${titleBase} saved to dashboards.`)
     } catch (error) {
       const message =
         error instanceof Error
@@ -1051,101 +1069,253 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               </Stack>
             </Paper>
 
-            <Stack spacing={1.25}>
-              <Box>
-                <Typography variant="subtitle1" fontWeight={900}>
-                  Quick Create
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.3 }}
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 1.35, sm: 1.5 },
+                borderRadius: 2.5,
+                border: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.default',
+              }}
+            >
+              <Stack spacing={1.25}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={900}>
+                    Quick Create
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.3 }}
+                  >
+                    {hasCurrentDashboardContext
+                      ? 'Generate focused material from your current dashboard.'
+                      : 'Add material first, then generate focused study material.'}
+                  </Typography>
+                </Box>
+                {!hasCurrentDashboardContext ? (
+                  <Alert severity="info" sx={{ py: 0.5 }}>
+                    The current dashboard is empty. Pick a card and StudyMesh
+                    will open Create from Material with that output selected.
+                  </Alert>
+                ) : null}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(3, minmax(0, 1fr))',
+                    },
+                    gap: 1,
+                  }}
                 >
-                  {hasCurrentDashboardContext
-                    ? 'Generate focused material from your current dashboard.'
-                    : 'Add material first, then generate focused study material.'}
-                </Typography>
-              </Box>
-              {!hasCurrentDashboardContext ? (
-                <Alert severity="info" sx={{ py: 0.5 }}>
-                  The current dashboard is empty. Pick a card to create from
-                  material instead.
-                </Alert>
-              ) : null}
-              <Box
+                  {(['quiz', 'flashcards', 'improvedNotes'] as const).map(
+                    (resourceType) => {
+                      const accent = quickCreateAccents[resourceType]
+                      const selected = false
+
+                      return (
+                        <Paper
+                          key={resourceType}
+                          component="button"
+                          type="button"
+                          elevation={0}
+                          onClick={() =>
+                            handleQuickCreateCardClick(resourceType)
+                          }
+                          sx={{
+                            minHeight: { xs: 82, sm: 110 },
+                            p: { xs: 1.15, sm: 1.35 },
+                            borderRadius: 2,
+                            border: selected ? 2 : 1,
+                            borderColor: selected
+                              ? accent
+                              : !hasCurrentDashboardContext
+                                ? alpha(theme.palette.warning.main, 0.55)
+                                : alpha(
+                                    accent,
+                                    theme.palette.mode === 'dark' ? 0.3 : 0.22,
+                                  ),
+                            bgcolor: alpha(
+                              accent,
+                              selected
+                                ? theme.palette.mode === 'dark'
+                                  ? 0.2
+                                  : 0.12
+                                : theme.palette.mode === 'dark'
+                                  ? 0.12
+                                  : 0.07,
+                            ),
+                            color: 'text.primary',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            display: 'flex',
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 1.25,
+                            boxShadow: `0 10px 26px ${alpha(
+                              accent,
+                              theme.palette.mode === 'dark' ? 0.08 : 0.05,
+                            )}`,
+                            '&:hover': {
+                              borderColor: alpha(accent, 0.72),
+                              bgcolor: alpha(
+                                accent,
+                                theme.palette.mode === 'dark' ? 0.18 : 0.1,
+                              ),
+                              transform: 'translateY(-1px)',
+                            },
+                            '&:focus-visible': {
+                              outline: `3px solid ${alpha(accent, 0.26)}`,
+                              outlineOffset: 2,
+                            },
+                            transition:
+                              'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
+                          }}
+                        >
+                          <Stack spacing={1} sx={{ minWidth: 0 }}>
+                            <Box
+                              sx={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: 1.5,
+                                display: 'grid',
+                                placeItems: 'center',
+                                bgcolor: alpha(
+                                  accent,
+                                  theme.palette.mode === 'dark' ? 0.2 : 0.14,
+                                ),
+                                color: accent,
+                                flex: '0 0 auto',
+                              }}
+                            >
+                              {quickCreateIcons[resourceType]}
+                            </Box>
+                            {selected ? (
+                              <Typography
+                                variant="caption"
+                                fontWeight={900}
+                                sx={{ color: accent, lineHeight: 1 }}
+                              >
+                                Selected
+                              </Typography>
+                            ) : null}
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={900}
+                              sx={{ lineHeight: 1.15 }}
+                            >
+                              {quickCreateLabels[resourceType]}
+                            </Typography>
+                          </Stack>
+                          <Box
+                            sx={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: '50%',
+                              display: 'grid',
+                              placeItems: 'center',
+                              alignSelf: 'center',
+                              color: alpha(
+                                accent,
+                                theme.palette.mode === 'dark' ? 0.95 : 0.9,
+                              ),
+                              border: 1,
+                              borderColor: alpha(accent, 0.24),
+                              bgcolor: alpha(
+                                accent,
+                                theme.palette.mode === 'dark' ? 0.12 : 0.08,
+                              ),
+                              flex: '0 0 auto',
+                            }}
+                          >
+                            <ChevronRightIcon fontSize="small" />
+                          </Box>
+                        </Paper>
+                      )
+                    },
+                  )}
+                </Box>
+                <Button
+                  size="small"
+                  onClick={() => openCreateFromMaterial()}
+                  aria-expanded={quickOptionsOpen}
+                  sx={{
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    borderRadius: 999,
+                    px: 0.5,
+                    fontWeight: 800,
+                  }}
+                >
+                  Create from material
+                </Button>
+              </Stack>
+            </Paper>
+
+            {quickCreateJobs.length ? (
+              <Paper
+                elevation={0}
                 sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(3, minmax(0, 1fr))',
-                  },
-                  gap: 1,
+                  p: { xs: 1.25, sm: 1.5 },
+                  borderRadius: 2.5,
+                  border: 1,
+                  borderColor: alpha(theme.palette.primary.main, 0.24),
+                  bgcolor: alpha(theme.palette.primary.main, 0.045),
                 }}
               >
-                {(['quiz', 'flashcards', 'improvedNotes'] as const).map(
-                  (resourceType) => {
-                    const accent = quickCreateAccents[resourceType]
-                    const selected = false
+                <Stack spacing={1}>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={900}>
+                      Creating now
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      StudyMesh saves finished material directly to your
+                      dashboards, NotebookLM-style.
+                    </Typography>
+                  </Box>
+                  {quickCreateJobs.map((draft) => {
+                    const accent =
+                      draft.selectedResourceType === 'quiz' ||
+                      draft.selectedResourceType === 'flashcards' ||
+                      draft.selectedResourceType === 'improvedNotes'
+                        ? quickCreateAccents[draft.selectedResourceType]
+                        : theme.palette.primary.main
+                    const isReady = draft.status === 'ready'
+                    const isFailed = draft.status === 'failed'
 
                     return (
                       <Paper
-                        key={resourceType}
+                        key={draft.id}
                         component="button"
                         type="button"
                         elevation={0}
-                        onClick={() => handleQuickCreateCardClick(resourceType)}
+                        onClick={() => {
+                          if (isReady) {
+                            closeStudio()
+                          }
+                        }}
+                        disabled={!isReady}
                         sx={{
-                          minHeight: { xs: 82, sm: 110 },
-                          p: { xs: 1.15, sm: 1.35 },
+                          width: '100%',
+                          p: 1.1,
                           borderRadius: 2,
-                          border: selected ? 2 : 1,
-                          borderColor: selected
-                            ? accent
-                            : !hasCurrentDashboardContext
-                              ? alpha(theme.palette.warning.main, 0.55)
-                              : alpha(
-                                  accent,
-                                  theme.palette.mode === 'dark' ? 0.3 : 0.22,
-                                ),
+                          border: 1,
+                          borderColor: isFailed
+                            ? 'error.main'
+                            : alpha(accent, isReady ? 0.5 : 0.28),
                           bgcolor: alpha(
                             accent,
-                            selected
-                              ? theme.palette.mode === 'dark'
-                                ? 0.2
-                                : 0.12
-                              : theme.palette.mode === 'dark'
-                                ? 0.12
-                                : 0.07,
+                            theme.palette.mode === 'dark' ? 0.12 : 0.075,
                           ),
                           color: 'text.primary',
-                          cursor: 'pointer',
                           textAlign: 'left',
-                          display: 'flex',
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          gap: 1.25,
-                          boxShadow: `0 10px 26px ${alpha(
-                            accent,
-                            theme.palette.mode === 'dark' ? 0.08 : 0.05,
-                          )}`,
-                          '&:hover': {
-                            borderColor: alpha(accent, 0.72),
-                            bgcolor: alpha(
-                              accent,
-                              theme.palette.mode === 'dark' ? 0.18 : 0.1,
-                            ),
-                            transform: 'translateY(-1px)',
-                          },
-                          '&:focus-visible': {
-                            outline: `3px solid ${alpha(accent, 0.26)}`,
-                            outlineOffset: 2,
-                          },
-                          transition:
-                            'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
+                          cursor: isReady ? 'pointer' : 'default',
                         }}
                       >
-                        <Stack spacing={1} sx={{ minWidth: 0 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
                           <Box
                             sx={{
                               width: 34,
@@ -1153,76 +1323,59 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                               borderRadius: 1.5,
                               display: 'grid',
                               placeItems: 'center',
-                              bgcolor: alpha(
-                                accent,
-                                theme.palette.mode === 'dark' ? 0.2 : 0.14,
-                              ),
+                              bgcolor: alpha(accent, 0.14),
                               color: accent,
                               flex: '0 0 auto',
                             }}
                           >
-                            {quickCreateIcons[resourceType]}
+                            {draft.selectedResourceType === 'quiz' ? (
+                              <QuizIcon fontSize="small" />
+                            ) : draft.selectedResourceType === 'flashcards' ? (
+                              <StyleIcon fontSize="small" />
+                            ) : (
+                              <AutoStoriesIcon fontSize="small" />
+                            )}
                           </Box>
-                          {selected ? (
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={900}
+                              noWrap
+                            >
+                              {formatDraftTitle(draft)}
+                            </Typography>
                             <Typography
                               variant="caption"
-                              fontWeight={900}
-                              sx={{ color: accent, lineHeight: 1 }}
+                              color="text.secondary"
                             >
-                              Selected
+                              {quickCreateStatusLabel(draft)}
                             </Typography>
-                          ) : null}
-                          <Typography
-                            variant="subtitle2"
-                            fontWeight={900}
-                            sx={{ lineHeight: 1.15 }}
-                          >
-                            {quickCreateLabels[resourceType]}
-                          </Typography>
+                          </Box>
+                          <Chip
+                            size="small"
+                            color={
+                              isFailed
+                                ? 'error'
+                                : isReady
+                                  ? 'success'
+                                  : 'primary'
+                            }
+                            label={
+                              isFailed
+                                ? 'Failed'
+                                : isReady
+                                  ? 'Saved'
+                                  : 'Working'
+                            }
+                            sx={{ fontWeight: 800 }}
+                          />
                         </Stack>
-                        <Box
-                          sx={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: '50%',
-                            display: 'grid',
-                            placeItems: 'center',
-                            alignSelf: 'center',
-                            color: alpha(
-                              accent,
-                              theme.palette.mode === 'dark' ? 0.95 : 0.9,
-                            ),
-                            border: 1,
-                            borderColor: alpha(accent, 0.24),
-                            bgcolor: alpha(
-                              accent,
-                              theme.palette.mode === 'dark' ? 0.12 : 0.08,
-                            ),
-                            flex: '0 0 auto',
-                          }}
-                        >
-                          <ChevronRightIcon fontSize="small" />
-                        </Box>
                       </Paper>
                     )
-                  },
-                )}
-              </Box>
-              <Button
-                size="small"
-                onClick={() => openCreateFromMaterial()}
-                aria-expanded={quickOptionsOpen}
-                sx={{
-                  alignSelf: 'flex-start',
-                  textTransform: 'none',
-                  borderRadius: 999,
-                  px: 0.5,
-                  fontWeight: 800,
-                }}
-              >
-                Create from material
-              </Button>
-            </Stack>
+                  })}
+                </Stack>
+              </Paper>
+            ) : null}
           </>
         ) : (
           <Stack spacing={1.5}>
@@ -1250,8 +1403,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 color="text.secondary"
                 sx={{ mt: 0.35 }}
               >
-                Add files, pasted notes, images, PDFs, or slides, then choose
-                what StudyMesh should create.
+                Pick the output, source, and options in one focused flow.
               </Typography>
             </Box>
           </Stack>
@@ -1892,6 +2044,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const visibleCreationMarkers = generationDrafts
+    .filter((draft) => !draft.quickCreate)
     .map((draft) => {
       const state = getDraftMarkerState(draft)
       if (!isStudioOpen && state === 'editing') {
