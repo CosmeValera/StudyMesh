@@ -39,6 +39,7 @@ interface DashboardChatPanelProps {
   dashboard?: StateDashboard
   messages: DashboardChatMessage[]
   onMessagesChange: (messages: DashboardChatMessage[]) => void
+  onCreateNotesPage?: (markdown: string) => void
   onClose: () => void
 }
 
@@ -56,11 +57,13 @@ const DashboardChatPanel = ({
   dashboard,
   messages,
   onMessagesChange,
+  onCreateNotesPage,
   onClose,
 }: DashboardChatPanelProps) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [draft, setDraft] = useState('')
+  const [notesDraft, setNotesDraft] = useState('')
   const [error, setError] = useState('')
   const [activeStartedAt, setActiveStartedAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -289,6 +292,57 @@ const DashboardChatPanel = ({
         </Stack>
       </Box>
 
+      {onCreateNotesPage && (
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.default',
+          }}
+        >
+          <Stack spacing={1}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900}>
+                Private notes lane
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Think out loud without asking AI. Turn it into a temporary
+                Markdown dashboard when it becomes useful.
+              </Typography>
+            </Box>
+            <TextField
+              value={notesDraft}
+              onChange={(event) => setNotesDraft(event.target.value)}
+              placeholder="Write your own notes here..."
+              multiline
+              minRows={3}
+              fullWidth
+              size="small"
+              inputProps={{ 'aria-label': 'Private notes draft' }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                const markdown = notesDraft.trim()
+                if (!markdown) return
+                onCreateNotesPage(markdown)
+                setNotesDraft('')
+              }}
+              disabled={!notesDraft.trim()}
+              sx={{
+                alignSelf: 'flex-start',
+                textTransform: 'none',
+                fontWeight: 800,
+              }}
+            >
+              Open as notes dashboard
+            </Button>
+          </Stack>
+        </Box>
+      )}
       <Box
         sx={{
           flex: 1,

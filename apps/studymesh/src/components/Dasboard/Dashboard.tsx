@@ -92,6 +92,52 @@ const DEFAULT_STUDY_PATH_OPENED_KEY = 'studymesh-default-study-path-opened-v1'
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
 const OPEN_SAVED_DASHBOARDS_EVENT = 'studymesh-open-saved-dashboards'
 
+const createNotesPageDashboard = (markdown: string): DefaultDashboard => {
+  const createdAt = new Date().toISOString()
+  const titleMatch = markdown.match(/^#\s+(.+)$/m)
+  const title = titleMatch?.[1]?.trim() || 'Untitled notes'
+  const widgetId = `notes-page-${Date.now()}`
+
+  return {
+    name: title,
+    layout: {
+      type: 'row',
+      weight: 100,
+      children: [
+        {
+          type: 'tabset',
+          weight: 100,
+          active: true,
+          selected: 0,
+          children: [
+            {
+              type: 'tab',
+              name: 'Notes',
+              component: 'CustomWidget',
+              config: {
+                customProps: {
+                  widgetId,
+                  components: [
+                    {
+                      id: `${widgetId}-markdown`,
+                      type: 'MarkdownBlock',
+                      props: {
+                        __blockType: 'MarkdownBlock',
+                        title: 'Scratch notes',
+                        markdown,
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  }
+}
+
 const Dashboards = () => {
   const {
     theme,
@@ -446,6 +492,25 @@ const Dashboards = () => {
 
   const createEmptyDashboardTab = () => {
     addDashboard()
+  }
+
+  const startNotesPageDashboard = (markdown: string) => {
+    if (!isAdmin || !markdown.trim()) {
+      return
+    }
+
+    const notesDashboard = createNotesPageDashboard(markdown.trim())
+
+    if (openDashboards[selectedDashboard] && selectedDashboardIsEmpty) {
+      replaceDashboard(selectedDashboard, notesDashboard)
+    } else {
+      addDashboard(notesDashboard)
+    }
+
+    dispatchWorkspaceOnboardingEvent({
+      type: 'saved-dashboard-opened',
+      dashboardName: notesDashboard.name,
+    })
   }
 
   const openSavedDashboardInWorkspace = (dashboard: SavedDashboard) => {
@@ -1459,6 +1524,7 @@ const Dashboards = () => {
       onMessagesChange={(messages) =>
         updateDashboardChatMessages(currentDashboard, messages)
       }
+      onCreateNotesPage={startNotesPageDashboard}
       onClose={closeDashboardChatPanel}
     />
   )
@@ -1604,6 +1670,7 @@ const Dashboards = () => {
                         onUploadMaterial={() => openCreationSources('upload')}
                         onPasteNotes={() => openCreationSources('paste')}
                         onQuickCreate={openQuickCreateFromEmptyDashboard}
+                        onStartNotesPage={startNotesPageDashboard}
                         onOpenSavedLibrary={openSavedLibraryFromEmptyState}
                         dashboardOptions={visibleDashboardOptions}
                         onOpenDashboard={openSavedDashboardInWorkspace}
@@ -1813,6 +1880,7 @@ const Dashboards = () => {
           onUploadMaterial={() => openCreationSources('upload')}
           onPasteNotes={() => openCreationSources('paste')}
           onQuickCreate={openQuickCreateFromEmptyDashboard}
+          onStartNotesPage={startNotesPageDashboard}
           onOpenSavedLibrary={openSavedLibraryFromEmptyState}
           dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}

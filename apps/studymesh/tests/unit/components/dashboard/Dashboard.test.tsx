@@ -223,6 +223,10 @@ describe('Dashboards', () => {
     expect(
       screen.getByRole('button', { name: /paste notes/i }),
     ).toBeInTheDocument()
+    expect(screen.getByText(/start with notes, not ai/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /markdown notes draft/i }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /create quiz/i }),
     ).toBeInTheDocument()
@@ -244,6 +248,30 @@ describe('Dashboards', () => {
     expect(
       screen.queryByRole('button', { name: /add saved widget/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('turns an empty dashboard notes draft into a temporary Markdown dashboard', () => {
+    const replaceDashboard = vi.fn()
+    mockDashboardProvider({ replaceDashboard })
+
+    render(<Dashboards />)
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /markdown notes draft/i }),
+      { target: { value: '# Biology dump\n\n- cells need energy' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: /open notes page/i }))
+
+    expect(replaceDashboard).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({
+        name: 'Biology dump',
+        layout: expect.objectContaining({ type: 'row' }),
+      }),
+    )
+    expect(JSON.stringify(replaceDashboard.mock.calls[0][1].layout)).toContain(
+      'cells need energy',
+    )
   })
 
   it('opens the Study Path modal when the primary empty workspace action is used', () => {
