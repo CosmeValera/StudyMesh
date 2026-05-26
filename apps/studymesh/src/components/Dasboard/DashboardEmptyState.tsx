@@ -99,6 +99,8 @@ const DashboardEmptyState = ({
         p: { xs: 1, sm: 1.5, md: 2.5 },
         pb: { xs: 1.25, md: 2.5 },
         bgcolor: 'background.default',
+        background:
+          'radial-gradient(circle at 50% 0%, var(--accent-soft) 0, transparent 30rem), var(--background-default)',
         width: '100%',
         maxWidth: '100%',
         overflow: { xs: 'hidden', md: 'visible' },
@@ -127,19 +129,16 @@ const DashboardEmptyState = ({
           sx={{
             minHeight: { xs: 'auto', lg: 560 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
-            borderRadius: 3,
+            borderRadius: 'var(--studymesh-radius-lg)',
             border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+            borderColor: 'var(--studymesh-panel-border)',
+            bgcolor: 'var(--studymesh-card-bg)',
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1.5, md: 2 },
             minWidth: 0,
             boxSizing: 'border-box',
-            boxShadow: (theme) =>
-              theme.palette.mode === 'dark'
-                ? '0 20px 56px rgba(0,0,0,0.28)'
-                : '0 20px 56px rgba(15,23,42,0.08)',
+            boxShadow: 'var(--studymesh-shadow-card)',
           }}
         >
           <Box>
@@ -181,7 +180,7 @@ const DashboardEmptyState = ({
             sx={{
               width: '100%',
               p: { xs: 1.5, sm: 2 },
-              borderRadius: 2.5,
+              borderRadius: 'var(--studymesh-radius-md)',
               border: 1,
               borderColor: (theme) => alpha(theme.palette.primary.main, 0.42),
               bgcolor: (theme) => alpha(theme.palette.primary.main, 0.075),
@@ -215,7 +214,7 @@ const DashboardEmptyState = ({
               sx={{
                 width: { xs: 44, sm: 52 },
                 height: { xs: 44, sm: 52 },
-                borderRadius: 2,
+                borderRadius: 'var(--studymesh-radius-sm)',
                 display: 'grid',
                 placeItems: 'center',
                 bgcolor: 'primary.main',
@@ -278,7 +277,7 @@ const DashboardEmptyState = ({
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 900,
-                bgcolor: 'background.paper',
+                bgcolor: 'var(--studymesh-card-bg)',
               }}
             >
               Paste notes
@@ -388,10 +387,10 @@ const DashboardEmptyState = ({
           sx={{
             minHeight: { xs: 'auto', lg: 560 },
             p: { xs: 1.25, sm: 2, md: 2.25 },
-            borderRadius: 3,
+            borderRadius: 'var(--studymesh-radius-lg)',
             border: 1,
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+            borderColor: 'var(--studymesh-panel-border)',
+            bgcolor: 'var(--studymesh-card-bg)',
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1.25, md: 1.75 },
@@ -407,7 +406,7 @@ const DashboardEmptyState = ({
                 borderRadius: 2,
                 display: 'grid',
                 placeItems: 'center',
-                bgcolor: 'background.default',
+                bgcolor: 'var(--studymesh-muted-bg)',
                 color: 'primary.main',
                 border: 1,
                 borderColor: 'divider',

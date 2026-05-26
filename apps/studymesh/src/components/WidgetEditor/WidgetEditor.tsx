@@ -495,7 +495,7 @@ const WidgetEditor: React.FC<{
         position: 'relative',
         minHeight: 0,
         overflow: 'hidden',
-        bgcolor: '#F7FAFA',
+        bgcolor: 'background.default',
       }}
       className="widget-editor-container"
       data-component="WidgetEditor"
@@ -538,7 +538,7 @@ const WidgetEditor: React.FC<{
           flexDirection: { xs: 'column', md: 'row' },
           flex: 1,
           overflow: 'hidden',
-          bgcolor: '#F7FAFA',
+          bgcolor: 'background.default',
         }}
       >
         {/* Component palette sidebar */}
@@ -602,7 +602,7 @@ const WidgetEditor: React.FC<{
               minHeight: viewMode === 'both' ? { xs: 260, md: 0 } : 0,
               borderLeft: { xs: 0, md: viewMode === 'both' ? 1 : 0 },
               borderTop: { xs: viewMode === 'both' ? 1 : 0, md: 0 },
-              borderColor: 'divider',
+              borderColor: 'var(--studymesh-panel-border)',
               bgcolor: 'background.default',
               display: 'flex',
               flexDirection: 'column',
@@ -614,8 +614,8 @@ const WidgetEditor: React.FC<{
                 px: 2,
                 py: 1,
                 borderBottom: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.paper',
+                borderColor: 'var(--studymesh-panel-border)',
+                bgcolor: 'var(--studymesh-panel-bg)',
               }}
             >
               <Typography variant="subtitle2" color="text.primary">

@@ -37,6 +37,10 @@ export const WorkspaceMobileLayout = ({
       display: 'flex',
       flexDirection: 'column',
       bgcolor: 'background.default',
+      background:
+        theme.palette.mode === 'dark'
+          ? 'radial-gradient(circle at 12% 0%, var(--accent-soft) 0, transparent 34%), linear-gradient(180deg, var(--background-default), var(--background-bar-dark))'
+          : 'radial-gradient(circle at 12% 0%, var(--accent-soft) 0, transparent 34%), linear-gradient(180deg, var(--background-default), var(--background-bar-medium))',
       '--studymesh-mobile-generation-tray-height': visibleCreationMarkerCount
         ? '48px'
         : '0px',
@@ -88,9 +92,9 @@ export const WorkspaceMobileLayout = ({
               height: '100%',
               overflow: 'hidden',
               border: 1,
-              borderColor: 'divider',
+              borderColor: 'var(--studymesh-panel-border)',
               borderRadius: 2,
-              bgcolor: 'background.paper',
+              bgcolor: 'var(--studymesh-panel-bg)',
               boxShadow:
                 theme.palette.mode === 'dark'
                   ? '0 18px 40px rgba(0,0,0,0.42)'
@@ -138,6 +142,10 @@ export const WorkspaceDesktopLayout = ({
       display: 'flex',
       overflow: 'hidden',
       bgcolor: 'background.default',
+      background:
+        theme.palette.mode === 'dark'
+          ? 'radial-gradient(circle at 8% 0%, var(--accent-soft) 0, transparent 32%), linear-gradient(180deg, var(--background-default), var(--background-bar-dark))'
+          : 'radial-gradient(circle at 8% 0%, var(--accent-soft) 0, transparent 32%), linear-gradient(180deg, var(--background-default), var(--background-bar-medium))',
     }}
   >
     <Box
@@ -160,8 +168,9 @@ export const WorkspaceDesktopLayout = ({
           height: '100%',
           overflow: 'hidden',
           border: 1,
-          borderColor: 'divider',
+          borderColor: 'var(--studymesh-panel-border)',
           borderRadius: 2.5,
+          bgcolor: 'var(--studymesh-panel-bg)',
           boxShadow:
             theme.palette.mode === 'dark'
               ? '0 18px 40px rgba(0,0,0,0.42)'
@@ -182,9 +191,9 @@ export const WorkspaceDesktopLayout = ({
               width: '100%',
               height: '100%',
               border: 1,
-              borderColor: 'divider',
+              borderColor: 'var(--studymesh-panel-border)',
               borderRadius: 2.5,
-              bgcolor: 'background.paper',
+              bgcolor: 'var(--studymesh-panel-bg)',
               color: 'primary.main',
               cursor: 'pointer',
               display: 'flex',
@@ -261,9 +270,13 @@ export const WorkspaceDesktopLayout = ({
           minHeight: 0,
           overflow: 'hidden',
           borderRadius: 2,
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--studymesh-panel-bg)',
           border: 1,
-          borderColor: 'divider',
+          borderColor: 'var(--studymesh-panel-border)',
+          boxShadow:
+            theme.palette.mode === 'dark'
+              ? 'inset 0 1px 0 rgba(255,255,255,0.03)'
+              : '0 10px 34px rgba(15,23,42,0.06)',
         }}
       >
         {children}

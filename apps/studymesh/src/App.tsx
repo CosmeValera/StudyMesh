@@ -41,6 +41,7 @@ import 'primereact/resources/primereact.min.css'
 import '../../../style/themes/studymesh-theme/theme.scss'
 
 import './variables.scss'
+import './product-polish.scss'
 import './hide-overlay.scss'
 
 // Protected route component

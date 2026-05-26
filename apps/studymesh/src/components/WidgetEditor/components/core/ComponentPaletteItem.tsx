@@ -134,7 +134,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
       >
         <Paper
           ref={itemRef}
-          elevation={1}
+          elevation={0}
           draggable
           data-onboarding-id={`palette-item-${component.type}`}
           onClick={onDirectAdd ? handleItemClick : undefined}
@@ -149,16 +149,20 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
             display: 'flex',
             alignItems: 'center',
             cursor: onDirectAdd ? 'pointer' : 'grab',
-            transition: 'all 0.2s',
+            border: 1,
+            borderColor: 'var(--studymesh-panel-border)',
+            transition:
+              'background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease',
             '&:hover': {
-              bgcolor: 'background.paper',
+              bgcolor: 'var(--studymesh-card-hover-bg)',
+              borderColor: 'primary.main',
               transform: 'translateY(-2px)',
-              boxShadow: 2,
+              boxShadow: 'var(--studymesh-shadow-card)',
             },
             bgcolor: isTouching
               ? 'rgba(25, 118, 210, 0.12)'
-              : 'rgba(255, 255, 255, 0.05)',
-            borderRadius: 1,
+              : 'var(--studymesh-card-bg)',
+            borderRadius: 'var(--studymesh-radius-sm)',
             position: 'relative',
           }}
         >
@@ -200,7 +204,7 @@ const ComponentPaletteItem: React.FC<ComponentPaletteItemProps> = ({
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: 'primary.main',
-                bgcolor: 'background.paper',
+                bgcolor: 'var(--studymesh-muted-bg)',
                 width: isPhone ? 24 : 28,
                 height: isPhone ? 24 : 28,
                 '&:hover': {

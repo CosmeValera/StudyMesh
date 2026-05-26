@@ -207,7 +207,7 @@ const DashboardChatPanel = ({
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: 'background.paper',
+        bgcolor: 'var(--studymesh-panel-bg)',
         overflow: 'hidden',
       }}
     >
@@ -221,7 +221,7 @@ const DashboardChatPanel = ({
           justifyContent: 'space-between',
           gap: 1.5,
           borderBottom: 1,
-          borderColor: 'divider',
+          borderColor: 'var(--studymesh-panel-border)',
           background:
             theme.palette.mode === 'dark'
               ? 'linear-gradient(135deg, rgba(34,197,94,0.14), rgba(14,165,233,0.08))'
@@ -278,8 +278,8 @@ const DashboardChatPanel = ({
               sx={{
                 mt: 0.25,
                 border: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.default',
+                borderColor: 'var(--studymesh-panel-border)',
+                bgcolor: 'var(--studymesh-muted-bg)',
                 flex: '0 0 auto',
               }}
             >
@@ -311,9 +311,10 @@ const DashboardChatPanel = ({
               sx={{
                 p: 2,
                 border: 1,
-                borderColor: 'divider',
-                borderRadius: 2.5,
-                bgcolor: 'background.paper',
+                borderColor: 'var(--studymesh-panel-border)',
+                borderRadius: 'var(--studymesh-radius-md)',
+                bgcolor: 'var(--studymesh-card-bg)',
+                boxShadow: 'var(--studymesh-shadow-card)',
               }}
             >
               <Typography variant="h6" fontWeight={900}>
@@ -333,13 +334,16 @@ const DashboardChatPanel = ({
                   onClick={() => sendQuestion(suggestion)}
                   sx={{
                     justifyContent: 'flex-start',
-                    borderRadius: 2,
+                    borderRadius: 'var(--studymesh-radius-sm)',
                     py: 1,
                     px: 1.25,
-                    bgcolor: 'background.paper',
-                    borderColor: 'divider',
+                    bgcolor: 'var(--studymesh-card-bg)',
+                    borderColor: 'var(--studymesh-panel-border)',
                     color: 'text.primary',
-                    textTransform: 'none',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: 'var(--studymesh-card-hover-bg)',
+                    },
                   }}
                 >
                   {suggestion}
@@ -369,13 +373,13 @@ const DashboardChatPanel = ({
                     bgcolor:
                       message.role === 'user'
                         ? 'primary.main'
-                        : 'background.paper',
+                        : 'var(--studymesh-card-bg)',
                     color:
                       message.role === 'user'
                         ? 'primary.contrastText'
                         : 'text.primary',
                     border: message.role === 'assistant' ? 1 : 0,
-                    borderColor: 'divider',
+                    borderColor: 'var(--studymesh-panel-border)',
                     boxShadow:
                       message.role === 'assistant'
                         ? theme.palette.mode === 'dark'
@@ -482,7 +486,14 @@ const DashboardChatPanel = ({
       </Box>
 
       <Divider />
-      <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
+      <Box
+        sx={{
+          p: 1.5,
+          bgcolor: 'var(--studymesh-panel-bg)',
+          borderTop: 1,
+          borderColor: 'var(--studymesh-panel-border)',
+        }}
+      >
         <Stack direction="row" spacing={1} alignItems="flex-end">
           <TextField
             value={draft}

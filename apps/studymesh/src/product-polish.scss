@@ -1,0 +1,148 @@
+/* Cohesive StudyMesh product polish: shared SaaS surface language for MUI, PrimeReact and FlexLayout areas. */
+
+body {
+  background: radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--primary-main) 16%, transparent) 0,
+      transparent 28rem
+    ),
+    var(--background-default);
+}
+
+.MuiPaper-root,
+.MuiDialog-paper,
+.MuiMenu-paper,
+.MuiPopover-paper {
+  background-image: none !important;
+}
+
+.MuiTextField-root,
+.MuiFormControl-root {
+  .MuiFormHelperText-root {
+    margin-left: 2px;
+    color: var(--foreground-secondary);
+  }
+}
+
+.MuiButton-root.Mui-disabled,
+.MuiIconButton-root.Mui-disabled {
+  opacity: 0.5;
+}
+
+.MuiDivider-root {
+  border-color: var(--other-hairline-border, var(--other-divider));
+}
+
+.MuiSnackbarContent-root {
+  border-radius: var(--studymesh-radius-md);
+  border: 1px solid var(--other-hairline-border, var(--other-divider));
+  box-shadow: var(--studymesh-shadow-raised);
+}
+
+.p-component {
+  font-family: inherit;
+}
+
+.p-inputtext,
+.p-dropdown,
+.p-multiselect,
+.p-inputtextarea {
+  min-height: 40px;
+  border-radius: 12px;
+  border-color: var(--other-hairline-border, var(--other-outlined-border));
+  background: color-mix(in srgb, var(--background-paper) 86%, transparent);
+  color: var(--foreground-primary);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+
+  &:enabled:hover,
+  &:hover {
+    border-color: color-mix(
+      in srgb,
+      var(--primary-main) 48%,
+      var(--other-hairline-border)
+    );
+  }
+
+  &:enabled:focus,
+  &:focus,
+  &.p-focus {
+    border-color: var(--primary-main);
+    box-shadow: 0 0 0 3px var(--studymesh-focus-ring);
+    outline: none;
+  }
+}
+
+.p-button {
+  min-height: 38px;
+  border-radius: 10px;
+  font-weight: 800;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+
+  &:enabled:hover {
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--studymesh-focus-ring);
+  }
+}
+
+.p-dialog,
+.p-overlaypanel,
+.p-menu,
+.p-dropdown-panel,
+.p-multiselect-panel {
+  border-radius: var(--studymesh-radius-lg);
+  border: 1px solid var(--other-hairline-border, var(--other-divider));
+  background: var(--background-paper);
+  box-shadow: var(--studymesh-shadow-raised);
+  overflow: hidden;
+}
+
+.flexlayout__layout {
+  --color-background: var(--background-default);
+  --color-base: var(--background-paper);
+  --color-1: var(--studymesh-panel-bg);
+  --color-2: var(--studymesh-card-bg);
+  --color-3: var(--studymesh-muted-bg);
+  --color-4: var(--other-hairline-border);
+  --color-5: var(--primary-main);
+  --color-6: var(--foreground-primary);
+  --font-family: inherit;
+  background: var(--background-default);
+}
+
+.flexlayout__tabset,
+.flexlayout__tab {
+  background: var(--studymesh-panel-bg);
+}
+
+.flexlayout__tabset {
+  border-radius: var(--studymesh-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--other-hairline-border, var(--other-divider));
+}
+
+.flexlayout__tab_button,
+.flexlayout__tab_button--selected {
+  border-radius: 9px;
+}
+
+.flexlayout__splitter {
+  background: transparent;
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary-main) 30%, transparent);
+  }
+}
+
+[data-testid='study-path-navigator-overlay'] {
+  filter: drop-shadow(var(--studymesh-shadow-card));
+}

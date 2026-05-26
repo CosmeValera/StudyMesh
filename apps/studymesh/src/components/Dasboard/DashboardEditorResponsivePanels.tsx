@@ -62,10 +62,11 @@ export const DashboardEditorResponsivePanels = ({
             elevation={0}
             sx={{
               p: 2,
-              borderRadius: 2,
+              borderRadius: 'var(--studymesh-radius-md)',
               border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+              borderColor: 'var(--studymesh-panel-border)',
+              bgcolor: 'var(--studymesh-card-bg)',
+              boxShadow: 'var(--studymesh-shadow-card)',
             }}
           >
             <Typography variant="subtitle1" fontWeight={800}>
@@ -81,10 +82,11 @@ export const DashboardEditorResponsivePanels = ({
             elevation={0}
             sx={{
               p: 2,
-              borderRadius: 2,
+              borderRadius: 'var(--studymesh-radius-md)',
               border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+              borderColor: 'var(--studymesh-panel-border)',
+              bgcolor: 'var(--studymesh-card-bg)',
+              boxShadow: 'var(--studymesh-shadow-card)',
             }}
           >
             <Typography variant="subtitle2" fontWeight={800} mb={1}>
@@ -106,7 +108,9 @@ export const DashboardEditorResponsivePanels = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1,
-                      bgcolor: 'background.default',
+                      borderRadius: 'var(--studymesh-radius-sm)',
+                      borderColor: 'var(--studymesh-panel-border)',
+                      bgcolor: 'var(--studymesh-muted-bg)',
                     }}
                   >
                     <Typography
@@ -150,10 +154,11 @@ export const DashboardEditorResponsivePanels = ({
             elevation={0}
             sx={{
               p: 2,
-              borderRadius: 2,
+              borderRadius: 'var(--studymesh-radius-md)',
               border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+              borderColor: 'var(--studymesh-panel-border)',
+              bgcolor: 'var(--studymesh-card-bg)',
+              boxShadow: 'var(--studymesh-shadow-card)',
             }}
           >
             <Typography variant="subtitle2" fontWeight={800} mb={1}>
@@ -213,10 +218,11 @@ export const DashboardEditorResponsivePanels = ({
           sx={{
             width: 'min(640px, 100%)',
             p: { xs: 2.5, sm: 4 },
-            borderRadius: 2,
+            borderRadius: 'var(--studymesh-radius-lg)',
             border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
+            borderColor: 'var(--studymesh-panel-border)',
+            bgcolor: 'var(--studymesh-card-bg)',
+            boxShadow: 'var(--studymesh-shadow-card)',
             textAlign: 'center',
           }}
         >
