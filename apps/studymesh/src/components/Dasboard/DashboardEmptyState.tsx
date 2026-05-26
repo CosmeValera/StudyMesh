@@ -170,6 +170,30 @@ const DashboardEmptyState = ({
               Create a guided Study Path, or add material first to generate a
               focused quiz, flashcards, or clean notes.
             </Typography>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              flexWrap="wrap"
+              sx={{ mt: 1.25 }}
+            >
+              {['1 Add material', '2 Pick output', '3 Review dashboard'].map(
+                (label) => (
+                  <Chip
+                    key={label}
+                    size="small"
+                    label={label}
+                    sx={{
+                      fontWeight: 800,
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.08),
+                      border: 1,
+                      borderColor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.16),
+                    }}
+                  />
+                ),
+              )}
+            </Stack>
           </Box>
 
           <Paper
@@ -265,7 +289,16 @@ const DashboardEmptyState = ({
                 fontWeight: 900,
               }}
             >
-              Upload material
+              <Stack alignItems="flex-start" spacing={0}>
+                <span>Upload material</span>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{ opacity: 0.78, fontWeight: 700 }}
+                >
+                  PDF, slides, images, text
+                </Typography>
+              </Stack>
             </Button>
             <Button
               variant="outlined"
@@ -281,7 +314,17 @@ const DashboardEmptyState = ({
                 bgcolor: 'background.paper',
               }}
             >
-              Paste notes
+              <Stack alignItems="flex-start" spacing={0}>
+                <span>Paste notes</span>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 700 }}
+                >
+                  Fastest for copied text
+                </Typography>
+              </Stack>
             </Button>
           </Box>
 
@@ -305,7 +348,8 @@ const DashboardEmptyState = ({
                   color="text.secondary"
                   sx={{ mt: 0.3 }}
                 >
-                  This dashboard is empty, so add sources in Creation first.
+                  This dashboard is empty, so these actions open Create from
+                  Material with the right setup ready.
                 </Typography>
               </Box>
               <Box
@@ -374,6 +418,17 @@ const DashboardEmptyState = ({
                       <Typography variant="subtitle2" fontWeight={900}>
                         {action.label}
                       </Typography>
+                      <Chip
+                        size="small"
+                        label="opens material flow"
+                        sx={{
+                          alignSelf: 'flex-start',
+                          height: 21,
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          bgcolor: alpha(action.accent, 0.12),
+                        }}
+                      />
                     </Stack>
                     <ChevronRightIcon sx={{ color: action.accent }} />
                   </Paper>

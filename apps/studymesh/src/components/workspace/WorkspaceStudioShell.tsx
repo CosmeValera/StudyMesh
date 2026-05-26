@@ -941,6 +941,31 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             >
               Create a guided study path or quick material from your dashboard.
             </Typography>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              flexWrap="wrap"
+              sx={{ mt: 1 }}
+            >
+              {[
+                'Study Path',
+                hasCurrentDashboardContext ? 'Dashboard ready' : 'Add material',
+                'Ask Sources',
+              ].map((label) => (
+                <Chip
+                  key={label}
+                  size="small"
+                  label={label}
+                  sx={{
+                    height: 22,
+                    fontWeight: 800,
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    border: 1,
+                    borderColor: alpha(theme.palette.primary.main, 0.16),
+                  }}
+                />
+              ))}
+            </Stack>
           </Box>
           <IconButton
             aria-label="Close Create panel"
@@ -979,6 +1004,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 position: 'relative',
                 overflow: 'hidden',
                 boxShadow: `0 14px 36px ${alpha(theme.palette.primary.main, 0.1)}`,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: -80,
+                  background: `radial-gradient(circle at 85% 8%, ${alpha(
+                    theme.palette.primary.main,
+                    theme.palette.mode === 'dark' ? 0.22 : 0.16,
+                  )}, transparent 34%)`,
+                  pointerEvents: 'none',
+                },
                 '&:hover': {
                   borderColor: 'primary.main',
                   bgcolor: alpha(theme.palette.primary.main, 0.105),
@@ -992,7 +1027,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
               }}
             >
-              <Stack spacing={1.75}>
+              <Stack spacing={1.75} sx={{ position: 'relative' }}>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <Box
                     sx={{
@@ -1034,6 +1069,19 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     Creates lessons, dashboards, exercises and flashcards.
                   </Typography>
                 </Box>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                  {['Lessons', 'Exercises', 'Review'].map((label) => (
+                    <Chip
+                      key={label}
+                      size="small"
+                      label={label}
+                      sx={{
+                        fontWeight: 800,
+                        bgcolor: alpha(theme.palette.primary.main, 0.09),
+                      }}
+                    />
+                  ))}
+                </Stack>
                 <Button
                   component="span"
                   variant="contained"
@@ -1062,8 +1110,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   sx={{ mt: 0.3 }}
                 >
                   {hasCurrentDashboardContext
-                    ? 'Generate focused material from your current dashboard.'
-                    : 'Add material first, then generate focused study material.'}
+                    ? 'One click, no setup: generate focused material from your current dashboard.'
+                    : 'This dashboard is empty, so these open Create from Material.'}
                 </Typography>
               </Box>
               {!hasCurrentDashboardContext ? (
@@ -1092,6 +1140,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         key={resourceType}
                         component="button"
                         type="button"
+                        aria-label={quickCreateLabels[resourceType]}
                         elevation={0}
                         onClick={() => handleQuickCreateCardClick(resourceType)}
                         sx={{
@@ -1179,6 +1228,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           >
                             {quickCreateLabels[resourceType]}
                           </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={800}
+                          >
+                            {hasCurrentDashboardContext
+                              ? '1-click'
+                              : 'Needs material'}
+                          </Typography>
                         </Stack>
                         <Box
                           sx={{
@@ -1253,6 +1311,21 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 Add files, pasted notes, images, PDFs, or slides, then choose
                 what StudyMesh should create.
               </Typography>
+              <Stack
+                direction="row"
+                spacing={0.75}
+                flexWrap="wrap"
+                sx={{ mt: 1 }}
+              >
+                {['1 Output', '2 Source', '3 Options'].map((label) => (
+                  <Chip
+                    key={label}
+                    size="small"
+                    label={label}
+                    sx={{ fontWeight: 800 }}
+                  />
+                ))}
+              </Stack>
             </Box>
           </Stack>
         )}
@@ -1270,14 +1343,29 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   ? 'divider'
                   : alpha(theme.palette.warning.main, 0.65),
               borderRadius: 2.5,
-              bgcolor: 'background.paper',
+              bgcolor:
+                theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.background.paper, 0.92)
+                  : 'background.paper',
+              backgroundImage:
+                theme.palette.mode === 'dark'
+                  ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.06)}, transparent 220px)`
+                  : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.045)}, transparent 220px)`,
             }}
           >
             <Stack spacing={1.5}>
               <Box>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Step 1: Choose output
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Chip
+                    label="1"
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 900 }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Step 1: Choose output
+                  </Typography>
+                </Stack>
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -1346,9 +1434,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 )}
               </Box>
               <Box>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Step 2: Choose source
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Chip
+                    label="2"
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 900 }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Step 2: Choose source
+                  </Typography>
+                </Stack>
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -1360,6 +1456,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                 <Button
+                  aria-label="Current dashboard"
                   variant={
                     quickSourceMode === 'dashboard' ? 'contained' : 'outlined'
                   }
@@ -1375,9 +1472,28 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     fontWeight: 900,
                   }}
                 >
-                  Current dashboard
+                  <Stack
+                    spacing={0.15}
+                    alignItems="flex-start"
+                    sx={{ width: '100%' }}
+                  >
+                    <Typography
+                      variant="button"
+                      fontWeight={900}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Current dashboard
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{ opacity: 0.78, textTransform: 'none' }}
+                    >
+                      Fastest path, uses visible study content
+                    </Typography>
+                  </Stack>
                 </Button>
                 <Button
+                  aria-label="Sources"
                   variant={
                     quickSourceMode === 'sources' ? 'contained' : 'outlined'
                   }
@@ -1392,7 +1508,25 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     fontWeight: 900,
                   }}
                 >
-                  Sources
+                  <Stack
+                    spacing={0.15}
+                    alignItems="flex-start"
+                    sx={{ width: '100%' }}
+                  >
+                    <Typography
+                      variant="button"
+                      fontWeight={900}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Sources
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{ opacity: 0.78, textTransform: 'none' }}
+                    >
+                      Upload or paste new material
+                    </Typography>
+                  </Stack>
                 </Button>
               </Stack>
               {!hasCurrentDashboardContext &&
@@ -1456,7 +1590,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         sx={{ maxWidth: 300 }}
                       >
                         Drop notes here, or upload text, images, PDFs, and
-                        slides.
+                        slides. Your selected files stay in this Creation panel.
                       </Typography>
                     </Box>
                     <Button
@@ -1576,9 +1710,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 </Paper>
               </Collapse>
               <Box>
-                <Typography variant="subtitle2" fontWeight={900}>
-                  Step 3: Options
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Chip
+                    label="3"
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 900 }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Step 3: Options
+                  </Typography>
+                </Stack>
               </Box>
               <Box
                 sx={{

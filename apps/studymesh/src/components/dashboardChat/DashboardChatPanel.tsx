@@ -314,8 +314,20 @@ const DashboardChatPanel = ({
                 borderColor: 'divider',
                 borderRadius: 2.5,
                 bgcolor: 'background.paper',
+                background:
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(14,165,233,0.06))'
+                    : 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(14,165,233,0.05))',
               }}
             >
+              <Typography
+                variant="caption"
+                color="primary"
+                fontWeight={900}
+                sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+              >
+                Grounded chat
+              </Typography>
               <Typography variant="h6" fontWeight={900}>
                 What do you want to understand?
               </Typography>
@@ -325,7 +337,7 @@ const DashboardChatPanel = ({
               </Typography>
             </Box>
             <Stack spacing={1}>
-              {suggestions.map((suggestion) => (
+              {suggestions.map((suggestion, index) => (
                 <Button
                   key={suggestion}
                   variant="outlined"
