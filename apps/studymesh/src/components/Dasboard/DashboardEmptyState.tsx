@@ -1,5 +1,13 @@
-import React from 'react'
-import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
+import React, { useState } from 'react'
+import {
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
@@ -23,6 +31,7 @@ interface DashboardEmptyStateProps {
   onUploadMaterial: () => void
   onPasteNotes: () => void
   onQuickCreate: (intent: EmptyDashboardQuickCreate) => void
+  onStartNotesPage: (markdown: string) => void
   onOpenSavedLibrary: () => void
   dashboardOptions: SavedDashboard[]
   onOpenDashboard: (dashboard: SavedDashboard) => void
@@ -61,6 +70,7 @@ const DashboardEmptyState = ({
   onUploadMaterial,
   onPasteNotes,
   onQuickCreate,
+  onStartNotesPage,
   onOpenSavedLibrary,
   dashboardOptions,
   onOpenDashboard,
@@ -87,6 +97,8 @@ const DashboardEmptyState = ({
       : 'Open existing study guide'
     : 'Open existing dashboard'
   const featuredFolders = folderEntries.slice(0, 4)
+  const [notesDraft, setNotesDraft] = useState('')
+  const normalizedNotesDraft = notesDraft.trim()
 
   return (
     <Box
@@ -243,6 +255,81 @@ const DashboardEmptyState = ({
               </Typography>
             </Box>
             <ChevronRightIcon color="primary" />
+          </Paper>
+
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 1.25, sm: 1.5 },
+              borderRadius: 2.5,
+              border: 1,
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.24),
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.055),
+            }}
+          >
+            <Stack spacing={1.25}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={900}>
+                  Start with notes, not AI
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.3 }}
+                >
+                  Write freely in Markdown like a blank Notion page. It opens as
+                  a temporary dashboard with one notes widget, and it only
+                  becomes a saved dashboard when you save it.
+                </Typography>
+              </Box>
+              <TextField
+                value={notesDraft}
+                onChange={(event) => setNotesDraft(event.target.value)}
+                placeholder={
+                  '# My notes\n\nDump your thoughts, links, questions, or source material here...'
+                }
+                multiline
+                minRows={5}
+                fullWidth
+                inputProps={{ 'aria-label': 'Markdown notes draft' }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    bgcolor: 'background.paper',
+                    alignItems: 'flex-start',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '0.92rem',
+                  },
+                }}
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button
+                  variant="contained"
+                  onClick={() => onStartNotesPage(normalizedNotesDraft)}
+                  disabled={!isAdmin || !normalizedNotesDraft}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 900,
+                    borderRadius: 2,
+                  }}
+                >
+                  Open notes page
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={onPasteNotes}
+                  disabled={!isAdmin}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 900,
+                    borderRadius: 2,
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  Use Creation instead
+                </Button>
+              </Stack>
+            </Stack>
           </Paper>
 
           <Box
