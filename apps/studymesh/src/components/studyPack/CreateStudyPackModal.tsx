@@ -42,6 +42,7 @@ import {
   extractNotesFromImageWithLocalLanguageModel,
   extractRawNotesWithAi,
   generateStudyPackWithAi,
+  isStrongAiProvider,
   LocalAiProgressEvent,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
@@ -159,6 +160,7 @@ const GEMINI_STUDY_PACK_ESTIMATES_MS: Record<GenerationAmount, number> = {
   medium: 60 * 1000,
   many: 90 * 1000,
 }
+const CEREBRAS_STUDY_PACK_ESTIMATE_MS = 10 * 1000
 
 const resourceTypeOptions: Array<{
   value: StudyMaterialResourceType
@@ -681,10 +683,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           ? 'PDF'
           : 'slides'
         : imageFiles.length > 0
-          ? 'image notes'
-          : sourceText.trim() || copiedTextDraft.trim()
-            ? 'notes'
-            : 'sources'
+        ? 'image notes'
+        : sourceText.trim() || copiedTextDraft.trim()
+        ? 'notes'
+        : 'sources'
 
     onDraftMetaChange?.({
       title: packTitle,
@@ -692,8 +694,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         sourceMode === 'dashboard'
           ? `Current dashboard: ${currentDashboardTitle}`
           : sourceCount > 1
-            ? `${sourceCount} source files`
-            : sourceKind,
+          ? `${sourceCount} source files`
+          : sourceKind,
       resourceType,
       detailLevel,
     })
@@ -787,7 +789,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
   }, [isExtractingImage, isGeneratingAi, open])
 
   useEffect(() => {
-    if (!isGeneratingAi || aiProvider !== 'gemini' || !geminiProgress) {
+    if (!isGeneratingAi || !isStrongAiProvider(aiProvider) || !geminiProgress) {
       return undefined
     }
 
@@ -1128,14 +1130,22 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    const credentials = resolveStudyPackAiCredentials()
+    const credentials = isStrongAiProvider(aiProvider)
+      ? resolveStudyPackAiCredentials(aiProvider)
+      : resolveStudyPackAiCredentials()
     if (aiProvider === 'hosted') {
       setError('Hosted AI is not configured yet.')
       return
     }
 
-    if (aiProvider === 'gemini' && !credentials.apiToken) {
-      setError('Own Gemini API token mode needs a configured API key.')
+    if (isStrongAiProvider(aiProvider) && !credentials.apiToken) {
+      setError(
+        `${
+          aiProvider === 'cerebras'
+            ? 'Own Cerebras API key'
+            : 'Own Gemini API token'
+        } mode needs a configured API key.`,
+      )
       return
     }
 
@@ -1147,19 +1157,21 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
     setAiGenerationProgress(0)
     setAiGenerationProgressPhase('')
     setGeminiProgress(
-      aiProvider === 'gemini'
+      isStrongAiProvider(aiProvider)
         ? makeGeminiTimedProgress(
             Date.now(),
-            GEMINI_STUDY_PACK_ESTIMATES_MS[generationAmount],
+            aiProvider === 'cerebras'
+              ? CEREBRAS_STUDY_PACK_ESTIMATE_MS
+              : GEMINI_STUDY_PACK_ESTIMATES_MS[generationAmount],
           )
         : null,
     )
     setAiProgressLabel(
       aiProvider === 'local'
         ? 'Starting Google Local AI'
-        : aiProvider === 'gemini'
-          ? 'Connecting to Gemini'
-          : 'Preparing generation',
+        : isStrongAiProvider(aiProvider)
+        ? `Connecting to ${aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'}`
+        : 'Preparing generation',
     )
     setError('')
 
@@ -1169,9 +1181,9 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           current
             ? aiProvider === 'local'
               ? 'Asking Chrome Local AI for a compact outline'
-              : aiProvider === 'gemini'
-                ? 'Reading notes and planning study sections'
-                : 'Parsing notes locally'
+              : isStrongAiProvider(aiProvider)
+              ? 'Reading notes and planning study sections'
+              : 'Parsing notes locally'
             : current,
         )
       }, 700)
@@ -1180,9 +1192,11 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           current
             ? aiProvider === 'local'
               ? 'Creating compact local study objects'
-              : aiProvider === 'gemini'
-                ? `Creating ${resourceTypeLabels[resourceType]} with Gemini`
-                : `Creating ${resourceTypeLabels[resourceType]}`
+              : isStrongAiProvider(aiProvider)
+              ? `Creating ${resourceTypeLabels[resourceType]} with ${
+                  aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'
+                }`
+              : `Creating ${resourceTypeLabels[resourceType]}`
             : current,
         )
       }, 1800)
@@ -1288,14 +1302,22 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       return
     }
 
-    const credentials = resolveStudyPackAiCredentials()
+    const credentials = isStrongAiProvider(aiProvider)
+      ? resolveStudyPackAiCredentials(aiProvider)
+      : resolveStudyPackAiCredentials()
     if (aiProvider === 'hosted') {
       setError('Hosted AI is not configured yet.')
       return
     }
 
-    if (aiProvider === 'gemini' && !credentials.apiToken) {
-      setError('Own Gemini API token mode needs a configured API key.')
+    if (isStrongAiProvider(aiProvider) && !credentials.apiToken) {
+      setError(
+        `${
+          aiProvider === 'cerebras'
+            ? 'Own Cerebras API key'
+            : 'Own Gemini API token'
+        } mode needs a configured API key.`,
+      )
       return
     }
 
@@ -1308,8 +1330,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       aiProvider === 'gemini'
         ? 'Preparing AI extraction'
         : aiProvider === 'local'
-          ? 'Checking Local AI image support'
-          : 'Preparing OCR',
+        ? 'Checking Local AI image support'
+        : 'Preparing OCR',
     )
     setAiProgressLabel(
       aiProvider === 'gemini' ? 'Connecting to Gemini vision' : '',
@@ -1414,8 +1436,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         aiProvider === 'gemini'
           ? 'AI extraction complete'
           : aiProvider === 'local'
-            ? 'Image extraction complete'
-            : 'OCR complete',
+          ? 'Image extraction complete'
+          : 'OCR complete',
       )
     } catch (error) {
       if (
@@ -1625,8 +1647,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         resourceType === 'flashcards' || resourceType === 'quiz'
           ? 'tabs'
           : layoutMode !== 'orchestrator'
-            ? layoutMode
-            : 'tabs',
+          ? layoutMode
+          : 'tabs',
     })
     handleClose()
   }
@@ -2168,7 +2190,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                         value={aiGenerationProgress}
                       />
                     </>
-                  ) : aiProvider === 'gemini' && geminiProgress ? (
+                  ) : isStrongAiProvider(aiProvider) && geminiProgress ? (
                     <>
                       <Stack direction="row" justifyContent="space-between">
                         <Typography variant="caption" color="text.secondary">
@@ -2232,8 +2254,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       resourceType
                         ? resourceTypeLabels[resourceType]
                         : sourceFormat === 'csv'
-                          ? 'Source table included'
-                          : 'Source notes included'
+                        ? 'Source table included'
+                        : 'Source notes included'
                     }
                   />
                   <Chip label={`${detailLevel} detail`} />
@@ -2325,8 +2347,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             {isGeneratingAi
               ? 'Creating...'
               : sourceInputType === 'image' && !imageTextExtracted
-                ? 'Extract notes'
-                : 'Continue'}
+              ? 'Extract notes'
+              : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>

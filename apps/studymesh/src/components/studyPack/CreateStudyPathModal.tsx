@@ -37,6 +37,7 @@ import {
   assertRoleObjectsAreClean,
   filterStudyObjectsForDashboardRole,
   generateStudyPathWithAi,
+  isStrongAiProvider,
   isLocalAiGenerationError,
   LocalAiGenerationFailureDebug,
   LocalAiProgressEvent,
@@ -116,6 +117,7 @@ const providerLabels: Record<StudyPackAiProvider, string> = {
   basic: 'Basic fallback',
   local: 'Google Local AI',
   gemini: 'Own Gemini API token',
+  cerebras: 'Own Cerebras API key',
   hosted: 'Hosted AI tokens',
 }
 
@@ -132,8 +134,9 @@ const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
   average: 60 * 1000,
   deep: 90 * 1000,
 }
+const CEREBRAS_STUDY_PATH_ESTIMATE_MS = 10 * 1000
 const BASIC_FALLBACK_STUDY_PATH_DELAY_MS = 10 * 1000
-const DEFAULT_STUDY_PATH_PROMPT = 'Learn French level B2'
+const DEFAULT_STUDY_PATH_PROMPT = 'Study basic human anatomy focusing on organs and systems (cardiovascular, respiratory, digestive)'
 
 const layoutModeForStudyPathArchetype = (
   archetype?: StudyPathLayoutArchetype,
@@ -159,20 +162,20 @@ interface GeminiTimedProgress {
 const getProviderPathProgressLabel = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Generating dashboards with Google Local AI...'
-    : provider === 'gemini'
-      ? 'Generating ordered dashboards with Gemini...'
-      : provider === 'basic'
-        ? 'Generating ordered dashboards with Basic fallback...'
-        : 'Checking hosted AI configuration...'
+    : isStrongAiProvider(provider)
+    ? `Generating ordered dashboards with ${providerLabels[provider]}...`
+    : provider === 'basic'
+    ? 'Generating ordered dashboards with Basic fallback...'
+    : 'Checking hosted AI configuration...'
 
 const getProviderPathDescription = (provider: StudyPackAiProvider): string =>
   provider === 'local'
     ? 'Local AI is running on your device. StudyMesh plans the path first, then generates each lesson dashboard with its own estimated timer.'
-    : provider === 'gemini'
-      ? 'StudyMesh is sending the request to Gemini with your API token and converting the response into dashboards.'
-      : provider === 'basic'
-        ? 'StudyMesh is using local parsing and practice generation without AI API calls.'
-        : 'Hosted AI is not configured yet.'
+    : isStrongAiProvider(provider)
+    ? `StudyMesh is sending the request to ${providerLabels[provider]} and converting the response into dashboards.`
+    : provider === 'basic'
+    ? 'StudyMesh is using local parsing and practice generation without AI API calls.'
+    : 'Hosted AI is not configured yet.'
 
 const formatPipelineRemaining = (remainingMs: number): string => {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
@@ -261,10 +264,10 @@ const statusColor = (status: LocalPipelineStep['status']) =>
   status === 'failed'
     ? 'error'
     : status === 'complete'
-      ? 'success'
-      : status === 'running'
-        ? 'primary'
-        : 'default'
+    ? 'success'
+    : status === 'running'
+    ? 'primary'
+    : 'default'
 
 const aggregatePipelineSteps = (
   steps: LocalPipelineStep[],
@@ -288,10 +291,10 @@ const aggregatePipelineSteps = (
       )
         ? 'failed'
         : groupSteps.some((step) => step.status === 'running')
-          ? 'running'
-          : completeCount === groupSteps.length
-            ? 'complete'
-            : 'pending'
+        ? 'running'
+        : completeCount === groupSteps.length
+        ? 'complete'
+        : 'pending'
       const percent = Math.round(
         groupSteps.reduce((total, step) => total + step.percent, 0) /
           groupSteps.length,
@@ -643,7 +646,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   )
 
   React.useEffect(() => {
-    if (!isGenerating || aiProvider !== 'gemini' || !geminiProgress) {
+    if (!isGenerating || !isStrongAiProvider(aiProvider) || !geminiProgress) {
       return undefined
     }
 
@@ -743,14 +746,16 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       return
     }
 
-    const credentials = resolveStudyPackAiCredentials()
+    const credentials = isStrongAiProvider(aiProvider)
+      ? resolveStudyPackAiCredentials(aiProvider)
+      : resolveStudyPackAiCredentials()
     if (aiProvider === 'hosted') {
       setError('Hosted AI is not configured yet.')
       return
     }
 
-    if (aiProvider === 'gemini' && !credentials.apiToken) {
-      setError('Own Gemini API token mode needs a configured API key.')
+    if (isStrongAiProvider(aiProvider) && !credentials.apiToken) {
+      setError(`${providerLabels[aiProvider]} mode needs a configured API key.`)
       return
     }
 
@@ -765,12 +770,14 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     setIsGenerating(true)
     setLocalAiProgress(null)
     setGeminiProgress(
-      aiProvider === 'gemini'
+      isStrongAiProvider(aiProvider)
         ? makeGeminiTimedProgress(
             Date.now(),
-            GEMINI_STUDY_PATH_ESTIMATES_MS[
-              normalizeStudyPathGenerationAmount(generationAmount)
-            ],
+            aiProvider === 'cerebras'
+              ? CEREBRAS_STUDY_PATH_ESTIMATE_MS
+              : GEMINI_STUDY_PATH_ESTIMATES_MS[
+                  normalizeStudyPathGenerationAmount(generationAmount)
+                ],
           )
         : null,
     )
@@ -1123,7 +1130,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                     placeholder={
                       sourceMode === 'dashboard'
                         ? 'Optional: focus on missed exercises, exam prep, or the next lesson...'
-                        : 'Example: Create a 7-day study path to learn React hooks from these notes...'
+                        : 'Example: Help me learn React hooks as a beginner/someone with JS experience...'
                     }
                     multiline
                     minRows={presentation === 'embedded' ? 5 : 6}
@@ -1152,10 +1159,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                         <MenuItem
                           key={option.value}
                           value={option.value}
-                          aria-label={`${option.label} - ${getGenerationAmountHelper(
-                            option,
-                            aiProvider,
-                          )}`}
+                          aria-label={`${
+                            option.label
+                          } - ${getGenerationAmountHelper(option, aiProvider)}`}
                           disabled={
                             aiProvider === 'local' && option.value === 'deep'
                           }
@@ -1376,8 +1382,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                                           lane.active?.status === 'failed'
                                             ? 'error'
                                             : lane.active?.status === 'complete'
-                                              ? 'success'
-                                              : 'primary'
+                                            ? 'success'
+                                            : 'primary'
                                         }
                                       />
                                       {lane.steps.length > 0 ? (
@@ -1413,7 +1419,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           </Stack>
                         )
                       })()
-                    ) : aiProvider === 'gemini' && geminiProgress ? (
+                    ) : isStrongAiProvider(aiProvider) && geminiProgress ? (
                       <Stack spacing={1}>
                         <Stack direction="row" justifyContent="space-between">
                           <Typography variant="caption" color="text.secondary">

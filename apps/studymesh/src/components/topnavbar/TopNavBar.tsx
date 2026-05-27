@@ -135,6 +135,7 @@ const studyPackAiProviderLabels: Record<StudyPackAiProvider, string> = {
   basic: 'Basic fallback',
   local: 'Google Local AI',
   gemini: 'Own Gemini API token',
+  cerebras: 'Own Cerebras API key',
   hosted: 'Hosted AI tokens',
 }
 

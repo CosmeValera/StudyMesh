@@ -38,6 +38,17 @@ Generation modes:
 
 Generation flows are currently embedded in the Creation panel, though the older components still use `Modal` in their names. Opening an existing Study Path tutorial, Study Pack, or custom dashboard should take the user into the main workspace rather than sharing the same creation setup flow.
 
+Strong AI provider model:
+
+- Strong AI providers are hosted text models that can run the shared high-quality Study Pack, Study Path, and dashboard-chat prompts. Gemini and Cerebras are the current examples. Google Local AI is intentionally separate because it is weaker, browser-local, and has its own orchestration/fallback constraints.
+- Add new hosted strong providers in one place first: `apps/StudyMesh/src/studyPack/ai/strongProviders.ts`. Extend `StrongAiProviderId`, add the config entry in `STRONG_AI_PROVIDERS`, implement the provider call adapter if it is not OpenAI/Gemini-compatible, and keep the adapter returning plain text.
+- Strong provider settings are provider-keyed in `apps/StudyMesh/src/studyPack/ai/settings.ts` under `strongProviders`, with legacy `apiToken`/`model` mapped to Gemini for compatibility. Add the provider env var helper there only if the registry does not already cover it.
+- Route generation through `apps/StudyMesh/src/studyPack/ai/provider.ts` and the shared strong-model functions in `gemini.ts`; do not fork Study Path or Study Pack prompts per provider unless the provider genuinely requires different transport/schema handling.
+- Update UI labels/options in `SettingsDialog.tsx`, `TopNavBar.tsx`, and any embedded creation surfaces that display provider labels or progress estimates. Strong providers should display their real label, not fall back to Basic or Gemini copy.
+- Update dashboard chat in `apps/StudyMesh/src/dashboardChat/askDashboard.ts` if the provider needs different chat transport. It should use the same strong-provider credentials and adapter, so selecting a strong provider in Settings affects chat too.
+- Keep image extraction explicit: only providers marked as supporting image input should receive inline images. Text-only strong providers should fall back to existing OCR, Gemini vision, or Local AI image paths rather than pretending they can read images.
+- Add tests in `apps/StudyMesh/tests/unit/studyPack/studyPackAi.test.ts` for credential separation, env fallback, request shape, rate-limit/auth errors, and any schema conversion needed by the new provider.
+
 ## AI Generation File Map
 
 Most current AI-mode work is in the StudyMesh app under `apps/StudyMesh/src/studyPack/ai/`, the unified workspace creation shell, and the two older creation components under `apps/StudyMesh/src/components/studyPack/`.

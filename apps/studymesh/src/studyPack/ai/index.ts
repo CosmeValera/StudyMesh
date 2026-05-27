@@ -18,6 +18,7 @@ export type {
 } from './settings'
 export type { StudyPackAiProvider } from './settings'
 export {
+  callStrongAiModel,
   DEFAULT_STRONG_AI_PROVIDER,
   getStrongAiProviderConfig,
   isStrongAiProvider,

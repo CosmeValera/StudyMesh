@@ -43,6 +43,7 @@ import { dispatchWorkspaceOnboardingEvent } from '../onboarding/onboardingEvents
 import CreateStudyPathModal from '../studyPack/CreateStudyPathModal'
 import {
   generateStudyPackWithAi,
+  isStrongAiProvider,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
@@ -292,11 +293,7 @@ const estimateQueueDuration = (draft: GenerationDraft) => {
   }
 
   if (draft.aiProvider === 'cerebras') {
-    if (draft.detailLevel === 'long' || draft.detailLevel === 'deep') {
-      return 'est. 1-2m'
-    }
-
-    return 'est. 30-60s'
+    return 'est. 2-10s'
   }
 
   if (draft.aiProvider === 'basic') {
@@ -1300,7 +1297,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     })
 
     try {
-      const credentials = resolveStudyPackAiCredentials()
+      const credentials = isStrongAiProvider(effectiveProvider)
+        ? resolveStudyPackAiCredentials(effectiveProvider)
+        : resolveStudyPackAiCredentials()
       const generated = await generateStudyPackWithAi({
         provider: effectiveProvider,
         apiToken: credentials.apiToken,
@@ -2762,9 +2761,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     ...payload,
                     openInWorkspace: false,
                   })
+                  const studyPath = createStudyPathContainerState(dashboards)
+                  const nextTitle =
+                    studyPath?.title ||
+                    payload.folderName ||
+                    dashboards[0]?.name ||
+                    'Study Path'
                   updateDraft(draft.id, {
-                    title: payload.folderName || 'Study Path',
-                    inputSummary: payload.folderName || draft.inputSummary,
+                    title: nextTitle,
+                    inputSummary: nextTitle || draft.inputSummary,
                     status: 'ready',
                     completedAt: new Date().toISOString(),
                     generatedDashboards: dashboards,

@@ -65,6 +65,13 @@ vi.mock('../../../../src/dashboardChat/contextBuilder', () => ({
 vi.mock('../../../../src/studyPack/ai', () => ({
   __esModule: true,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT: 'studymesh-ai-settings-changed',
+  STRONG_AI_PROVIDERS: {
+    gemini: { label: 'Gemini', modeLabel: 'Own Gemini API token' },
+    cerebras: { label: 'Cerebras', modeLabel: 'Own Cerebras API key' },
+  },
+  isStrongAiProvider: (provider: unknown) =>
+    provider === 'gemini' || provider === 'cerebras',
+  callStrongAiModel: vi.fn(),
   readStudyPackAiSettings: () => ({ provider: 'basic' }),
   resolveStudyPackAiCredentials: () => ({ apiToken: '', model: '' }),
   generateStudyPackWithAi: vi.fn(),

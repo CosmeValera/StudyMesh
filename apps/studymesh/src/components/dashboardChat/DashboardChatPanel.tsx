@@ -23,7 +23,11 @@ import {
   selectDashboardChatChunks,
 } from '../../dashboardChat/contextBuilder'
 import { askDashboardSources } from '../../dashboardChat/askDashboard'
-import { readStudyPackAiSettings } from '../../studyPack/ai'
+import {
+  isStrongAiProvider,
+  readStudyPackAiSettings,
+  STRONG_AI_PROVIDERS,
+} from '../../studyPack/ai'
 import { renderMarkdown } from '../WidgetEditor/components/preview/StudyBlockView'
 
 export interface DashboardChatMessage {
@@ -68,6 +72,13 @@ const DashboardChatPanel = ({
   const queueRef = useRef(Promise.resolve())
   const settings = readStudyPackAiSettings()
   const isLocalAi = settings.provider === 'local'
+  const providerLabel = isLocalAi
+    ? 'Local AI'
+    : isStrongAiProvider(settings.provider)
+    ? STRONG_AI_PROVIDERS[settings.provider].label
+    : settings.provider === 'hosted'
+    ? 'Hosted'
+    : 'Basic'
   const context = useMemo(
     () =>
       buildDashboardChatContext(
@@ -238,13 +249,7 @@ const DashboardChatPanel = ({
           <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }}>
             <Chip
               size="small"
-              label={
-                isLocalAi
-                  ? 'Local AI'
-                  : settings.provider === 'gemini'
-                    ? 'Gemini'
-                    : 'Basic'
-              }
+              label={providerLabel}
               variant="outlined"
               sx={{ height: 22, fontWeight: 700 }}
             />

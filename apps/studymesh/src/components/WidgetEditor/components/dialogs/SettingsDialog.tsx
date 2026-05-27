@@ -742,7 +742,10 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       flexWrap: 'wrap',
                     }}
                   >
-                    <Chip size="small" label={`Mode: ${aiProvider}`} />
+                    <Chip
+                      size="small"
+                      label={`Mode: ${aiProviderLabels[aiProvider]}`}
+                    />
                     <Box sx={{ flexGrow: 1 }} />
                     <Button
                       variant="outlined"
