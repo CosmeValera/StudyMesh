@@ -134,6 +134,7 @@ describe('study pack AI settings', () => {
     })
     localStorage.clear()
     delete process.env.GEMINI_API_KEY
+    delete process.env.CEREBRAS_API_KEY
   })
 
   it('uses default model and no token when settings are empty', () => {
@@ -141,6 +142,16 @@ describe('study pack AI settings', () => {
       provider: 'basic',
       apiToken: '',
       model: DEFAULT_STUDY_PACK_AI_MODEL,
+      strongProviders: {
+        gemini: {
+          apiToken: '',
+          model: 'gemini-2.5-flash',
+        },
+        cerebras: {
+          apiToken: '',
+          model: 'gpt-oss-120b',
+        },
+      },
     })
     expect(resolveStudyPackAiCredentials()).toMatchObject({
       tokenSource: 'none',
@@ -150,12 +161,14 @@ describe('study pack AI settings', () => {
   it('prefers settings token over env token', () => {
     process.env.GEMINI_API_KEY = 'env-token'
     saveStudyPackAiSettings({
+      provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
+      strongProviders: {},
     })
 
     expect(storage[STUDY_PACK_AI_SETTINGS_KEY]).toContain('settings-token')
-    expect(resolveStudyPackAiCredentials()).toEqual({
+    expect(resolveStudyPackAiCredentials()).toMatchObject({
       provider: 'gemini',
       apiToken: 'settings-token',
       model: 'gemini-test',
@@ -166,14 +179,64 @@ describe('study pack AI settings', () => {
   it('falls back to env token when settings token is empty', () => {
     process.env.GEMINI_API_KEY = 'env-token'
     saveStudyPackAiSettings({
+      provider: 'gemini',
       apiToken: '',
       model: 'gemini-test',
+      strongProviders: {},
     })
 
-    expect(resolveStudyPackAiCredentials()).toEqual({
+    expect(resolveStudyPackAiCredentials()).toMatchObject({
       provider: 'gemini',
       apiToken: 'env-token',
       model: 'gemini-test',
+      tokenSource: 'env',
+    })
+  })
+
+  it('keeps Gemini and Cerebras credentials separate', () => {
+    saveStudyPackAiSettings({
+      provider: 'gemini',
+      apiToken: 'gemini-token',
+      model: 'gemini-test',
+      strongProviders: {},
+    })
+    saveStudyPackAiSettings({
+      ...readStudyPackAiSettings(),
+      provider: 'cerebras',
+      apiToken: 'cerebras-token',
+      model: 'gpt-oss-120b',
+    })
+
+    const settings = readStudyPackAiSettings()
+    expect(settings.strongProviders.gemini).toEqual({
+      apiToken: 'gemini-token',
+      model: 'gemini-test',
+    })
+    expect(settings.strongProviders.cerebras).toEqual({
+      apiToken: 'cerebras-token',
+      model: 'gpt-oss-120b',
+    })
+    expect(resolveStudyPackAiCredentials('cerebras')).toMatchObject({
+      provider: 'cerebras',
+      apiToken: 'cerebras-token',
+      model: 'gpt-oss-120b',
+      tokenSource: 'settings',
+    })
+  })
+
+  it('falls back to Cerebras env token for Cerebras provider', () => {
+    process.env.CEREBRAS_API_KEY = 'cerebras-env-token'
+    saveStudyPackAiSettings({
+      provider: 'cerebras',
+      apiToken: '',
+      model: 'gpt-oss-120b',
+      strongProviders: {},
+    })
+
+    expect(resolveStudyPackAiCredentials('cerebras')).toMatchObject({
+      provider: 'cerebras',
+      apiToken: 'cerebras-env-token',
+      model: 'gpt-oss-120b',
       tokenSource: 'env',
     })
   })
@@ -3310,5 +3373,101 @@ describe('Gemini study pack client', () => {
         packId: 'derivatives',
       }),
     ).rejects.toThrow(/Gemini rate limit reached for today/i)
+  })
+
+  it('uses Cerebras chat completions as a strong model provider', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: 'Derivatives',
+                sourceFormat: 'text',
+                sourceSummary: {
+                  title: 'Derivative summary',
+                  bullets: [
+                    'A derivative measures instantaneous rate of change.',
+                  ],
+                },
+                conceptRecap: {
+                  title: 'Concept recap',
+                  sections: [
+                    {
+                      title: 'Derivative',
+                      bullets: [
+                        'Use derivatives to reason about rates of change.',
+                      ],
+                      example: 'Velocity is a derivative.',
+                    },
+                  ],
+                },
+                practice: {
+                  shortAnswer: [],
+                  multipleChoice: [],
+                },
+                flashcards: [],
+              }),
+            },
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const draft = await generateStudyPackWithAi({
+      strongProvider: 'cerebras',
+      apiToken: 'cerebras-token',
+      model: 'gpt-oss-120b',
+      title: 'Derivatives',
+      rawNotes: 'Derivative = instantaneous rate of change',
+      packId: 'derivatives',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.cerebras.ai/v1/chat/completions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer cerebras-token',
+        }),
+      }),
+    )
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body).toMatchObject({
+      model: 'gpt-oss-120b',
+      temperature: 0.2,
+      max_completion_tokens: 8192,
+    })
+    expect(body.response_format.type).toBe('json_schema')
+    expect(body.messages[0].content).toContain('strict valid JSON')
+    expect(draft.sourceSummary?.bullets).toEqual([
+      'A derivative measures instantaneous rate of change.',
+    ])
+  })
+
+  it('returns a useful message when Cerebras rate limits the request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({
+        error: {
+          message: 'rate limit exceeded',
+        },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      generateStudyPackWithAi({
+        strongProvider: 'cerebras',
+        apiToken: 'cerebras-token',
+        model: 'gpt-oss-120b',
+        title: 'Derivatives',
+        rawNotes: 'Derivative = instantaneous rate of change',
+        packId: 'derivatives',
+      }),
+    ).rejects.toThrow(/Cerebras free limit reached/i)
   })
 })

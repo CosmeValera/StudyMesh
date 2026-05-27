@@ -40,10 +40,15 @@ import {
 } from '../../../onboarding/onboardingEvents'
 import {
   DEFAULT_STUDY_PACK_AI_MODEL,
+  getEnvStrongAiProviderApiKey,
   StudyPackAiProvider,
-  getEnvGeminiApiKey,
+  getStudyPackAiCredentialForProvider,
+  isStrongAiProvider,
   readStudyPackAiSettings,
   saveStudyPackAiSettings,
+  StrongAiProviderCredentials,
+  StrongAiProviderId,
+  STRONG_AI_PROVIDERS,
   testLocalLanguageModel,
 } from '../../../../studyPack/ai'
 import { seedStudyMeshGuideStudyPath } from '../../../../studyPack/studyMeshGuideSeed'
@@ -55,6 +60,7 @@ const aiProviderLabels: Record<StudyPackAiProvider, string> = {
   basic: 'Basic fallback',
   local: 'Google Local AI',
   gemini: 'Own Gemini API token',
+  cerebras: 'Own Cerebras API key',
   hosted: 'Hosted AI tokens',
 }
 const normalizeExportFolderName = (folder?: unknown) =>
@@ -184,8 +190,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const showGlobalSettings = scope === 'global'
   const [aiProvider, setAiProvider] =
     React.useState<StudyPackAiProvider>('basic')
-  const [aiApiToken, setAiApiToken] = React.useState('')
-  const [aiModel, setAiModel] = React.useState(DEFAULT_STUDY_PACK_AI_MODEL)
+  const [strongCredentials, setStrongCredentials] =
+    React.useState<StrongAiProviderCredentials>({})
   const [localAiStatus, setLocalAiStatus] = React.useState('')
   const [localAiProgress, setLocalAiProgress] = React.useState<number | null>(
     null,
@@ -197,7 +203,21 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [selectedExportIndexes, setSelectedExportIndexes] = React.useState<
     Set<number>
   >(new Set())
-  const hasEnvToken = Boolean(getEnvGeminiApiKey())
+  const selectedStrongProvider: StrongAiProviderId = isStrongAiProvider(
+    aiProvider,
+  )
+    ? aiProvider
+    : 'gemini'
+  const selectedStrongConfig = STRONG_AI_PROVIDERS[selectedStrongProvider]
+  const selectedStrongCredential = strongCredentials[
+    selectedStrongProvider
+  ] || {
+    apiToken: '',
+    model: selectedStrongConfig.defaultModel,
+  }
+  const hasEnvToken = Boolean(
+    getEnvStrongAiProviderApiKey(selectedStrongProvider),
+  )
 
   const exportDashboardGroups = React.useMemo<ExportDashboardGroup[]>(() => {
     const groups = new Map<string, ExportDashboardItem[]>()
@@ -212,8 +232,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         typeof record.name === 'string' && record.name.trim()
           ? record.name.trim()
           : typeof record.title === 'string' && record.title.trim()
-            ? record.title.trim()
-            : `Dashboard ${index + 1}`
+          ? record.title.trim()
+          : `Dashboard ${index + 1}`
       const items = groups.get(folderName) || []
 
       items.push({ dashboard, index, folderName, name })
@@ -237,8 +257,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
     const settings = readStudyPackAiSettings()
     setAiProvider(settings.provider || 'basic')
-    setAiApiToken(settings.apiToken)
-    setAiModel(settings.model)
+    setStrongCredentials(settings.strongProviders || {})
     setLocalAiStatus('')
     setLocalAiProgress(null)
   }, [open, showGlobalSettings])
@@ -287,10 +306,23 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   }
 
   const handleSaveAiSettings = () => {
+    const credential = isStrongAiProvider(aiProvider)
+      ? getStudyPackAiCredentialForProvider(
+          {
+            provider: aiProvider,
+            apiToken: '',
+            model: '',
+            strongProviders: strongCredentials,
+          },
+          aiProvider,
+        )
+      : { apiToken: '', model: DEFAULT_STUDY_PACK_AI_MODEL }
+
     saveStudyPackAiSettings({
       provider: aiProvider,
-      apiToken: aiApiToken,
-      model: aiModel,
+      apiToken: credential.apiToken,
+      model: credential.model,
+      strongProviders: strongCredentials,
     })
     dispatchWorkspaceOnboardingNotice(
       `AI mode changed to ${aiProviderLabels[aiProvider]}.`,
@@ -298,12 +330,41 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   }
 
   const handleClearAiToken = () => {
-    setAiApiToken('')
+    if (!isStrongAiProvider(aiProvider)) {
+      return
+    }
+
+    const model =
+      strongCredentials[aiProvider]?.model ||
+      STRONG_AI_PROVIDERS[aiProvider].defaultModel
+    const nextCredentials = {
+      ...strongCredentials,
+      [aiProvider]: {
+        apiToken: '',
+        model,
+      },
+    }
+
+    setStrongCredentials(nextCredentials)
     saveStudyPackAiSettings({
       provider: aiProvider,
       apiToken: '',
-      model: aiModel,
+      model,
+      strongProviders: nextCredentials,
     })
+  }
+
+  const updateSelectedStrongCredential = (
+    changes: Partial<{ apiToken: string; model: string }>,
+  ) => {
+    setStrongCredentials((current) => ({
+      ...current,
+      [selectedStrongProvider]: {
+        apiToken: selectedStrongCredential.apiToken,
+        model: selectedStrongCredential.model,
+        ...changes,
+      },
+    }))
   }
 
   const handleTestLocalAi = async () => {
@@ -572,6 +633,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       Google Local AI (experimental)
                     </MenuItem>
                     <MenuItem value="gemini">Own Gemini API token</MenuItem>
+                    <MenuItem value="cerebras">Own Cerebras API key</MenuItem>
                     <MenuItem value="hosted">Hosted AI tokens</MenuItem>
                   </TextField>
                   {aiProvider === 'local' && (
@@ -614,44 +676,60 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       )}
                     </Box>
                   )}
-                  {aiProvider === 'gemini' && (
+                  {isStrongAiProvider(aiProvider) && (
                     <>
                       <TextField
                         label="API key"
                         type="password"
-                        value={aiApiToken}
-                        onChange={(event) => setAiApiToken(event.target.value)}
+                        value={selectedStrongCredential.apiToken}
+                        onChange={(event) =>
+                          updateSelectedStrongCredential({
+                            apiToken: event.target.value,
+                          })
+                        }
                         fullWidth
                         size="small"
                         placeholder={
                           hasEnvToken
                             ? 'Using .env key unless you enter one here'
-                            : 'Paste your Gemini API key'
+                            : `Paste your ${selectedStrongConfig.label} API key`
                         }
                         sx={{ mb: 1.5 }}
                       />
                       <TextField
                         label="Model"
-                        value={aiModel}
-                        onChange={(event) => setAiModel(event.target.value)}
+                        value={selectedStrongCredential.model}
+                        onChange={(event) =>
+                          updateSelectedStrongCredential({
+                            model: event.target.value,
+                          })
+                        }
                         fullWidth
                         size="small"
                         sx={{ mb: 1.5 }}
                       />
                     </>
                   )}
-                  {aiProvider === 'gemini' && (
+                  {aiProvider === 'cerebras' && (
+                    <Alert severity="info" sx={{ mb: 1.5 }}>
+                      Cerebras is used as a strong text model. Image extraction
+                      still uses existing OCR, Gemini, or Local AI paths.
+                    </Alert>
+                  )}
+                  {isStrongAiProvider(aiProvider) && (
                     <Chip
                       size="small"
                       label={
-                        aiApiToken.trim()
+                        selectedStrongCredential.apiToken.trim()
                           ? 'Settings key active'
                           : hasEnvToken
-                            ? '.env key available'
-                            : 'No key configured'
+                          ? '.env key available'
+                          : 'No key configured'
                       }
                       color={
-                        aiApiToken.trim() || hasEnvToken ? 'primary' : 'default'
+                        selectedStrongCredential.apiToken.trim() || hasEnvToken
+                          ? 'primary'
+                          : 'default'
                       }
                       sx={{ mb: 1.5 }}
                     />
@@ -670,7 +748,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       variant="outlined"
                       size="small"
                       onClick={handleClearAiToken}
-                      disabled={aiProvider !== 'gemini'}
+                      disabled={!isStrongAiProvider(aiProvider)}
                     >
                       Clear key
                     </Button>

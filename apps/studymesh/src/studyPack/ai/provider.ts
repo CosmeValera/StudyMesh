@@ -21,6 +21,7 @@ import {
   resolveStudyPackAiCredentials,
   StudyPackAiProvider,
 } from './settings'
+import { isStrongAiProvider } from './strongProviders'
 import { LocalAiProgressEvent } from './localLanguageModel'
 
 type ProviderOptions = {
@@ -88,15 +89,21 @@ export const generateStudyPackWithAi = async (
     throw new Error(HOSTED_NOT_CONFIGURED_MESSAGE)
   }
 
+  if (!isStrongAiProvider(provider)) {
+    throw new Error(`Unknown AI provider: ${provider}`)
+  }
+
   const credentials = options.apiToken
     ? {
         apiToken: options.apiToken,
         model: options.model,
       }
-    : resolveStudyPackAiCredentials()
+    : resolveStudyPackAiCredentials(provider)
   if (!credentials.apiToken) {
     throw new Error(
-      'Own Gemini API token mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
+      `${
+        provider === 'cerebras' ? 'Cerebras' : 'Gemini'
+      } mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.`,
     )
   }
 
@@ -104,6 +111,7 @@ export const generateStudyPackWithAi = async (
     ...options,
     apiToken: credentials.apiToken,
     model: credentials.model,
+    strongProvider: provider,
   })
 }
 
@@ -128,15 +136,21 @@ export const generateStudyPathWithAi = async (
     throw new Error(HOSTED_NOT_CONFIGURED_MESSAGE)
   }
 
+  if (!isStrongAiProvider(provider)) {
+    throw new Error(`Unknown AI provider: ${provider}`)
+  }
+
   const credentials = options.apiToken
     ? {
         apiToken: options.apiToken,
         model: options.model,
       }
-    : resolveStudyPackAiCredentials()
+    : resolveStudyPackAiCredentials(provider)
   if (!credentials.apiToken) {
     throw new Error(
-      'Own Gemini API token mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.',
+      `${
+        provider === 'cerebras' ? 'Cerebras' : 'Gemini'
+      } mode needs a configured provider key. Add one in Settings, or switch to Basic fallback.`,
     )
   }
 
@@ -144,5 +158,6 @@ export const generateStudyPathWithAi = async (
     ...options,
     apiToken: credentials.apiToken,
     model: credentials.model,
+    strongProvider: provider,
   })
 }

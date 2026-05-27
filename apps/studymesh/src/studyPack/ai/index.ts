@@ -1,18 +1,30 @@
 export {
   DEFAULT_STUDY_PACK_AI_MODEL,
+  getEnvCerebrasApiKey,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   STUDY_PACK_AI_SETTINGS_KEY,
   clearStudyPackAiToken,
   getEnvGeminiApiKey,
+  getEnvStrongAiProviderApiKey,
+  getStudyPackAiCredentialForProvider,
   readStudyPackAiSettings,
   resolveStudyPackAiCredentials,
   saveStudyPackAiSettings,
 } from './settings'
-export type { StudyPackAiSettings } from './settings'
+export type {
+  StrongAiProviderCredential,
+  StrongAiProviderCredentials,
+  StudyPackAiSettings,
+} from './settings'
 export type { StudyPackAiProvider } from './settings'
 export {
-  normalizeStudyPathGenerationAmount,
-} from './gemini'
+  DEFAULT_STRONG_AI_PROVIDER,
+  getStrongAiProviderConfig,
+  isStrongAiProvider,
+  STRONG_AI_PROVIDERS,
+} from './strongProviders'
+export type { StrongAiProviderId } from './strongProviders'
+export { normalizeStudyPathGenerationAmount } from './gemini'
 export type {
   AiStudyPathDashboardDraft,
   AiStudyPathDraft,

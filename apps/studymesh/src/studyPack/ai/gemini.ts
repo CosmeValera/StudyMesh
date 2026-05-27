@@ -28,27 +28,17 @@ import {
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
 } from './normalizer'
+import {
+  callStrongAiModel,
+  DEFAULT_STRONG_AI_PROVIDER,
+  StrongAiProviderId,
+} from './strongProviders'
 
 interface GeminiPart {
   text?: string
   inline_data?: {
     mime_type: string
     data: string
-  }
-}
-
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string
-      }>
-    }
-    finishReason?: string
-  }>
-  error?: {
-    message?: string
-    status?: string
   }
 }
 
@@ -101,6 +91,7 @@ export type QuizQuestionStyle = 'mixed' | 'conceptual' | 'examLike'
 export interface GenerateStudyPackWithAiOptions {
   apiToken: string
   model: string
+  strongProvider?: StrongAiProviderId
   title: string
   rawNotes: string
   packId: string
@@ -137,6 +128,7 @@ export interface AiStudyPathDraft {
 export interface GenerateStudyPathWithAiOptions {
   apiToken: string
   model: string
+  strongProvider?: StrongAiProviderId
   title: string
   prompt: string
   folderName: string
@@ -172,10 +164,10 @@ const getStudyPathDashboardCount = (
   return normalized === 'superSmall'
     ? 2
     : normalized === 'compact'
-      ? 3
-      : normalized === 'deep'
-        ? 7
-        : 5
+    ? 3
+    : normalized === 'deep'
+    ? 7
+    : 5
 }
 
 const getStudyPathStepNames = (
@@ -790,8 +782,8 @@ const buildFallbackObjectsForDashboardRole = ({
       concepts.length > 0
         ? concepts.map((concept) => `How would you apply ${concept}?`)
         : practiceSource
-          ? ['What is one key idea from the previous Study Path material?']
-          : []
+        ? ['What is one key idea from the previous Study Path material?']
+        : []
 
     return prompts.map((question, index) => ({
       ...createFallbackBase(
@@ -844,7 +836,9 @@ const getStudyPathVisibleObjectsForRole = (
 
   if (suppressedCount > 0) {
     events.push(
-      `Intentionally suppressed ${suppressedCount} conceptRecap/list-style normal-dashboard object${suppressedCount === 1 ? '' : 's'} from visible widgets; theory remains in source notes and source summary.`,
+      `Intentionally suppressed ${suppressedCount} conceptRecap/list-style normal-dashboard object${
+        suppressedCount === 1 ? '' : 's'
+      } from visible widgets; theory remains in source notes and source summary.`,
     )
   }
 
@@ -868,8 +862,8 @@ const getStudyPathVisiblePracticeTarget = (
     return normalized === 'superSmall' || normalized === 'compact'
       ? 10
       : normalized === 'deep'
-        ? 18
-        : 14
+      ? 18
+      : 14
   }
 
   return 0
@@ -926,83 +920,32 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file)
   })
 
-const callGemini = async (
+const callStrongModel = async (
   apiToken: string,
   model: string,
   parts: GeminiPart[],
   responseSchema?: Record<string, unknown>,
+  provider: StrongAiProviderId = DEFAULT_STRONG_AI_PROVIDER,
 ): Promise<string> => {
-  const controller = new AbortController()
-  const timeoutId = window.setTimeout(
-    () => controller.abort(),
-    GEMINI_REQUEST_TIMEOUT_MS,
-  )
-  let response: Response
-
   try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-        model,
-      )}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiToken,
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: responseSchema
-              ? 'application/json'
-              : 'text/plain',
-            ...(responseSchema ? { responseSchema } : {}),
-          },
-        }),
-      },
-    )
+    return await callStrongAiModel({
+      provider,
+      apiToken,
+      model,
+      parts,
+      responseSchema,
+      timeoutMs: GEMINI_REQUEST_TIMEOUT_MS,
+    })
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
+    if (
+      error instanceof Error &&
+      /strong model request took longer than 5 minutes/i.test(error.message)
+    ) {
       throw new Error(GEMINI_TIMEOUT_MESSAGE)
     }
 
     throw error
-  } finally {
-    window.clearTimeout(timeoutId)
   }
-
-  const payload = (await response.json()) as GeminiResponse
-  if (!response.ok) {
-    const message = payload.error?.message || ''
-    const status = payload.error?.status || ''
-    if (
-      response.status === 429 ||
-      status === 'RESOURCE_EXHAUSTED' ||
-      /rate limit|quota|peak requests/i.test(message)
-    ) {
-      throw new Error(`${GEMINI_RATE_LIMIT_MESSAGE} ${message}`.trim())
-    }
-
-    throw new Error(message || `Gemini request failed (${response.status}).`)
-  }
-
-  const candidate = payload.candidates?.[0]
-  const text = candidate?.content?.parts
-    ?.map((part) => part.text || '')
-    .join('')
-    .trim()
-
-  if (!text) {
-    throw new Error(
-      candidate?.finishReason
-        ? `Gemini returned no text (${candidate.finishReason}).`
-        : 'Gemini returned no text.',
-    )
-  }
-
-  return text
 }
 
 export const extractRawNotesWithAi = async ({
@@ -1011,17 +954,23 @@ export const extractRawNotesWithAi = async ({
   image,
 }: ExtractRawNotesWithAiOptions): Promise<string> => {
   const data = await fileToBase64(image)
-  const text = await callGemini(apiToken, model, [
-    {
-      text: 'Extract study notes from this image. Correct likely OCR mistakes, preserve headings, formulas, lists, and questions. Return only clean Markdown notes grounded in the image.',
-    },
-    {
-      inline_data: {
-        mime_type: image.type || 'image/png',
-        data,
+  const text = await callStrongModel(
+    apiToken,
+    model,
+    [
+      {
+        text: 'Extract study notes from this image. Correct likely OCR mistakes, preserve headings, formulas, lists, and questions. Return only clean Markdown notes grounded in the image.',
       },
-    },
-  ])
+      {
+        inline_data: {
+          mime_type: image.type || 'image/png',
+          data,
+        },
+      },
+    ],
+    undefined,
+    'gemini',
+  )
 
   return text.trim()
 }
@@ -1029,6 +978,7 @@ export const extractRawNotesWithAi = async ({
 export const generateStudyPackWithAi = async ({
   apiToken,
   model,
+  strongProvider = DEFAULT_STRONG_AI_PROVIDER,
   title,
   rawNotes,
   packId,
@@ -1057,16 +1007,16 @@ export const generateStudyPackWithAi = async ({
     resourceType === 'improvedNotes'
       ? 'Selected resource type: Improved notes. Create a clearer, better organized explanation from the source. Fill sourceSummary and conceptRecap. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
       : resourceType === 'flashcards'
-        ? 'Selected resource type: Flashcards. Create only atomic flashcards. Keep sourceSummary brief, leave conceptRecap sections empty, and leave all practice arrays empty.'
-        : resourceType === 'quiz'
-          ? 'Selected resource type: Quiz. Create only quiz questions. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
-          : 'Selected resource type: mixed Study Pack.'
+      ? 'Selected resource type: Flashcards. Create only atomic flashcards. Keep sourceSummary brief, leave conceptRecap sections empty, and leave all practice arrays empty.'
+      : resourceType === 'quiz'
+      ? 'Selected resource type: Quiz. Create only quiz questions. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
+      : 'Selected resource type: mixed Study Pack.'
   const detailInstruction =
     detailLevel === 'short'
       ? 'Detail level: Short. Keep notes concise and generate a small focused set.'
       : detailLevel === 'long'
-        ? 'Detail level: Long. Create deeper explanations or a larger practice set while staying grounded.'
-        : 'Detail level: Medium. Use balanced depth and amount.'
+      ? 'Detail level: Long. Create deeper explanations or a larger practice set while staying grounded.'
+      : 'Detail level: Medium. Use balanced depth and amount.'
   const hardDetailInstruction = resourceType
     ? `The selected detail level is a hard constraint. Target ${geminiDetailTargets[resourceType][detailLevel]}. Match the target length/count exactly or as close as possible. Do not ignore it.`
     : 'The selected detail level is a hard constraint. Match the requested amount as closely as possible. Do not ignore it.'
@@ -1074,8 +1024,8 @@ export const generateStudyPackWithAi = async ({
     quizQuestionStyle === 'conceptual'
       ? 'Quiz style preference: Conceptual. Prioritize why/how questions, comparisons, cause/effect, inference, and common misconceptions. Include only enough recall to anchor the reasoning.'
       : quizQuestionStyle === 'examLike'
-        ? 'Quiz style preference: Exam-like. Write assessment-style questions that require applying concepts under realistic test conditions. Mix multiple-choice and short-answer when appropriate, with clear plausible distractors.'
-        : 'Quiz style preference: Mixed. Use a balanced mix of recall and reasoning questions, including conceptual understanding, applied scenarios, comparisons, and common mistakes.'
+      ? 'Quiz style preference: Exam-like. Write assessment-style questions that require applying concepts under realistic test conditions. Mix multiple-choice and short-answer when appropriate, with clear plausible distractors.'
+      : 'Quiz style preference: Mixed. Use a balanced mix of recall and reasoning questions, including conceptual understanding, applied scenarios, comparisons, and common mistakes.'
   const sourceInstruction = promptMode
     ? 'The raw input is a learning prompt, not notes. Teach the requested topic from scratch. Because the input is not source notes, you may use accurate general knowledge for this topic. First create concise source notes/explanations, then generate practice grounded in those generated explanations. Include explanation/theory objects before exercises.'
     : 'The raw input is source notes. Stay grounded in those notes.'
@@ -1162,9 +1112,12 @@ Raw notes:
 ${rawNotes}`
 
   const callPromptModeFallback = () =>
-    callGemini(apiToken, model, [
-      {
-        text: `${promptText}
+    callStrongModel(
+      apiToken,
+      model,
+      [
+        {
+          text: `${promptText}
 
 The previous response failed JSON formatting. Retry with a simpler response:
 - Return plain JSON only.
@@ -1172,17 +1125,21 @@ The previous response failed JSON formatting. Retry with a simpler response:
 - Use only the strict Study Pack fields: sourceSummary, conceptRecap, practice, flashcards.
 - Do not use markdown code fences.
 - Do not include comments, trailing commas, undefined, NaN, or extra text.`,
-      },
-    ])
+        },
+      ],
+      undefined,
+      strongProvider,
+    )
 
   let text: string
   let usedPromptModeFallback = false
   try {
-    text = await callGemini(
+    text = await callStrongModel(
       apiToken,
       model,
       [{ text: promptText }],
       objectSchema,
+      strongProvider,
     )
   } catch (error) {
     if (!promptMode || !isGeminiOutputFormatError(error)) {
@@ -1255,6 +1212,7 @@ const studyPathAdvancedPromptGuidance = (
 export const generateStudyPathWithAi = async ({
   apiToken,
   model,
+  strongProvider = DEFAULT_STRONG_AI_PROVIDER,
   title,
   prompt,
   folderName,
@@ -1346,7 +1304,9 @@ ${
     ? `- Respect the user's advanced guidance below when planning lessons, rawNotes, examples, and practice. Do not make avoided/already-known topics a focus unless needed for context.\n`
     : ''
 }
-${advancedGuidance ? `Advanced user guidance:\n${advancedGuidance}\n\n` : ''}Path title fallback: ${title}
+${
+  advancedGuidance ? `Advanced user guidance:\n${advancedGuidance}\n\n` : ''
+}Path title fallback: ${title}
 Folder name fallback if you cannot infer a better one: ${
     folderName || 'Study Path'
   }
@@ -1376,18 +1336,25 @@ ${originalJson}`
 
   let text: string
   try {
-    text = await callGemini(
+    text = await callStrongModel(
       apiToken,
       model,
       [{ text: promptText }],
       studyPathSchema,
+      strongProvider,
     )
   } catch (error) {
     if (!isGeminiOutputFormatError(error)) {
       throw error
     }
 
-    text = await callGemini(apiToken, model, [{ text: fallbackPrompt }])
+    text = await callStrongModel(
+      apiToken,
+      model,
+      [{ text: fallbackPrompt }],
+      undefined,
+      strongProvider,
+    )
   }
 
   let parsed: unknown
@@ -1395,7 +1362,13 @@ ${originalJson}`
     parsed = parseGeminiJson(text)
   } catch {
     try {
-      text = await callGemini(apiToken, model, [{ text: fallbackPrompt }])
+      text = await callStrongModel(
+        apiToken,
+        model,
+        [{ text: fallbackPrompt }],
+        undefined,
+        strongProvider,
+      )
       parsed = parseGeminiJson(text)
     } catch {
       throw new Error(GEMINI_OUTPUT_FORMAT_MESSAGE)
@@ -1420,11 +1393,12 @@ ${originalJson}`
   let repairRetryUsed = false
   if (incompleteNormalDashboardIndexes.size > 0) {
     try {
-      const repairText = await callGemini(
+      const repairText = await callStrongModel(
         apiToken,
         model,
         [{ text: createRepairPrompt(text) }],
         studyPathSchema,
+        strongProvider,
       )
       parsed = parseGeminiJson(repairText)
       record =
@@ -1553,7 +1527,9 @@ ${prompt}`
           : {}
       if (!hasUsableStudyPathDashboardInput(input)) {
         warnings.push(
-          `Skipped Study Path dashboard ${index + 1}: no usable generated content.`,
+          `Skipped Study Path dashboard ${
+            index + 1
+          }: no usable generated content.`,
         )
         return null
       }
@@ -1647,22 +1623,28 @@ ${prompt}`
         filledVisibleObjects.visiblePracticeAddedCount > 0
       ) {
         finalEvents.push(
-          `Visible practice fill added ${filledVisibleObjects.visiblePracticeAddedCount} quiz/flashcard object${filledVisibleObjects.visiblePracticeAddedCount === 1 ? '' : 's'} to reach ${filledVisibleObjects.visiblePracticeCount}/${visiblePracticeTarget} visible practice items.`,
+          `Visible practice fill added ${
+            filledVisibleObjects.visiblePracticeAddedCount
+          } quiz/flashcard object${
+            filledVisibleObjects.visiblePracticeAddedCount === 1 ? '' : 's'
+          } to reach ${
+            filledVisibleObjects.visiblePracticeCount
+          }/${visiblePracticeTarget} visible practice items.`,
         )
       }
       const finalObjects =
         filledVisibleObjects && filledVisibleObjects.objects.length > 0
           ? filledVisibleObjects.objects
           : visibleRoleObjects.length > 0
-            ? visibleRoleObjects
-            : buildFallbackObjectsForDashboardRole({
-                packId,
-                dashboardTitle,
-                dashboardRole,
-                rawNotes: input.rawNotes,
-                sourceSummary: draft.sourceSummary,
-                accumulatedContentNotes,
-              })
+          ? visibleRoleObjects
+          : buildFallbackObjectsForDashboardRole({
+              packId,
+              dashboardTitle,
+              dashboardRole,
+              rawNotes: input.rawNotes,
+              sourceSummary: draft.sourceSummary,
+              accumulatedContentNotes,
+            })
       if (visibleRoleObjects.length === 0 && finalObjects.length > 0) {
         finalEvents.push(
           `Fallback used: created ${dashboardRole} object because role filtering left no visible study objects.`,

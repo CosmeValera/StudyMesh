@@ -6,12 +6,39 @@ import SettingsDialog from '../../../../src/components/WidgetEditor/components/d
 import { STUDYMESH_ONBOARDING_NOTICE_EVENT } from '../../../../src/components/onboarding/onboardingEvents'
 
 vi.mock('../../../../src/studyPack/ai', () => ({
+  STRONG_AI_PROVIDERS: {
+    gemini: {
+      id: 'gemini',
+      label: 'Own Gemini API key',
+      defaultModel: 'gemini-test-model',
+      envKey: 'GEMINI_API_KEY',
+      supportsImageInput: true,
+    },
+    cerebras: {
+      id: 'cerebras',
+      label: 'Own Cerebras API key',
+      defaultModel: 'gpt-oss-120b',
+      envKey: 'CEREBRAS_API_KEY',
+      supportsImageInput: false,
+    },
+  },
   DEFAULT_STUDY_PACK_AI_MODEL: 'gemini-test-model',
   getEnvGeminiApiKey: vi.fn(() => ''),
+  getEnvStrongAiProviderApiKey: vi.fn(() => ''),
+  getStudyPackAiCredentialForProvider: vi.fn((settings, provider) => ({
+    apiToken: settings.strongProviders?.[provider]?.apiToken || '',
+    model:
+      settings.strongProviders?.[provider]?.model ||
+      (provider === 'cerebras' ? 'gpt-oss-120b' : 'gemini-test-model'),
+  })),
+  isStrongAiProvider: vi.fn(
+    (provider) => provider === 'gemini' || provider === 'cerebras',
+  ),
   readStudyPackAiSettings: vi.fn(() => ({
     provider: 'basic',
     apiToken: '',
     model: 'gemini-test-model',
+    strongProviders: {},
   })),
   saveStudyPackAiSettings: vi.fn(),
   testLocalLanguageModel: vi.fn(),
