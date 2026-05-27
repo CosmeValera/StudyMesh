@@ -189,7 +189,7 @@ export const createGenerationDraft = (
   id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   flow,
   status: 'editing',
-  title: flow === 'study-path' ? 'Study Path draft' : 'Notes draft',
+  title: flow === 'study-path' ? 'Study basic human anatomy focusing on organs and systems (cardiovascular, respiratory, digestive)' : 'Notes draft',
   createdAt: new Date().toISOString(),
   inputSummary: flow === 'study-path' ? 'Learning prompt' : 'Sources',
   ...options,

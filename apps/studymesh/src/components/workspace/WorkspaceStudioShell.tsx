@@ -117,6 +117,7 @@ const quickCreateIcons: Record<StudyMaterialResourceType, React.ReactNode> = {
 type QuickSourceMode = 'dashboard' | 'sources'
 
 const GENERATION_RETRY_STORE_KEY = 'studymesh-generation-retry-snapshots'
+const GENERATION_QUEUE_STORE_KEY = 'studymesh-generation-queue-v1'
 
 interface FromNotesRetrySnapshot {
   flow: 'from-notes'
@@ -303,6 +304,91 @@ const estimateQueueDuration = (draft: GenerationDraft) => {
   return ''
 }
 
+const sanitizePersistedGenerationDraft = (
+  value: unknown,
+): GenerationDraft | null => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const draft = value as Partial<GenerationDraft>
+  if (
+    typeof draft.id !== 'string' ||
+    (draft.flow !== 'study-path' && draft.flow !== 'from-notes') ||
+    typeof draft.title !== 'string' ||
+    typeof draft.createdAt !== 'string'
+  ) {
+    return null
+  }
+
+  const status =
+    draft.status === 'generating'
+      ? 'failed'
+      : draft.status === 'ready' ||
+        draft.status === 'failed' ||
+        draft.status === 'cancelled'
+      ? draft.status
+      : null
+
+  if (!status) {
+    return null
+  }
+
+  return {
+    ...draft,
+    id: draft.id,
+    flow: draft.flow,
+    title: draft.title,
+    createdAt: draft.createdAt,
+    inputSummary: draft.inputSummary || '',
+    status,
+    error:
+      draft.status === 'generating'
+        ? 'Generation was interrupted by a page refresh. Retry to continue.'
+        : draft.error,
+    completedAt:
+      draft.status === 'generating'
+        ? new Date().toISOString()
+        : draft.completedAt,
+    isPlaceholder: false,
+  } as GenerationDraft
+}
+
+const readPersistedGenerationQueue = (): GenerationDraft[] => {
+  try {
+    const stored = window.localStorage.getItem(GENERATION_QUEUE_STORE_KEY)
+    if (!stored) {
+      return []
+    }
+
+    const parsed = JSON.parse(stored)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    return parsed
+      .map(sanitizePersistedGenerationDraft)
+      .filter((draft): draft is GenerationDraft => Boolean(draft))
+  } catch (error) {
+    console.error('Failed to read generation queue', error)
+    return []
+  }
+}
+
+const writePersistedGenerationQueue = (drafts: GenerationDraft[]) => {
+  try {
+    const queueDrafts = drafts.filter(
+      (draft) => !draft.isPlaceholder && draft.status !== 'editing',
+    )
+    window.localStorage.setItem(
+      GENERATION_QUEUE_STORE_KEY,
+      JSON.stringify(queueDrafts),
+    )
+  } catch (error) {
+    console.error('Failed to persist generation queue', error)
+  }
+}
+
 const readGenerationRetrySnapshots = () => {
   try {
     const stored = window.localStorage.getItem(GENERATION_RETRY_STORE_KEY)
@@ -390,13 +476,14 @@ const getDraftMarkerState = (
 
 const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const { theme, isPhoneOrTablet: isMobile } = useResponsiveWorkspaceMode()
-  const initialDrafts = useMemo(
-    () => [
+  const initialDrafts = useMemo(() => {
+    const placeholders = [
       createGenerationDraft('study-path', { isPlaceholder: true }),
       createGenerationDraft('from-notes', { isPlaceholder: true }),
-    ],
-    [],
-  )
+    ]
+
+    return [...placeholders, ...readPersistedGenerationQueue()]
+  }, [])
   const [isStudioOpen, setIsStudioOpen] = useState(false)
   const [studioWidth, setStudioWidth] = useState(studioPanelWidth)
   const [mobileSection, setMobileSection] = useState<
@@ -411,8 +498,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [activeDraftByFlow, setActiveDraftByFlow] = useState<
     Record<CreationFlow, string>
   >(() => ({
-    'study-path': initialDrafts[0].id,
-    'from-notes': initialDrafts[1].id,
+    'study-path':
+      initialDrafts.find(
+        (draft) => draft.flow === 'study-path' && draft.isPlaceholder,
+      )?.id || initialDrafts[0].id,
+    'from-notes':
+      initialDrafts.find(
+        (draft) => draft.flow === 'from-notes' && draft.isPlaceholder,
+      )?.id || initialDrafts[1].id,
   }))
   const openingMobileAiChatRef = useRef(false)
   const [aiProvider, setAiProvider] = useState(
@@ -431,6 +524,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [quickSourceStatus, setQuickSourceStatus] = useState('')
   const [queueClockMs, setQueueClockMs] = useState(() => Date.now())
   const [studyPathRetrySignals, setStudyPathRetrySignals] = useState<
+    Record<string, number>
+  >({})
+  const [studyPathCancelSignals, setStudyPathCancelSignals] = useState<
     Record<string, number>
   >({})
   const [pendingQuickSourceFocus, setPendingQuickSourceFocus] =
@@ -454,6 +550,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     selectedDashboard,
   } = useDashboards()
   const generationQueueRef = useRef<HTMLDivElement | null>(null)
+  const generationAbortControllersRef = useRef<Record<string, AbortController>>(
+    {},
+  )
 
   const startStudioResize = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -494,6 +593,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const hasGeneratingQueueJobs = generationDrafts.some(
     (draft) => draft.status === 'generating',
   )
+
+  useEffect(() => {
+    writePersistedGenerationQueue(generationDrafts)
+  }, [generationDrafts])
 
   useEffect(() => {
     const showDashboardAfterChatClose = () => {
@@ -756,6 +859,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             return draft
           }
 
+          if (state === 'idle' && draft.status === 'cancelled') {
+            return draft
+          }
+
           const nextStatus =
             state === 'running'
               ? 'generating'
@@ -850,17 +957,43 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const clearGenerationQueue = () => {
-    queueJobs
-      .filter((draft) => draft.status !== 'generating')
-      .forEach((draft) => removeGenerationRetrySnapshot(draft.id))
+    queueJobs.forEach((draft) => {
+      generationAbortControllersRef.current[draft.id]?.abort()
+      delete generationAbortControllersRef.current[draft.id]
+      if (draft.flow === 'study-path' && draft.status === 'generating') {
+        setStudyPathCancelSignals((current) => ({
+          ...current,
+          [draft.id]: (current[draft.id] || 0) + 1,
+        }))
+      }
+      removeGenerationRetrySnapshot(draft.id)
+    })
     setGenerationDrafts((current) =>
       current.filter(
-        (draft) =>
-          draft.isPlaceholder ||
-          draft.status === 'editing' ||
-          draft.status === 'generating',
+        (draft) => draft.isPlaceholder || draft.status === 'editing',
       ),
     )
+  }
+
+  const stopGenerationDraft = (draft: GenerationDraft) => {
+    if (draft.status !== 'generating') {
+      return
+    }
+
+    generationAbortControllersRef.current[draft.id]?.abort()
+    delete generationAbortControllersRef.current[draft.id]
+    if (draft.flow === 'study-path') {
+      setStudyPathCancelSignals((current) => ({
+        ...current,
+        [draft.id]: (current[draft.id] || 0) + 1,
+      }))
+    }
+    updateDraft(draft.id, {
+      status: 'cancelled',
+      completedAt: new Date().toISOString(),
+      error: 'Generation stopped.',
+      acknowledgedAt: new Date().toISOString(),
+    })
   }
 
   const openGenerationQueue = () => {
@@ -929,7 +1062,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const retryGenerationDraft = (draft: GenerationDraft) => {
-    if (draft.status !== 'failed' && draft.status !== 'ready') {
+    if (
+      draft.status !== 'failed' &&
+      draft.status !== 'ready' &&
+      draft.status !== 'cancelled'
+    ) {
       return
     }
 
@@ -1296,6 +1433,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       message: 'Creating study material…',
     })
 
+    const generationController = new AbortController()
+    generationAbortControllersRef.current[draftId] = generationController
+
     try {
       const credentials = isStrongAiProvider(effectiveProvider)
         ? resolveStudyPackAiCredentials(effectiveProvider)
@@ -1317,7 +1457,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             : 'mixed',
         promptMode: false,
         studyPathMode: false,
+        signal: generationController.signal,
       })
+
+      if (generationController.signal.aborted) {
+        return
+      }
 
       const nextTitle = title
       const augmented = augmentStudyPackPracticeObjects(generated.objects, {
@@ -1402,6 +1547,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         message: `${quickCreateLabels[resourceType]} ready`,
       })
     } catch (error) {
+      if (generationController.signal.aborted) {
+        return
+      }
+
       const message =
         error instanceof Error
           ? error.message
@@ -1413,6 +1562,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         message,
       })
       setQuickSourceStatus(message)
+    } finally {
+      if (
+        generationAbortControllersRef.current[draftId] === generationController
+      ) {
+        delete generationAbortControllersRef.current[draftId]
+      }
     }
   }
 
@@ -2520,9 +2675,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   <Button
                     size="small"
                     onClick={clearGenerationQueue}
-                    disabled={
-                      !queueJobs.some((draft) => draft.status !== 'generating')
-                    }
                     sx={{
                       minWidth: 0,
                       px: 1,
@@ -2540,6 +2692,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const isReady = draft.status === 'ready'
                   const isGenerating = draft.status === 'generating'
                   const isFailed = draft.status === 'failed'
+                  const isCancelled = draft.status === 'cancelled'
+                  const canRetry = isFailed || isCancelled
                   const opened = Boolean(draft.openedAt)
                   const materialLabel = generationMaterialLabel(draft)
                   const createdAtMs = new Date(draft.createdAt).getTime()
@@ -2563,36 +2717,49 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         (draft.flow === 'study-path'
                           ? 'Study Path'
                           : resourceTypeTitle(draft.selectedResourceType))
-                  const detail = isFailed
+                  const generatingDetail =
+                    draft.flow === 'study-path'
+                      ? [
+                          elapsed ? `${elapsed} elapsed` : '',
+                          estimate,
+                          draft.inputSummary || 'based on source',
+                        ]
+                          .filter(Boolean)
+                          .join(' - ')
+                      : [
+                          draft.inputSummary || 'based on source',
+                          elapsed ? `${elapsed} elapsed` : '',
+                          estimate,
+                        ]
+                          .filter(Boolean)
+                          .join(' - ')
+                  const detail = isCancelled
+                    ? draft.error || 'Stopped - Retry'
+                    : isFailed
                     ? draft.error || 'Retry'
                     : isReady
                     ? opened
                       ? 'Opened'
                       : 'Ready - Open'
-                    : [
-                        draft.inputSummary || 'based on source',
-                        elapsed ? `${elapsed} elapsed` : '',
-                        estimate,
-                      ]
-                        .filter(Boolean)
-                        .join(' - ')
-                  const statusIcon = isFailed ? (
-                    <ErrorOutlineIcon fontSize="small" color="error" />
-                  ) : isReady ? (
-                    <CheckCircleIcon fontSize="small" color="success" />
-                  ) : (
-                    <LoopIcon
-                      fontSize="small"
-                      color="warning"
-                      sx={{
-                        animation:
-                          'studymesh-generation-pill-spin 950ms linear infinite',
-                        '@keyframes studymesh-generation-pill-spin': {
-                          to: { transform: 'rotate(360deg)' },
-                        },
-                      }}
-                    />
-                  )
+                    : generatingDetail
+                  const statusIcon =
+                    isFailed || isCancelled ? (
+                      <ErrorOutlineIcon fontSize="small" color="error" />
+                    ) : isReady ? (
+                      <CheckCircleIcon fontSize="small" color="success" />
+                    ) : (
+                      <LoopIcon
+                        fontSize="small"
+                        color="warning"
+                        sx={{
+                          animation:
+                            'studymesh-generation-pill-spin 950ms linear infinite',
+                          '@keyframes studymesh-generation-pill-spin': {
+                            to: { transform: 'rotate(360deg)' },
+                          },
+                        }}
+                      />
+                    )
 
                   return (
                     <Paper
@@ -2609,13 +2776,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         border: 1,
                         borderColor: isReady
                           ? alpha(theme.palette.success.main, 0.45)
-                          : isFailed
+                          : isFailed || isCancelled
                           ? alpha(theme.palette.error.main, 0.35)
                           : alpha(theme.palette.warning.main, 0.36),
                         borderRadius: 2,
                         bgcolor: isReady
                           ? alpha(theme.palette.success.main, 0.075)
-                          : isFailed
+                          : isFailed || isCancelled
                           ? alpha(theme.palette.error.main, 0.055)
                           : alpha(theme.palette.warning.main, 0.07),
                         color: 'text.primary',
@@ -2649,6 +2816,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                             ? `${materialLabel[0].toUpperCase()}${materialLabel.slice(
                                 1,
                               )} generation failed`
+                            : isCancelled
+                            ? `${materialLabel[0].toUpperCase()}${materialLabel.slice(
+                                1,
+                              )} generation stopped`
                             : label}
                         </Typography>
                         <Typography
@@ -2672,7 +2843,27 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           sx={{ fontWeight: 900 }}
                         />
                       ) : null}
-                      {isFailed ? (
+                      {isGenerating ? (
+                        <Button
+                          size="small"
+                          type="button"
+                          variant="outlined"
+                          color="warning"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            stopGenerationDraft(draft)
+                          }}
+                          sx={{
+                            borderRadius: 999,
+                            textTransform: 'none',
+                            fontWeight: 900,
+                            flex: '0 0 auto',
+                          }}
+                        >
+                          Stop
+                        </Button>
+                      ) : null}
+                      {canRetry ? (
                         <Button
                           size="small"
                           type="button"
@@ -2752,7 +2943,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 onCollapse={returnToCreateHub}
                 autoCreateOnGenerate
                 autoRetrySignal={studyPathRetrySignals[draft.id] || 0}
+                autoCancelSignal={studyPathCancelSignals[draft.id] || 0}
                 openGeneratedInWorkspace={false}
+                initialPrompt={
+                  !draft.isPlaceholder &&
+                  draft.status !== 'ready' &&
+                  draft.title &&
+                  draft.title !== 'Study Path'
+                    ? draft.title
+                    : undefined
+                }
                 onClose={() =>
                   cancelDraftAndReturnToHub(draft.id, 'study-path')
                 }

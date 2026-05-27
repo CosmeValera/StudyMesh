@@ -74,6 +74,7 @@ interface CreateStudyPathModalProps {
   autoCreateOnGenerate?: boolean
   openGeneratedInWorkspace?: boolean
   autoRetrySignal?: number
+  autoCancelSignal?: number
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
   onDraftMetaChange?: (metadata: {
     title: string
@@ -136,7 +137,8 @@ const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
 }
 const CEREBRAS_STUDY_PATH_ESTIMATE_MS = 10 * 1000
 const BASIC_FALLBACK_STUDY_PATH_DELAY_MS = 10 * 1000
-const DEFAULT_STUDY_PATH_PROMPT = 'Study basic human anatomy focusing on organs and systems (cardiovascular, respiratory, digestive)'
+const DEFAULT_STUDY_PATH_PROMPT =
+  'Study basic human anatomy focusing on organs and systems (cardiovascular, respiratory, digestive)'
 
 const layoutModeForStudyPathArchetype = (
   archetype?: StudyPathLayoutArchetype,
@@ -539,6 +541,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   autoCreateOnGenerate = false,
   openGeneratedInWorkspace,
   autoRetrySignal = 0,
+  autoCancelSignal = 0,
   onStatusChange,
   onDraftMetaChange,
   initialPrompt,
@@ -573,6 +576,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const activeGenerationRef = useRef<AbortController | null>(null)
   const initializedProviderRef = useRef(false)
   const autoRetrySignalRef = useRef(autoRetrySignal)
+  const autoCancelSignalRef = useRef(autoCancelSignal)
   const debugTrace = combinedDebugTrace(draft)
 
   React.useEffect(() => {
@@ -905,6 +909,17 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       void generatePath()
     }
   }, [autoCreateOnGenerate, autoRetrySignal])
+
+  React.useEffect(() => {
+    if (autoCancelSignalRef.current === autoCancelSignal) {
+      return
+    }
+
+    autoCancelSignalRef.current = autoCancelSignal
+    if (isGenerating) {
+      cancelGeneration()
+    }
+  }, [autoCancelSignal, isGenerating])
 
   const buildPathPayload = (
     pathDraft: AiStudyPathDraft,
