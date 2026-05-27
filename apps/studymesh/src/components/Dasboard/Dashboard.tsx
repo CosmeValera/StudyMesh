@@ -1460,7 +1460,7 @@ const Dashboards = () => {
         updateDashboardChatMessages(currentDashboard, messages)
       }
       onClose={closeDashboardChatPanel}
-      showCloseButton
+      showCloseButton={!isMobileDashboardView}
     />
   )
 

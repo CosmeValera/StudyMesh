@@ -287,16 +287,27 @@ export const WorkspaceDesktopLayout = ({
           <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }} />
           <Box
             sx={{
-              width: '100%',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 0.65,
+              gap: 1.3,
               mt: 0.5,
             }}
           >
             {collapsedCreationActions}
           </Box>
+          <Typography
+            variant="caption"
+            sx={{
+              writingMode: 'vertical-rl',
+              fontWeight: 800,
+              letterSpacing: 0.4,
+              mt: 0.5,
+              userSelect: 'none',
+            }}
+          >
+            Creation
+          </Typography>
         </Box>
       )}
       {isStudioOpen && (
@@ -342,10 +353,7 @@ export const WorkspaceDesktopLayout = ({
           height: '100%',
           minHeight: 0,
           overflow: 'hidden',
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          border: 1,
-          borderColor: 'divider',
+          bgcolor: 'background.default',
         }}
       >
         {children}

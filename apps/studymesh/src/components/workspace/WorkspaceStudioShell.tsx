@@ -18,7 +18,6 @@ import CloseIcon from '@mui/icons-material/Close'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import AddIcon from '@mui/icons-material/Add'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
@@ -1758,20 +1757,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               From: {activeMaterial.sourceLabel}
             </Typography>
           </Box>
-          <IconButton
-            aria-label="Close Create panel"
-            onClick={closeStudio}
-            size="small"
-            sx={{
-              display: isMobile ? 'inline-flex' : 'none',
-              border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.default',
-              flex: '0 0 auto',
-            }}
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
         </Stack>
 
         <Stack direction="row" gap={1} flexWrap="wrap">
@@ -1830,26 +1815,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       }}
     >
       <Stack spacing={2.5}>
-        <Box
-          sx={{
-            display: isMobile ? 'flex' : 'none',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <IconButton
-            aria-label="Close Create panel"
-            onClick={closeStudio}
-            size="small"
-            sx={{
-              border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.default',
-            }}
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-        </Box>
-
         {!quickOptionsOpen ? (
           <>
             <Paper
@@ -2935,7 +2900,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               <CreateStudyPathModal
                 open
                 presentation="embedded"
-                onCollapse={returnToCreateHub}
+                onCollapse={isMobile ? undefined : returnToCreateHub}
                 autoCreateOnGenerate
                 autoRetrySignal={studyPathRetrySignals[draft.id] || 0}
                 autoCancelSignal={studyPathCancelSignals[draft.id] || 0}
