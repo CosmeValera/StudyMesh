@@ -279,7 +279,7 @@ export const WorkspaceDesktopLayout = ({
                   bgcolor: 'primary.main',
                   color: 'primary.contrastText',
                 },
-                marginTop: 1
+                marginTop: 0.3
               }}
             >
               <ViewSidebarIcon fontSize="small" />

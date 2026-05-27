@@ -1750,7 +1750,7 @@ const Dashboards = () => {
                     display: 'grid',
                     placeItems: 'center',
                     flex: '0 0 auto',
-                    marginTop: 1
+                    marginTop: 0.3
                   }}
                 >
                   <ChatBubbleOutlineIcon fontSize="small" />
