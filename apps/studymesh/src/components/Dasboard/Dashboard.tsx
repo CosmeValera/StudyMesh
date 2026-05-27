@@ -250,7 +250,7 @@ const Dashboards = () => {
     window.addEventListener('mouseup', stopResize)
   }
 
-  const dashboardChatRailWidth = 66
+  const dashboardChatRailWidth = 58
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const currentDashboard = openDashboards[selectedDashboard]

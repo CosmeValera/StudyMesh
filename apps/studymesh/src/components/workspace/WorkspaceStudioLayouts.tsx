@@ -296,6 +296,7 @@ export const WorkspaceDesktopLayout = ({
           >
             {collapsedCreationActions}
           </Box>
+          <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }} />
           <Typography
             variant="caption"
             sx={{
