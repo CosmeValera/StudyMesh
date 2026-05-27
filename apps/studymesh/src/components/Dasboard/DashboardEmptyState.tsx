@@ -109,14 +109,11 @@ const DashboardEmptyState = ({
         sx={{
           width: '100%',
           boxSizing: 'border-box',
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(2, 760px)',
-          },
-          gap: { xs: 1.25, sm: 1.5, lg: 2 },
-          alignItems: 'stretch',
+          display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'center',
+          alignItems: 'stretch',
+          gap: { xs: 1.25, sm: 1.5, lg: 2 },
         }}
       >
         <Paper
@@ -130,8 +127,9 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1.5, md: 2 },
-            minWidth: 0,
             boxSizing: 'border-box',
+            width: 760,
+            flex: '0 0 760px',
             boxShadow: (theme) =>
               theme.palette.mode === 'dark'
                 ? '0 20px 56px rgba(0,0,0,0.28)'
@@ -296,8 +294,9 @@ const DashboardEmptyState = ({
             display: 'flex',
             flexDirection: 'column',
             gap: { xs: 1.25, md: 1.75 },
-            minWidth: 0,
             boxSizing: 'border-box',
+            width: 760,
+            flex: '0 0 760px',
           }}
         >
           <Stack direction="row" alignItems="center" spacing={0.75}>
