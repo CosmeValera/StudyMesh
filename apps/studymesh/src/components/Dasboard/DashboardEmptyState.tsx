@@ -259,10 +259,11 @@ const DashboardEmptyState = ({
               disabled={!isAdmin}
               sx={{
                 justifyContent: 'flex-start',
-                minHeight: 48,
+                minHeight: 42,
                 borderRadius: 2,
                 textTransform: 'none',
-                fontWeight: 900,
+                fontWeight: 800,
+                fontSize: '0.8125rem',
               }}
             >
               Upload material
@@ -274,10 +275,11 @@ const DashboardEmptyState = ({
               disabled={!isAdmin}
               sx={{
                 justifyContent: 'flex-start',
-                minHeight: 48,
+                minHeight: 42,
                 borderRadius: 2,
                 textTransform: 'none',
-                fontWeight: 900,
+                fontWeight: 800,
+                fontSize: '0.8125rem',
                 bgcolor: 'background.paper',
               }}
             >
@@ -295,19 +297,10 @@ const DashboardEmptyState = ({
               bgcolor: 'background.default',
             }}
           >
-            <Stack spacing={1.25}>
-              <Box>
-                <Typography variant="subtitle1" fontWeight={900}>
-                  Fast creation from material
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.3 }}
-                >
-                  This dashboard is empty, so add sources in Creation first.
-                </Typography>
-              </Box>
+            <Stack spacing={0.75}>
+              <Typography variant="subtitle2" fontWeight={900} sx={{ fontSize: '0.8125rem' }}>
+                Fast creation
+              </Typography>
               <Box
                 sx={{
                   display: 'grid',
@@ -327,8 +320,8 @@ const DashboardEmptyState = ({
                     onClick={() => onQuickCreate(action.intent)}
                     disabled={!isAdmin}
                     sx={{
-                      minHeight: 92,
-                      p: 1.25,
+                      minHeight: 72,
+                      p: 1,
                       borderRadius: 2,
                       border: 1,
                       borderColor: alpha(action.accent, 0.24),
@@ -339,7 +332,7 @@ const DashboardEmptyState = ({
                       display: 'grid',
                       gridTemplateColumns: '1fr auto',
                       alignItems: 'center',
-                      gap: 1,
+                      gap: 0.75,
                       '&:hover': {
                         borderColor: isAdmin
                           ? alpha(action.accent, 0.72)
@@ -357,12 +350,12 @@ const DashboardEmptyState = ({
                         'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
                     }}
                   >
-                    <Stack spacing={1} sx={{ minWidth: 0 }}>
+                    <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                       <Box
                         sx={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 1.5,
+                          width: 28,
+                          height: 28,
+                          borderRadius: 1,
                           display: 'grid',
                           placeItems: 'center',
                           bgcolor: alpha(action.accent, 0.14),
@@ -371,7 +364,7 @@ const DashboardEmptyState = ({
                       >
                         {action.icon}
                       </Box>
-                      <Typography variant="subtitle2" fontWeight={900}>
+                      <Typography variant="body2" fontWeight={900} sx={{ fontSize: '0.75rem' }}>
                         {action.label}
                       </Typography>
                     </Stack>
@@ -399,12 +392,12 @@ const DashboardEmptyState = ({
             boxSizing: 'border-box',
           }}
         >
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack direction="row" alignItems="center" spacing={0.75}>
             <Box
               sx={{
-                width: 38,
-                height: 38,
-                borderRadius: 2,
+                width: 32,
+                height: 32,
+                borderRadius: 1.5,
                 display: 'grid',
                 placeItems: 'center',
                 bgcolor: 'background.default',
@@ -413,29 +406,22 @@ const DashboardEmptyState = ({
                 borderColor: 'divider',
               }}
             >
-              <FolderOpenIcon />
+              <FolderOpenIcon sx={{ fontSize: 18 }} />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" fontWeight={900}>
+              <Typography variant="h6" fontWeight={900} sx={{ fontSize: '1rem' }}>
                 Open study material
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.25 }}
-              >
-                Continue saved Study Paths, packs, or dashboards.
               </Typography>
             </Box>
           </Stack>
 
           <Box sx={{ flex: 1, minHeight: 0 }}>
             <Typography
-              variant="subtitle2"
+              variant="caption"
               fontWeight={800}
-              sx={{ mb: 1, color: 'text.secondary' }}
+              sx={{ mb: 0.75, color: 'text.secondary', fontSize: '0.6875rem' }}
             >
-              Recent folders
+              Recent
             </Typography>
             {featuredFolders.length > 0 ? (
               <Stack spacing={1}>
@@ -485,6 +471,7 @@ const DashboardEmptyState = ({
                             fontWeight: 900,
                             textTransform: 'uppercase',
                             lineHeight: 1.2,
+                            fontSize: '0.625rem',
                           }}
                         >
                           {folderName}
@@ -493,6 +480,7 @@ const DashboardEmptyState = ({
                           variant="body2"
                           fontWeight={800}
                           sx={{
+                            fontSize: '0.8125rem',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -544,6 +532,7 @@ const DashboardEmptyState = ({
               bgcolor: 'background.default',
               borderRadius: 2,
               fontWeight: 800,
+              fontSize: '0.8125rem',
             }}
           >
             {openExistingLabel}
