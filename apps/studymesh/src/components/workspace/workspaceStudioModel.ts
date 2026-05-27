@@ -39,6 +39,11 @@ export interface GenerationDraft {
   acknowledgedAt?: string
   openedAt?: string
   aiProvider?: string
+  retrySourceText?: string
+  retryTitle?: string
+  retrySourceMode?: 'dashboard' | 'sources'
+  retryResourceType?: StudyMaterialResourceType
+  retryDifficulty?: string
   generatedDashboards?: Array<{
     id: string
     name: string

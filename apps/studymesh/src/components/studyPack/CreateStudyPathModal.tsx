@@ -71,6 +71,7 @@ interface CreateStudyPathModalProps {
   onContinueInBackground?: () => void
   autoCreateOnGenerate?: boolean
   openGeneratedInWorkspace?: boolean
+  autoRetrySignal?: number
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
   onDraftMetaChange?: (metadata: {
     title: string
@@ -131,6 +132,7 @@ const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
   deep: 90 * 1000,
 }
 const BASIC_FALLBACK_STUDY_PATH_DELAY_MS = 10 * 1000
+const DEFAULT_STUDY_PATH_PROMPT = 'Learn French level B2'
 
 interface GeminiTimedProgress {
   startedAt: number
@@ -519,6 +521,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onContinueInBackground,
   autoCreateOnGenerate = false,
   openGeneratedInWorkspace,
+  autoRetrySignal = 0,
   onStatusChange,
   onDraftMetaChange,
   initialPrompt,
@@ -528,7 +531,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
 }) => {
   const [step, setStep] = useState<'prompt' | 'review'>('prompt')
   const [sourceMode, setSourceMode] = useState<'prompt' | 'dashboard'>('prompt')
-  const [prompt, setPrompt] = useState(initialPrompt || '')
+  const [prompt, setPrompt] = useState(
+    initialPrompt || DEFAULT_STUDY_PATH_PROMPT,
+  )
   const [aiProvider, setAiProvider] = useState<StudyPackAiProvider>('basic')
   const [generationAmount, setGenerationAmount] =
     useState<GenerationAmount>('average')
@@ -550,6 +555,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const [error, setError] = useState('')
   const activeGenerationRef = useRef<AbortController | null>(null)
   const initializedProviderRef = useRef(false)
+  const autoRetrySignalRef = useRef(autoRetrySignal)
   const debugTrace = combinedDebugTrace(draft)
 
   React.useEffect(() => {
@@ -661,7 +667,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   const reset = () => {
     setStep('prompt')
     setSourceMode('prompt')
-    setPrompt(initialPrompt || '')
+    setPrompt(initialPrompt || DEFAULT_STUDY_PATH_PROMPT)
     setGenerationAmount(aiProvider === 'local' ? 'superSmall' : 'average')
     setAdvancedOpen(false)
     setMustInclude('')
@@ -852,6 +858,17 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     setError('')
     onStatusChange?.('idle')
   }
+
+  React.useEffect(() => {
+    if (autoRetrySignalRef.current === autoRetrySignal) {
+      return
+    }
+
+    autoRetrySignalRef.current = autoRetrySignal
+    if (autoCreateOnGenerate) {
+      void generatePath()
+    }
+  }, [autoCreateOnGenerate, autoRetrySignal])
 
   const buildPathPayload = (
     pathDraft: AiStudyPathDraft,

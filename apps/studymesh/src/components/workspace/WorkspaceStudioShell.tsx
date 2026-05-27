@@ -48,6 +48,7 @@ import {
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
+  StudyPackAiProvider,
 } from '../../studyPack/ai'
 import {
   extractTextFromPdf,
@@ -336,6 +337,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     useState<QuickSourceMode>('dashboard')
   const [quickSourceStatus, setQuickSourceStatus] = useState('')
   const [queueClockMs, setQueueClockMs] = useState(() => Date.now())
+  const [studyPathRetrySignals, setStudyPathRetrySignals] = useState<
+    Record<string, number>
+  >({})
   const [pendingQuickSourceFocus, setPendingQuickSourceFocus] =
     useState<QuickSourceFocus | null>(null)
   const [fullScreenWidgetPayload, setFullScreenWidgetPayload] = useState<{
@@ -798,6 +802,49 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  const retryGenerationDraft = (draft: GenerationDraft) => {
+    if (draft.status !== 'failed') {
+      return
+    }
+
+    if (
+      draft.flow === 'from-notes' &&
+      draft.retryResourceType &&
+      draft.retrySourceText &&
+      draft.retryTitle &&
+      draft.retrySourceMode
+    ) {
+      void runDirectStudyPackCreate(
+        draft.retryResourceType,
+        draft.retrySourceText,
+        draft.retryTitle,
+        draft.retrySourceMode,
+        {
+          draftId: draft.id,
+          detailLevel: draft.detailLevel as StudyMaterialDetailLevel,
+          difficulty: draft.retryDifficulty,
+          provider: draft.aiProvider as StudyPackAiProvider,
+        },
+      )
+      return
+    }
+
+    if (draft.flow === 'study-path') {
+      updateDraft(draft.id, {
+        status: 'generating',
+        error: undefined,
+        acknowledgedAt: undefined,
+        openedAt: undefined,
+        completedAt: undefined,
+        generatedDashboards: undefined,
+      })
+      setStudyPathRetrySignals((current) => ({
+        ...current,
+        [draft.id]: (current[draft.id] || 0) + 1,
+      }))
+    }
+  }
+
   const closeFullScreenWidgetEditor = () => {
     setFullScreenWidgetPayload(null)
     resetOrCloseStudio()
@@ -992,30 +1039,64 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     sourceText: string,
     title: string,
     sourceMode: QuickSourceMode,
+    retryOptions: {
+      draftId?: string
+      detailLevel?: StudyMaterialDetailLevel
+      difficulty?: string
+      provider?: StudyPackAiProvider
+    } = {},
   ) => {
+    const effectiveDetailLevel = retryOptions.detailLevel || quickDetailLevel
+    const effectiveDifficulty = retryOptions.difficulty || quickDifficulty
+    const effectiveProvider = retryOptions.provider || aiProvider
     const draft = createGenerationDraft('from-notes', {
       quickCreate: true,
       title,
       inputSummary:
         sourceMode === 'dashboard' ? 'current dashboard' : 'sources',
       selectedResourceType: resourceType,
-      detailLevel: quickDetailLevel,
-      aiProvider,
+      detailLevel: effectiveDetailLevel,
+      aiProvider: effectiveProvider,
+      retrySourceText: sourceText,
+      retryTitle: title,
+      retrySourceMode: sourceMode,
+      retryResourceType: resourceType,
+      retryDifficulty: effectiveDifficulty,
     })
+    const draftId = retryOptions.draftId || draft.id
+    const generationDraft = { ...draft, id: draftId, status: 'generating' }
 
     setActiveFlow('hub')
     setQuickOptionsOpen(false)
     setSelectedIntent(null)
     setQuickSourceStatus('')
-    setGenerationDrafts((current) => [
-      ...current.filter(
-        (existingDraft) =>
-          existingDraft.flow !== 'from-notes' ||
-          existingDraft.status !== 'editing',
-      ),
-      { ...draft, status: 'generating' },
-    ])
-    setActiveDraftByFlow((current) => ({ ...current, 'from-notes': draft.id }))
+    setGenerationDrafts((current) => {
+      if (retryOptions.draftId) {
+        return current.map((existingDraft) =>
+          existingDraft.id === retryOptions.draftId
+            ? {
+                ...existingDraft,
+                ...generationDraft,
+                error: undefined,
+                acknowledgedAt: undefined,
+                openedAt: undefined,
+                completedAt: undefined,
+                generatedDashboards: undefined,
+              }
+            : existingDraft,
+        )
+      }
+
+      return [
+        ...current.filter(
+          (existingDraft) =>
+            existingDraft.flow !== 'from-notes' ||
+            existingDraft.status !== 'editing',
+        ),
+        generationDraft,
+      ]
+    })
+    setActiveDraftByFlow((current) => ({ ...current, 'from-notes': draftId }))
     dispatchWorkspaceCreationStatus({
       task: 'from-notes',
       state: 'running',
@@ -1025,18 +1106,18 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     try {
       const credentials = resolveStudyPackAiCredentials()
       const generated = await generateStudyPackWithAi({
-        provider: aiProvider,
+        provider: effectiveProvider,
         apiToken: credentials.apiToken,
         model: credentials.model,
         title,
         rawNotes: sourceText,
         packId: getPackId(title),
         generationTargets: quickCreateTargets[resourceType],
-        generationAmount: quickCreateDetailToAmount[quickDetailLevel],
+        generationAmount: quickCreateDetailToAmount[effectiveDetailLevel],
         resourceType,
-        detailLevel: quickDetailLevel,
+        detailLevel: effectiveDetailLevel,
         quizQuestionStyle:
-          resourceType === 'quiz' && quickDifficulty === 'challenge'
+          resourceType === 'quiz' && effectiveDifficulty === 'challenge'
             ? 'advanced'
             : 'mixed',
         promptMode: false,
@@ -1049,12 +1130,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         title: nextTitle,
         rawNotes: sourceText,
         generationTargets: quickCreateTargets[resourceType],
-        generationAmount: quickCreateDetailToAmount[quickDetailLevel],
+        generationAmount: quickCreateDetailToAmount[effectiveDetailLevel],
       })
       const objects = getReviewableObjects(
         augmented.objects,
         resourceType,
-        quickDetailLevel,
+        effectiveDetailLevel,
       )
 
       if (objects.length === 0) {
@@ -1099,7 +1180,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         ],
         openInWorkspace: false,
       })
-      updateDraft(draft.id, {
+      updateDraft(draftId, {
         title: nextTitle,
         status: 'ready',
         completedAt: new Date().toISOString(),
@@ -1115,7 +1196,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         error instanceof Error
           ? error.message
           : `Could not create ${quickCreateLabels[resourceType]}.`
-      updateDraft(draft.id, { status: 'failed', error: message })
+      updateDraft(draftId, { status: 'failed', error: message })
       dispatchWorkspaceCreationStatus({
         task: 'from-notes',
         state: 'error',
@@ -2234,6 +2315,21 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           sx={{ fontWeight: 900 }}
                         />
                       ) : null}
+                      {isFailed ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => retryGenerationDraft(draft)}
+                          sx={{
+                            borderRadius: 999,
+                            textTransform: 'none',
+                            fontWeight: 900,
+                            flex: '0 0 auto',
+                          }}
+                        >
+                          Retry
+                        </Button>
+                      ) : null}
                     </Paper>
                   )
                 })}
@@ -2294,6 +2390,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 presentation="embedded"
                 onCollapse={returnToCreateHub}
                 autoCreateOnGenerate
+                autoRetrySignal={studyPathRetrySignals[draft.id] || 0}
                 openGeneratedInWorkspace={false}
                 onClose={() =>
                   cancelDraftAndReturnToHub(draft.id, 'study-path')
