@@ -590,6 +590,13 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     }
 
     if (error) {
+      if (
+        autoCreateOnGenerate &&
+        autoRetrySignalRef.current !== autoRetrySignal
+      ) {
+        return
+      }
+
       onStatusChange?.('error', error)
       return
     }
@@ -599,7 +606,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     }
 
     onStatusChange?.('idle')
-  }, [autoCreateOnGenerate, draft, error, isGenerating, onStatusChange, step])
+  }, [
+    autoCreateOnGenerate,
+    autoRetrySignal,
+    draft,
+    error,
+    isGenerating,
+    onStatusChange,
+    step,
+  ])
 
   const cancelActiveGeneration = () => {
     activeGenerationRef.current?.abort()

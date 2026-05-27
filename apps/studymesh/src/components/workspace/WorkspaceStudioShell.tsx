@@ -112,6 +112,21 @@ const quickCreateIcons: Record<StudyMaterialResourceType, React.ReactNode> = {
 
 type QuickSourceMode = 'dashboard' | 'sources'
 
+const GENERATION_RETRY_STORE_KEY = 'studymesh-generation-retry-snapshots'
+
+interface FromNotesRetrySnapshot {
+  flow: 'from-notes'
+  resourceType: StudyMaterialResourceType
+  sourceText: string
+  title: string
+  sourceMode: QuickSourceMode
+  detailLevel: StudyMaterialDetailLevel
+  difficulty: string
+  provider: StudyPackAiProvider
+}
+
+type GenerationRetrySnapshot = FromNotesRetrySnapshot
+
 const statusMarkerLabels: Record<
   WorkspaceCreationTaskState | 'editing',
   string
@@ -257,6 +272,54 @@ const estimateQueueDuration = (draft: GenerationDraft) => {
 
   return ''
 }
+
+const readGenerationRetrySnapshots = () => {
+  try {
+    const stored = window.localStorage.getItem(GENERATION_RETRY_STORE_KEY)
+    return stored
+      ? (JSON.parse(stored) as Record<string, GenerationRetrySnapshot>)
+      : {}
+  } catch (error) {
+    console.error('Failed to read generation retry snapshots', error)
+    return {}
+  }
+}
+
+const writeGenerationRetrySnapshots = (
+  snapshots: Record<string, GenerationRetrySnapshot>,
+) => {
+  try {
+    window.localStorage.setItem(
+      GENERATION_RETRY_STORE_KEY,
+      JSON.stringify(snapshots),
+    )
+  } catch (error) {
+    console.error('Failed to write generation retry snapshots', error)
+  }
+}
+
+const saveGenerationRetrySnapshot = (
+  draftId: string,
+  snapshot: GenerationRetrySnapshot,
+) => {
+  writeGenerationRetrySnapshots({
+    ...readGenerationRetrySnapshots(),
+    [draftId]: snapshot,
+  })
+}
+
+const removeGenerationRetrySnapshot = (draftId: string) => {
+  const snapshots = readGenerationRetrySnapshots()
+  if (!snapshots[draftId]) {
+    return
+  }
+
+  const { [draftId]: _removed, ...remaining } = snapshots
+  writeGenerationRetrySnapshots(remaining)
+}
+
+const getGenerationRetrySnapshot = (draftId: string) =>
+  readGenerationRetrySnapshots()[draftId]
 
 const formatDraftTitle = (draft: GenerationDraft) => {
   const base = draft.title.trim()
@@ -747,6 +810,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const clearGenerationQueue = () => {
+    queueJobs
+      .filter((draft) => draft.status !== 'generating')
+      .forEach((draft) => removeGenerationRetrySnapshot(draft.id))
     setGenerationDrafts((current) =>
       current.filter(
         (draft) =>
@@ -807,25 +873,50 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    if (
-      draft.flow === 'from-notes' &&
-      draft.retryResourceType &&
-      draft.retrySourceText &&
-      draft.retryTitle &&
-      draft.retrySourceMode
-    ) {
+    const storedSnapshot = getGenerationRetrySnapshot(draft.id)
+    const fromNotesRetry =
+      storedSnapshot?.flow === 'from-notes'
+        ? storedSnapshot
+        : draft.flow === 'from-notes' &&
+            draft.retryResourceType &&
+            draft.retrySourceText &&
+            draft.retryTitle &&
+            draft.retrySourceMode
+          ? {
+              flow: 'from-notes' as const,
+              resourceType: draft.retryResourceType,
+              sourceText: draft.retrySourceText,
+              title: draft.retryTitle,
+              sourceMode: draft.retrySourceMode,
+              detailLevel:
+                (draft.detailLevel as StudyMaterialDetailLevel) ||
+                quickDetailLevel,
+              difficulty: draft.retryDifficulty || quickDifficulty,
+              provider: (draft.aiProvider as StudyPackAiProvider) || aiProvider,
+            }
+          : null
+
+    if (draft.flow === 'from-notes' && fromNotesRetry) {
       void runDirectStudyPackCreate(
-        draft.retryResourceType,
-        draft.retrySourceText,
-        draft.retryTitle,
-        draft.retrySourceMode,
+        fromNotesRetry.resourceType,
+        fromNotesRetry.sourceText,
+        fromNotesRetry.title,
+        fromNotesRetry.sourceMode,
         {
           draftId: draft.id,
-          detailLevel: draft.detailLevel as StudyMaterialDetailLevel,
-          difficulty: draft.retryDifficulty,
-          provider: draft.aiProvider as StudyPackAiProvider,
+          detailLevel: fromNotesRetry.detailLevel,
+          difficulty: fromNotesRetry.difficulty,
+          provider: fromNotesRetry.provider,
         },
       )
+      return
+    }
+
+    if (draft.flow === 'from-notes') {
+      updateDraft(draft.id, {
+        error:
+          'Retry data is missing for this older failed job. Start it again from Creation once; future failed jobs keep a retry snapshot.',
+      })
       return
     }
 
@@ -1065,6 +1156,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     })
     const draftId = retryOptions.draftId || draft.id
     const generationDraft = { ...draft, id: draftId, status: 'generating' }
+    saveGenerationRetrySnapshot(draftId, {
+      flow: 'from-notes',
+      resourceType,
+      sourceText,
+      title,
+      sourceMode,
+      detailLevel: effectiveDetailLevel,
+      difficulty: effectiveDifficulty,
+      provider: effectiveProvider,
+    })
 
     setActiveFlow('hub')
     setQuickOptionsOpen(false)
@@ -1186,6 +1287,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         completedAt: new Date().toISOString(),
         generatedDashboards: savedDashboards,
       })
+      removeGenerationRetrySnapshot(draftId)
       dispatchWorkspaceCreationStatus({
         task: 'from-notes',
         state: 'complete',
@@ -2318,8 +2420,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       {isFailed ? (
                         <Button
                           size="small"
+                          type="button"
                           variant="outlined"
-                          onClick={() => retryGenerationDraft(draft)}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            retryGenerationDraft(draft)
+                          }}
                           sx={{
                             borderRadius: 999,
                             textTransform: 'none',
