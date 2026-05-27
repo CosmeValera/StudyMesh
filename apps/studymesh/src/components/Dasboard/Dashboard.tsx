@@ -1543,6 +1543,10 @@ const Dashboards = () => {
           minHeight: 0,
           overflow: 'hidden',
           mr: isMobileDashboardView ? 0 : '8px',
+          border: isMobileDashboardView ? 0 : 1,
+          borderColor: 'divider',
+          borderRadius: isMobileDashboardView ? 0 : 2,
+          bgcolor: 'background.paper',
         }}
       >
         <Tabs
@@ -1681,7 +1685,7 @@ const Dashboards = () => {
             flex: '0 0 auto',
             minHeight: 0,
             overflow: 'hidden',
-            p: '8px 8px 8px 0',
+            p: '0',
             boxSizing: 'border-box',
             bgcolor: 'background.default',
             position: 'relative',
