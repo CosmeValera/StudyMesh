@@ -111,16 +111,26 @@ const DashboardEmptyState = ({
           maxWidth: 1544,
           mx: 'auto',
           boxSizing: 'border-box',
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            lg: 'repeat(2, minmax(0, 760px))',
-          },
-          gap: { xs: 1.25, sm: 1.5, lg: 2 },
-          alignItems: 'center',
+          display: 'flex',
           justifyContent: 'center',
+          alignItems: 'stretch',
+          gap: { xs: 1.25, sm: 1.5, lg: 2 },
         }}
       >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              lg: '760px 760px',
+            },
+            gap: { xs: 1.25, sm: 1.5, lg: 2 },
+            alignItems: 'stretch',
+            width: '100%',
+            maxWidth: { lg: '100%' },
+            boxSizing: 'border-box',
+          }}
+        >
         <Paper
           elevation={0}
           sx={{
