@@ -135,6 +135,9 @@ const DashboardEmptyState = ({
             gap: { xs: 1.5, md: 2 },
             minWidth: 0,
             boxSizing: 'border-box',
+            width: '100%',
+            maxWidth: 760,
+            mx: 'auto',
             boxShadow: (theme) =>
               theme.palette.mode === 'dark'
                 ? '0 20px 56px rgba(0,0,0,0.28)'
@@ -301,6 +304,9 @@ const DashboardEmptyState = ({
             gap: { xs: 1.25, md: 1.75 },
             minWidth: 0,
             boxSizing: 'border-box',
+            width: '100%',
+            maxWidth: 760,
+            mx: 'auto',
           }}
         >
           <Stack direction="row" alignItems="center" spacing={0.75}>
