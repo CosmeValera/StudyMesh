@@ -97,7 +97,38 @@ export const WorkspaceMobileLayout = ({
                   : '0 18px 42px rgba(16,24,40,0.10)',
             }}
           >
-            {studioContent}
+            <Box
+              sx={{
+                height: '100%',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <Box
+                sx={{
+                  height: 48,
+                  flex: '0 0 auto',
+                  px: 1.25,
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={900}
+                  noWrap
+                  sx={{ color: 'text.primary' }}
+                >
+                  Creation
+                </Typography>
+              </Box>
+              <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                {studioContent}
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Slide>
