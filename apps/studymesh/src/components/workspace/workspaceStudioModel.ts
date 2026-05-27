@@ -38,6 +38,7 @@ export interface GenerationDraft {
   completedAt?: string
   acknowledgedAt?: string
   openedAt?: string
+  aiProvider?: string
   generatedDashboards?: Array<{
     id: string
     name: string

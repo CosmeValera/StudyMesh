@@ -213,6 +213,50 @@ const generationMaterialLabel = (draft: GenerationDraft) => {
   return 'material'
 }
 
+const formatQueueDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  if (minutes <= 0) {
+    return `${Math.max(1, seconds)}s`
+  }
+
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
+}
+
+const estimateQueueDuration = (draft: GenerationDraft) => {
+  if (draft.aiProvider === 'local') {
+    if (draft.flow === 'study-path') {
+      if (draft.detailLevel === 'superSmall') {
+        return 'est. 12-15m'
+      }
+
+      if (draft.detailLevel === 'compact') {
+        return 'est. 14-17m'
+      }
+
+      return 'est. 15-20m'
+    }
+
+    return 'est. 1-3m'
+  }
+
+  if (draft.aiProvider === 'gemini') {
+    if (draft.detailLevel === 'long' || draft.detailLevel === 'deep') {
+      return 'est. 1-2m'
+    }
+
+    return 'est. 30-60s'
+  }
+
+  if (draft.aiProvider === 'basic') {
+    return 'est. seconds'
+  }
+
+  return ''
+}
+
 const formatDraftTitle = (draft: GenerationDraft) => {
   const base = draft.title.trim()
   const shortTitle = base.length > 46 ? `${base.slice(0, 45).trim()}...` : base
@@ -291,6 +335,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [quickSourceMode, setQuickSourceMode] =
     useState<QuickSourceMode>('dashboard')
   const [quickSourceStatus, setQuickSourceStatus] = useState('')
+  const [queueClockMs, setQueueClockMs] = useState(() => Date.now())
   const [pendingQuickSourceFocus, setPendingQuickSourceFocus] =
     useState<QuickSourceFocus | null>(null)
   const [fullScreenWidgetPayload, setFullScreenWidgetPayload] = useState<{
@@ -386,7 +431,20 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   useEffect(() => {
+    if (!generationDrafts.some((draft) => draft.status === 'generating')) {
+      return
+    }
+
+    const intervalId = window.setInterval(
+      () => setQueueClockMs(Date.now()),
+      1000,
+    )
+    return () => window.clearInterval(intervalId)
+  }, [generationDrafts])
+
+  useEffect(() => {
     const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) => {
+      acknowledgeQueueAttention()
       createNewDraft(flow)
       if (isMobile) {
         setMobileSection('creation')
@@ -395,6 +453,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     const handleOpenCreateHub = (event: Event) => {
       const customEvent = event as CustomEvent<OpenCreateHubDetail>
       const detail = customEvent.detail || {}
+      acknowledgeQueueAttention()
       setSelectedIntent(detail.intent || null)
       if (detail.openQuickOptions) {
         setQuickOptionsOpen(true)
@@ -604,6 +663,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           return {
             ...draft,
             status: nextStatus,
+            aiProvider: state === 'running' ? aiProvider : draft.aiProvider,
             error: state === 'error' ? message : undefined,
           }
         }),
@@ -666,7 +726,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           ? `${queueFailedCount} generation${queueFailedCount === 1 ? '' : 's'} failed`
           : 'Creation queue'
 
-  const openGenerationQueue = () => {
+  const acknowledgeQueueAttention = () => {
     const acknowledgedAt = new Date().toISOString()
     setGenerationDrafts((current) =>
       current.map((draft) =>
@@ -676,6 +736,21 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           : draft,
       ),
     )
+  }
+
+  const clearGenerationQueue = () => {
+    setGenerationDrafts((current) =>
+      current.filter(
+        (draft) =>
+          draft.isPlaceholder ||
+          draft.status === 'editing' ||
+          draft.status === 'generating',
+      ),
+    )
+  }
+
+  const openGenerationQueue = () => {
+    acknowledgeQueueAttention()
     setSelectedIntent(null)
     setQuickOptionsOpen(false)
     setActiveFlow('hub')
@@ -921,6 +996,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         sourceMode === 'dashboard' ? 'current dashboard' : 'sources',
       selectedResourceType: resourceType,
       detailLevel: quickDetailLevel,
+      aiProvider,
     })
 
     setActiveFlow('hub')
@@ -1993,11 +2069,29 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 <Typography variant="subtitle2" fontWeight={900}>
                   Generation queue
                 </Typography>
-                <Chip
-                  size="small"
-                  label={`${queueJobs.length} job${queueJobs.length === 1 ? '' : 's'}`}
-                  sx={{ fontWeight: 800 }}
-                />
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Chip
+                    size="small"
+                    label={`${queueJobs.length} job${queueJobs.length === 1 ? '' : 's'}`}
+                    sx={{ fontWeight: 800 }}
+                  />
+                  <Button
+                    size="small"
+                    onClick={clearGenerationQueue}
+                    disabled={
+                      !queueJobs.some((draft) => draft.status !== 'generating')
+                    }
+                    sx={{
+                      minWidth: 0,
+                      px: 1,
+                      borderRadius: 999,
+                      textTransform: 'none',
+                      fontWeight: 800,
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </Stack>
               </Stack>
               <Stack spacing={0.75}>
                 {sortedQueueJobs.map((draft) => {
@@ -2006,6 +2100,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const isFailed = draft.status === 'failed'
                   const opened = Boolean(draft.openedAt)
                   const materialLabel = generationMaterialLabel(draft)
+                  const elapsed =
+                    isGenerating &&
+                    formatQueueDuration(
+                      queueClockMs - new Date(draft.createdAt).getTime(),
+                    )
+                  const estimate = isGenerating
+                    ? estimateQueueDuration(draft)
+                    : ''
                   const label =
                     isGenerating && draft.flow === 'study-path'
                       ? 'Creating study path...'
@@ -2021,7 +2123,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       ? opened
                         ? 'Opened'
                         : 'Ready - Open'
-                      : draft.inputSummary || 'based on source'
+                      : [
+                          draft.inputSummary || 'based on source',
+                          elapsed ? `${elapsed} elapsed` : '',
+                          estimate,
+                        ]
+                          .filter(Boolean)
+                          .join(' - ')
                   const statusIcon = isFailed ? (
                     <ErrorOutlineIcon fontSize="small" color="error" />
                   ) : isReady ? (
@@ -2210,6 +2318,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     title: metadata.title,
                     inputSummary: metadata.inputSummary,
                     detailLevel: metadata.detailLevel,
+                    aiProvider,
                   })
                 }
               />
@@ -2293,6 +2402,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const openCreateHub = () => {
     if (isMobile && isStudioOpen && activeFlow === 'hub') {
+      acknowledgeQueueAttention()
       setMobileSection('creation')
       return
     }
@@ -2302,6 +2412,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
+    acknowledgeQueueAttention()
     setSelectedIntent(null)
     setActiveFlow('hub')
     setIsStudioOpen(true)
@@ -2485,42 +2596,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         }),
       }}
     >
-      {isStudioOpen && (
-        <Tooltip title="Create" placement="right">
-          <Box
-            component="button"
-            type="button"
-            aria-label="Create"
-            onClick={openCreateHub}
-            sx={{
-              width: isMobile ? 34 : 34,
-              height: isMobile ? 82 : 82,
-              border: 0,
-              borderRadius: '0 20px 20px 0',
-              bgcolor:
-                activeFlow === 'hub' && isStudioOpen
-                  ? 'primary.main'
-                  : 'background.paper',
-              color:
-                activeFlow === 'hub' && isStudioOpen
-                  ? 'primary.contrastText'
-                  : 'primary.main',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow:
-                theme.palette.mode === 'dark'
-                  ? '0 12px 32px rgba(0,0,0,0.42)'
-                  : '0 12px 30px rgba(16,24,40,0.18)',
-              outline: 1,
-              outlineColor: 'divider',
-            }}
-          >
-            <AddIcon fontSize="small" />
-          </Box>
-        </Tooltip>
-      )}
       {hasQueueMarker ? (
         <Tooltip
           title={`${queueMarkerLabel}. Click to view queue.`}
