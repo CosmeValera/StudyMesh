@@ -279,12 +279,19 @@ export const WorkspaceDesktopLayout = ({
                   bgcolor: 'primary.main',
                   color: 'primary.contrastText',
                 },
+                marginTop: 1
               }}
             >
               <ViewSidebarIcon fontSize="small" />
             </Box>
           </Tooltip>
-          <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }} />
+          <Box
+            sx={{
+              width: 'calc(100% - 16px)',
+              borderTop: 1,
+              borderColor: 'divider',
+            }}
+          />
           <Box
             sx={{
               display: 'flex',
@@ -296,7 +303,13 @@ export const WorkspaceDesktopLayout = ({
           >
             {collapsedCreationActions}
           </Box>
-          <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }} />
+          <Box
+            sx={{
+              width: 'calc(100% - 16px)',
+              borderTop: 1,
+              borderColor: 'divider',
+            }}
+          />
           <Typography
             variant="caption"
             sx={{
