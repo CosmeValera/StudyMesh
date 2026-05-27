@@ -125,7 +125,6 @@ const DashboardEmptyState = ({
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 'auto', lg: 560 },
             p: { xs: 1.25, sm: 2, md: 2.5 },
             borderRadius: 3,
             border: 1,
@@ -147,7 +146,7 @@ const DashboardEmptyState = ({
               variant="caption"
               color="primary"
               fontWeight={900}
-              sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}
+              sx={{ textTransform: 'uppercase', letterSpacing: 0.8, fontSize: '0.56rem' }}
             >
               Start creating
             </Typography>
@@ -157,7 +156,7 @@ const DashboardEmptyState = ({
               sx={{
                 mt: 0.5,
                 lineHeight: 1.08,
-                fontSize: { xs: '1.45rem', sm: '1.85rem', md: '2.2rem' },
+                fontSize: { xs: '1.16rem', sm: '1.48rem', md: '1.76rem' },
               }}
             >
               What do you want to build?
@@ -165,10 +164,10 @@ const DashboardEmptyState = ({
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ mt: 1, maxWidth: 620 }}
+              sx={{ mt: 1, maxWidth: 620, fontSize: '0.72rem' }}
             >
-              Create a guided Study Path, or add material first to generate a
-              focused quiz, flashcards, or clean notes.
+              Create a guided Study Path, or add material to generate a quiz,
+              flashcards, or clean notes.
             </Typography>
           </Box>
 
@@ -287,99 +286,11 @@ const DashboardEmptyState = ({
             </Button>
           </Box>
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 1.25, sm: 1.5 },
-              borderRadius: 2.5,
-              border: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.default',
-            }}
-          >
-            <Stack spacing={0.75}>
-              <Typography variant="subtitle2" fontWeight={900} sx={{ fontSize: '0.8125rem' }}>
-                Fast creation
-              </Typography>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(3, minmax(0, 1fr))',
-                  },
-                  gap: 1,
-                }}
-              >
-                {quickActions.map((action) => (
-                  <Paper
-                    key={action.intent}
-                    component="button"
-                    type="button"
-                    elevation={0}
-                    onClick={() => onQuickCreate(action.intent)}
-                    disabled={!isAdmin}
-                    sx={{
-                      minHeight: 72,
-                      p: 1,
-                      borderRadius: 2,
-                      border: 1,
-                      borderColor: alpha(action.accent, 0.24),
-                      bgcolor: alpha(action.accent, 0.07),
-                      color: 'text.primary',
-                      cursor: isAdmin ? 'pointer' : 'default',
-                      textAlign: 'left',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr auto',
-                      alignItems: 'center',
-                      gap: 0.75,
-                      '&:hover': {
-                        borderColor: isAdmin
-                          ? alpha(action.accent, 0.72)
-                          : undefined,
-                        bgcolor: isAdmin
-                          ? alpha(action.accent, 0.1)
-                          : undefined,
-                        transform: isAdmin ? 'translateY(-1px)' : undefined,
-                      },
-                      '&:focus-visible': {
-                        outline: `3px solid ${alpha(action.accent, 0.26)}`,
-                        outlineOffset: 2,
-                      },
-                      transition:
-                        'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
-                    }}
-                  >
-                    <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                      <Box
-                        sx={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 1,
-                          display: 'grid',
-                          placeItems: 'center',
-                          bgcolor: alpha(action.accent, 0.14),
-                          color: action.accent,
-                        }}
-                      >
-                        {action.icon}
-                      </Box>
-                      <Typography variant="body2" fontWeight={900} sx={{ fontSize: '0.75rem' }}>
-                        {action.label}
-                      </Typography>
-                    </Stack>
-                    <ChevronRightIcon sx={{ color: action.accent }} />
-                  </Paper>
-                ))}
-              </Box>
-            </Stack>
-          </Paper>
         </Paper>
 
         <Paper
           elevation={0}
           sx={{
-            minHeight: { xs: 'auto', lg: 560 },
             p: { xs: 1.25, sm: 2, md: 2.25 },
             borderRadius: 3,
             border: 1,
