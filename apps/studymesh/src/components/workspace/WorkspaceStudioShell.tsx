@@ -162,6 +162,28 @@ const detailLevelCountLimits: Record<
 const getPackId = (title: string) =>
   title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'study-pack'
 
+const truncateQuickCreationContext = (title: string) => {
+  const cleaned = title.trim() || 'Sources'
+  return cleaned.length > 28 ? `${cleaned.slice(0, 27).trim()}...` : cleaned
+}
+
+const getSavedDashboardNames = () => {
+  try {
+    const dashboards = window.localStorage.getItem('customDashboards')
+    if (!dashboards) {
+      return []
+    }
+
+    const parsed = JSON.parse(dashboards) as Array<{ name?: unknown }>
+    return parsed
+      .map((dashboard) => dashboard.name)
+      .filter((name): name is string => typeof name === 'string')
+  } catch (error) {
+    console.error('Failed to read saved dashboard names', error)
+    return []
+  }
+}
+
 const isReviewableStudyObject = (object: StudyObject) =>
   object.kind === 'qa' ||
   object.kind === 'quiz' ||
@@ -255,7 +277,7 @@ const estimateQueueDuration = (draft: GenerationDraft) => {
       return 'est. 15-20m'
     }
 
-    return 'est. 1-3m'
+    return 'est. 2m'
   }
 
   if (draft.aiProvider === 'gemini') {
@@ -975,6 +997,36 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       : 'Sources required'
   const selectedQuickCreateIntent =
     selectedIntent && selectedIntent !== 'study-path' ? selectedIntent : null
+  const getNextQuickCreationIndex = (
+    resourceType: StudyMaterialResourceType,
+  ) => {
+    const label = quickCreateLabels[resourceType]
+    const names = [
+      ...getSavedDashboardNames(),
+      ...generationDrafts.map((draft) => draft.title),
+    ]
+    const prefix = `${label} #`
+    const usedIndexes = names
+      .filter((name) => name.startsWith(prefix))
+      .map((name) => {
+        const match = name.slice(prefix.length).match(/^(\d+)/)
+        return match ? Number(match[1]) : 0
+      })
+      .filter((index) => Number.isFinite(index) && index > 0)
+
+    return usedIndexes.length > 0 ? Math.max(...usedIndexes) + 1 : 1
+  }
+  const buildQuickCreationTitle = (
+    resourceType: StudyMaterialResourceType,
+    sourceMode: QuickSourceMode,
+  ) => {
+    const label = quickCreateLabels[resourceType]
+    const contextTitle =
+      sourceMode === 'dashboard' ? currentDashboardTitle : quickSourceLabel
+    return `${label} #${getNextQuickCreationIndex(
+      resourceType,
+    )} - ${truncateQuickCreationContext(contextTitle)}`
+  }
   useEffect(() => {
     if (
       !pendingQuickSourceFocus ||
@@ -1225,7 +1277,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         studyPathMode: false,
       })
 
-      const nextTitle = generated.title || title
+      const nextTitle = title
       const augmented = augmentStudyPackPracticeObjects(generated.objects, {
         packId: getPackId(nextTitle),
         title: nextTitle,
@@ -1247,7 +1299,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
       const groups = [
         {
-          name: `${nextTitle} ${quickCreateLabels[resourceType]}`,
+          name: nextTitle,
           objects,
         },
       ]
@@ -1336,7 +1388,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       await runDirectStudyPackCreate(
         resourceType,
         sourceText,
-        `${currentDashboardTitle} ${titleBase}`.trim(),
+        buildQuickCreationTitle(resourceType, sourceMode),
         sourceMode,
       )
     } catch (error) {
