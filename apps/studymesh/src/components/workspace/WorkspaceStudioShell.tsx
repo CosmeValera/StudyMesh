@@ -391,6 +391,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       canCreateWidget: isAdmin,
     }
   }, [aiProvider])
+  const hasGeneratingQueueJobs = generationDrafts.some(
+    (draft) => draft.status === 'generating',
+  )
 
   useEffect(() => {
     const showDashboardAfterChatClose = () => {
@@ -431,16 +434,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    if (!generationDrafts.some((draft) => draft.status === 'generating')) {
+    if (!hasGeneratingQueueJobs) {
       return
     }
 
+    setQueueClockMs(Date.now())
     const intervalId = window.setInterval(
       () => setQueueClockMs(Date.now()),
       1000,
     )
     return () => window.clearInterval(intervalId)
-  }, [generationDrafts])
+  }, [hasGeneratingQueueJobs])
 
   useEffect(() => {
     const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) => {
@@ -2100,11 +2104,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const isFailed = draft.status === 'failed'
                   const opened = Boolean(draft.openedAt)
                   const materialLabel = generationMaterialLabel(draft)
-                  const elapsed =
-                    isGenerating &&
-                    formatQueueDuration(
-                      queueClockMs - new Date(draft.createdAt).getTime(),
-                    )
+                  const createdAtMs = new Date(draft.createdAt).getTime()
+                  const elapsed = isGenerating
+                    ? formatQueueDuration(
+                        queueClockMs -
+                          (Number.isFinite(createdAtMs)
+                            ? createdAtMs
+                            : queueClockMs),
+                      )
+                    : ''
                   const estimate = isGenerating
                     ? estimateQueueDuration(draft)
                     : ''
