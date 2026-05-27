@@ -4,6 +4,12 @@ import {
   StudyPackSourceFormat,
   StudyPathDashboardRole,
 } from '../types'
+import type {
+  StudyPathDashboardPurpose,
+  StudyPathLayoutArchetype,
+  StudyPathPracticeType,
+  StudyPathSourceRef,
+} from '../studyPathArchetypes'
 
 const normalizeSpaces = (value: string): string =>
   value.replace(/\s+/g, ' ').trim()
@@ -124,6 +130,11 @@ export interface AiStudyPackDraft {
   sourceFormat?: StudyPackSourceFormat
   rawNotes?: string
   dashboardRole?: StudyPathDashboardRole
+  layoutArchetype?: StudyPathLayoutArchetype
+  dashboardPurpose?: StudyPathDashboardPurpose
+  practiceType?: StudyPathPracticeType
+  layoutReason?: string
+  sourceRefs?: StudyPathSourceRef[]
   sourceSummary?: AiSourceSummary
   strictContract?: StrictAiDashboardContract
   objects: StudyObject[]

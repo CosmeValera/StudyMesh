@@ -7,7 +7,6 @@ import {
   generateStudyPackWithAi as generateStudyPackWithProvider,
   generateStudyPackWithGemini as generateStudyPackWithAi,
   generateStudyPathWithGemini as generateStudyPathWithAi,
-  getStudyPathDashboardRoles,
   isLocalAiGenerationError,
   applyStudyMaterialResourceTypeToDraft,
   normalizeAiStudyPackDraft,
@@ -610,6 +609,11 @@ describe('local AI helpers', () => {
 
     expect(draft.folderName).toBe('Spanish B1')
     expect(draft.dashboards).toHaveLength(3)
+    expect(draft.dashboards[0]).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
     expect(
       draft.dashboards.every(
         (dashboard) =>
@@ -2233,32 +2237,6 @@ describe('local AI helpers', () => {
   })
 })
 
-describe('Study Path dashboard roles', () => {
-  it('uses fixed role sequences for compact, balanced, and extended paths', () => {
-    expect(getStudyPathDashboardRoles('few')).toEqual([
-      'normal',
-      'normal',
-      'exercises',
-    ])
-    expect(getStudyPathDashboardRoles('medium')).toEqual([
-      'normal',
-      'normal',
-      'normal',
-      'summary',
-      'exercises',
-    ])
-    expect(getStudyPathDashboardRoles('many')).toEqual([
-      'normal',
-      'normal',
-      'normal',
-      'normal',
-      'normal',
-      'summary',
-      'exercises',
-    ])
-  })
-})
-
 describe('Gemini study pack client', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -2877,18 +2855,92 @@ describe('Gemini study pack client', () => {
       'Return syntactically valid JSON',
     )
     expect(fetchMock.mock.calls[0][1].body).toContain(
-      '1: normal, 2: normal, 3: exercises',
+      'Do not follow a fixed role template by position',
     )
+    expect(fetchMock.mock.calls[0][1].body).toContain('layoutArchetype')
     expect(
       draft.dashboards.map((dashboard) => dashboard.dashboardRole),
-    ).toEqual(['normal', 'normal', 'exercises'])
-    expect(draft.dashboards[2].rawNotes).toContain('Mixed practice source')
+    ).toEqual(['normal', 'normal', 'normal'])
+    expect(draft.dashboards[0]).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
+    expect(draft.dashboards[2]).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
     expect(JSON.stringify(draft.dashboards[2].objects)).not.toContain(
       'What do the notes say about exercises?',
     )
     expect(draft.dashboards[2].objects).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ kind: 'list' })]),
     )
+  })
+
+  it('uses valid Gemini layout metadata and falls back when metadata is invalid', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    title: 'Layout Path',
+                    folderName: 'Layout Path',
+                    dashboards: [
+                      {
+                        ...makeStrictPathDashboard(1, 'Reference Lesson'),
+                        layoutArchetype: 'splitReferenceExercise',
+                        dashboardPurpose: 'lesson',
+                        practiceType: 'quiz',
+                        layoutReason: 'Keep grammar reference beside quiz.',
+                      },
+                      {
+                        ...makeStrictPathDashboard(2, 'Bad Metadata'),
+                        layoutArchetype: 'randomDashboard',
+                        dashboardPurpose: 'randomPurpose',
+                        practiceType: 'randomPractice',
+                      },
+                      makeStrictPathDashboard(3, 'Final Practice'),
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const draft = await generateStudyPathWithAi({
+      apiToken: 'test-token',
+      model: 'gemini-test',
+      title: 'Layout Path',
+      prompt: 'Teach grammar',
+      folderName: '',
+      generationAmount: 'few',
+    })
+
+    expect(draft.dashboards[0]).toMatchObject({
+      layoutArchetype: 'splitReferenceExercise',
+      dashboardPurpose: 'lesson',
+      practiceType: 'quiz',
+    })
+    expect(draft.dashboards[1]).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
+    expect(draft.dashboards[2]).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
   })
 
   it('keeps a Study Path dashboard with only rawNotes and sourceSummary', async () => {
@@ -2989,7 +3041,7 @@ describe('Gemini study pack client', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[0][1].body).toContain(
-      'sourceSummary, conceptRecap, practice, and flashcards are mandatory',
+      'sourceSummary, conceptRecap, practice, and flashcards should match the selected layout',
     )
     expect(fetchMock.mock.calls[1][1].body).toContain('Original JSON')
     expect(fetchMock.mock.calls[1][1].body).toContain(
@@ -3132,28 +3184,18 @@ describe('Gemini study pack client', () => {
       draft.dashboards[0].objects,
     )
 
-    expect(summary.dashboardRole).toBe('summary')
+    expect(summary.dashboardRole).toBe('normal')
     expect(
-      summary.objects.filter((object) => object.kind === 'quiz'),
-    ).toHaveLength(0)
-    expect(
-      summary.objects.filter((object) => object.kind === 'qa'),
-    ).toHaveLength(0)
+      summary.objects.every(
+        (object) => object.kind === 'quiz' || object.kind === 'qa',
+      ),
+    ).toBe(true)
     expect(summary.debugTrace?.finalObjects).toEqual(summary.objects)
     expect(JSON.stringify(summary.debugTrace?.rawDashboardInput)).toContain(
       'Use the lesson 4 rule.',
     )
-    expect(
-      JSON.stringify(summary.debugTrace?.roleSanitizedInput),
-    ).not.toContain('Use the lesson 4 rule.')
-    expect(
-      summary.debugTrace?.validatedContract?.practice.shortAnswer,
-    ).toHaveLength(0)
-    expect(
-      summary.debugTrace?.roleFilteredContract?.practice.shortAnswer,
-    ).toHaveLength(0)
 
-    expect(exercises.dashboardRole).toBe('exercises')
+    expect(exercises.dashboardRole).toBe('normal')
     expect(
       exercises.objects.filter(
         (object) => object.kind === 'list' || object.kind === 'markdown',
@@ -3163,18 +3205,9 @@ describe('Gemini study pack client', () => {
     expect(JSON.stringify(exercises.debugTrace?.rawDashboardInput)).toContain(
       'conceptRecap',
     )
-    expect(
-      JSON.stringify(exercises.debugTrace?.roleSanitizedInput),
-    ).not.toContain('concept recap')
-    expect(
-      exercises.debugTrace?.validatedContract?.conceptRecap.sections,
-    ).toHaveLength(0)
-    expect(
-      exercises.debugTrace?.roleFilteredContract?.conceptRecap.sections,
-    ).toHaveLength(0)
   })
 
-  it('filters extended Study Path summary and exercises final mappings', async () => {
+  it('keeps extended Study Path generated dashboards role-neutral', async () => {
     mockStudyPathResponse(7)
 
     const draft = await generateStudyPathWithAi({
@@ -3188,16 +3221,14 @@ describe('Gemini study pack client', () => {
     const summary = draft.dashboards[5]
     const exercises = draft.dashboards[6]
 
-    expect(summary.dashboardRole).toBe('summary')
-    expect(summary.objects.every((object) => object.kind === 'list')).toBe(true)
-    expect(summary.objects).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'quiz' }),
-        expect.objectContaining({ kind: 'qa' }),
-      ]),
+    expect(summary.dashboardRole).toBe('normal')
+    expect(
+      summary.objects.every(
+        (object) => object.kind === 'quiz' || object.kind === 'qa',
+      ),
     )
 
-    expect(exercises.dashboardRole).toBe('exercises')
+    expect(exercises.dashboardRole).toBe('normal')
     expect(
       exercises.objects.every(
         (object) => object.kind === 'quiz' || object.kind === 'qa',
@@ -3205,7 +3236,7 @@ describe('Gemini study pack client', () => {
     ).toBe(true)
   })
 
-  it('filters compact Study Path final exercises mapping', async () => {
+  it('keeps compact Study Path generated dashboards role-neutral', async () => {
     mockStudyPathResponse(3)
 
     const draft = await generateStudyPathWithAi({
@@ -3218,7 +3249,7 @@ describe('Gemini study pack client', () => {
     })
     const exercises = draft.dashboards[2]
 
-    expect(exercises.dashboardRole).toBe('exercises')
+    expect(exercises.dashboardRole).toBe('normal')
     expect(
       exercises.objects.every(
         (object) => object.kind === 'quiz' || object.kind === 'qa',

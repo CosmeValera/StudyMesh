@@ -3,6 +3,12 @@ import {
   StudyPathContainerState,
   StudyPathDashboardItem,
 } from '../../state/store'
+import type {
+  StudyPathDashboardPurpose,
+  StudyPathLayoutArchetype,
+  StudyPathPracticeType,
+  StudyPathSourceRef,
+} from '../../studyPack/studyPathArchetypes'
 
 interface SavedDashboardLike {
   id?: string
@@ -21,6 +27,11 @@ interface StudyPathMeta {
   dashboardIndex: number
   dashboardCount: number
   folderName: string
+  layoutArchetype?: StudyPathLayoutArchetype
+  dashboardPurpose?: StudyPathDashboardPurpose
+  practiceType?: StudyPathPracticeType
+  layoutReason?: string
+  sourceRefs?: StudyPathSourceRef[]
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -46,8 +57,27 @@ const readMetaFromCustomProps = (
     dashboardKey,
     dashboardName: String(customProps.studyPathDashboardName || 'Lesson'),
     dashboardIndex: Number(customProps.studyPathDashboardIndex || 1),
-    dashboardCount: Number(customProps.studyPathDashboardCount || 1),
-    folderName: String(customProps.studyPathFolderName || 'Study Path'),
+      dashboardCount: Number(customProps.studyPathDashboardCount || 1),
+      folderName: String(customProps.studyPathFolderName || 'Study Path'),
+      layoutArchetype:
+        typeof customProps.studyPathLayoutArchetype === 'string'
+          ? (customProps.studyPathLayoutArchetype as StudyPathLayoutArchetype)
+          : undefined,
+      dashboardPurpose:
+        typeof customProps.studyPathDashboardPurpose === 'string'
+          ? (customProps.studyPathDashboardPurpose as StudyPathDashboardPurpose)
+          : undefined,
+      practiceType:
+        typeof customProps.studyPathPracticeType === 'string'
+          ? (customProps.studyPathPracticeType as StudyPathPracticeType)
+          : undefined,
+      layoutReason:
+        typeof customProps.studyPathLayoutReason === 'string'
+          ? customProps.studyPathLayoutReason
+          : undefined,
+      sourceRefs: Array.isArray(customProps.studyPathSourceRefs)
+        ? (customProps.studyPathSourceRefs as StudyPathSourceRef[])
+        : undefined,
   }
 }
 
@@ -156,6 +186,11 @@ export const createStudyPathContainerState = (
       dashboardIndex: meta.dashboardIndex,
       dashboardCount: meta.dashboardCount,
       folderName: meta.folderName || dashboard.folder || 'Study Path',
+      layoutArchetype: meta.layoutArchetype,
+      dashboardPurpose: meta.dashboardPurpose,
+      practiceType: meta.practiceType,
+      layoutReason: meta.layoutReason,
+      sourceRefs: meta.sourceRefs,
     }))
 
   return {

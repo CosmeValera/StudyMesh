@@ -4,6 +4,10 @@ import {
   StudyPathDashboardRole,
 } from '../types'
 import {
+  getDefaultStudyPathLayoutMetadata,
+  normalizeStudyPathLayoutMetadata,
+} from '../studyPathArchetypes'
+import {
   conceptExplanation,
   conceptRecapGroups,
   conceptSummaryItem,
@@ -160,45 +164,26 @@ export const normalizeStudyPathGenerationAmount = (
   return generationAmount
 }
 
-export const getStudyPathDashboardRoles = (
+const getStudyPathDashboardCount = (
   generationAmount: StudyPathGenerationAmount = 'average',
-): StudyPathDashboardRole[] => {
+): number => {
   const normalized = normalizeStudyPathGenerationAmount(generationAmount)
 
   return normalized === 'superSmall'
-    ? ['normal', 'exercises']
+    ? 2
     : normalized === 'compact'
-      ? ['normal', 'normal', 'exercises']
+      ? 3
       : normalized === 'deep'
-        ? [
-            'normal',
-            'normal',
-            'normal',
-            'normal',
-            'normal',
-            'summary',
-            'exercises',
-          ]
-        : ['normal', 'normal', 'normal', 'summary', 'exercises']
+        ? 7
+        : 5
 }
 
 const getStudyPathStepNames = (
   generationAmount: StudyPathGenerationAmount = 'average',
 ): string[] =>
-  getStudyPathDashboardRoles(generationAmount).map((role, index) => {
-    if (role === 'summary') {
-      return 'Summary'
-    }
-
-    if (role === 'exercises') {
-      return 'Exercises'
-    }
-
-    return `Content ${index + 1}`
-  })
-
-const describeStudyPathRoles = (roles: StudyPathDashboardRole[]): string =>
-  roles.map((role, index) => `${index + 1}: ${role}`).join(', ')
+  Array.from({ length: getStudyPathDashboardCount(generationAmount) }).map(
+    (_role, index) => `Lesson ${index + 1}`,
+  )
 
 const hasUsefulLessonNotes = (value: string): boolean =>
   value.trim().split(/\s+/).filter(Boolean).length >= 80
@@ -448,6 +433,44 @@ const studyPathSchema = {
           title: { type: 'STRING' },
           summary: { type: 'STRING' },
           rawNotes: { type: 'STRING' },
+          layoutArchetype: {
+            type: 'STRING',
+            enum: [
+              'focusLesson',
+              'learnPracticeTabs',
+              'splitReferenceExercise',
+              'multiWidgetLab',
+              'overviewReview',
+            ],
+          },
+          dashboardPurpose: {
+            type: 'STRING',
+            enum: [
+              'overview',
+              'lesson',
+              'practice',
+              'review',
+              'finalReview',
+              'projectLab',
+            ],
+          },
+          practiceType: {
+            type: 'STRING',
+            enum: ['none', 'quiz', 'flashcards', 'mixed'],
+          },
+          layoutReason: { type: 'STRING' },
+          sourceRefs: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                id: { type: 'STRING' },
+                label: { type: 'STRING' },
+                source: { type: 'STRING' },
+                chunkIndex: { type: 'NUMBER' },
+              },
+            },
+          },
           ...dashboardContractProperties,
         },
         required: [
@@ -1218,12 +1241,8 @@ export const generateStudyPathWithAi = async ({
   mustInclude,
   avoidTopics,
 }: GenerateStudyPathWithAiOptions): Promise<AiStudyPathDraft> => {
-  const dashboardRoles = getStudyPathDashboardRoles(generationAmount)
   const stepNames = getStudyPathStepNames(generationAmount)
-  const contentDashboardCount = stepNames.filter((stepName) =>
-    stepName.startsWith('Content'),
-  ).length
-  const includesSummaryDashboard = stepNames.includes('Summary')
+  const dashboardCount = stepNames.length
   const practiceAmount = studyPathAmountToPracticeAmount(generationAmount)
   const practiceProfile = createStudyPackPracticeProfile(practiceAmount, [
     'summaries',
@@ -1246,6 +1265,11 @@ Return exactly this structure:
     {
       "title": "01 - Content 1",
       "summary": "One sentence preview",
+      "layoutArchetype": "learnPracticeTabs",
+      "dashboardPurpose": "lesson",
+      "practiceType": "mixed",
+      "layoutReason": "Short reason for the selected learning layout",
+      "sourceRefs": [{ "label": "optional source/chunk label" }],
       "rawNotes": "Complete lesson notes for this dashboard",
       "sourceSummary": { "title": "Source summary", "bullets": ["..."] },
       "conceptRecap": { "title": "Concept recap", "sections": [{ "title": "Specific concept", "bullets": ["..."], "example": "..." }] },
@@ -1258,24 +1282,23 @@ Return exactly this structure:
 Rules:
 - Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
 - Choose a concise, topic-specific folderName for the Study Path, such as "French B1 Subjunctive" or "Calculus Derivatives". Do not use a generic folderName like "Study Path" unless the topic is truly unknown.
-- Use these ordered lessons exactly: ${stepNames.join(' -> ')}.
-- StudyMesh will assign these dashboard roles by position: ${describeStudyPathRoles(
-    dashboardRoles,
-  )}.
-- Each normal dashboard must be useful by itself and contain roughly 6-9 visible study items after StudyMesh adds the lesson/source widgets.
+- Create exactly ${dashboardCount} ordered lesson dashboards. Give each dashboard a useful topic-specific title.
+- Do not follow a fixed role template by position. You are responsible for choosing each dashboard's purpose, layoutArchetype, practiceType, rawNotes, and practice mix from the lesson content itself.
+- Every dashboard must have one primary educational purpose: overview, lesson, practice, review, finalReview, or projectLab.
+- Choose one layoutArchetype per dashboard: focusLesson, learnPracticeTabs, splitReferenceExercise, multiWidgetLab, or overviewReview.
+- Use learnPracticeTabs for most normal lessons. Use focusLesson for intro/theory-heavy/recap dashboards. Use overviewReview for overview, summary, final review, or mixed review dashboards.
+- Use splitReferenceExercise only when side-by-side reference clearly improves studying, such as programming, math, formulas, grammar, or comparison. Use multiWidgetLab only for project/lab steps.
+- Do not choose the same layout for every normal dashboard unless the topic truly demands it. For paths with 3 or more dashboards, prefer at least two archetypes when educationally reasonable.
+- Pick the layout from the lesson's teaching need, not from a fixed template: reading-heavy concepts can be focusLesson, explanation plus recall can be learnPracticeTabs, reference-heavy applied work can be splitReferenceExercise, and hands-on build steps can be multiWidgetLab.
+- SourceSummary is internal support material. The visible Learn area comes mainly from rawNotes, so rawNotes must carry the actual lesson.
+- Do not make dashboards feel like random widget collections. Use the simplest layout that supports the learning goal.
+- Quizzes and flashcards are active practice blocks/sessions, not decoration. Prefer one focused quiz or flashcard practice area over scattered mini widgets.
+- Each dashboard must be useful by itself and contain roughly 4-9 visible study items after StudyMesh adds the lesson/source widgets, unless focusLesson/practiceType none is clearly best.
 - Always return exactly ${stepNames.length} dashboards total.
-- This depth means ${contentDashboardCount} content dashboard${
-    contentDashboardCount === 1 ? '' : 's'
-  }${
-    includesSummaryDashboard ? ', 1 summary dashboard,' : ''
-  } and 1 exercises dashboard.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
-- For normal dashboards, sourceSummary, conceptRecap, practice, and flashcards are mandatory and must be non-empty.
-- Each normal dashboard must include sourceSummary with 3-5 bullets, conceptRecap with 2-4 sections, practice.shortAnswer with 1-2 questions, practice.multipleChoice with 1-2 questions, and flashcards with 3-5 cards.
-- Normal dashboard conceptRecap is used internally to structure the lesson. StudyMesh will not render conceptRecap/list-style objects as separate visible widgets on normal dashboards; visible generated study widgets should come from practice.shortAnswer, practice.multipleChoice, and flashcards.
-- Summary dashboards should focus on sourceSummary with 3-5 bullets and conceptRecap with 2-4 recap sections. If you include practice or flashcards, StudyMesh will delete them.
-- Exercises dashboards should focus on mixed practice and flashcards from all previous normal dashboards. Include 4-6 short-answer questions, 4-6 multiple-choice questions, and 4-6 flashcards for medium paths, targeting roughly 12-16 visible study items. If you include conceptRecap or sourceSummary, StudyMesh will delete visible recap/summary content.
+- sourceSummary, conceptRecap, practice, and flashcards should match the selected layout. For focusLesson/practiceType none, practice and flashcards may be empty. For learnPracticeTabs or splitReferenceExercise, include focused practice. For overviewReview or review-focused dashboards, include recap plus review practice if useful.
+- conceptRecap is used internally to structure the lesson. StudyMesh usually renders visible practice from practice.shortAnswer, practice.multipleChoice, and flashcards.
 - Do not output "objects", "kind", "quizMode", internal block names, widget names, or any StudyMesh renderer fields. StudyMesh decides widget types.
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from structured concepts, not from first sentences, headings, copied examples, or instructions.
@@ -1283,9 +1306,7 @@ Rules:
 - Practice questions must test concepts and uses, not copied headings or answer options made obvious by the dashboard title.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
 - Flashcards should ask useful rule-specific prompts such as "How do you form the present subjunctive for most verbs?" instead of "What should you remember about <copied line>?".
-- Include practice in later dashboards through practice.shortAnswer, practice.multipleChoice, and flashcards.
-- If a Summary dashboard is included, make it a global recap of the preceding normal dashboards.
-- The final Exercises dashboard must generate real mixed practice from the preceding content dashboards, not from its own instructions.
+- Include practice through practice.shortAnswer, practice.multipleChoice, and flashcards when active recall improves the dashboard.
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
 - Do not create PDFs/images/resources unless the user explicitly asks for heavy media.
@@ -1310,7 +1331,7 @@ ${prompt}`
 The previous response failed JSON formatting. Retry with a simpler response:
 - Return plain JSON only.
 - Return syntactically valid JSON with all commas and braces in place.
-- Use only the Study Path fields: title, summary, rawNotes, sourceSummary, conceptRecap, practice, flashcards.
+- Use only the Study Path fields: title, summary, rawNotes, layoutArchetype, dashboardPurpose, practiceType, layoutReason, sourceRefs, sourceSummary, conceptRecap, practice, flashcards.
 - Do not use markdown code fences.
 - Do not include comments, trailing commas, undefined, NaN, or extra text.`
   const createRepairPrompt = (originalJson: string) => `${promptText}
@@ -1318,11 +1339,10 @@ The previous response failed JSON formatting. Retry with a simpler response:
 The previous response was valid JSON, but one or more normal dashboards were incomplete.
 Repair the JSON instead of simplifying it:
 - Preserve the exact dashboard count, order, titles, summaries, and rawNotes.
-- For normal dashboards, sourceSummary, conceptRecap, practice, and flashcards are mandatory and must be non-empty.
-- Fill missing normal-dashboard conceptRecap/practice/flashcards from that dashboard's rawNotes.
-- Each normal dashboard must have sourceSummary with 3-5 bullets, conceptRecap with 2-4 sections, practice.shortAnswer with 1-2 questions, practice.multipleChoice with 1-2 questions, and flashcards with 3-5 cards.
-- Summary dashboards should focus on sourceSummary and conceptRecap.
-- Exercises dashboards should focus on practice and flashcards.
+- Every dashboard is a normal Study Path dashboard.
+- Fill missing conceptRecap/practice/flashcards from that dashboard's rawNotes when the selected layout and practiceType call for active recall.
+- For focusLesson or practiceType none, practice and flashcards may stay empty if rawNotes contains a complete learning explanation.
+- For learnPracticeTabs or splitReferenceExercise, include sourceSummary with 3-5 bullets, conceptRecap with 2-4 sections, practice.shortAnswer with 1-2 questions, practice.multipleChoice with 1-2 questions, and flashcards with 2-5 cards.
 - Return plain JSON only.
 
 Original JSON:
@@ -1367,12 +1387,7 @@ ${originalJson}`
           item && typeof item === 'object'
             ? (item as Record<string, unknown>)
             : {}
-        return normalDashboardNeedsRepair(
-          input,
-          dashboardRoles[index] || 'normal',
-        )
-          ? index
-          : null
+        return normalDashboardNeedsRepair(input, 'normal') ? index : null
       })
       .filter((index): index is number => index !== null),
   )
@@ -1410,21 +1425,7 @@ ${originalJson}`
             2,
             '0',
           )} - ${stepName}`
-          const dashboardRole = dashboardRoles[index]
-          const rawNotes =
-            dashboardRole === 'summary'
-              ? `# ${titlePrefix}
-
-## Key points
-- Review the five previous content dashboards.
-- Connect the main concepts from the path.
-- Identify weak areas before exercises.`
-              : dashboardRole === 'exercises'
-                ? `# ${titlePrefix}
-
-## Practice
-Use this dashboard to answer mixed exercises from the Study Path.`
-                : `# ${titlePrefix}
+          const rawNotes = `# ${titlePrefix}
 
 ## Goal
 Study this section of ${title}.
@@ -1442,22 +1443,23 @@ ${prompt}`
             },
             conceptRecap: {
               title: `${titlePrefix} concept recap`,
-              sections:
-                dashboardRole === 'exercises'
-                  ? []
-                  : [
-                      {
-                        title: stepName,
-                        bullets: [prompt],
-                        example: '',
-                      },
-                    ],
+              sections: [
+                {
+                  title: stepName,
+                  bullets: [prompt],
+                  example: '',
+                },
+              ],
             },
             practice: {
               shortAnswer: [],
               multipleChoice: [],
             },
             flashcards: [],
+            layoutArchetype: 'learnPracticeTabs',
+            dashboardPurpose: 'lesson',
+            practiceType: 'mixed',
+            layoutReason: 'Deterministic fallback layout.',
           }
         })
   const warnings: string[] = []
@@ -1541,7 +1543,15 @@ ${prompt}`
       const packId = `${title}-${index + 1}`
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-      const dashboardRole = dashboardRoles[index] || 'normal'
+      const dashboardRole: StudyPathDashboardRole = 'normal'
+      const layoutMetadata = normalizeStudyPathLayoutMetadata(
+        input,
+        getDefaultStudyPathLayoutMetadata(
+          dashboardRole,
+          index,
+          normalizedRawDashboards.length,
+        ),
+      )
       const rawDashboardInput = {
         ...input,
         title: dashboardTitle,
@@ -1589,20 +1599,17 @@ ${prompt}`
         dashboardRole,
         finalEvents,
       )
-      const visiblePracticeTarget = getStudyPathVisiblePracticeTarget(
-        dashboardRole,
-        generationAmount,
-      )
+      const visiblePracticeTarget =
+        layoutMetadata.layoutArchetype === 'focusLesson' ||
+        layoutMetadata.practiceType === 'none'
+          ? 0
+          : getStudyPathVisiblePracticeTarget(dashboardRole, generationAmount)
       const filledVisibleObjects =
         visiblePracticeTarget > 0
           ? augmentStudyPackPracticeObjects(visibleRoleObjects, {
               packId,
               title: dashboardTitle,
-              rawNotes:
-                dashboardRole === 'exercises'
-                  ? accumulatedContentNotes.join('\n\n') ||
-                    textFromRawNotes(input.rawNotes)
-                  : textFromRawNotes(input.rawNotes),
+              rawNotes: textFromRawNotes(input.rawNotes),
               generationTargets: ['quizzes', 'flashcards'],
               generationAmount: practiceAmount,
               visiblePracticeTarget,
@@ -1622,24 +1629,17 @@ ${prompt}`
           ? filledVisibleObjects.objects
           : visibleRoleObjects.length > 0
             ? visibleRoleObjects
-            : dashboardRole === 'summary'
-              ? []
-              : buildFallbackObjectsForDashboardRole({
-                  packId,
-                  dashboardTitle,
-                  dashboardRole,
-                  rawNotes: input.rawNotes,
-                  sourceSummary: draft.sourceSummary,
-                  accumulatedContentNotes,
-                })
+            : buildFallbackObjectsForDashboardRole({
+                packId,
+                dashboardTitle,
+                dashboardRole,
+                rawNotes: input.rawNotes,
+                sourceSummary: draft.sourceSummary,
+                accumulatedContentNotes,
+              })
       if (visibleRoleObjects.length === 0 && finalObjects.length > 0) {
         finalEvents.push(
           `Fallback used: created ${dashboardRole} object because role filtering left no visible study objects.`,
-        )
-      }
-      if (dashboardRole === 'summary') {
-        finalEvents.push(
-          'Promoted global recap into the source Markdown widget and suppressed redundant summary/list widgets.',
         )
       }
       assertRoleObjectsAreClean(finalObjects, dashboardRole, dashboardTitle)
@@ -1652,21 +1652,12 @@ ${prompt}`
             finalObjects,
           }
         : draft.debugTrace
-      const isSummaryDashboard = dashboardRole === 'summary'
-      const isExercisesDashboard = dashboardRole === 'exercises'
-      const generatedLessonNotes = buildStudyPathLessonNotes(
+      const lessonNotes = buildStudyPathLessonNotes(
         dashboardTitle,
         dashboardSummary,
         typeof input.rawNotes === 'string' ? input.rawNotes : '',
         finalObjects,
       )
-      const lessonNotes =
-        isSummaryDashboard || isExercisesDashboard
-          ? buildGlobalNotes(
-              dashboardTitle,
-              isSummaryDashboard ? 'summary' : 'exercises',
-            )
-          : generatedLessonNotes
 
       warnings.push(...draft.warnings)
 
@@ -1676,15 +1667,14 @@ ${prompt}`
         summary: dashboardSummary,
         rawNotes: lessonNotes,
         dashboardRole,
+        ...layoutMetadata,
         objects: finalObjects,
         warnings: [],
         debugTrace,
         sourceFormat: 'text' as StudyPackSourceFormat,
       }
 
-      if (!isSummaryDashboard && !isExercisesDashboard) {
-        accumulatedContentNotes.push(lessonNotes)
-      }
+      accumulatedContentNotes.push(lessonNotes)
 
       return dashboard
     })

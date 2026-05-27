@@ -8,6 +8,7 @@ import {
   StudyPackSourceFormat,
   StudyPathDashboardRole,
 } from '../types'
+import { getDefaultStudyPathLayoutMetadata } from '../studyPathArchetypes'
 import {
   applyStudyMaterialResourceTypeToDraft,
   AiStudyPackDraft,
@@ -24,7 +25,6 @@ import {
   AiStudyPathDraft,
   GenerateStudyPackWithAiOptions,
   GenerateStudyPathWithAiOptions,
-  getStudyPathDashboardRoles,
   normalizeStudyPathGenerationAmount,
   StudyPathGenerationAmount,
 } from './gemini'
@@ -1997,6 +1997,7 @@ const mapLocalDashboard = (
   const summary =
     summaryString(record.summary) ||
     previewSummaryFromNotes(rawNotes, title || 'Generated local AI lesson.')
+  const layoutMetadata = getDefaultStudyPathLayoutMetadata(role, index)
   const contract = isLocalRepairedContract(draft.debugTrace?.validatedContract)
     ? draft.debugTrace.validatedContract
     : fallbackContractFromDashboard(title, summary, rawNotes)
@@ -2085,6 +2086,7 @@ const mapLocalDashboard = (
     summary,
     rawNotes,
     dashboardRole: role,
+    ...layoutMetadata,
     sourceFormat: 'text',
     objects: finalObjects,
     debugTrace: draft.debugTrace
@@ -2153,7 +2155,7 @@ const fallbackPlannerItem = (
     goal: `Teach one useful part of ${options.title || 'this topic'}.`,
     sections,
     topics: sections.map((section) => section.title),
-    avoid: ['summary-only dashboard', 'exercises-only dashboard'],
+    avoid: [],
   }
 }
 
@@ -3980,7 +3982,10 @@ export const generateStudyPathWithBasicFallback = ({
   folderName,
   generationAmount = 'compact',
 }: GenerateStudyPathWithAiOptions): AiStudyPathDraft => {
-  const roles = getStudyPathDashboardRoles(generationAmount)
+  const roles = Array.from(
+    { length: getLocalStudyPathDashboardCount(generationAmount) },
+    () => 'normal' as const,
+  )
   const practiceAmount =
     normalizeStudyPathGenerationAmount(generationAmount) === 'deep'
       ? 'many'
@@ -3988,6 +3993,11 @@ export const generateStudyPathWithBasicFallback = ({
         ? 'medium'
         : 'few'
   const dashboards = roles.map((role, index) => {
+    const layoutMetadata = getDefaultStudyPathLayoutMetadata(
+      role,
+      index,
+      roles.length,
+    )
     const dashboardTitle = `${String(index + 1).padStart(2, '0')} - ${
       role === 'summary'
         ? 'Summary'
@@ -4038,6 +4048,7 @@ export const generateStudyPathWithBasicFallback = ({
           : 'Basic fallback lesson generated from the request.',
       rawNotes,
       dashboardRole: role,
+      ...layoutMetadata,
       sourceFormat: parsed.sourceFormat,
       objects: augmented.objects,
       warnings: [...parsed.warnings, ...augmented.warnings],

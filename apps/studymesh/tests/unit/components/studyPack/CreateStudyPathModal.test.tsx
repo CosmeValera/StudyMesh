@@ -36,7 +36,7 @@ vi.mock('../../../../src/studyPack/ai', async () => {
   }
 })
 
-const makeDashboard = (index: number) => {
+const makeDashboard = (index: number, dashboardCount: number) => {
   const label = `Lesson ${index}`
 
   return {
@@ -84,6 +84,14 @@ const makeDashboard = (index: number) => {
         back: `Use ${label.toLowerCase()} for the matching rule.`,
       },
     ],
+    layoutArchetype:
+      index % 3 === 1
+        ? 'learnPracticeTabs'
+        : index % 3 === 2
+          ? 'splitReferenceExercise'
+          : 'overviewReview',
+    dashboardPurpose: index === 1 ? 'overview' : 'lesson',
+    practiceType: index === 1 ? 'quiz' : 'mixed',
   }
 }
 
@@ -103,7 +111,8 @@ const mockGeminiDashboards = (dashboardCount: number) => {
                     folderName: 'French Subjunctive Path',
                     dashboards: Array.from(
                       { length: dashboardCount },
-                      (_value, index) => makeDashboard(index + 1),
+                      (_value, index) =>
+                        makeDashboard(index + 1, dashboardCount),
                     ),
                   }),
                 },
@@ -135,7 +144,7 @@ const generatePath = async (amount?: 'Compact' | 'Deep') => {
   fireEvent.click(screen.getByRole('button', { name: /generate study path/i }))
 }
 
-describe('CreateStudyPathModal role enforcement', () => {
+describe('CreateStudyPathModal Study Path generation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(readStudyPackAiSettings).mockReturnValue({
@@ -151,7 +160,7 @@ describe('CreateStudyPathModal role enforcement', () => {
     })
   })
 
-  it('previews and creates balanced paths from role-filtered final objects', async () => {
+  it('previews and creates balanced paths from generated lesson objects', async () => {
     const onCreatePath = vi.fn()
     mockGeminiDashboards(5)
     render(
@@ -177,22 +186,19 @@ describe('CreateStudyPathModal role enforcement', () => {
       expect(screen.getByText('05 - Lesson 5')).toBeInTheDocument()
     })
 
-    const summaryCard = screen.getByTestId('study-path-dashboard-4')
-    const exercisesCard = screen.getByTestId('study-path-dashboard-5')
+    const lessonFourCard = screen.getByTestId('study-path-dashboard-4')
+    const lessonFiveCard = screen.getByTestId('study-path-dashboard-5')
 
-    expect(within(summaryCard).getByText('summary')).toBeInTheDocument()
-    expect(within(summaryCard).getByText('1 study items')).toBeInTheDocument()
-    expect(within(exercisesCard).getByText('exercises')).toBeInTheDocument()
-    expect(
-      within(exercisesCard).getByText('14 study items'),
-    ).toBeInTheDocument()
+    expect(within(lessonFourCard).getByText('7 study items')).toBeInTheDocument()
+    expect(within(lessonFiveCard).getByText('7 study items')).toBeInTheDocument()
+    expect(within(lessonFiveCard).getByText('lesson')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('AI generation debug'))
     const rawDashboardInput = screen.getByTestId(
       'study-path-debug-raw-dashboard-input',
     )
     const sanitizedInput = screen.getByTestId(
-      'study-path-debug-role-sanitized-input-before-normalization',
+      'study-path-debug-sanitized-input-before-normalization',
     )
     const finalMapping = screen.getByTestId(
       'study-path-debug-final-studyobject-mapping',
@@ -204,13 +210,12 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(roleFilteredContract).toHaveTextContent('roleFilteredContract')
     expect(rawDashboardInput).toHaveTextContent('Lesson 4 short-answer')
     expect(rawDashboardInput).toHaveTextContent('Lesson 5 concept recap/list')
-    expect(sanitizedInput).not.toHaveTextContent('Lesson 4 short-answer')
-    expect(sanitizedInput).not.toHaveTextContent('Lesson 5 concept recap/list')
-    expect(finalMapping).not.toHaveTextContent('study-path-4-short-answer')
-    expect(finalMapping).not.toHaveTextContent('study-path-4-multiple-choice')
-    expect(finalMapping).not.toHaveTextContent('study-path-4-flashcard')
+    expect(sanitizedInput).toHaveTextContent('Lesson 4 short-answer')
+    expect(sanitizedInput).toHaveTextContent('Lesson 5 concept recap/list')
     expect(finalMapping).not.toHaveTextContent('study-path-5-concept-recap')
-    expect(finalMapping).toHaveTextContent('study-path-4-concept-recap')
+    expect(finalMapping).toHaveTextContent('study-path-4-short-answer')
+    expect(finalMapping).toHaveTextContent('study-path-4-multiple-choice')
+    expect(finalMapping).toHaveTextContent('study-path-4-flashcard')
     expect(finalMapping).toHaveTextContent('study-path-5-short-answer')
     expect(finalMapping).toHaveTextContent('study-path-5-multiple-choice')
     expect(finalMapping).toHaveTextContent('study-path-5-flashcard')
@@ -221,15 +226,14 @@ describe('CreateStudyPathModal role enforcement', () => {
 
     expect(onCreatePath).toHaveBeenCalledTimes(1)
     const payload = onCreatePath.mock.calls[0][0]
-    const summaryWidgets = JSON.stringify(payload.dashboards[3].widgets)
-    const exerciseWidgets = JSON.stringify(payload.dashboards[4].widgets)
+    const lessonFourWidgets = JSON.stringify(payload.dashboards[3].widgets)
+    const lessonFiveWidgets = JSON.stringify(payload.dashboards[4].widgets)
 
-    expect(summaryWidgets).not.toContain('QuizBlock')
-    expect(summaryWidgets).not.toContain('FlashcardBlock')
-    expect(exerciseWidgets).toContain('QuizBlock')
-    expect(exerciseWidgets).toContain('FlashcardBlock')
-    expect(exerciseWidgets).not.toContain('Lesson 5 concept recap/list')
-    expect(exerciseWidgets).not.toContain('Lesson 5 Summary')
+    expect(lessonFourWidgets).toContain('QuizCarouselBlock')
+    expect(lessonFourWidgets).toContain('FlashcardCarouselBlock')
+    expect(lessonFiveWidgets).toContain('QuizCarouselBlock')
+    expect(lessonFiveWidgets).toContain('FlashcardCarouselBlock')
+    expect(lessonFiveWidgets).not.toContain('Lesson 5 concept recap/list')
   })
 
   it('shows Gemini elapsed and estimated Study Path timing capped at 99%', async () => {
@@ -263,7 +267,7 @@ describe('CreateStudyPathModal role enforcement', () => {
     vi.useRealTimers()
   })
 
-  it('previews compact paths with an exercises-only final dashboard', async () => {
+  it('previews compact paths without fixed positional roles', async () => {
     mockGeminiDashboards(3)
     await generatePath('Compact')
 
@@ -271,11 +275,9 @@ describe('CreateStudyPathModal role enforcement', () => {
       expect(screen.getByText('03 - Lesson 3')).toBeInTheDocument()
     })
 
-    const exercisesCard = screen.getByTestId('study-path-dashboard-3')
-    expect(within(exercisesCard).getByText('exercises')).toBeInTheDocument()
-    expect(
-      within(exercisesCard).getByText('10 study items'),
-    ).toBeInTheDocument()
+    const finalCard = screen.getByTestId('study-path-dashboard-3')
+    expect(within(finalCard).getByText('lesson')).toBeInTheDocument()
+    expect(within(finalCard).getByText('5 study items')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('AI generation debug'))
     const finalMapping = screen.getByTestId(
@@ -288,7 +290,7 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(finalMapping).toHaveTextContent('study-path-3-flashcard')
   })
 
-  it('previews extended paths with summary and exercises final dashboards filtered', async () => {
+  it('previews extended paths without fixed positional roles', async () => {
     mockGeminiDashboards(7)
     await generatePath('Deep')
 
@@ -297,26 +299,23 @@ describe('CreateStudyPathModal role enforcement', () => {
       expect(screen.getByText('07 - Lesson 7')).toBeInTheDocument()
     })
 
-    const summaryCard = screen.getByTestId('study-path-dashboard-6')
-    const exercisesCard = screen.getByTestId('study-path-dashboard-7')
+    const lessonSixCard = screen.getByTestId('study-path-dashboard-6')
+    const lessonSevenCard = screen.getByTestId('study-path-dashboard-7')
 
-    expect(within(summaryCard).getByText('summary')).toBeInTheDocument()
-    expect(within(summaryCard).getByText('1 study items')).toBeInTheDocument()
-    expect(within(exercisesCard).getByText('exercises')).toBeInTheDocument()
-    expect(
-      within(exercisesCard).getByText('18 study items'),
-    ).toBeInTheDocument()
+    expect(within(lessonSixCard).getByText('lesson')).toBeInTheDocument()
+    expect(within(lessonSixCard).getByText('7 study items')).toBeInTheDocument()
+    expect(within(lessonSevenCard).getByText('lesson')).toBeInTheDocument()
+    expect(within(lessonSevenCard).getByText('7 study items')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('AI generation debug'))
     const finalMapping = screen.getByTestId(
       'study-path-debug-final-studyobject-mapping',
     )
 
-    expect(finalMapping).not.toHaveTextContent('study-path-6-short-answer')
-    expect(finalMapping).not.toHaveTextContent('study-path-6-multiple-choice')
-    expect(finalMapping).not.toHaveTextContent('study-path-6-flashcard')
+    expect(finalMapping).toHaveTextContent('study-path-6-short-answer')
+    expect(finalMapping).toHaveTextContent('study-path-6-multiple-choice')
+    expect(finalMapping).toHaveTextContent('study-path-6-flashcard')
     expect(finalMapping).not.toHaveTextContent('study-path-7-concept-recap')
-    expect(finalMapping).toHaveTextContent('study-path-6-concept-recap')
     expect(finalMapping).toHaveTextContent('study-path-7-short-answer')
     expect(finalMapping).toHaveTextContent('study-path-7-multiple-choice')
     expect(finalMapping).toHaveTextContent('study-path-7-flashcard')
@@ -612,8 +611,8 @@ describe('CreateStudyPathModal role enforcement', () => {
     expect(firstDashboardWidgets).toContain(
       'German A2 routines use time phrases',
     )
-    expect(firstDashboardWidgets).toContain('FlashcardBlock')
-    expect(firstDashboardWidgets).toContain('QuizBlock')
+    expect(firstDashboardWidgets).toContain('FlashcardCarouselBlock')
+    expect(firstDashboardWidgets).toContain('QuizCarouselBlock')
     expect(firstDashboardWidgets).not.toContain('"Chart"')
     expect(firstDashboardWidgets).not.toContain('Summary')
   })

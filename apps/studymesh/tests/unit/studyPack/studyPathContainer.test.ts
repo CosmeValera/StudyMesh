@@ -11,6 +11,9 @@ const createStudyPathComponentProps = (index: number) => ({
   studyPathDashboardIndex: index,
   studyPathDashboardCount: 3,
   studyPathFolderName: 'Algebra',
+  studyPathLayoutArchetype: 'learnPracticeTabs',
+  studyPathDashboardPurpose: 'lesson',
+  studyPathPracticeType: 'mixed',
 })
 
 const createStudyPathLayout = (index: number): DashboardLayout => ({
@@ -78,6 +81,11 @@ describe('createStudyPathContainerState', () => {
       'Lesson 2',
       'Lesson 3',
     ])
+    expect(container?.dashboards[0]).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
   })
 
   it('does not containerize unrelated dashboards', () => {

@@ -11,7 +11,6 @@ export {
 export type { StudyPackAiSettings } from './settings'
 export type { StudyPackAiProvider } from './settings'
 export {
-  getStudyPathDashboardRoles,
   normalizeStudyPathGenerationAmount,
 } from './gemini'
 export type {
@@ -43,6 +42,18 @@ export type {
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
 } from './normalizer'
+export {
+  STUDY_PATH_LAYOUT_ARCHETYPES,
+  getDefaultStudyPathLayoutMetadata,
+  normalizeStudyPathLayoutMetadata,
+} from '../studyPathArchetypes'
+export type {
+  StudyPathDashboardPurpose,
+  StudyPathLayoutArchetype,
+  StudyPathLayoutMetadata,
+  StudyPathPracticeType,
+  StudyPathSourceRef,
+} from '../studyPathArchetypes'
 export {
   callLocalLanguageModel,
   extractNotesFromImageWithLocalLanguageModel,

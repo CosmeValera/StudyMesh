@@ -6,11 +6,55 @@ import {
   createStudyPackWidgets,
   createStudyPackWidgetsFromGroups,
   extractLearningConcepts,
+  getDefaultStudyPathLayoutMetadata,
   isBadConceptCandidate,
+  normalizeStudyPathLayoutMetadata,
   parseStudyPack,
 } from '../../../src/studyPack'
 
 describe('study pack generator', () => {
+  it('normalizes Study Path layout archetype metadata with safe fallbacks', () => {
+    expect(getDefaultStudyPathLayoutMetadata('normal')).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
+    expect(getDefaultStudyPathLayoutMetadata('summary')).toMatchObject({
+      layoutArchetype: 'overviewReview',
+      dashboardPurpose: 'overview',
+      practiceType: 'none',
+    })
+    expect(
+      normalizeStudyPathLayoutMetadata(
+        {
+          layoutArchetype: 'splitReferenceExercise',
+          dashboardPurpose: 'lesson',
+          practiceType: 'quiz',
+          layoutReason: 'Reference beside exercise.',
+        },
+        getDefaultStudyPathLayoutMetadata('normal'),
+      ),
+    ).toMatchObject({
+      layoutArchetype: 'splitReferenceExercise',
+      dashboardPurpose: 'lesson',
+      practiceType: 'quiz',
+    })
+    expect(
+      normalizeStudyPathLayoutMetadata(
+        {
+          layoutArchetype: 'bad-layout',
+          dashboardPurpose: 'bad-purpose',
+          practiceType: 'bad-practice',
+        },
+        getDefaultStudyPathLayoutMetadata('normal'),
+      ),
+    ).toMatchObject({
+      layoutArchetype: 'learnPracticeTabs',
+      dashboardPurpose: 'lesson',
+      practiceType: 'mixed',
+    })
+  })
+
   it('extracts concept-first practice and blocks weak candidates', () => {
     const source = `Goal
 Example
@@ -429,9 +473,48 @@ A: When differentiating x raised to a constant power.`,
         dashboardIndex: 1,
         dashboardCount: 7,
         folderName: 'Derivatives Path',
+        layoutArchetype: 'learnPracticeTabs',
+        dashboardPurpose: 'lesson',
+        practiceType: 'mixed',
       },
     })
     const serialized = JSON.stringify(widgets)
+
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      'Derivatives Source',
+      'Derivatives Quizzes',
+      'Derivatives Review',
+    ])
+    expect(serialized).toContain('StudyPathProgressBlock')
+    expect(serialized).toContain('studyPathLayoutArchetype')
+    expect(serialized).toContain('derivatives-path-1')
+    expect(serialized).not.toContain('Derivatives Summary')
+    expect(serialized).toContain('QuizCarouselBlock')
+    expect(serialized).toContain('FlashcardCarouselBlock')
+  })
+
+  it('keeps split reference Study Path dashboards in a richer source plus summary layout', () => {
+    const pack = parseStudyPack(
+      `Quiz:: Which rule handles x^n? | Power rule | Chain rule | Product rule
+Q: When is the power rule used?
+A: When differentiating x raised to a constant power.`,
+      { title: 'Derivatives', sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      rawSource: 'The power rule differentiates x raised to a constant power.',
+      studyPath: {
+        pathId: 'derivatives-path',
+        title: 'Derivatives Path',
+        dashboardKey: 'derivatives-path-1',
+        dashboardName: '01 - Applied rule',
+        dashboardIndex: 1,
+        dashboardCount: 3,
+        folderName: 'Derivatives Path',
+        layoutArchetype: 'splitReferenceExercise',
+        dashboardPurpose: 'lesson',
+        practiceType: 'quiz',
+      },
+    })
 
     expect(widgets.map((widget) => widget.name)).toEqual([
       'Derivatives Source',
@@ -439,10 +522,6 @@ A: When differentiating x raised to a constant power.`,
       'Derivatives Quizzes',
       'Derivatives Review',
     ])
-    expect(serialized).toContain('StudyPathProgressBlock')
-    expect(serialized).toContain('studyPathItemId')
-    expect(serialized).toContain('derivatives-path-1')
-    expect(serialized).toContain('Derivatives Summary')
   })
 
   it('renders summary Study Path dashboards as recap-only', () => {
@@ -510,10 +589,42 @@ A: partions`,
       'French Exercises Quizzes',
       'French Exercises Review',
     ])
-    expect(serialized).toContain('QuizBlock')
-    expect(serialized).toContain('FlashcardBlock')
+    expect(serialized).toContain('QuizCarouselBlock')
+    expect(serialized).toContain('FlashcardCarouselBlock')
     expect(serialized).not.toContain('French Exercises Summary')
     expect(serialized).not.toContain('This recap should not render')
+  })
+
+  it('renders focus lesson Study Path dashboards as one learning surface', () => {
+    const pack = parseStudyPack(
+      `# Concept
+Read one careful explanation.
+Quiz:: Which answer fits? | A | B | C
+Q: What matters?
+A: The concept.`,
+      { title: 'Focused Concept', sourceFormat: 'text' },
+    )
+    const widgets = createStudyPackOrchestratorWidgets(pack, {
+      rawSource: 'Read one careful explanation.',
+      studyPath: {
+        pathId: 'focus-path',
+        title: 'Focus Path',
+        dashboardKey: 'focus-path-1',
+        dashboardName: '01 - Concept',
+        dashboardIndex: 1,
+        dashboardCount: 3,
+        folderName: 'Focus Path',
+        layoutArchetype: 'focusLesson',
+        dashboardPurpose: 'lesson',
+        practiceType: 'none',
+      },
+    })
+
+    expect(widgets.map((widget) => widget.name)).toEqual([
+      'Focused Concept Source',
+    ])
+    expect(JSON.stringify(widgets)).not.toContain('QuizCarouselBlock')
+    expect(JSON.stringify(widgets)).not.toContain('FlashcardCarouselBlock')
   })
 
   it('can skip the source widget and use caller-provided widget groups', () => {

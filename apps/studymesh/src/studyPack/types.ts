@@ -1,6 +1,12 @@
 import { CustomWidget } from '../components/WidgetEditor/WidgetStorage'
 import { ComponentData } from '../components/WidgetEditor/types/types'
 import { DashboardLayout } from '../state/store'
+import type {
+  StudyPathDashboardPurpose,
+  StudyPathLayoutArchetype,
+  StudyPathPracticeType,
+  StudyPathSourceRef,
+} from './studyPathArchetypes'
 
 export type StudyPackSourceFormat =
   | 'paste'
@@ -182,6 +188,11 @@ export interface StudyPathDashboardContext {
   dashboardCount: number
   folderName: string
   dashboardRole?: StudyPathDashboardRole
+  layoutArchetype?: StudyPathLayoutArchetype
+  dashboardPurpose?: StudyPathDashboardPurpose
+  practiceType?: StudyPathPracticeType
+  layoutReason?: string
+  sourceRefs?: StudyPathSourceRef[]
 }
 
 export type StudyPackDashboardLayoutMode = 'smart' | 'tabs' | 'orchestrator'

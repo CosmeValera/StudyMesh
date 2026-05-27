@@ -45,6 +45,7 @@ import {
   resolveStudyPackAiCredentials,
   STUDY_PACK_AI_SETTINGS_CHANGED_EVENT,
   StudyPackAiProvider,
+  StudyPathLayoutArchetype,
   StudyPathGenerationAmount,
 } from '../../studyPack/ai'
 import { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
@@ -133,6 +134,19 @@ const GEMINI_STUDY_PATH_ESTIMATES_MS: Record<
 }
 const BASIC_FALLBACK_STUDY_PATH_DELAY_MS = 10 * 1000
 const DEFAULT_STUDY_PATH_PROMPT = 'Learn French level B2'
+
+const layoutModeForStudyPathArchetype = (
+  archetype?: StudyPathLayoutArchetype,
+): StudyPackDashboardLayoutMode => {
+  if (
+    archetype === 'splitReferenceExercise' ||
+    archetype === 'multiWidgetLab'
+  ) {
+    return 'orchestrator'
+  }
+
+  return 'tabs'
+}
 
 interface GeminiTimedProgress {
   startedAt: number
@@ -911,7 +925,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       dashboards: pathDraft.dashboards.map((dashboard, index) => ({
         name: dashboard.title || `${pathDraft.title} ${index + 1}`,
         folderName: effectiveFolder,
-        layoutMode: 'orchestrator',
+        layoutMode: layoutModeForStudyPathArchetype(dashboard.layoutArchetype),
         widgets: createStudyPackOrchestratorWidgets(
           {
             id: makePackId(dashboard.title || pathDraft.title, index),
@@ -941,6 +955,11 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
               dashboardCount,
               folderName: effectiveFolder,
               dashboardRole: dashboard.dashboardRole,
+              layoutArchetype: dashboard.layoutArchetype,
+              dashboardPurpose: dashboard.dashboardPurpose,
+              practiceType: dashboard.practiceType,
+              layoutReason: dashboard.layoutReason,
+              sourceRefs: dashboard.sourceRefs,
             },
           },
         ),
@@ -1561,7 +1580,18 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                           label={`${dashboard.objects.length} study items`}
                           size="small"
                         />
-                        <Chip label={dashboard.dashboardRole} size="small" />
+                        {dashboard.dashboardPurpose ? (
+                          <Chip
+                            label={dashboard.dashboardPurpose}
+                            size="small"
+                          />
+                        ) : null}
+                        {dashboard.layoutArchetype ? (
+                          <Chip
+                            label={dashboard.layoutArchetype}
+                            size="small"
+                          />
+                        ) : null}
                       </Stack>
                       <Typography variant="subtitle1" fontWeight={800}>
                         {dashboard.title}
@@ -1600,7 +1630,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                       ['Raw AI response', debugTrace.rawAiResponse],
                       ['Raw dashboard input', debugTrace.rawDashboardInput],
                       [
-                        'Role-sanitized input before normalization',
+                        'Sanitized input before normalization',
                         debugTrace.roleSanitizedInput,
                       ],
                       [

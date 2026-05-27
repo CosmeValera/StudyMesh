@@ -116,6 +116,11 @@ const objectToComponents = (
         studyPathDashboardIndex: studyPath.dashboardIndex,
         studyPathDashboardCount: studyPath.dashboardCount,
         studyPathFolderName: studyPath.folderName,
+        studyPathLayoutArchetype: studyPath.layoutArchetype,
+        studyPathDashboardPurpose: studyPath.dashboardPurpose,
+        studyPathPracticeType: studyPath.practiceType,
+        studyPathLayoutReason: studyPath.layoutReason,
+        studyPathSourceRefs: studyPath.sourceRefs,
         studyPathItemId: object.id,
       }
     : {}
@@ -417,6 +422,28 @@ const createFocusedStudySessionWidget = (
   }
 }
 
+const getFocusedPracticeType = (
+  objects: StudyObject[],
+): 'flashcards' | 'quiz' | null => {
+  if (objects.length === 0) {
+    return null
+  }
+
+  if (
+    objects.every(
+      (object) => object.kind === 'qa' || object.kind === 'reveal',
+    )
+  ) {
+    return 'flashcards'
+  }
+
+  if (objects.every((object) => object.kind === 'quiz')) {
+    return 'quiz'
+  }
+
+  return null
+}
+
 const createSummaryChart = (
   pack: StudyPack,
   widgetId: string,
@@ -547,6 +574,11 @@ const createStudyPathProgressBlock = (
     studyPathDashboardIndex: studyPath.dashboardIndex,
     studyPathDashboardCount: studyPath.dashboardCount,
     studyPathFolderName: studyPath.folderName,
+    studyPathLayoutArchetype: studyPath.layoutArchetype,
+    studyPathDashboardPurpose: studyPath.dashboardPurpose,
+    studyPathPracticeType: studyPath.practiceType,
+    studyPathLayoutReason: studyPath.layoutReason,
+    studyPathSourceRefs: studyPath.sourceRefs,
   },
 })
 
@@ -832,6 +864,44 @@ const formatBucketName = (bucket: string): string => {
   return names[bucket] || bucket
 }
 
+const shouldRenderStudyPathSourceSummary = (
+  studyPath: StudyPathDashboardContext | undefined,
+  includeSourceSummaryWidget: boolean,
+  dashboardRole: string,
+): boolean => {
+  if (!includeSourceSummaryWidget) {
+    return false
+  }
+
+  if (dashboardRole === 'exercises' || dashboardRole === 'summary') {
+    return false
+  }
+
+  if (!studyPath) {
+    return true
+  }
+
+  return (
+    studyPath.layoutArchetype === 'splitReferenceExercise' ||
+    studyPath.layoutArchetype === 'multiWidgetLab'
+  )
+}
+
+const shouldRenderStudyPathGeneratedWidgets = (
+  studyPath: StudyPathDashboardContext | undefined,
+  dashboardRole: string,
+): boolean => {
+  if (dashboardRole === 'summary') {
+    return false
+  }
+
+  if (studyPath?.layoutArchetype === 'focusLesson') {
+    return false
+  }
+
+  return true
+}
+
 export const createStudyPackSmartWidgetGroups = (
   pack: StudyPack,
   groupingThreshold: number,
@@ -910,6 +980,11 @@ export const createStudyPackOrchestratorWidgets = (
   }
   const dashboardRole =
     normalizedOptions.studyPath?.dashboardRole || pack.dashboardRole || 'normal'
+  const includeSourceSummaryWidget = shouldRenderStudyPathSourceSummary(
+    normalizedOptions.studyPath,
+    normalizedOptions.includeSourceSummaryWidget,
+    dashboardRole,
+  )
   const sourceWidgets = normalizedOptions.includeSourceWidget
     ? [
         createRawSourceWidget(pack, options.rawSource || '', {
@@ -920,9 +995,7 @@ export const createStudyPackOrchestratorWidgets = (
           widgetIdPrefix: normalizedOptions.widgetIdPrefix,
           studyPath: normalizedOptions.studyPath,
         }),
-        ...(!normalizedOptions.includeSourceSummaryWidget ||
-        dashboardRole === 'exercises' ||
-        dashboardRole === 'summary'
+        ...(!includeSourceSummaryWidget
           ? []
           : [
               createSourceSummaryWidget(pack, options.rawSource || '', {
@@ -935,7 +1008,10 @@ export const createStudyPackOrchestratorWidgets = (
       ]
     : []
   const generatedGroups =
-    dashboardRole === 'summary'
+    !shouldRenderStudyPathGeneratedWidgets(
+      normalizedOptions.studyPath,
+      dashboardRole,
+    )
       ? []
       : options.widgetGroups ||
         createStudyPackSmartWidgetGroups(
@@ -1004,7 +1080,8 @@ export const createStudyPackWidgetsFromGroups = (
       : [{ name: pack.title, objects: [] }]
 
   return effectiveGroups.map((group, index) =>
-    normalizedOptions.focusedResourceType
+    normalizedOptions.focusedResourceType ||
+    (normalizedOptions.studyPath ? getFocusedPracticeType(group.objects) : null)
       ? createFocusedStudySessionWidget(
           pack,
           group.objects,
@@ -1013,7 +1090,10 @@ export const createStudyPackWidgetsFromGroups = (
             author: normalizedOptions.author,
             category: normalizedOptions.category,
             createdAt: normalizedOptions.createdAt,
-            focusedResourceType: normalizedOptions.focusedResourceType,
+            focusedResourceType:
+              normalizedOptions.focusedResourceType ||
+              getFocusedPracticeType(group.objects) ||
+              'quiz',
             widgetIdPrefix: normalizedOptions.widgetIdPrefix,
           },
           group.name,
