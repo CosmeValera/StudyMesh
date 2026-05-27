@@ -103,6 +103,9 @@ import { augmentStudyPackPracticeObjects } from '../../studyPack/practice'
 import { StudyObject } from '../../studyPack/types'
 import WidgetEditorDialog from './WidgetEditorDialog'
 import { useResponsiveWorkspaceMode } from './useResponsiveWorkspaceMode'
+import StudyBlockView, {
+  isStudyBlockType,
+} from '../WidgetEditor/components/preview/StudyBlockView'
 
 const quickCreateIcons: Record<StudyMaterialResourceType, React.ReactNode> = {
   quiz: <QuizIcon fontSize="small" />,
@@ -427,6 +430,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   >({})
   const [pendingQuickSourceFocus, setPendingQuickSourceFocus] =
     useState<QuickSourceFocus | null>(null)
+  const [activeMaterialDraftId, setActiveMaterialDraftId] = useState<
+    string | null
+  >(null)
   const [fullScreenWidgetPayload, setFullScreenWidgetPayload] = useState<{
     loadWidget?: CustomWidget
     initialEditMode?: boolean
@@ -547,6 +553,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       const customEvent = event as CustomEvent<OpenCreateHubDetail>
       const detail = customEvent.detail || {}
       acknowledgeQueueAttention()
+      setActiveMaterialDraftId(null)
       setSelectedIntent(detail.intent || null)
       if (detail.openQuickOptions) {
         setQuickOptionsOpen(true)
@@ -847,6 +854,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const openGenerationQueue = () => {
     acknowledgeQueueAttention()
+    setActiveMaterialDraftId(null)
     setSelectedIntent(null)
     setQuickOptionsOpen(false)
     setActiveFlow('hub')
@@ -865,7 +873,27 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const openGeneratedDraft = (draft: GenerationDraft) => {
-    if (draft.status !== 'ready' || !draft.generatedDashboards?.length) {
+    if (draft.status !== 'ready') {
+      return
+    }
+
+    const openedAt = new Date().toISOString()
+
+    if (draft.generatedMaterial) {
+      updateDraft(draft.id, { acknowledgedAt: openedAt, openedAt })
+      setActiveMaterialDraftId(draft.id)
+      setSelectedIntent(null)
+      setQuickOptionsOpen(false)
+      setActiveFlow('hub')
+      setIsStudioOpen(true)
+      if (isMobile) {
+        window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+        setMobileSection('creation')
+      }
+      return
+    }
+
+    if (!draft.generatedDashboards?.length) {
       return
     }
 
@@ -882,7 +910,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       )
     }
 
-    const openedAt = new Date().toISOString()
     updateDraft(draft.id, { acknowledgedAt: openedAt, openedAt })
     if (isMobile) {
       setIsStudioOpen(false)
@@ -891,7 +918,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const retryGenerationDraft = (draft: GenerationDraft) => {
-    if (draft.status !== 'failed') {
+    if (draft.status !== 'failed' && draft.status !== 'ready') {
       return
     }
 
@@ -1025,7 +1052,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       sourceMode === 'dashboard' ? currentDashboardTitle : quickSourceLabel
     return `${label} #${getNextQuickCreationIndex(
       resourceType,
-    )} - ${truncateQuickCreationContext(contextTitle)}`
+    )} · ${truncateQuickCreationContext(contextTitle)}`
   }
   useEffect(() => {
     if (
@@ -1064,6 +1091,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   ])
 
   const startCreateIntent = (intent: CreateIntent) => {
+    setActiveMaterialDraftId(null)
     setSelectedIntent(intent)
     createNewDraft(intent === 'study-path' ? 'study-path' : 'from-notes')
   }
@@ -1234,6 +1262,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 acknowledgedAt: undefined,
                 openedAt: undefined,
                 completedAt: undefined,
+                generatedMaterial: undefined,
                 generatedDashboards: undefined,
               }
             : existingDraft,
@@ -1323,27 +1352,41 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         widgetGroups: groups,
       })
 
-      const savedDashboards = createStudyPackDashboards({
-        dashboards: [
-          {
-            name: nextTitle,
-            widgets,
-            layoutMode: 'tabs',
-          },
-        ],
-        openInWorkspace: false,
-      })
+      const now = new Date().toISOString()
       updateDraft(draftId, {
         title: nextTitle,
         status: 'ready',
-        completedAt: new Date().toISOString(),
-        generatedDashboards: savedDashboards,
+        completedAt: now,
+        generatedMaterial: {
+          id: `material-${draftId}`,
+          type: resourceType,
+          title: nextTitle,
+          sourceDashboardId:
+            sourceMode === 'dashboard' ? currentDashboard?.id : undefined,
+          sourceStudyPathId: currentDashboard?.studyPath?.pathId,
+          sourceLessonId: currentDashboard?.studyPath?.dashboardKey,
+          sourceLabel:
+            sourceMode === 'dashboard'
+              ? currentDashboardTitle
+              : quickSourceLabel,
+          createdAt: generationDraft.createdAt,
+          updatedAt: now,
+          content: {
+            widgets,
+            sourceSummary: generated.sourceSummary?.bullets?.join('\n'),
+          },
+          generationConfig: {
+            difficulty: effectiveDifficulty,
+            detailLevel: effectiveDetailLevel,
+            sourceMode,
+          },
+        },
       })
       removeGenerationRetrySnapshot(draftId)
       dispatchWorkspaceCreationStatus({
         task: 'from-notes',
         state: 'complete',
-        message: 'Saved to dashboards',
+        message: `${quickCreateLabels[resourceType]} ready`,
       })
     } catch (error) {
       const message =
@@ -1407,6 +1450,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   ) => {
     const shouldUseSources = Boolean(focus) || !hasCurrentDashboardContext
 
+    setActiveMaterialDraftId(null)
     setSelectedIntent(resourceType || selectedQuickCreateIntent || 'quiz')
     setQuickOptionsOpen(true)
     setQuickSourceMode(shouldUseSources ? 'sources' : 'dashboard')
@@ -1451,6 +1495,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const studyPathOption = createOptions[0]
 
   const returnToCreateHub = () => {
+    setActiveMaterialDraftId(null)
     setActiveFlow('hub')
     setSelectedIntent(null)
     if (isMobile) {
@@ -1469,6 +1514,139 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       setMobileSection('creation')
     }
   }
+
+  const activeMaterialDraft = activeMaterialDraftId
+    ? generationDrafts.find((draft) => draft.id === activeMaterialDraftId)
+    : null
+  const activeMaterial = activeMaterialDraft?.generatedMaterial
+  const promoteActiveMaterialToDashboard = () => {
+    if (!activeMaterial) {
+      return
+    }
+
+    createStudyPackDashboards({
+      dashboards: [
+        {
+          name: activeMaterial.title,
+          widgets: activeMaterial.content.widgets,
+          layoutMode: 'tabs',
+        },
+      ],
+      openInWorkspace: true,
+    })
+  }
+  const deleteActiveMaterial = () => {
+    if (!activeMaterialDraft) {
+      return
+    }
+
+    removeGenerationRetrySnapshot(activeMaterialDraft.id)
+    setGenerationDrafts((current) =>
+      current.filter((draft) => draft.id !== activeMaterialDraft.id),
+    )
+    setActiveMaterialDraftId(null)
+  }
+
+  const materialDetailContent = activeMaterial ? (
+    <Box
+      sx={{
+        height: '100%',
+        overflow: 'auto',
+        p: { xs: 2, sm: 2.5 },
+        pb: { xs: 10, sm: 2.5 },
+      }}
+    >
+      <Stack spacing={2}>
+        <Stack direction="row" alignItems="flex-start" gap={1}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Button
+              size="small"
+              onClick={returnToCreateHub}
+              sx={{
+                mb: 1,
+                alignSelf: 'flex-start',
+                borderRadius: 999,
+                fontWeight: 900,
+              }}
+            >
+              ← Back to Create
+            </Button>
+            <Typography variant="h5" fontWeight={900}>
+              {activeMaterial.title}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mt: 0.35,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              From: {activeMaterial.sourceLabel}
+            </Typography>
+          </Box>
+          <IconButton
+            aria-label="Close Create panel"
+            onClick={closeStudio}
+            size="small"
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.default',
+              flex: '0 0 auto',
+            }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        <Stack direction="row" gap={1} flexWrap="wrap">
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() =>
+              activeMaterialDraft && retryGenerationDraft(activeMaterialDraft)
+            }
+            sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 900 }}
+          >
+            Regenerate
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={promoteActiveMaterialToDashboard}
+            sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 900 }}
+          >
+            Add to dashboard
+          </Button>
+          <Button
+            size="small"
+            color="error"
+            onClick={deleteActiveMaterial}
+            sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 900 }}
+          >
+            Delete
+          </Button>
+        </Stack>
+
+        <Stack spacing={1.5}>
+          {activeMaterial.content.widgets.flatMap((widget) =>
+            widget.components
+              .filter((component) => isStudyBlockType(component.type))
+              .map((component) => (
+                <StudyBlockView
+                  key={`${widget.name}-${component.id}`}
+                  type={component.type}
+                  props={component.props || {}}
+                />
+              )),
+          )}
+        </Stack>
+      </Stack>
+    </Box>
+  ) : null
 
   const creationHubContent = (
     <Box
@@ -1582,7 +1760,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     color="text.secondary"
                     sx={{ mt: 0.4 }}
                   >
-                    Creates lessons, dashboards, exercises and flashcards.
+                    Creates modules and lesson dashboards. Practice is generated
+                    on demand.
                   </Typography>
                 </Box>
                 <Button
@@ -2517,7 +2696,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           flexDirection: 'column',
         }}
       >
-        {creationHubContent}
+        {materialDetailContent || creationHubContent}
       </Box>
 
       <Box
@@ -2666,6 +2845,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const openCreateHub = () => {
     if (isMobile && isStudioOpen && activeFlow === 'hub') {
       acknowledgeQueueAttention()
+      setActiveMaterialDraftId(null)
       setMobileSection('creation')
       return
     }
@@ -2676,6 +2856,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     }
 
     acknowledgeQueueAttention()
+    setActiveMaterialDraftId(null)
     setSelectedIntent(null)
     setActiveFlow('hub')
     setIsStudioOpen(true)

@@ -430,9 +430,7 @@ const getFocusedPracticeType = (
   }
 
   if (
-    objects.every(
-      (object) => object.kind === 'qa' || object.kind === 'reveal',
-    )
+    objects.every((object) => object.kind === 'qa' || object.kind === 'reveal')
   ) {
     return 'flashcards'
   }
@@ -891,6 +889,10 @@ const shouldRenderStudyPathGeneratedWidgets = (
   studyPath: StudyPathDashboardContext | undefined,
   dashboardRole: string,
 ): boolean => {
+  if (studyPath) {
+    return false
+  }
+
   if (dashboardRole === 'summary') {
     return false
   }
@@ -1007,17 +1009,16 @@ export const createStudyPackOrchestratorWidgets = (
             ]),
       ]
     : []
-  const generatedGroups =
-    !shouldRenderStudyPathGeneratedWidgets(
-      normalizedOptions.studyPath,
-      dashboardRole,
-    )
-      ? []
-      : options.widgetGroups ||
-        createStudyPackSmartWidgetGroups(
-          pack,
-          normalizedOptions.groupingThreshold,
-        )
+  const generatedGroups = !shouldRenderStudyPathGeneratedWidgets(
+    normalizedOptions.studyPath,
+    dashboardRole,
+  )
+    ? []
+    : options.widgetGroups ||
+      createStudyPackSmartWidgetGroups(
+        pack,
+        normalizedOptions.groupingThreshold,
+      )
 
   if (generatedGroups.length === 0) {
     return sourceWidgets

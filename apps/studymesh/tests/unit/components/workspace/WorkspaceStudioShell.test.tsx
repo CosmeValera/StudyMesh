@@ -72,7 +72,21 @@ vi.mock('../../../../src/studyPack/ai', () => ({
 
 vi.mock('../../../../src/studyPack', () => ({
   __esModule: true,
-  createStudyPackOrchestratorWidgets: vi.fn(() => []),
+  createStudyPackOrchestratorWidgets: vi.fn(() => [
+    {
+      name: 'Generated material',
+      components: [
+        {
+          id: 'generated-material-notes',
+          type: 'MarkdownBlock',
+          props: {
+            title: 'Generated notes',
+            markdown: 'Generated material body',
+          },
+        },
+      ],
+    },
+  ]),
 }))
 
 vi.mock('../../../../src/studyPack/practice', () => ({
@@ -183,9 +197,32 @@ describe('WorkspaceStudioShell Quick Create', () => {
         ),
       }),
     )
+    expect(createStudyPackDashboardsMock).not.toHaveBeenCalled()
     await waitFor(() =>
-      expect(createStudyPackDashboardsMock).toHaveBeenCalled(),
+      expect(screen.getByText(/Ready - Open/i)).toBeInTheDocument(),
     )
+  })
+
+  it('opens ready quick-created material inside the Creation panel', async () => {
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation()
+    clickQuickCard('Quiz')
+
+    await waitFor(() =>
+      expect(screen.getByText(/Ready - Open/i)).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByText(/Ready - Open/i))
+
+    expect(
+      screen.getByRole('button', { name: /Back to Create/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Generated material body/i)).toBeInTheDocument()
+    expect(createStudyPackDashboardsMock).not.toHaveBeenCalled()
   })
 
   it('opens a separate Create from Material flow from the hub link', () => {
@@ -244,8 +281,9 @@ describe('WorkspaceStudioShell Quick Create', () => {
         rawNotes: expect.stringContaining('Custom source notes about enzymes'),
       }),
     )
+    expect(createStudyPackDashboardsMock).not.toHaveBeenCalled()
     await waitFor(() =>
-      expect(createStudyPackDashboardsMock).toHaveBeenCalled(),
+      expect(screen.getByText(/Ready - Open/i)).toBeInTheDocument(),
     )
   })
 

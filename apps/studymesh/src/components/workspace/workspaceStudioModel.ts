@@ -2,6 +2,7 @@ import type {
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
 } from '../../studyPack/ai'
+import type { ComponentData } from '../WidgetEditor/types/types'
 import type { DashboardLayout } from '../../state/store'
 import type { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
 
@@ -44,12 +45,43 @@ export interface GenerationDraft {
   retrySourceMode?: 'dashboard' | 'sources'
   retryResourceType?: StudyMaterialResourceType
   retryDifficulty?: string
+  generatedMaterial?: GeneratedMaterial
   generatedDashboards?: Array<{
     id: string
     name: string
     layout: DashboardLayout
     folder?: string
   }>
+}
+
+export interface GeneratedMaterial {
+  id: string
+  type: StudyMaterialResourceType | 'summary' | 'exercises' | 'other'
+  title: string
+  sourceDashboardId?: string
+  sourceStudyPathId?: string
+  sourceLessonId?: string
+  sourceModuleId?: string
+  sourceLabel: string
+  createdAt: string
+  updatedAt: string
+  content: {
+    widgets: Array<{
+      name: string
+      components: ComponentData[]
+      category?: string
+      tags?: string[]
+      description?: string
+      version?: string
+      author?: string
+    }>
+    sourceSummary?: string
+  }
+  generationConfig: {
+    difficulty?: string
+    detailLevel?: StudyMaterialDetailLevel
+    sourceMode?: 'dashboard' | 'sources'
+  }
 }
 
 export const quickCreateLabels: Record<StudyMaterialResourceType, string> = {
@@ -152,7 +184,7 @@ export const readIsAdmin = () => {
 
 export const createGenerationDraft = (
   flow: Exclude<StudioFlow, 'hub'>,
-  options: { isPlaceholder?: boolean } = {},
+  options: Partial<GenerationDraft> & { isPlaceholder?: boolean } = {},
 ): GenerationDraft => ({
   id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   flow,
@@ -160,7 +192,7 @@ export const createGenerationDraft = (
   title: flow === 'study-path' ? 'Study Path draft' : 'Notes draft',
   createdAt: new Date().toISOString(),
   inputSummary: flow === 'study-path' ? 'Learning prompt' : 'Sources',
-  isPlaceholder: options.isPlaceholder,
+  ...options,
 })
 
 export const resourceTypeTitle = (resourceType?: string | null) => {

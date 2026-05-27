@@ -23,6 +23,7 @@ import {
   registerStudyPathAttempt,
   StudyPathDashboardMeta,
 } from '../../../../studyPack/progress'
+import { OPEN_CREATE_HUB_EVENT } from '../../../../customHooks/useWorkspaceActions'
 
 interface StudyBlockViewProps {
   type: string
@@ -549,6 +550,13 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
         )
       }
     }
+    const openLessonCreation = (intent: 'quiz' | 'flashcards') => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_CREATE_HUB_EVENT, {
+          detail: { intent },
+        }),
+      )
+    }
 
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -589,6 +597,24 @@ const StudyBlockView: React.FC<StudyBlockViewProps> = ({ type, props }) => {
           >
             {isComplete ? 'Completed' : 'Complete dashboard'}
           </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => openLessonCreation('quiz')}
+              sx={{ textTransform: 'none', borderRadius: 999 }}
+            >
+              Generate quiz
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => openLessonCreation('flashcards')}
+              sx={{ textTransform: 'none', borderRadius: 999 }}
+            >
+              Generate flashcards
+            </Button>
+          </Stack>
         </Stack>
       </Paper>
     )

@@ -456,7 +456,7 @@ A: Back
     expect(JSON.stringify(widgets)).not.toContain('"Chart"')
   })
 
-  it('adds Study Path progress metadata with a source summary tab', () => {
+  it('adds Study Path progress metadata without auto-rendering practice widgets', () => {
     const pack = parseStudyPack(
       `Quiz:: Which rule handles x^n? | Power rule | Chain rule | Product rule
 Q: When is the power rule used?
@@ -480,17 +480,13 @@ A: When differentiating x raised to a constant power.`,
     })
     const serialized = JSON.stringify(widgets)
 
-    expect(widgets.map((widget) => widget.name)).toEqual([
-      'Derivatives Source',
-      'Derivatives Quizzes',
-      'Derivatives Review',
-    ])
+    expect(widgets.map((widget) => widget.name)).toEqual(['Derivatives Source'])
     expect(serialized).toContain('StudyPathProgressBlock')
     expect(serialized).toContain('studyPathLayoutArchetype')
     expect(serialized).toContain('derivatives-path-1')
     expect(serialized).not.toContain('Derivatives Summary')
-    expect(serialized).toContain('QuizCarouselBlock')
-    expect(serialized).toContain('FlashcardCarouselBlock')
+    expect(serialized).not.toContain('QuizCarouselBlock')
+    expect(serialized).not.toContain('FlashcardCarouselBlock')
   })
 
   it('keeps split reference Study Path dashboards in a richer source plus summary layout', () => {
@@ -519,8 +515,6 @@ A: When differentiating x raised to a constant power.`,
     expect(widgets.map((widget) => widget.name)).toEqual([
       'Derivatives Source',
       'Derivatives Summary',
-      'Derivatives Quizzes',
-      'Derivatives Review',
     ])
   })
 
@@ -558,7 +552,7 @@ A: The mixed rules.`,
     expect(serialized).not.toContain('French Summary Summary')
   })
 
-  it('renders exercises Study Path dashboards as practice-only without a visible summary tab', () => {
+  it('keeps legacy exercises Study Path dashboards lesson-clean', () => {
     const pack = parseStudyPack(
       `- This recap should not render on exercises dashboards
 Quiz:: Choose the subjunctive form. | partions | partons | partirez
@@ -586,11 +580,9 @@ A: partions`,
 
     expect(widgets.map((widget) => widget.name)).toEqual([
       'French Exercises Source',
-      'French Exercises Quizzes',
-      'French Exercises Review',
     ])
-    expect(serialized).toContain('QuizCarouselBlock')
-    expect(serialized).toContain('FlashcardCarouselBlock')
+    expect(serialized).not.toContain('QuizCarouselBlock')
+    expect(serialized).not.toContain('FlashcardCarouselBlock')
     expect(serialized).not.toContain('French Exercises Summary')
     expect(serialized).not.toContain('This recap should not render')
   })

@@ -384,10 +384,7 @@ describe('study pack AI normalizer', () => {
       'resource-pack',
       'quiz',
     )
-    expect(quiz.objects.map((object) => object.kind)).toEqual([
-      'quiz',
-      'quiz',
-    ])
+    expect(quiz.objects.map((object) => object.kind)).toEqual(['quiz', 'quiz'])
   })
 })
 
@@ -3041,7 +3038,7 @@ describe('Gemini study pack client', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[0][1].body).toContain(
-      'sourceSummary, conceptRecap, practice, and flashcards should match the selected layout',
+      'practice and flashcards should usually be empty',
     )
     expect(fetchMock.mock.calls[1][1].body).toContain('Original JSON')
     expect(fetchMock.mock.calls[1][1].body).toContain(

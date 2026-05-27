@@ -459,6 +459,27 @@ const studyPathSchema = {
             enum: ['none', 'quiz', 'flashcards', 'mixed'],
           },
           layoutReason: { type: 'STRING' },
+          moduleTitle: { type: 'STRING' },
+          lessonType: {
+            type: 'STRING',
+            enum: [
+              'orientation',
+              'concept',
+              'workedExample',
+              'comparison',
+              'procedure',
+              'lab',
+              'checkpoint',
+              'review',
+              'remediation',
+            ],
+          },
+          learnerQuestion: { type: 'STRING' },
+          learningOutcome: { type: 'STRING' },
+          suggestedPractice: {
+            type: 'ARRAY',
+            items: { type: 'STRING' },
+          },
           sourceRefs: {
             type: 'ARRAY',
             items: {
@@ -1247,9 +1268,6 @@ export const generateStudyPathWithAi = async ({
   const practiceProfile = createStudyPackPracticeProfile(practiceAmount, [
     'summaries',
     'definitions',
-    'flashcards',
-    'quizzes',
-    'exercises',
   ])
   const advancedGuidance = studyPathAdvancedPromptGuidance(
     mustInclude,
@@ -1267,9 +1285,14 @@ Return exactly this structure:
       "summary": "One sentence preview",
       "layoutArchetype": "learnPracticeTabs",
       "dashboardPurpose": "lesson",
-      "practiceType": "mixed",
+      "practiceType": "none",
       "layoutReason": "Short reason for the selected learning layout",
       "sourceRefs": [{ "label": "optional source/chunk label" }],
+      "moduleTitle": "Module title",
+      "lessonType": "concept",
+      "learnerQuestion": "Question this lesson answers",
+      "learningOutcome": "Concrete outcome for the learner",
+      "suggestedPractice": ["Generate quiz for this lesson", "Generate flashcards for this lesson"],
       "rawNotes": "Complete lesson notes for this dashboard",
       "sourceSummary": { "title": "Source summary", "bullets": ["..."] },
       "conceptRecap": { "title": "Concept recap", "sections": [{ "title": "Specific concept", "bullets": ["..."], "example": "..." }] },
@@ -1282,23 +1305,26 @@ Return exactly this structure:
 Rules:
 - Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
 - Choose a concise, topic-specific folderName for the Study Path, such as "French B1 Subjunctive" or "Calculus Derivatives". Do not use a generic folderName like "Study Path" unless the topic is truly unknown.
-- Create exactly ${dashboardCount} ordered lesson dashboards. Give each dashboard a useful topic-specific title.
+- Create exactly ${dashboardCount} ordered lesson dashboards, grouped mentally into 1-3 modules. Give each dashboard a useful topic-specific title.
+- Treat this as a bounded learning sprint, not a complete course on everything. Include scope in lesson choices: what gets covered now, what waits for later.
 - Do not follow a fixed role template by position. You are responsible for choosing each dashboard's purpose, layoutArchetype, practiceType, rawNotes, and practice mix from the lesson content itself.
+- Every dashboard is a normal lesson dashboard in the product. Do not make the last dashboard an automatic exercise dump or the previous one an automatic summary. Choose content only from teaching need.
 - Every dashboard must have one primary educational purpose: overview, lesson, practice, review, finalReview, or projectLab.
 - Choose one layoutArchetype per dashboard: focusLesson, learnPracticeTabs, splitReferenceExercise, multiWidgetLab, or overviewReview.
 - Use learnPracticeTabs for most normal lessons. Use focusLesson for intro/theory-heavy/recap dashboards. Use overviewReview for overview, summary, final review, or mixed review dashboards.
 - Use splitReferenceExercise only when side-by-side reference clearly improves studying, such as programming, math, formulas, grammar, or comparison. Use multiWidgetLab only for project/lab steps.
 - Do not choose the same layout for every normal dashboard unless the topic truly demands it. For paths with 3 or more dashboards, prefer at least two archetypes when educationally reasonable.
 - Pick the layout from the lesson's teaching need, not from a fixed template: reading-heavy concepts can be focusLesson, explanation plus recall can be learnPracticeTabs, reference-heavy applied work can be splitReferenceExercise, and hands-on build steps can be multiWidgetLab.
-- SourceSummary is internal support material. The visible Learn area comes mainly from rawNotes, so rawNotes must carry the actual lesson.
+- SourceSummary, conceptRecap, practice, and flashcards are internal support material. The visible lesson comes mainly from rawNotes, so rawNotes must carry the actual lesson.
 - Do not make dashboards feel like random widget collections. Use the simplest layout that supports the learning goal.
-- Quizzes and flashcards are active practice blocks/sessions, not decoration. Prefer one focused quiz or flashcard practice area over scattered mini widgets.
-- Each dashboard must be useful by itself and contain roughly 4-9 visible study items after StudyMesh adds the lesson/source widgets, unless focusLesson/practiceType none is clearly best.
+- Do not generate full quizzes or flashcards inside every lesson by default. StudyMesh has on-demand Quick Create for quiz, flashcards, clear notes, and exercises from each lesson.
+- For most lessons, set practiceType to none and use suggestedPractice text to recommend useful follow-up actions. Add practice/flashcards only when the lesson is explicitly a checkpoint, review, remediation, or applied practice step.
+- Each dashboard must be useful by itself as teaching content, not as a container for many practice widgets.
 - Always return exactly ${stepNames.length} dashboards total.
 - rawNotes must be real lesson notes for that dashboard, not a one-line summary. Write 250-600 words with explanations, examples, key points, and common mistakes when relevant.
 - Format rawNotes as readable Markdown, not one long paragraph. Use short sections like "## Goal", "## Key points", "## Examples", "## Common mistakes", and bullet lists where helpful.
-- sourceSummary, conceptRecap, practice, and flashcards should match the selected layout. For focusLesson/practiceType none, practice and flashcards may be empty. For learnPracticeTabs or splitReferenceExercise, include focused practice. For overviewReview or review-focused dashboards, include recap plus review practice if useful.
-- conceptRecap is used internally to structure the lesson. StudyMesh usually renders visible practice from practice.shortAnswer, practice.multipleChoice, and flashcards.
+- sourceSummary and conceptRecap should match the selected layout. For normal teaching lessons, practice and flashcards should usually be empty. For checkpoint/review/remediation lessons, include one focused practice set if useful.
+- conceptRecap is used internally to structure the lesson. StudyMesh renders quiz/flashcard materials on demand in the Creation side panel.
 - Do not output "objects", "kind", "quizMode", internal block names, widget names, or any StudyMesh renderer fields. StudyMesh decides widget types.
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from structured concepts, not from first sentences, headings, copied examples, or instructions.
@@ -1306,7 +1332,7 @@ Rules:
 - Practice questions must test concepts and uses, not copied headings or answer options made obvious by the dashboard title.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
 - Flashcards should ask useful rule-specific prompts such as "How do you form the present subjunctive for most verbs?" instead of "What should you remember about <copied line>?".
-- Include practice through practice.shortAnswer, practice.multipleChoice, and flashcards when active recall improves the dashboard.
+- Include suggestedPractice for each lesson as short user-facing actions, such as "Generate quiz for this lesson" or "Generate flashcards for this lesson".
 - Every dashboard needs a short "summary" sentence so the review screen can preview it.
 - Do not wrap JSON in markdown. Do not add commentary outside JSON.
 - Do not create PDFs/images/resources unless the user explicitly asks for heavy media.
@@ -1314,7 +1340,7 @@ Rules:
 - Keep content concise, beginner-friendly, and appropriate for the requested topic.
 - Aim for about ${practiceProfile.minTotal}-${
     practiceProfile.maxTotal
-  } reviewable items across the whole path.
+  } support concepts across the whole path. Do not pad with quiz/flashcard items.
 ${
   advancedGuidance
     ? `- Respect the user's advanced guidance below when planning lessons, rawNotes, examples, and practice. Do not make avoided/already-known topics a focus unless needed for context.\n`
