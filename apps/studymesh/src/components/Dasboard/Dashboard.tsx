@@ -250,7 +250,7 @@ const Dashboards = () => {
     window.addEventListener('mouseup', stopResize)
   }
 
-  const dashboardChatRailWidth = 44
+  const dashboardChatRailWidth = 66
   const { addComponent } = useLayout()
   const { topNavBarWidgets } = useTopNavBarWidgets()
   const currentDashboard = openDashboards[selectedDashboard]
@@ -1460,6 +1460,7 @@ const Dashboards = () => {
         updateDashboardChatMessages(currentDashboard, messages)
       }
       onClose={closeDashboardChatPanel}
+      showCloseButton
     />
   )
 
@@ -1726,15 +1727,32 @@ const Dashboards = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  justifyContent: 'flex-start',
                   gap: 1,
+                  py: 0.75,
                   boxShadow:
                     theme.palette.mode === 'dark'
                       ? '0 12px 32px rgba(0,0,0,0.32)'
                       : '0 12px 30px rgba(16,24,40,0.12)',
                 }}
               >
-                <ChatBubbleOutlineIcon fontSize="small" />
+                <Box
+                  sx={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 1.25,
+                    bgcolor: 'action.hover',
+                    color: 'primary.main',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flex: '0 0 auto',
+                  }}
+                >
+                  <ChatBubbleOutlineIcon fontSize="small" />
+                </Box>
+                <Box
+                  sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }}
+                />
                 <Typography
                   variant="caption"
                   sx={{

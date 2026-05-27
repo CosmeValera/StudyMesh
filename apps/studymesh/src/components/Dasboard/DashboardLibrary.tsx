@@ -383,6 +383,19 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
     openBulkDeleteDialog('Delete all library items', dashboards)
   }
 
+  const handleDeleteFolderDashboards = (
+    folderName: string,
+    folderDashboards: SavedDashboard[],
+    event: React.MouseEvent,
+  ) => {
+    event.stopPropagation()
+    if (!isAdmin || folderDashboards.length === 0) {
+      return
+    }
+
+    openBulkDeleteDialog(`Delete ${folderName}`, folderDashboards)
+  }
+
   const openBulkDeleteDialog = (
     title: string,
     candidates: SavedDashboard[],
@@ -1110,17 +1123,17 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                 {searchTerm
                   ? 'No Matching Study Paths'
                   : folderFilter
-                    ? 'No Study Paths In Subject'
-                    : 'No Study Paths Available'}
+                  ? 'No Study Paths In Subject'
+                  : 'No Study Paths Available'}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {searchTerm
                   ? 'Try a different search term or clear the search'
                   : folderFilter
-                    ? 'Select a different subject or clear the filter'
-                    : !isAdmin
-                      ? 'No public Study Paths are currently available'
-                      : 'Create a Study Path from notes to start your library'}
+                  ? 'Select a different subject or clear the filter'
+                  : !isAdmin
+                  ? 'No public Study Paths are currently available'
+                  : 'Create a Study Path from notes to start your library'}
               </Typography>
             </Paper>
           ) : (
@@ -1163,6 +1176,31 @@ const SavedDashboardsDialog: React.FC<SavedDashboardsDialogProps> = ({
                           fontWeight: 700,
                         }}
                       />
+                      <Box sx={{ flex: 1 }} />
+                      {isAdmin ? (
+                        <Tooltip title={`Delete items in ${folderName}`}>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            aria-label={`Delete ${folderName} folder items`}
+                            onClick={(event) =>
+                              handleDeleteFolderDashboards(
+                                folderName,
+                                dashboards,
+                                event,
+                              )
+                            }
+                            sx={{
+                              bgcolor: 'rgba(211,47,47,0.08)',
+                              '&:hover': {
+                                bgcolor: 'rgba(211,47,47,0.16)',
+                              },
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      ) : null}
                     </Box>
                     {dashboards.map((dashboard, index) => (
                       <Fade

@@ -157,7 +157,7 @@ export const statusMarkerGlow: Record<GenerationMarkerState, string> = {
 }
 
 export const studioPanelWidth = 424
-export const studioPanelRailWidth = 44
+export const studioPanelRailWidth = 66
 export const studioPanelMinWidth = 360
 export const studioPanelMaxWidth = 620
 export const workspaceCanvasSx = {
@@ -189,7 +189,10 @@ export const createGenerationDraft = (
   id: `${flow}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   flow,
   status: 'editing',
-  title: flow === 'study-path' ? 'Study basic human anatomy focusing on organs and systems (cardiovascular, respiratory, digestive)' : 'Notes draft',
+  title:
+    flow === 'study-path'
+      ? 'Study basic human anatomy focusing on organs and systems (cardiovascular, respiratory, digestive)'
+      : 'Notes draft',
   createdAt: new Date().toISOString(),
   inputSummary: flow === 'study-path' ? 'Learning prompt' : 'Sources',
   ...options,

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Box, Slide, Tooltip, Typography } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
+import ViewSidebarIcon from '@mui/icons-material/ViewSidebar'
 import type { Theme } from '@mui/material/styles'
 
 import { studioPanelRailWidth, workspaceCanvasSx } from './workspaceStudioModel'
@@ -115,7 +115,8 @@ interface WorkspaceDesktopLayoutProps {
   widgetBuilderDialog: React.ReactNode
   isStudioOpen: boolean
   studioWidth: number
-  openCreateHub: () => void
+  toggleCreatePanel: () => void
+  collapsedCreationActions: React.ReactNode
   startStudioResize: (event: React.MouseEvent<HTMLDivElement>) => void
   theme: Theme
 }
@@ -127,7 +128,8 @@ export const WorkspaceDesktopLayout = ({
   widgetBuilderDialog,
   isStudioOpen,
   studioWidth,
-  openCreateHub,
+  toggleCreatePanel,
+  collapsedCreationActions,
   startStudioResize,
   theme,
 }: WorkspaceDesktopLayoutProps) => (
@@ -169,53 +171,133 @@ export const WorkspaceDesktopLayout = ({
           display: isStudioOpen ? 'block' : 'none',
         }}
       >
-        {studioContent}
+        <Box
+          sx={{
+            height: '100%',
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'background.paper',
+          }}
+        >
+          <Box
+            sx={{
+              height: 48,
+              flex: '0 0 auto',
+              px: 1.25,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              borderBottom: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              fontWeight={900}
+              noWrap
+              sx={{ color: 'text.primary' }}
+            >
+              Creation
+            </Typography>
+            <Tooltip title="Collapse Create" placement="right">
+              <Box
+                component="button"
+                type="button"
+                aria-label="Collapse Create panel"
+                onClick={toggleCreatePanel}
+                sx={{
+                  width: 30,
+                  height: 30,
+                  border: 0,
+                  borderRadius: 1.25,
+                  bgcolor: 'action.hover',
+                  color: 'primary.main',
+                  cursor: 'pointer',
+                  display: 'grid',
+                  placeItems: 'center',
+                  '&:hover': {
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                  },
+                }}
+              >
+                <ViewSidebarIcon fontSize="small" />
+              </Box>
+            </Tooltip>
+          </Box>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            {studioContent}
+          </Box>
+        </Box>
       </Box>
       {!isStudioOpen && (
-        <Tooltip title="Open Create" placement="right">
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 2.5,
+            bgcolor: 'background.paper',
+            color: 'primary.main',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 0.75,
+            py: 0.75,
+            overflow: 'hidden',
+            cursor: 'pointer',
+            boxShadow:
+              theme.palette.mode === 'dark'
+                ? '0 12px 32px rgba(0,0,0,0.32)'
+                : '0 12px 30px rgba(16,24,40,0.12)',
+          }}
+          onClick={toggleCreatePanel}
+        >
+          <Tooltip title="Open Create" placement="right">
+            <Box
+              component="button"
+              type="button"
+              aria-label="Open Create panel"
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleCreatePanel()
+              }}
+              sx={{
+                width: 30,
+                height: 30,
+                border: 0,
+                borderRadius: 1.25,
+                bgcolor: 'action.hover',
+                color: 'primary.main',
+                cursor: 'pointer',
+                display: 'grid',
+                placeItems: 'center',
+                '&:hover': {
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                },
+              }}
+            >
+              <ViewSidebarIcon fontSize="small" />
+            </Box>
+          </Tooltip>
+          <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }} />
           <Box
-            component="button"
-            type="button"
-            aria-label="Open Create panel"
-            onClick={openCreateHub}
             sx={{
               width: '100%',
-              height: '100%',
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 2.5,
-              bgcolor: 'background.paper',
-              color: 'primary.main',
-              cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: 1,
-              boxShadow:
-                theme.palette.mode === 'dark'
-                  ? '0 12px 32px rgba(0,0,0,0.32)'
-                  : '0 12px 30px rgba(16,24,40,0.12)',
-              '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'action.hover',
-              },
+              gap: 0.65,
+              mt: 0.5,
             }}
           >
-            <AddIcon fontSize="small" />
-            <Typography
-              variant="caption"
-              sx={{
-                writingMode: 'vertical-rl',
-                transform: 'rotate(180deg)',
-                fontWeight: 800,
-                letterSpacing: 0.4,
-              }}
-            >
-              Create
-            </Typography>
+            {collapsedCreationActions}
           </Box>
-        </Tooltip>
+        </Box>
       )}
       {isStudioOpen && (
         <Box

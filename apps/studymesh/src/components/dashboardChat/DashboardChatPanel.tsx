@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Chip,
-  Divider,
   IconButton,
   Stack,
   TextField,
@@ -13,9 +12,9 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import SendIcon from '@mui/icons-material/Send'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import { StateDashboard } from '../../state/store'
 import {
   buildDashboardChatContext,
@@ -23,11 +22,7 @@ import {
   selectDashboardChatChunks,
 } from '../../dashboardChat/contextBuilder'
 import { askDashboardSources } from '../../dashboardChat/askDashboard'
-import {
-  isStrongAiProvider,
-  readStudyPackAiSettings,
-  STRONG_AI_PROVIDERS,
-} from '../../studyPack/ai'
+import { readStudyPackAiSettings } from '../../studyPack/ai'
 import { renderMarkdown } from '../WidgetEditor/components/preview/StudyBlockView'
 
 export interface DashboardChatMessage {
@@ -44,6 +39,7 @@ interface DashboardChatPanelProps {
   messages: DashboardChatMessage[]
   onMessagesChange: (messages: DashboardChatMessage[]) => void
   onClose: () => void
+  showCloseButton?: boolean
 }
 
 const suggestions = [
@@ -61,6 +57,7 @@ const DashboardChatPanel = ({
   messages,
   onMessagesChange,
   onClose,
+  showCloseButton = true,
 }: DashboardChatPanelProps) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
@@ -72,13 +69,6 @@ const DashboardChatPanel = ({
   const queueRef = useRef(Promise.resolve())
   const settings = readStudyPackAiSettings()
   const isLocalAi = settings.provider === 'local'
-  const providerLabel = isLocalAi
-    ? 'Local AI'
-    : isStrongAiProvider(settings.provider)
-    ? STRONG_AI_PROVIDERS[settings.provider].label
-    : settings.provider === 'hosted'
-    ? 'Hosted'
-    : 'Basic'
   const context = useMemo(
     () =>
       buildDashboardChatContext(
@@ -224,44 +214,21 @@ const DashboardChatPanel = ({
     >
       <Box
         sx={{
-          minHeight: 76,
-          px: 2,
-          py: 1.5,
+          height: 48,
+          flex: '0 0 auto',
+          px: 1.25,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 1.5,
+          gap: 1,
           borderBottom: 1,
           borderColor: 'divider',
-          background:
-            theme.palette.mode === 'dark'
-              ? 'linear-gradient(135deg, rgba(34,197,94,0.14), rgba(14,165,233,0.08))'
-              : 'linear-gradient(135deg, rgba(34,197,94,0.10), rgba(14,165,233,0.06))',
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={900} noWrap>
-            Ask Sources
+          <Typography variant="subtitle2" fontWeight={900} noWrap>
+            AI Chat
           </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            Grounded in this workspace’s study material
-          </Typography>
-          <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }}>
-            <Chip
-              size="small"
-              label={providerLabel}
-              variant="outlined"
-              sx={{ height: 22, fontWeight: 700 }}
-            />
-            <Chip
-              size="small"
-              label={`${context.chunks.length} source${
-                context.chunks.length === 1 ? '' : 's'
-              }`}
-              variant="outlined"
-              sx={{ height: 22 }}
-            />
-          </Stack>
         </Box>
         <Stack direction="row" spacing={0.5}>
           {messages.length > 0 && (
@@ -275,22 +242,28 @@ const DashboardChatPanel = ({
               </IconButton>
             </Tooltip>
           )}
-          <Tooltip title="Close">
-            <IconButton
-              size="small"
-              onClick={onClose}
-              aria-label="Close Ask Sources"
-              sx={{
-                mt: 0.25,
-                border: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.default',
-                flex: '0 0 auto',
-              }}
-            >
-              <ChevronRightIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {showCloseButton ? (
+            <Tooltip title="Close">
+              <IconButton
+                size="small"
+                onClick={onClose}
+                aria-label="Close AI Chat"
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 1.25,
+                  bgcolor: 'action.hover',
+                  color: 'primary.main',
+                  flex: '0 0 auto',
+                  '&:hover': {
+                    bgcolor: 'action.selected',
+                  },
+                }}
+              >
+                <ChatBubbleOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : null}
         </Stack>
       </Box>
 
@@ -486,7 +459,7 @@ const DashboardChatPanel = ({
         )}
       </Box>
 
-      <Divider />
+      <Box sx={{ borderTop: 1, borderColor: 'divider' }} />
       <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
         <Stack direction="row" spacing={1} alignItems="flex-end">
           <TextField

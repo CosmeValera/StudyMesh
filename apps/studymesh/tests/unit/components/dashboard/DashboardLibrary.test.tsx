@@ -118,7 +118,7 @@ describe('DashboardLibrary bulk actions', () => {
     ])
   })
 
-  it('does not show separate per-folder delete actions', async () => {
+  it('lets admins delete a folder after choosing exact folder items', async () => {
     const storage = createMemoryStorage()
     storage.set(
       'userData',
@@ -137,11 +137,33 @@ describe('DashboardLibrary bulk actions', () => {
 
     expect(await screen.findByText('Cell Structure')).toBeInTheDocument()
     expect(screen.getByText('Roman Empire')).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /delete biology folder items/i }),
+    )
+
+    const deleteDialog = await screen.findByRole('dialog', {
+      name: /delete biology/i,
+    })
+    expect(within(deleteDialog).getByText('Cell Structure')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /delete every item in biology/i }),
-    ).not.toBeInTheDocument()
+      within(deleteDialog).getByText('Genetics Review'),
+    ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /delete every item in history/i }),
+      within(deleteDialog).queryByText('Roman Empire'),
     ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      within(deleteDialog).getByRole('checkbox', { name: /select genetics/i }),
+    )
+    fireEvent.click(
+      within(deleteDialog).getByRole('button', { name: /delete selected/i }),
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByText('Cell Structure')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Genetics Review')).toBeInTheDocument()
+    expect(screen.getByText('Roman Empire')).toBeInTheDocument()
   })
 })
