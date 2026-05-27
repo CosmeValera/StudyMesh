@@ -69,6 +69,8 @@ interface CreateStudyPathModalProps {
   onCollapse?: () => void
   onContinueCreating?: () => void
   onContinueInBackground?: () => void
+  autoCreateOnGenerate?: boolean
+  openGeneratedInWorkspace?: boolean
   onStatusChange?: (state: WorkspaceCreationTaskState, message?: string) => void
   onDraftMetaChange?: (metadata: {
     title: string
@@ -515,6 +517,8 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
   onCollapse,
   onContinueCreating,
   onContinueInBackground,
+  autoCreateOnGenerate = false,
+  openGeneratedInWorkspace,
   onStatusChange,
   onDraftMetaChange,
   initialPrompt,
@@ -584,8 +588,12 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       return
     }
 
+    if (autoCreateOnGenerate) {
+      return
+    }
+
     onStatusChange?.('idle')
-  }, [draft, error, isGenerating, onStatusChange, step])
+  }, [autoCreateOnGenerate, draft, error, isGenerating, onStatusChange, step])
 
   const cancelActiveGeneration = () => {
     activeGenerationRef.current?.abort()
@@ -733,6 +741,9 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     )
     setLocalAiFailureDebug(null)
     setError('')
+    if (autoCreateOnGenerate) {
+      onCollapse?.()
+    }
 
     try {
       if (aiProvider === 'basic') {
@@ -796,7 +807,12 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       const sanitizedDraft = { ...nextDraft, dashboards: sanitizedDashboards }
       setDraft(sanitizedDraft)
       setReviewFolderName(nextDraft.folderName || nextDraft.title || '')
-      setStep('review')
+      if (autoCreateOnGenerate) {
+        onCreatePath(buildPathPayload(sanitizedDraft))
+        reset()
+      } else {
+        setStep('review')
+      }
     } catch (err) {
       if (
         generationController.signal.aborted ||
@@ -837,15 +853,16 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
     onStatusChange?.('idle')
   }
 
-  const createPath = () => {
-    if (!draft) {
-      return
-    }
-
+  const buildPathPayload = (
+    pathDraft: AiStudyPathDraft,
+  ): Parameters<CreateStudyPathModalProps['onCreatePath']>[0] => {
     const effectiveFolder =
-      reviewFolderName.trim() || draft.folderName || draft.title || 'Study Path'
-    const studyPathId = makeStudyPathId(draft.title || effectiveFolder)
-    const dashboardCount = draft.dashboards.length
+      reviewFolderName.trim() ||
+      pathDraft.folderName ||
+      pathDraft.title ||
+      'Study Path'
+    const studyPathId = makeStudyPathId(pathDraft.title || effectiveFolder)
+    const dashboardCount = pathDraft.dashboards.length
     const firstMarkdown = (dashboard: AiStudyPathDraft['dashboards'][number]) =>
       dashboard.objects.find((object) => object.kind === 'markdown')
     const sourceTextForDashboard = (
@@ -856,17 +873,17 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       return dashboard.rawNotes || markdown?.markdown || prompt
     }
 
-    onCreatePath({
+    return {
       folderName: effectiveFolder,
-      openInWorkspace,
-      dashboards: draft.dashboards.map((dashboard, index) => ({
-        name: dashboard.title || `${draft.title} ${index + 1}`,
+      openInWorkspace: openGeneratedInWorkspace ?? openInWorkspace,
+      dashboards: pathDraft.dashboards.map((dashboard, index) => ({
+        name: dashboard.title || `${pathDraft.title} ${index + 1}`,
         folderName: effectiveFolder,
         layoutMode: 'orchestrator',
         widgets: createStudyPackOrchestratorWidgets(
           {
-            id: makePackId(dashboard.title || draft.title, index),
-            title: dashboard.title || `${draft.title} ${index + 1}`,
+            id: makePackId(dashboard.title || pathDraft.title, index),
+            title: dashboard.title || `${pathDraft.title} ${index + 1}`,
             sourceFormat: dashboard.sourceFormat || 'text',
             objects: dashboard.objects,
             warnings: dashboard.warnings || [],
@@ -878,12 +895,16 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
             includeSourceWidget: true,
             includeSourceSummaryWidget: aiProvider !== 'local',
             includeSummaryChart: false,
-            widgetIdPrefix: makePackId(dashboard.title || draft.title, index),
+            widgetIdPrefix: makePackId(
+              dashboard.title || pathDraft.title,
+              index,
+            ),
             studyPath: {
               pathId: studyPathId,
-              title: draft.title || effectiveFolder,
+              title: pathDraft.title || effectiveFolder,
               dashboardKey: `${studyPathId}-${index + 1}`,
-              dashboardName: dashboard.title || `${draft.title} ${index + 1}`,
+              dashboardName:
+                dashboard.title || `${pathDraft.title} ${index + 1}`,
               dashboardIndex: index + 1,
               dashboardCount,
               folderName: effectiveFolder,
@@ -892,7 +913,15 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
           },
         ),
       })),
-    })
+    }
+  }
+
+  const createPath = () => {
+    if (!draft) {
+      return
+    }
+
+    onCreatePath(buildPathPayload(draft))
     handleClose()
   }
 
@@ -1161,7 +1190,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
                   Hosted AI is not configured yet.
                 </Alert>
               )}
-              {isGenerating && (
+              {isGenerating && !autoCreateOnGenerate && (
                 <Paper
                   elevation={0}
                   sx={{ p: 2, border: 1, borderColor: 'primary.main' }}

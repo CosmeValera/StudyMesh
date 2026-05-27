@@ -2,6 +2,7 @@ import type {
   StudyMaterialDetailLevel,
   StudyMaterialResourceType,
 } from '../../studyPack/ai'
+import type { DashboardLayout } from '../../state/store'
 import type { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
 
 export type StudioFlow = 'hub' | 'study-path' | 'from-notes'
@@ -34,6 +35,14 @@ export interface GenerationDraft {
   error?: string
   isPlaceholder?: boolean
   quickCreate?: boolean
+  completedAt?: string
+  openedAt?: string
+  generatedDashboards?: Array<{
+    id: string
+    name: string
+    layout: DashboardLayout
+    folder?: string
+  }>
 }
 
 export const quickCreateLabels: Record<StudyMaterialResourceType, string> = {

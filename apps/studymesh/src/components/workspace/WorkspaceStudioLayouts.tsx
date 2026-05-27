@@ -114,6 +114,7 @@ interface WorkspaceDesktopLayoutProps {
   creationStatusMarkers: React.ReactNode
   widgetBuilderDialog: React.ReactNode
   isStudioOpen: boolean
+  creationQueueActive?: boolean
   studioWidth: number
   openCreateHub: () => void
   startStudioResize: (event: React.MouseEvent<HTMLDivElement>) => void
@@ -126,6 +127,7 @@ export const WorkspaceDesktopLayout = ({
   creationStatusMarkers,
   widgetBuilderDialog,
   isStudioOpen,
+  creationQueueActive = false,
   studioWidth,
   openCreateHub,
   startStudioResize,
@@ -171,7 +173,7 @@ export const WorkspaceDesktopLayout = ({
       >
         {studioContent}
       </Box>
-      {!isStudioOpen && (
+      {!isStudioOpen && !creationQueueActive && (
         <Tooltip title="Open Create" placement="right">
           <Box
             component="button"

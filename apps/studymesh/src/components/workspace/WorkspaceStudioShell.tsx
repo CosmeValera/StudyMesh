@@ -27,6 +27,9 @@ import QuizIcon from '@mui/icons-material/Quiz'
 import RouteIcon from '@mui/icons-material/Route'
 import StyleIcon from '@mui/icons-material/Style'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
+import LoopIcon from '@mui/icons-material/Loop'
 
 import {
   OPEN_CREATE_HUB_EVENT,
@@ -53,6 +56,7 @@ import {
 import { extractRawNotesFromImage } from '../../studyPack/imageOcr'
 import { CustomWidget } from '../WidgetEditor/WidgetStorage'
 import { useDashboards } from '../Dasboard/DashboardProvider'
+import { createStudyPathContainerState } from '../Dasboard/studyPathContainer'
 import {
   buildDashboardChatContext,
   formatDashboardChatContext,
@@ -82,7 +86,6 @@ import {
   quickCreateLabels,
   quickCreateTargets,
   quickSourceAcceptValue,
-  statusMarkerColors,
   statusMarkerGlow,
   studioPanelMaxWidth,
   studioPanelMinWidth,
@@ -279,7 +282,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const quickPasteButtonRef = useRef<HTMLButtonElement | null>(null)
   const quickCopiedTextInputRef = useRef<HTMLTextAreaElement | null>(null)
   const { createStudyPackDashboards } = useWorkspaceActions()
-  const { openDashboards, selectedDashboard } = useDashboards()
+  const {
+    addDashboards,
+    addStudyPathContainer,
+    openDashboards,
+    selectedDashboard,
+  } = useDashboards()
+  const generationQueueRef = useRef<HTMLDivElement | null>(null)
 
   const startStudioResize = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -587,6 +596,98 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
+  const queueJobs = generationDrafts.filter(
+    (draft) => !draft.isPlaceholder && draft.status !== 'editing',
+  )
+  const sortedQueueJobs = [...queueJobs].sort((first, second) => {
+    const rank = (draft: GenerationDraft) => {
+      if (draft.status === 'ready' && !draft.openedAt) {
+        return 0
+      }
+
+      if (draft.status === 'generating') {
+        return 1
+      }
+
+      if (draft.status === 'failed') {
+        return 2
+      }
+
+      return 3
+    }
+
+    const rankDelta = rank(first) - rank(second)
+    if (rankDelta !== 0) {
+      return rankDelta
+    }
+
+    return (
+      new Date(second.completedAt || second.createdAt).getTime() -
+      new Date(first.completedAt || first.createdAt).getTime()
+    )
+  })
+  const queueReadyCount = queueJobs.filter(
+    (draft) => draft.status === 'ready' && !draft.openedAt,
+  ).length
+  const queueGeneratingCount = queueJobs.filter(
+    (draft) => draft.status === 'generating',
+  ).length
+  const queueFailedCount = queueJobs.filter(
+    (draft) => draft.status === 'failed',
+  ).length
+  const hasQueueMarker = queueJobs.length > 0
+  const queueMarkerLabel =
+    queueReadyCount > 0
+      ? `${queueReadyCount} generated item${queueReadyCount === 1 ? '' : 's'} ready`
+      : queueGeneratingCount > 0
+        ? `${queueGeneratingCount} generation${queueGeneratingCount === 1 ? '' : 's'} running`
+        : queueFailedCount > 0
+          ? `${queueFailedCount} generation${queueFailedCount === 1 ? '' : 's'} failed`
+          : 'Creation queue'
+
+  const openGenerationQueue = () => {
+    setSelectedIntent(null)
+    setQuickOptionsOpen(false)
+    setActiveFlow('hub')
+    setIsStudioOpen(true)
+    if (isMobile) {
+      window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+      setMobileSection('creation')
+    }
+    window.setTimeout(() => {
+      generationQueueRef.current?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      })
+      generationQueueRef.current?.focus()
+    }, 80)
+  }
+
+  const openGeneratedDraft = (draft: GenerationDraft) => {
+    if (draft.status !== 'ready' || !draft.generatedDashboards?.length) {
+      return
+    }
+
+    const studyPath = createStudyPathContainerState(draft.generatedDashboards)
+    if (studyPath) {
+      addStudyPathContainer(studyPath)
+    } else {
+      addDashboards(
+        draft.generatedDashboards.map((dashboard) => ({
+          name: dashboard.name,
+          layout: dashboard.layout,
+        })),
+        { replaceEmptySelected: true },
+      )
+    }
+
+    updateDraft(draft.id, { openedAt: new Date().toISOString() })
+    if (isMobile) {
+      setIsStudioOpen(false)
+      setMobileSection('dashboard')
+    }
+  }
+
   const closeFullScreenWidgetEditor = () => {
     setFullScreenWidgetPayload(null)
     resetOrCloseStudio()
@@ -780,12 +881,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     resourceType: StudyMaterialResourceType,
     sourceText: string,
     title: string,
+    sourceMode: QuickSourceMode,
   ) => {
     const draft = createGenerationDraft('from-notes', {
       quickCreate: true,
       title,
       inputSummary:
-        quickSourceMode === 'dashboard' ? 'current dashboard' : 'sources',
+        sourceMode === 'dashboard' ? 'current dashboard' : 'sources',
       selectedResourceType: resourceType,
       detailLevel: quickDetailLevel,
     })
@@ -876,7 +978,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         widgetGroups: groups,
       })
 
-      createStudyPackDashboards({
+      const savedDashboards = createStudyPackDashboards({
         dashboards: [
           {
             name: nextTitle,
@@ -884,28 +986,19 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             layoutMode: 'tabs',
           },
         ],
-        openInWorkspace: true,
+        openInWorkspace: false,
       })
-      setGenerationDrafts((current) =>
-        current.filter((existingDraft) => existingDraft.id !== draft.id),
-      )
-      setActiveDraftByFlow((current) => {
-        if (current['from-notes'] !== draft.id) {
-          return current
-        }
-
-        const { 'from-notes': _removedDraftId, ...remaining } = current
-        return remaining
+      updateDraft(draft.id, {
+        title: nextTitle,
+        status: 'ready',
+        completedAt: new Date().toISOString(),
+        generatedDashboards: savedDashboards,
       })
       dispatchWorkspaceCreationStatus({
         task: 'from-notes',
         state: 'complete',
         message: 'Saved to dashboards',
       })
-      setIsStudioOpen(false)
-      if (isMobile) {
-        setMobileSection('dashboard')
-      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -950,6 +1043,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         resourceType,
         sourceText,
         `${currentDashboardTitle} ${titleBase}`.trim(),
+        sourceMode,
       )
     } catch (error) {
       const message =
@@ -1839,6 +1933,166 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             </Stack>
           </Paper>
         </Collapse>
+
+        {sortedQueueJobs.length > 0 ? (
+          <Paper
+            ref={generationQueueRef}
+            tabIndex={-1}
+            elevation={0}
+            aria-label="Generation queue"
+            sx={{
+              p: 1.25,
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2.5,
+              bgcolor: alpha(theme.palette.background.default, 0.72),
+              outline: 'none',
+              '&:focus-visible': {
+                boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.24)}`,
+              },
+            }}
+          >
+            <Stack spacing={1}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                gap={1}
+              >
+                <Typography variant="subtitle2" fontWeight={900}>
+                  Generation queue
+                </Typography>
+                <Chip
+                  size="small"
+                  label={`${queueJobs.length} job${queueJobs.length === 1 ? '' : 's'}`}
+                  sx={{ fontWeight: 800 }}
+                />
+              </Stack>
+              <Stack spacing={0.75}>
+                {sortedQueueJobs.map((draft) => {
+                  const isReady = draft.status === 'ready'
+                  const isGenerating = draft.status === 'generating'
+                  const isFailed = draft.status === 'failed'
+                  const opened = Boolean(draft.openedAt)
+                  const label =
+                    draft.flow === 'study-path'
+                      ? isGenerating
+                        ? 'Creating study path...'
+                        : draft.title || 'Study Path'
+                      : isGenerating
+                        ? `Generating ${resourceTypeTitle(draft.selectedResourceType).toLowerCase()}...`
+                        : draft.title ||
+                          resourceTypeTitle(draft.selectedResourceType)
+                  const detail = isFailed
+                    ? draft.error || 'Retry'
+                    : isReady
+                      ? opened
+                        ? 'Opened'
+                        : 'Ready · Open'
+                      : draft.inputSummary || 'based on source'
+                  const statusIcon = isFailed ? (
+                    <ErrorOutlineIcon fontSize="small" color="error" />
+                  ) : isReady ? (
+                    <CheckCircleIcon fontSize="small" color="success" />
+                  ) : (
+                    <LoopIcon
+                      fontSize="small"
+                      color="warning"
+                      sx={{
+                        animation:
+                          'studymesh-generation-pill-spin 950ms linear infinite',
+                        '@keyframes studymesh-generation-pill-spin': {
+                          to: { transform: 'rotate(360deg)' },
+                        },
+                      }}
+                    />
+                  )
+
+                  return (
+                    <Paper
+                      key={draft.id}
+                      component={isReady ? 'button' : 'div'}
+                      type={isReady ? 'button' : undefined}
+                      elevation={0}
+                      onClick={
+                        isReady ? () => openGeneratedDraft(draft) : undefined
+                      }
+                      sx={{
+                        width: '100%',
+                        p: 1,
+                        border: 1,
+                        borderColor: isReady
+                          ? alpha(theme.palette.success.main, 0.45)
+                          : isFailed
+                            ? alpha(theme.palette.error.main, 0.35)
+                            : alpha(theme.palette.warning.main, 0.36),
+                        borderRadius: 2,
+                        bgcolor: isReady
+                          ? alpha(theme.palette.success.main, 0.075)
+                          : isFailed
+                            ? alpha(theme.palette.error.main, 0.055)
+                            : alpha(theme.palette.warning.main, 0.07),
+                        color: 'text.primary',
+                        cursor: isReady ? 'pointer' : 'default',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        '&:hover': isReady
+                          ? {
+                              borderColor: 'success.main',
+                              bgcolor: alpha(theme.palette.success.main, 0.11),
+                            }
+                          : undefined,
+                      }}
+                    >
+                      <Box sx={{ flex: '0 0 auto', display: 'grid' }}>
+                        {statusIcon}
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          variant="body2"
+                          fontWeight={900}
+                          sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {isFailed
+                            ? `${resourceTypeTitle(
+                                draft.selectedResourceType,
+                              )} generation failed`
+                            : label}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            display: 'block',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {detail}
+                        </Typography>
+                      </Box>
+                      {isReady && !opened ? (
+                        <Chip
+                          size="small"
+                          color="success"
+                          label="Open"
+                          sx={{ fontWeight: 900 }}
+                        />
+                      ) : null}
+                    </Paper>
+                  )
+                })}
+              </Stack>
+            </Stack>
+          </Paper>
+        ) : null}
       </Stack>
     </Box>
   )
@@ -1891,17 +2145,26 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 open
                 presentation="embedded"
                 onCollapse={returnToCreateHub}
-                onContinueCreating={returnToCreateHub}
-                onContinueInBackground={() => setIsStudioOpen(false)}
+                autoCreateOnGenerate
+                openGeneratedInWorkspace={false}
                 onClose={() =>
                   cancelDraftAndReturnToHub(draft.id, 'study-path')
                 }
                 onCreatePath={(payload) => {
-                  const dashboards = createStudyPackDashboards(payload)
-                  removeDraft(draft.id, 'study-path')
+                  const dashboards = createStudyPackDashboards({
+                    ...payload,
+                    openInWorkspace: false,
+                  })
+                  updateDraft(draft.id, {
+                    title: payload.folderName || 'Study Path',
+                    inputSummary: payload.folderName || draft.inputSummary,
+                    status: 'ready',
+                    completedAt: new Date().toISOString(),
+                    generatedDashboards: dashboards,
+                  })
                   reportCreationStatus(
                     'study-path',
-                    'idle',
+                    'complete',
                     'Study material created.',
                   )
                   return dashboards
@@ -2029,7 +2292,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     window.dispatchEvent(new Event(OPEN_DASHBOARD_CHAT_EVENT))
   }
 
-  const mobileCreationStatusTray = visibleCreationMarkers.length ? (
+  const mobileCreationStatusTray = hasQueueMarker ? (
     <Box
       aria-label="Creation generation status"
       sx={{
@@ -2047,75 +2310,67 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         scrollbarWidth: 'none',
       }}
     >
-      {visibleCreationMarkers.map(({ draft, state }) => {
-        const isActiveMarker = activeDraftByFlow[draft.flow] === draft.id
-        const isSelected =
-          isStudioOpen &&
-          mobileSection === 'creation' &&
-          activeFlow === draft.flow &&
-          isActiveMarker
-
-        return (
-          <Button
-            key={draft.id}
-            size="small"
-            variant={isSelected ? 'contained' : 'outlined'}
-            onClick={() => openCreationMarker(draft)}
-            aria-label={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
-            sx={{
-              flex: '0 0 auto',
-              maxWidth: 220,
-              minWidth: 0,
-              px: 1,
-              borderRadius: 999,
-              textTransform: 'none',
-              justifyContent: 'flex-start',
-              gap: 0.75,
-            }}
-          >
-            <Box
-              sx={{
-                position: 'relative',
-                width: 9,
-                height: 9,
-                borderRadius: '50%',
-                bgcolor: statusMarkerColors[state],
-                boxShadow: statusMarkerGlow[state],
-                flex: '0 0 auto',
-                '&::after':
-                  state === 'running'
-                    ? {
-                        content: '""',
-                        position: 'absolute',
-                        inset: -4,
-                        borderRadius: '50%',
-                        border: 1.5,
-                        borderColor: 'warning.main',
-                        borderTopColor: 'transparent',
-                        animation:
-                          'studymesh-mobile-marker-spin 900ms linear infinite',
-                      }
-                    : undefined,
-                '@keyframes studymesh-mobile-marker-spin': {
-                  to: { transform: 'rotate(360deg)' },
-                },
-              }}
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontWeight: 800,
-              }}
-            >
-              {formatDraftTitle(draft)}
-            </Typography>
-          </Button>
-        )
-      })}
+      <Button
+        size="small"
+        variant={queueReadyCount > 0 ? 'contained' : 'outlined'}
+        onClick={openGenerationQueue}
+        aria-label={queueMarkerLabel}
+        sx={{
+          flex: '0 0 auto',
+          maxWidth: 240,
+          minWidth: 0,
+          px: 1,
+          borderRadius: 999,
+          textTransform: 'none',
+          justifyContent: 'flex-start',
+          gap: 0.75,
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            bgcolor:
+              queueReadyCount > 0
+                ? 'success.main'
+                : queueFailedCount > 0 && queueGeneratingCount === 0
+                  ? 'error.main'
+                  : 'warning.main',
+            flex: '0 0 auto',
+            '&::after':
+              queueGeneratingCount > 0
+                ? {
+                    content: '""',
+                    position: 'absolute',
+                    inset: -4,
+                    borderRadius: '50%',
+                    border: 1.5,
+                    borderColor: 'warning.main',
+                    borderTopColor: 'transparent',
+                    animation:
+                      'studymesh-mobile-marker-spin 900ms linear infinite',
+                  }
+                : undefined,
+            '@keyframes studymesh-mobile-marker-spin': {
+              to: { transform: 'rotate(360deg)' },
+            },
+          }}
+        />
+        <Typography
+          variant="caption"
+          sx={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontWeight: 800,
+          }}
+        >
+          {queueMarkerLabel}
+        </Typography>
+      </Button>
     </Box>
   ) : null
 
@@ -2234,20 +2489,19 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           </Box>
         </Tooltip>
       )}
-      {visibleCreationMarkers.map(({ draft, state }) => (
+      {hasQueueMarker ? (
         <Tooltip
-          key={draft.id}
-          title={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
+          title={`${queueMarkerLabel}. Click to view queue.`}
           placement="right"
         >
           <Box
             component="button"
             type="button"
-            aria-label={`${formatDraftTitle(draft)} - ${statusMarkerLabels[state]}`}
-            onClick={() => openCreationMarker(draft)}
+            aria-label={`${queueMarkerLabel}. View generation queue.`}
+            onClick={openGenerationQueue}
             sx={{
-              width: draft.flow === 'study-path' ? 38 : isMobile ? 30 : 30,
-              height: draft.flow === 'study-path' ? 92 : isMobile ? 76 : 76,
+              width: isMobile ? 34 : 34,
+              height: isMobile ? 82 : 82,
               border: 0,
               borderRadius: '0 18px 18px 0',
               bgcolor: 'background.paper',
@@ -2263,7 +2517,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               outline: 1,
               outlineColor: 'divider',
               animation:
-                state === 'complete'
+                queueReadyCount > 0
                   ? 'studymesh-marker-ready 1.4s ease-out 1'
                   : 'none',
               '@keyframes studymesh-marker-ready': {
@@ -2283,10 +2537,28 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 width: 14,
                 height: 14,
                 borderRadius: '50%',
-                bgcolor: statusMarkerColors[state],
-                boxShadow: statusMarkerGlow[state],
+                bgcolor:
+                  queueReadyCount > 0
+                    ? 'success.main'
+                    : queueFailedCount > 0 && queueGeneratingCount === 0
+                      ? 'error.main'
+                      : 'warning.main',
+                boxShadow:
+                  queueReadyCount > 0
+                    ? statusMarkerGlow.complete
+                    : queueFailedCount > 0 && queueGeneratingCount === 0
+                      ? statusMarkerGlow.error
+                      : statusMarkerGlow.running,
+                color:
+                  queueReadyCount > 0
+                    ? 'success.contrastText'
+                    : 'warning.contrastText',
+                display: 'grid',
+                placeItems: 'center',
+                fontSize: 9,
+                fontWeight: 900,
                 '&::after':
-                  state === 'running'
+                  queueGeneratingCount > 0
                     ? {
                         content: '""',
                         position: 'absolute',
@@ -2303,10 +2575,27 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   to: { transform: 'rotate(360deg)' },
                 },
               }}
-            />
+            >
+              {queueReadyCount > 0 ? queueReadyCount : ''}
+              {queueFailedCount > 0 && queueReadyCount === 0 ? (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    right: -6,
+                    bottom: -6,
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    bgcolor: 'error.main',
+                    border: 1,
+                    borderColor: 'background.paper',
+                  }}
+                />
+              ) : null}
+            </Box>
           </Box>
         </Tooltip>
-      ))}
+      ) : null}
     </Box>
   )
 
@@ -2328,7 +2617,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         widgetBuilderDialog={widgetBuilderDialog}
         isStudioOpen={isStudioOpen}
         mobileSection={mobileSection}
-        visibleCreationMarkerCount={visibleCreationMarkers.length}
+        visibleCreationMarkerCount={hasQueueMarker ? 1 : 0}
         theme={theme}
       >
         {children}
@@ -2342,6 +2631,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       creationStatusMarkers={creationStatusMarkers}
       widgetBuilderDialog={widgetBuilderDialog}
       isStudioOpen={isStudioOpen}
+      creationQueueActive={hasQueueMarker}
       studioWidth={studioWidth}
       openCreateHub={openCreateHub}
       startStudioResize={startStudioResize}
