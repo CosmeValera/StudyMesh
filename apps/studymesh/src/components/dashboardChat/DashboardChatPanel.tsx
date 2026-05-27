@@ -256,7 +256,10 @@ const DashboardChatPanel = ({
                   color: 'primary.main',
                   flex: '0 0 auto',
                   '&:hover': {
-                    bgcolor: 'action.selected',
+                    bgcolor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(255,255,255,0.14)'
+                        : 'rgba(0,0,0,0.10)',
                   },
                 }}
               >

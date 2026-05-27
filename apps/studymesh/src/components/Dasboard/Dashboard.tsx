@@ -1738,9 +1738,16 @@ const Dashboards = () => {
                     theme.palette.mode === 'dark'
                       ? '0 12px 32px rgba(0,0,0,0.32)'
                       : '0 12px 30px rgba(16,24,40,0.12)',
+                  '&:hover .studymesh-ai-chat-rail-icon': {
+                    bgcolor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(255,255,255,0.14)'
+                        : 'rgba(0,0,0,0.10)',
+                  },
                 }}
               >
                 <Box
+                  className="studymesh-ai-chat-rail-icon"
                   sx={{
                     width: 30,
                     height: 30,
@@ -1750,7 +1757,10 @@ const Dashboards = () => {
                     display: 'grid',
                     placeItems: 'center',
                     flex: '0 0 auto',
-                    marginTop: 0.3
+                    marginTop: 0.3,
+                    transition: theme.transitions.create('background-color', {
+                      duration: theme.transitions.duration.shortest,
+                    }),
                   }}
                 >
                   <ChatBubbleOutlineIcon fontSize="small" />

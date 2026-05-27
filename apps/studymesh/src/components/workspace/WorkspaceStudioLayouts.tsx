@@ -248,9 +248,14 @@ export const WorkspaceDesktopLayout = ({
                   cursor: 'pointer',
                   display: 'grid',
                   placeItems: 'center',
+                  transition: theme.transitions.create('background-color', {
+                    duration: theme.transitions.duration.shortest,
+                  }),
                   '&:hover': {
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
+                    bgcolor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(255,255,255,0.14)'
+                        : 'rgba(0,0,0,0.10)',
                   },
                 }}
               >
@@ -306,11 +311,16 @@ export const WorkspaceDesktopLayout = ({
                 cursor: 'pointer',
                 display: 'grid',
                 placeItems: 'center',
+                transition: theme.transitions.create('background-color', {
+                  duration: theme.transitions.duration.shortest,
+                }),
                 '&:hover': {
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
+                  bgcolor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(255,255,255,0.14)'
+                      : 'rgba(0,0,0,0.10)',
                 },
-                marginTop: 0.3
+                marginTop: 0.3,
               }}
             >
               <ViewSidebarIcon fontSize="small" />
