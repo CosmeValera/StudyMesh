@@ -193,6 +193,26 @@ const resourceTypeTitle = (resourceType?: string | null) => {
   return 'Dashboard'
 }
 
+const generationMaterialLabel = (draft: GenerationDraft) => {
+  if (draft.flow === 'study-path') {
+    return 'study path'
+  }
+
+  if (draft.selectedResourceType === 'quiz') {
+    return 'quiz'
+  }
+
+  if (draft.selectedResourceType === 'flashcards') {
+    return 'flashcards'
+  }
+
+  if (draft.selectedResourceType === 'improvedNotes') {
+    return 'clear notes'
+  }
+
+  return 'material'
+}
+
 const formatDraftTitle = (draft: GenerationDraft) => {
   const base = draft.title.trim()
   const shortTitle = base.length > 46 ? `${base.slice(0, 45).trim()}...` : base
@@ -601,7 +621,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   )
   const sortedQueueJobs = [...queueJobs].sort((first, second) => {
     const rank = (draft: GenerationDraft) => {
-      if (draft.status === 'ready' && !draft.openedAt) {
+      if (draft.status === 'ready' && !draft.acknowledgedAt) {
         return 0
       }
 
@@ -609,7 +629,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         return 1
       }
 
-      if (draft.status === 'failed') {
+      if (draft.status === 'failed' && !draft.acknowledgedAt) {
         return 2
       }
 
@@ -627,15 +647,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     )
   })
   const queueReadyCount = queueJobs.filter(
-    (draft) => draft.status === 'ready' && !draft.openedAt,
+    (draft) => draft.status === 'ready' && !draft.acknowledgedAt,
   ).length
   const queueGeneratingCount = queueJobs.filter(
     (draft) => draft.status === 'generating',
   ).length
   const queueFailedCount = queueJobs.filter(
-    (draft) => draft.status === 'failed',
+    (draft) => draft.status === 'failed' && !draft.acknowledgedAt,
   ).length
-  const hasQueueMarker = queueJobs.length > 0
+  const hasQueueMarker =
+    queueReadyCount > 0 || queueGeneratingCount > 0 || queueFailedCount > 0
   const queueMarkerLabel =
     queueReadyCount > 0
       ? `${queueReadyCount} generated item${queueReadyCount === 1 ? '' : 's'} ready`
@@ -646,6 +667,15 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           : 'Creation queue'
 
   const openGenerationQueue = () => {
+    const acknowledgedAt = new Date().toISOString()
+    setGenerationDrafts((current) =>
+      current.map((draft) =>
+        (draft.status === 'ready' || draft.status === 'failed') &&
+        !draft.acknowledgedAt
+          ? { ...draft, acknowledgedAt }
+          : draft,
+      ),
+    )
     setSelectedIntent(null)
     setQuickOptionsOpen(false)
     setActiveFlow('hub')
@@ -681,7 +711,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       )
     }
 
-    updateDraft(draft.id, { openedAt: new Date().toISOString() })
+    const openedAt = new Date().toISOString()
+    updateDraft(draft.id, { acknowledgedAt: openedAt, openedAt })
     if (isMobile) {
       setIsStudioOpen(false)
       setMobileSection('dashboard')
@@ -1974,21 +2005,22 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const isGenerating = draft.status === 'generating'
                   const isFailed = draft.status === 'failed'
                   const opened = Boolean(draft.openedAt)
+                  const materialLabel = generationMaterialLabel(draft)
                   const label =
-                    draft.flow === 'study-path'
-                      ? isGenerating
-                        ? 'Creating study path...'
-                        : draft.title || 'Study Path'
+                    isGenerating && draft.flow === 'study-path'
+                      ? 'Creating study path...'
                       : isGenerating
-                        ? `Generating ${resourceTypeTitle(draft.selectedResourceType).toLowerCase()}...`
+                        ? `Generating ${materialLabel}...`
                         : draft.title ||
-                          resourceTypeTitle(draft.selectedResourceType)
+                          (draft.flow === 'study-path'
+                            ? 'Study Path'
+                            : resourceTypeTitle(draft.selectedResourceType))
                   const detail = isFailed
                     ? draft.error || 'Retry'
                     : isReady
                       ? opened
                         ? 'Opened'
-                        : 'Ready · Open'
+                        : 'Ready - Open'
                       : draft.inputSummary || 'based on source'
                   const statusIcon = isFailed ? (
                     <ErrorOutlineIcon fontSize="small" color="error" />
@@ -2060,8 +2092,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           }}
                         >
                           {isFailed
-                            ? `${resourceTypeTitle(
-                                draft.selectedResourceType,
+                            ? `${materialLabel[0].toUpperCase()}${materialLabel.slice(
+                                1,
                               )} generation failed`
                             : label}
                         </Typography>
@@ -2631,7 +2663,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       creationStatusMarkers={creationStatusMarkers}
       widgetBuilderDialog={widgetBuilderDialog}
       isStudioOpen={isStudioOpen}
-      creationQueueActive={hasQueueMarker}
       studioWidth={studioWidth}
       openCreateHub={openCreateHub}
       startStudioResize={startStudioResize}

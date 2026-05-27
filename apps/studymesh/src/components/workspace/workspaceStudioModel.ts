@@ -36,6 +36,7 @@ export interface GenerationDraft {
   isPlaceholder?: boolean
   quickCreate?: boolean
   completedAt?: string
+  acknowledgedAt?: string
   openedAt?: string
   generatedDashboards?: Array<{
     id: string
