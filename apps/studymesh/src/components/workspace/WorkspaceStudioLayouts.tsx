@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, Slide, Tooltip, Typography } from '@mui/material'
 import ViewSidebarIcon from '@mui/icons-material/ViewSidebar'
-import type { Theme } from '@mui/material/styles'
+import { alpha, type Theme } from '@mui/material/styles'
 
 import { studioPanelRailWidth, workspaceCanvasSx } from './workspaceStudioModel'
 
@@ -241,21 +241,23 @@ export const WorkspaceDesktopLayout = ({
                 sx={{
                   width: 30,
                   height: 30,
-                  border: 0,
+                  border: 1,
+                  borderColor: alpha(theme.palette.primary.main, 0.32),
                   borderRadius: 1.25,
-                  bgcolor: 'action.hover',
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                   color: 'primary.main',
                   cursor: 'pointer',
                   display: 'grid',
                   placeItems: 'center',
-                  transition: theme.transitions.create('background-color', {
-                    duration: theme.transitions.duration.shortest,
-                  }),
+                  transition: theme.transitions.create(
+                    ['background-color', 'border-color'],
+                    {
+                      duration: theme.transitions.duration.shortest,
+                    },
+                  ),
                   '&:hover': {
-                    bgcolor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(255,255,255,0.14)'
-                        : 'rgba(0,0,0,0.10)',
+                    borderColor: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.18),
                   },
                 }}
               >
@@ -289,11 +291,17 @@ export const WorkspaceDesktopLayout = ({
               theme.palette.mode === 'dark'
                 ? '0 12px 32px rgba(0,0,0,0.32)'
                 : '0 12px 30px rgba(16,24,40,0.12)',
+            '&:hover:not(:has(.studymesh-creation-quick-action:hover)) .studymesh-creation-rail-icon':
+              {
+              borderColor: 'primary.main',
+              bgcolor: alpha(theme.palette.primary.main, 0.18),
+            },
           }}
           onClick={toggleCreatePanel}
         >
           <Tooltip title="Open Create" placement="right">
             <Box
+              className="studymesh-creation-rail-icon"
               component="button"
               type="button"
               aria-label="Open Create panel"
@@ -304,21 +312,23 @@ export const WorkspaceDesktopLayout = ({
               sx={{
                 width: 30,
                 height: 30,
-                border: 0,
+                border: 1,
+                borderColor: alpha(theme.palette.primary.main, 0.32),
                 borderRadius: 1.25,
-                bgcolor: 'action.hover',
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
                 color: 'primary.main',
                 cursor: 'pointer',
                 display: 'grid',
                 placeItems: 'center',
-                transition: theme.transitions.create('background-color', {
-                  duration: theme.transitions.duration.shortest,
-                }),
+                transition: theme.transitions.create(
+                  ['background-color', 'border-color'],
+                  {
+                    duration: theme.transitions.duration.shortest,
+                  },
+                ),
                 '&:hover': {
-                  bgcolor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(255,255,255,0.14)'
-                      : 'rgba(0,0,0,0.10)',
+                  borderColor: 'primary.main',
+                  bgcolor: alpha(theme.palette.primary.main, 0.18),
                 },
                 marginTop: 0.3,
               }}

@@ -3076,6 +3076,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           placement="right"
         >
           <Box
+            className="studymesh-creation-quick-action"
             component="button"
             type="button"
             aria-label={`Quick Create ${quickCreateLabels[resourceType]}`}

@@ -12,6 +12,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import SendIcon from '@mui/icons-material/Send'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
@@ -251,15 +252,21 @@ const DashboardChatPanel = ({
                 sx={{
                   width: 30,
                   height: 30,
+                  border: 1,
+                  borderColor: alpha(theme.palette.primary.main, 0.32),
                   borderRadius: 1.25,
-                  bgcolor: 'action.hover',
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                   color: 'primary.main',
                   flex: '0 0 auto',
+                  transition: theme.transitions.create(
+                    ['background-color', 'border-color'],
+                    {
+                      duration: theme.transitions.duration.shortest,
+                    },
+                  ),
                   '&:hover': {
-                    bgcolor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(255,255,255,0.14)'
-                        : 'rgba(0,0,0,0.10)',
+                    borderColor: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.18),
                   },
                 }}
               >
