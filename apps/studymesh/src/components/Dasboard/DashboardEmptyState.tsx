@@ -107,19 +107,18 @@ const DashboardEmptyState = ({
     >
       <Box
         sx={{
-          width: 'min(1240px, 100%)',
-          maxWidth: '100%',
-          minWidth: 0,
+          width: '100%',
+          maxWidth: 1544,
+          mx: 'auto',
           boxSizing: 'border-box',
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            lg: 'minmax(0, 3fr) minmax(300px, 2fr)',
+            lg: 'repeat(2, minmax(0, 760px))',
           },
           gap: { xs: 1.25, sm: 1.5, lg: 2 },
-          alignItems: 'stretch',
-          maxHeight: { xs: '100%', lg: 'none' },
-          overflowY: { xs: 'auto', lg: 'visible' },
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <Paper
@@ -136,8 +135,6 @@ const DashboardEmptyState = ({
             minWidth: 0,
             boxSizing: 'border-box',
             width: '100%',
-            maxWidth: 760,
-            mx: 'auto',
             boxShadow: (theme) =>
               theme.palette.mode === 'dark'
                 ? '0 20px 56px rgba(0,0,0,0.28)'
@@ -305,8 +302,6 @@ const DashboardEmptyState = ({
             minWidth: 0,
             boxSizing: 'border-box',
             width: '100%',
-            maxWidth: 760,
-            mx: 'auto',
           }}
         >
           <Stack direction="row" alignItems="center" spacing={0.75}>
