@@ -299,6 +299,7 @@ export const WorkspaceDesktopLayout = ({
               alignItems: 'center',
               gap: 1.3,
               mt: 0.5,
+              mb: 0.5,
             }}
           >
             {collapsedCreationActions}
