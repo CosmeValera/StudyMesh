@@ -18,7 +18,6 @@ import {
   MenuItem,
   Switch,
   Chip,
-  Paper,
   Stack,
   Autocomplete,
 } from '@mui/material'
@@ -34,6 +33,8 @@ import ExtensionIcon from '@mui/icons-material/Extension'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import AddLinkIcon from '@mui/icons-material/AddLink'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
 import { DashboardLayout, StateDashboard } from '../../state/store'
@@ -83,11 +84,30 @@ import {
   hasDashboardContent,
 } from './dashboardLayoutUtils'
 import {
+  CUSTOM_EMPTY_DASHBOARD_FOLDER,
   DashboardStorage,
   DEFAULT_DASHBOARD_NAME,
   getUniqueDashboardName,
   type SavedDashboard,
 } from './dashboardStorage'
+import {
+  addKnowledgeReferencesToLayout,
+  appendKnowledgeLinkWidgetToLayout,
+  createKnowledgeReference,
+  KnowledgeReference,
+  KnowledgeReferenceTarget,
+  OPEN_KNOWLEDGE_REFERENCE_EVENT,
+  OPEN_STUDY_LINK_PICKER_EVENT,
+  OpenKnowledgeReferenceEventDetail,
+  RESET_DEFAULT_EMPTY_DASHBOARD_EVENT,
+  SAVE_KNOWLEDGE_LINK_DASHBOARD_AS_DEFAULT_EVENT,
+  UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT,
+  UpdateKnowledgeLinkWidgetEventDetail,
+} from '../../knowledgeReferences'
+import {
+  StudyLinkPicker,
+  StudyLinkPickerOption,
+} from '../knowledge/StudyLinkPicker'
 import './tabs.scss'
 const DEFAULT_STUDY_PATH_OPENED_KEY = 'studymesh-default-study-path-opened-v1'
 const USER_ROLE_CHANGED_EVENT = 'studymesh-user-role-changed'
@@ -161,6 +181,13 @@ const Dashboards = () => {
   const [dashboardLibraryMode, setDashboardLibraryMode] = useState<
     'workspace' | 'builder'
   >('workspace')
+  const [referenceDialogOpen, setReferenceDialogOpen] = useState(false)
+  const [selectedReferenceTargetIds, setSelectedReferenceTargetIds] = useState<
+    string[]
+  >([])
+  const [studyLinksEditModes, setStudyLinksEditModes] = useState<
+    Record<string, boolean | undefined>
+  >({})
   const [dashboardChatOpen, setDashboardChatOpen] = useState(false)
   const [workspaceTabsSlot, setWorkspaceTabsSlot] =
     useState<HTMLElement | null>(null)
@@ -526,12 +553,550 @@ const Dashboards = () => {
     addDashboard()
   }
 
+  const referenceTargetOptions = useMemo<StudyLinkPickerOption[]>(() => {
+    const options: StudyLinkPickerOption[] = []
+    const addTarget = (
+      target: KnowledgeReferenceTarget,
+      description?: string,
+      parentTitle?: string,
+    ) => {
+      const id = [target.type, target.parentId || '', target.id].join('|')
+
+      if (options.some((option) => option.id === id)) {
+        return
+      }
+
+      options.push({
+        id,
+        target,
+        description,
+        parentTitle,
+      })
+    }
+
+    const currentDashboard = openDashboards[selectedDashboard]
+
+    openDashboards.forEach((dashboard) => {
+      if (dashboard.kind === 'studyPathContainer' && dashboard.studyPath) {
+        addTarget(
+          {
+            type: 'studyPath',
+            id: dashboard.studyPath.pathId,
+            title: dashboard.studyPath.title,
+            subtitle: `${dashboard.studyPath.dashboards.length} sections`,
+          },
+          dashboard.studyPath.folderName,
+        )
+        dashboard.studyPath.dashboards.forEach((lesson) => {
+          addTarget(
+            {
+              type: 'studyPathSection',
+              id: lesson.dashboardKey,
+              parentId: dashboard.studyPath?.pathId,
+              title: lesson.name,
+              subtitle: dashboard.studyPath?.title,
+            },
+            `Section ${lesson.dashboardIndex}/${lesson.dashboardCount}`,
+            dashboard.studyPath?.title,
+          )
+        })
+        return
+      }
+
+      if (dashboard.id === currentDashboard?.id) {
+        return
+      }
+
+      addTarget({
+        type: 'dashboard',
+        id: dashboard.id,
+        title: dashboard.name,
+      })
+    })
+
+    const savedByPath = new Map<string, SavedDashboard[]>()
+    dashboardOptions.forEach((dashboard) => {
+      const meta = getStudyPathMetaFromLayout(dashboard.layout)
+      if (!meta) {
+        return
+      }
+
+      savedByPath.set(meta.studyPathId, [
+        ...(savedByPath.get(meta.studyPathId) || []),
+        dashboard,
+      ])
+    })
+
+    savedByPath.forEach((dashboards) => {
+      const studyPath = createStudyPathContainerState(dashboards)
+      if (!studyPath) {
+        return
+      }
+
+      addTarget(
+        {
+          type: 'studyPath',
+          id: studyPath.pathId,
+          title: studyPath.title,
+          subtitle: `${studyPath.dashboards.length} sections`,
+        },
+        studyPath.folderName,
+      )
+      studyPath.dashboards.forEach((lesson) => {
+        addTarget(
+          {
+            type: 'studyPathSection',
+            id: lesson.dashboardKey,
+            parentId: studyPath.pathId,
+            title: lesson.name,
+            subtitle: studyPath.title,
+          },
+          `Section ${lesson.dashboardIndex}/${lesson.dashboardCount}`,
+          studyPath.title,
+        )
+      })
+    })
+
+    dashboardOptions.forEach((dashboard) => {
+      if (getStudyPathMetaFromLayout(dashboard.layout)) {
+        return
+      }
+
+      if (dashboard.id === currentDashboard?.id) {
+        return
+      }
+
+      addTarget(
+        {
+          type: 'dashboard',
+          id: dashboard.id,
+          title: dashboard.name,
+          subtitle: normalizeFolderName(dashboard.folder),
+        },
+        dashboard.description,
+      )
+    })
+
+    return options
+  }, [dashboardOptions, openDashboards, selectedDashboard])
+
+  const saveStudyLinksTemplate = (
+    name: string,
+    layout: DashboardLayout,
+    options: { useForNewDashboards?: boolean } = {},
+  ) => {
+    const now = new Date().toISOString()
+    const existingDefault = DashboardStorage.getDefaultEmptyDashboard()
+    const existingTemplate = existingDefault || getSavedStudyLinksTemplate()
+    const savedDashboard: SavedDashboard = {
+      id: existingTemplate?.id || `custom-empty-dashboard-${Date.now()}`,
+      name: name || 'Study links',
+      folder: CUSTOM_EMPTY_DASHBOARD_FOLDER,
+      folderColor: DashboardStorage.getFolderColor(
+        CUSTOM_EMPTY_DASHBOARD_FOLDER,
+      ),
+      layout: cloneLayout(layout) as DashboardLayout,
+      description: 'Dashboard used as a reusable Study Links start page.',
+      tags: ['study-links', 'custom-empty-dashboard'],
+      createdAt: existingTemplate?.createdAt || now,
+      updatedAt: now,
+    }
+
+    DashboardStorage.save(savedDashboard)
+    if (options.useForNewDashboards) {
+      DashboardStorage.setDefaultEmptyDashboard(savedDashboard.id)
+    }
+    loadDashboardOptions()
+  }
+
+  const addKnowledgeReferencesToDashboardById = (
+    dashboardId: string,
+    references: KnowledgeReference[],
+  ) => {
+    const dashboardIndex = openDashboards.findIndex(
+      (dashboard) => dashboard.id === dashboardId,
+    )
+
+    if (dashboardIndex < 0 || references.length === 0) {
+      return
+    }
+
+    const dashboard = openDashboards[dashboardIndex]
+    const nextLayout = addKnowledgeReferencesToLayout(
+      dashboard.layout,
+      references,
+      'Study links',
+    )
+    updateDashboardLayout(dashboardIndex, nextLayout)
+
+    if (layoutHasStudyLinksWidget(nextLayout)) {
+      saveStudyLinksTemplate(dashboard.name, nextLayout)
+    }
+  }
+
+  const createStudyLinksHomeDashboard = (openPicker = false) => {
+    const savedTemplate = getSavedStudyLinksTemplate()
+    if (savedTemplate) {
+      openSavedDashboardInWorkspace(savedTemplate)
+      return
+    }
+
+    const layout = appendKnowledgeLinkWidgetToLayout(
+      undefined,
+      [],
+      'Study links',
+      {
+        title: 'Study links',
+        cardSize: 'standard',
+        columns: 1,
+        editMode: true,
+        showCreationActions: true,
+        showOpenStudyMaterial: true,
+      },
+    )
+    const name = 'Study links'
+    saveStudyLinksTemplate(name, layout)
+
+    const current = openDashboards[selectedDashboard]
+    if (current && !hasDashboardContent(current.layout)) {
+      updateDashboardLayout(selectedDashboard, layout)
+      renameDashboard(current.id, name)
+      setStudyLinksEditModes((currentModes) => ({
+        ...currentModes,
+        [current.id]: true,
+      }))
+      if (openPicker) {
+        setSelectedReferenceTargetIds([])
+        setReferenceDialogOpen(true)
+      }
+      return
+    }
+
+    const dashboardId = addDashboard({
+      name,
+      layout,
+    })
+    setStudyLinksEditModes((currentModes) => ({
+      ...currentModes,
+      [dashboardId]: true,
+    }))
+    if (openPicker) {
+      setSelectedReferenceTargetIds([])
+      setReferenceDialogOpen(true)
+    }
+  }
+
+  const layoutHasStudyLinksWidget = (
+    layout: DashboardLayout | undefined,
+  ): boolean => {
+    if (!layout) {
+      return false
+    }
+
+    if (layout.component === 'KnowledgeLinkWidget') {
+      return true
+    }
+
+    return Boolean(layout.children?.some(layoutHasStudyLinksWidget))
+  }
+
+  const getStudyLinksEditModeFromLayout = (
+    layout: DashboardLayout | undefined,
+  ): boolean | undefined => {
+    if (!layout) {
+      return undefined
+    }
+
+    if (layout.component === 'KnowledgeLinkWidget') {
+      return layout.config?.customProps?.editMode === true
+    }
+
+    for (const child of layout.children || []) {
+      const childMode = getStudyLinksEditModeFromLayout(child)
+      if (childMode !== undefined) {
+        return childMode
+      }
+    }
+
+    return undefined
+  }
+
+  const cloneLayout = (
+    layout?: DashboardLayout,
+  ): DashboardLayout | undefined =>
+    layout ? JSON.parse(JSON.stringify(layout)) : undefined
+
+  const getSavedStudyLinksTemplate = (): SavedDashboard | null => {
+    const defaultEmptyDashboard = DashboardStorage.getDefaultEmptyDashboard()
+    if (defaultEmptyDashboard) {
+      return defaultEmptyDashboard
+    }
+
+    return (
+      [...DashboardStorage.getAll()]
+        .filter(
+          (dashboard) =>
+            normalizeFolderName(dashboard.folder) ===
+              normalizeFolderName(CUSTOM_EMPTY_DASHBOARD_FOLDER) &&
+            layoutHasStudyLinksWidget(dashboard.layout),
+        )
+        .sort((first, second) =>
+          second.updatedAt.localeCompare(first.updatedAt),
+        )[0] || null
+    )
+  }
+
+  const applyKnowledgeLinkWidgetRenderOptions = (
+    layout: DashboardLayout | undefined,
+    options: { editMode: boolean },
+  ): DashboardLayout | undefined => {
+    if (!layout) {
+      return layout
+    }
+
+    if (layout.component === 'KnowledgeLinkWidget') {
+      return {
+        ...layout,
+        config: {
+          ...layout.config,
+          customProps: {
+            ...(layout.config?.customProps || {}),
+            editMode: options.editMode,
+          },
+        },
+      }
+    }
+
+    if (!layout.children?.length) {
+      return layout
+    }
+
+    return {
+      ...layout,
+      children: layout.children.map(
+        (child) =>
+          applyKnowledgeLinkWidgetRenderOptions(child, options) || child,
+      ),
+    }
+  }
+
+  const saveCurrentStudyLinksDashboardAsDefault = () => {
+    const current = openDashboards[selectedDashboard]
+
+    if (!current?.layout || !layoutHasStudyLinksWidget(current.layout)) {
+      return
+    }
+
+    saveStudyLinksTemplate(current.name || 'Study links', current.layout, {
+      useForNewDashboards: true,
+    })
+  }
+
+  const resetDefaultEmptyDashboard = () => {
+    DashboardStorage.clearDefaultEmptyDashboard()
+    loadDashboardOptions()
+  }
+
+  const updateKnowledgeLinkWidgetOptions = (
+    layout: DashboardLayout | undefined,
+    options: UpdateKnowledgeLinkWidgetEventDetail['options'],
+  ): { layout: DashboardLayout | undefined; updated: boolean } => {
+    if (!layout) {
+      return { layout, updated: false }
+    }
+
+    if (layout.component === 'KnowledgeLinkWidget') {
+      return {
+        layout: {
+          ...layout,
+          config: {
+            ...layout.config,
+            customProps: {
+              ...(layout.config?.customProps || {}),
+              ...options,
+            },
+          },
+        },
+        updated: true,
+      }
+    }
+
+    if (!layout.children?.length) {
+      return { layout, updated: false }
+    }
+
+    let updated = false
+    const children = layout.children.map((child) => {
+      if (updated) {
+        return child
+      }
+
+      const result = updateKnowledgeLinkWidgetOptions(child, options)
+      updated = result.updated
+      return result.layout || child
+    })
+
+    return {
+      layout: updated ? { ...layout, children } : layout,
+      updated,
+    }
+  }
+
+  const openDashboardReferenceDialog = () => {
+    setSelectedReferenceTargetIds([])
+    setReferenceDialogOpen(true)
+  }
+
+  const setStudyLinksDashboardEditMode = (
+    dashboardIndex: number,
+    dashboardId: string,
+    editMode: boolean,
+  ) => {
+    const dashboard = openDashboards[dashboardIndex]
+    if (!dashboard?.layout) {
+      return
+    }
+
+    setStudyLinksEditModes((currentModes) => ({
+      ...currentModes,
+      [dashboardId]: editMode,
+    }))
+
+    const result = updateKnowledgeLinkWidgetOptions(dashboard.layout, {
+      editMode,
+    })
+    if (result.updated && result.layout) {
+      updateDashboardLayout(dashboardIndex, result.layout)
+      saveStudyLinksTemplate(dashboard.name || 'Study links', result.layout)
+    }
+  }
+
+  const addSelectedReferenceToCurrentDashboard = () => {
+    const targetOptions = referenceTargetOptions.filter((option) =>
+      selectedReferenceTargetIds.includes(option.id),
+    )
+    const current = openDashboards[selectedDashboard]
+
+    if (targetOptions.length === 0 || !current) {
+      return
+    }
+
+    const references = targetOptions.map((targetOption) =>
+      createKnowledgeReference(targetOption.target, {
+        label: targetOption.target.title,
+        description: targetOption.description,
+      }),
+    )
+
+    addKnowledgeReferencesToDashboardById(current.id, references)
+    setReferenceDialogOpen(false)
+    setSelectedReferenceTargetIds([])
+  }
+
+  const openKnowledgeReferenceTarget = (target: KnowledgeReferenceTarget) => {
+    if (target.type === 'dashboard') {
+      const openDashboardIndex = openDashboards.findIndex(
+        (dashboard) => dashboard.id === target.id,
+      )
+
+      if (openDashboardIndex >= 0) {
+        setSelectedDashboard(openDashboardIndex)
+        return
+      }
+
+      const savedDashboard = DashboardStorage.getAll().find(
+        (dashboard) => dashboard.id === target.id,
+      )
+      if (savedDashboard) {
+        openSavedDashboardInWorkspace(savedDashboard)
+      }
+      return
+    }
+
+    if (target.type !== 'studyPath' && target.type !== 'studyPathSection') {
+      return
+    }
+
+    const pathId =
+      target.type === 'studyPathSection' ? target.parentId : target.id
+    if (!pathId) {
+      return
+    }
+
+    const openStudyPathIndex = openDashboards.findIndex(
+      (dashboard) =>
+        dashboard.kind === 'studyPathContainer' &&
+        dashboard.studyPath?.pathId === pathId,
+    )
+
+    const selectSection = (
+      dashboardId: string,
+      requestedSectionId?: string,
+    ) => {
+      updateStudyPathContainer(dashboardId, (studyPath) => {
+        if (!requestedSectionId) {
+          return studyPath
+        }
+
+        const selectedIndex = studyPath.dashboards.findIndex(
+          (lesson) => lesson.dashboardKey === requestedSectionId,
+        )
+
+        if (selectedIndex < 0) {
+          return studyPath
+        }
+
+        return { ...studyPath, selectedIndex }
+      })
+    }
+
+    if (openStudyPathIndex >= 0) {
+      const openStudyPath = openDashboards[openStudyPathIndex]
+      selectSection(
+        openStudyPath.id,
+        target.type === 'studyPathSection' ? target.id : undefined,
+      )
+      setSelectedDashboard(openStudyPathIndex)
+      return
+    }
+
+    const studyPath = createStudyPathContainerState(
+      DashboardStorage.getAll().filter((dashboard) => {
+        const meta = getStudyPathMetaFromLayout(dashboard.layout)
+        return meta?.studyPathId === pathId
+      }),
+    )
+
+    if (!studyPath) {
+      return
+    }
+
+    const sectionIndex =
+      target.type === 'studyPathSection'
+        ? studyPath.dashboards.findIndex(
+            (lesson) => lesson.dashboardKey === target.id,
+          )
+        : -1
+    addStudyPathContainer({
+      ...studyPath,
+      selectedIndex: sectionIndex >= 0 ? sectionIndex : 0,
+    })
+  }
+
   const openSavedDashboardInWorkspace = (dashboard: SavedDashboard) => {
+    const savedStudyLinksEditMode =
+      getStudyLinksEditModeFromLayout(dashboard.layout) === true
     if (openDashboards[selectedDashboard] && selectedDashboardIsEmpty) {
-      replaceDashboard(selectedDashboard, {
+      const dashboardId = replaceDashboard(selectedDashboard, {
         name: dashboard.name,
         layout: dashboard.layout,
       })
+      if (layoutHasStudyLinksWidget(dashboard.layout)) {
+        setStudyLinksEditModes((currentModes) => ({
+          ...currentModes,
+          [dashboardId]: savedStudyLinksEditMode,
+        }))
+      }
       dispatchWorkspaceOnboardingEvent({
         type: 'saved-dashboard-opened',
         dashboardId: dashboard.id,
@@ -540,10 +1105,16 @@ const Dashboards = () => {
       return
     }
 
-    addDashboard({
+    const dashboardId = addDashboard({
       name: dashboard.name,
       layout: dashboard.layout,
     })
+    if (layoutHasStudyLinksWidget(dashboard.layout)) {
+      setStudyLinksEditModes((currentModes) => ({
+        ...currentModes,
+        [dashboardId]: savedStudyLinksEditMode,
+      }))
+    }
     dispatchWorkspaceOnboardingEvent({
       type: 'saved-dashboard-opened',
       dashboardId: dashboard.id,
@@ -929,6 +1500,110 @@ const Dashboards = () => {
       )
     }
   }, [])
+
+  useEffect(() => {
+    const handleOpenKnowledgeReference = (event: Event) => {
+      const customEvent =
+        event as CustomEvent<OpenKnowledgeReferenceEventDetail>
+      const target = customEvent.detail?.target
+
+      if (target) {
+        openKnowledgeReferenceTarget(target)
+      }
+    }
+
+    window.addEventListener(
+      OPEN_KNOWLEDGE_REFERENCE_EVENT,
+      handleOpenKnowledgeReference,
+    )
+
+    return () => {
+      window.removeEventListener(
+        OPEN_KNOWLEDGE_REFERENCE_EVENT,
+        handleOpenKnowledgeReference,
+      )
+    }
+  }, [openDashboards])
+
+  useEffect(() => {
+    window.addEventListener(
+      OPEN_STUDY_LINK_PICKER_EVENT,
+      openDashboardReferenceDialog,
+    )
+
+    return () => {
+      window.removeEventListener(
+        OPEN_STUDY_LINK_PICKER_EVENT,
+        openDashboardReferenceDialog,
+      )
+    }
+  }, [referenceTargetOptions])
+
+  useEffect(() => {
+    const handleUpdateKnowledgeLinkWidget = (event: Event) => {
+      const customEvent =
+        event as CustomEvent<UpdateKnowledgeLinkWidgetEventDetail>
+      const current = openDashboards[selectedDashboard]
+
+      if (!current || !customEvent.detail?.options) {
+        return
+      }
+
+      const result = updateKnowledgeLinkWidgetOptions(
+        current.layout,
+        customEvent.detail.options,
+      )
+
+      if (result.updated) {
+        if (!result.layout) {
+          return
+        }
+
+        updateDashboardLayout(selectedDashboard, result.layout)
+        saveStudyLinksTemplate(
+          customEvent.detail.options.title || current.name || 'Study links',
+          result.layout,
+        )
+        if (customEvent.detail.options.title) {
+          renameDashboard(current.id, customEvent.detail.options.title)
+        }
+      }
+    }
+
+    window.addEventListener(
+      UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT,
+      handleUpdateKnowledgeLinkWidget,
+    )
+
+    return () => {
+      window.removeEventListener(
+        UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT,
+        handleUpdateKnowledgeLinkWidget,
+      )
+    }
+  }, [openDashboards, selectedDashboard])
+
+  useEffect(() => {
+    window.addEventListener(
+      SAVE_KNOWLEDGE_LINK_DASHBOARD_AS_DEFAULT_EVENT,
+      saveCurrentStudyLinksDashboardAsDefault,
+    )
+    window.addEventListener(
+      RESET_DEFAULT_EMPTY_DASHBOARD_EVENT,
+      resetDefaultEmptyDashboard,
+    )
+
+    return () => {
+      window.removeEventListener(
+        SAVE_KNOWLEDGE_LINK_DASHBOARD_AS_DEFAULT_EVENT,
+        saveCurrentStudyLinksDashboardAsDefault,
+      )
+      window.removeEventListener(
+        RESET_DEFAULT_EMPTY_DASHBOARD_EVENT,
+        resetDefaultEmptyDashboard,
+      )
+    }
+  }, [openDashboards, selectedDashboard])
 
   useEffect(() => {
     const handleOpenStudyPathReviewDashboard = (event: Event) => {
@@ -1641,11 +2316,23 @@ const Dashboards = () => {
           {!isMobileDashboardView &&
             workspaceTabsSlot &&
             createPortal(workspaceHeaderDashboardTabs, workspaceTabsSlot)}
-          {openDashboards.map((dashboard, index) => {
+          {openDashboards.map((dashboard, dashboardIndex) => {
             const isStudyPathContainer =
               dashboard.kind === 'studyPathContainer' && dashboard.studyPath
             const isEmptyDashboard =
               !isStudyPathContainer && !hasDashboardContent(dashboard.layout)
+            const isStudyLinksDashboard = layoutHasStudyLinksWidget(
+              dashboard.layout,
+            )
+            const studyLinksEditMode =
+              studyLinksEditModes[dashboard.id] ??
+              (getStudyLinksEditModeFromLayout(dashboard.layout) === true)
+            const renderLayout =
+              isStudyLinksDashboard && !isStudyPathContainer
+                ? applyKnowledgeLinkWidgetRenderOptions(dashboard.layout, {
+                    editMode: studyLinksEditMode,
+                  })
+                : dashboard.layout
             return (
               <TabPanel key={dashboard.id} forceRender={isMobileDashboardView}>
                 <Box
@@ -1671,6 +2358,64 @@ const Dashboards = () => {
                         : undefined,
                     }}
                   >
+                    {!isStudyPathContainer && isStudyLinksDashboard && (
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        sx={{
+                          position: 'absolute',
+                          top: { xs: 10, sm: 14 },
+                          right: { xs: 10, sm: 14 },
+                          zIndex: 12,
+                        }}
+                      >
+                        <IconButton
+                          size="small"
+                          aria-label={
+                            studyLinksEditMode
+                              ? 'View Study Links dashboard'
+                              : 'Edit Study Links dashboard'
+                          }
+                          onClick={() =>
+                            setStudyLinksDashboardEditMode(
+                              dashboardIndex,
+                              dashboard.id,
+                              !studyLinksEditMode,
+                            )
+                          }
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            color: 'primary.contrastText',
+                            bgcolor: 'primary.main',
+                            border: 1,
+                            borderColor: 'primary.dark',
+                            boxShadow: (theme) =>
+                              theme.palette.mode === 'dark'
+                                ? `0 0 0 1px ${alpha(
+                                    theme.palette.common.white,
+                                    0.22,
+                                  )}, 0 10px 24px ${alpha(
+                                    theme.palette.common.black,
+                                    0.5,
+                                  )}`
+                                : `0 10px 24px ${alpha(
+                                    theme.palette.primary.main,
+                                    0.32,
+                                  )}`,
+                            '&:hover': {
+                              bgcolor: 'primary.dark',
+                            },
+                          }}
+                        >
+                          {studyLinksEditMode ? (
+                            <VisibilityIcon fontSize="small" />
+                          ) : (
+                            <EditIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Stack>
+                    )}
                     {isStudyPathContainer && dashboard.studyPath ? (
                       <StudyPathWorkspaceView
                         studyPath={dashboard.studyPath}
@@ -1694,10 +2439,13 @@ const Dashboards = () => {
                         dashboardOptions={visibleDashboardOptions}
                         onOpenDashboard={openSavedDashboardInWorkspace}
                         onOpenStudyGuide={openStudyGuideFromEmptyState}
+                        onAddStudyLink={() =>
+                          createStudyLinksHomeDashboard(true)
+                        }
                       />
                     ) : (
                       <DashboardLayoutView
-                        layout={dashboard.layout}
+                        layout={renderLayout}
                         mobileView={isMobileDashboardView}
                         readOnly={isMobileDashboardView}
                         updateLayout={(model) => {
@@ -1934,6 +2682,7 @@ const Dashboards = () => {
           dashboardOptions={visibleDashboardOptions}
           onOpenDashboard={openSavedDashboardFromEmptyState}
           onOpenStudyGuide={openStudyGuideFromEmptyState}
+          onAddStudyLink={() => createStudyLinksHomeDashboard(true)}
         />
       )}
 
@@ -2282,6 +3031,39 @@ const Dashboards = () => {
         onOpenInBuilder={loadSavedDashboardInBuilder}
         onOpenInWorkspace={openSavedDashboardFromLibrary}
       />
+
+      <Dialog
+        open={referenceDialogOpen}
+        onClose={() => setReferenceDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Add study link to this dashboard</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Choose a Study Path, section, or dashboard for this index.
+            </Typography>
+            <StudyLinkPicker
+              options={referenceTargetOptions}
+              selectedOptionIds={selectedReferenceTargetIds}
+              onSelectedOptionIdsChange={setSelectedReferenceTargetIds}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReferenceDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={selectedReferenceTargetIds.length === 0}
+            onClick={addSelectedReferenceToCurrentDashboard}
+          >
+            {selectedReferenceTargetIds.length > 1
+              ? `Add ${selectedReferenceTargetIds.length} study links`
+              : 'Add study link'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dashboard Details Dialog */}
       <Dialog

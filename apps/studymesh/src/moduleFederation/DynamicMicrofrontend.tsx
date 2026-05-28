@@ -9,6 +9,13 @@ import ModuleLoader from './ModuleLoader'
 import WidgetEditor from '../components/WidgetEditor/WidgetEditor'
 import CustomWidget from '../components/WidgetEditor/CustomWidget'
 import WidgetStorage from '../components/WidgetEditor/WidgetStorage'
+import { KnowledgeLinkWidget } from '../components/knowledge/KnowledgeLinkWidget'
+import type {
+  KnowledgeLinkWidgetCardSize,
+  KnowledgeLinkWidgetColumns,
+  KnowledgeLinkWidgetSectionId,
+  KnowledgeReference,
+} from '../knowledgeReferences'
 
 // Define the ComponentData type
 interface ComponentData {
@@ -116,6 +123,39 @@ const DynamicMicrofrontend: React.FC<DynamicMicrofrontendProps> = (props) => {
           }
         }
         name={props.name}
+      />
+    )
+  }
+
+  if (props.component === 'KnowledgeLinkWidget') {
+    return (
+      <KnowledgeLinkWidget
+        references={
+          Array.isArray(props.customProps?.references)
+            ? (props.customProps.references as KnowledgeReference[])
+            : []
+        }
+        cardSize={
+          props.customProps?.cardSize as KnowledgeLinkWidgetCardSize | undefined
+        }
+        columns={
+          props.customProps?.columns as KnowledgeLinkWidgetColumns | undefined
+        }
+        title={
+          typeof props.customProps?.title === 'string'
+            ? props.customProps.title
+            : props.name
+        }
+        editMode={props.customProps?.editMode === true}
+        showCreationActions={props.customProps?.showCreationActions === true}
+        showOpenStudyMaterial={
+          props.customProps?.showOpenStudyMaterial === true
+        }
+        sectionOrder={
+          Array.isArray(props.customProps?.sectionOrder)
+            ? (props.customProps.sectionOrder as KnowledgeLinkWidgetSectionId[])
+            : undefined
+        }
       />
     )
   }

@@ -15,6 +15,9 @@ export interface SavedDashboard {
 }
 
 export const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+export const CUSTOM_EMPTY_DASHBOARD_FOLDER = 'Custom empty dashboards'
+export const DEFAULT_EMPTY_DASHBOARD_ID_STORAGE_KEY =
+  'studymesh-default-empty-dashboard-id'
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -133,5 +136,33 @@ export const DashboardStorage = {
     return (
       JSON.stringify(currentLayout) !== JSON.stringify(savedDashboard.layout)
     )
+  },
+
+  getDefaultEmptyDashboard: (): SavedDashboard | null => {
+    try {
+      const defaultDashboardId = localStorage.getItem(
+        DEFAULT_EMPTY_DASHBOARD_ID_STORAGE_KEY,
+      )
+      if (!defaultDashboardId) {
+        return null
+      }
+
+      return (
+        DashboardStorage.getAll().find(
+          (dashboard) => dashboard.id === defaultDashboardId,
+        ) || null
+      )
+    } catch (error) {
+      console.error('Failed to load default empty dashboard', error)
+      return null
+    }
+  },
+
+  setDefaultEmptyDashboard: (dashboardId: string): void => {
+    localStorage.setItem(DEFAULT_EMPTY_DASHBOARD_ID_STORAGE_KEY, dashboardId)
+  },
+
+  clearDefaultEmptyDashboard: (): void => {
+    localStorage.removeItem(DEFAULT_EMPTY_DASHBOARD_ID_STORAGE_KEY)
   },
 }
