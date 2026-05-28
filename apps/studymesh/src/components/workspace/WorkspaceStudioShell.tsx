@@ -1139,17 +1139,28 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const currentDashboard = openDashboards[selectedDashboard]
-  const currentDashboardContext = useMemo(() => {
+  const currentDashboardChatContext = useMemo(() => {
     if (!currentDashboard) {
+      return null
+    }
+
+    return buildDashboardChatContext(currentDashboard, {
+      studyPathScope: 'selected',
+    })
+  }, [currentDashboard])
+  const currentDashboardContext = useMemo(() => {
+    if (!currentDashboardChatContext) {
       return ''
     }
 
-    const context = buildDashboardChatContext(currentDashboard, {
-      studyPathScope: 'selected',
-    })
-    return formatDashboardChatContext(context, context.chunks).trim()
-  }, [currentDashboard])
-  const hasCurrentDashboardContext = currentDashboardContext.length > 0
+    return formatDashboardChatContext(
+      currentDashboardChatContext,
+      currentDashboardChatContext.chunks,
+    ).trim()
+  }, [currentDashboardChatContext])
+  const hasCurrentDashboardContext = Boolean(
+    currentDashboardChatContext?.chunks.length && currentDashboardContext,
+  )
   const currentDashboardTitle =
     currentDashboard?.studyPath?.title ||
     currentDashboard?.name ||
@@ -1648,6 +1659,23 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     runQuickCreate(resourceType, 'dashboard')
   }
 
+  const handleCollapsedQuickCreateClick = (
+    resourceType: StudyMaterialResourceType,
+  ) => {
+    if (!hasCurrentDashboardContext) {
+      acknowledgeQueueAttention()
+      setActiveMaterialDraftId(null)
+      setActiveFlow('hub')
+      setIsStudioOpen(true)
+      if (isMobile) {
+        window.dispatchEvent(new Event(CLOSE_DASHBOARD_CHAT_EVENT))
+        setMobileSection('creation')
+      }
+    }
+
+    handleQuickCreateCardClick(resourceType)
+  }
+
   const createOptions: Array<{
     intent: CreateIntent
     title: string
@@ -1978,12 +2006,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                             border: selected ? 2 : 1,
                             borderColor: selected
                               ? accent
-                              : !hasCurrentDashboardContext
-                                ? alpha(theme.palette.warning.main, 0.55)
-                                : alpha(
-                                    accent,
-                                    theme.palette.mode === 'dark' ? 0.3 : 0.22,
-                                  ),
+                              : alpha(
+                                  accent,
+                                  theme.palette.mode === 'dark' ? 0.3 : 0.22,
+                                ),
                             bgcolor: alpha(
                               accent,
                               selected
@@ -3082,7 +3108,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             aria-label={`Quick Create ${quickCreateLabels[resourceType]}`}
             onClick={(event) => {
               event.stopPropagation()
-              handleQuickCreateCardClick(resourceType)
+              handleCollapsedQuickCreateClick(resourceType)
             }}
             sx={{
               width: 30,

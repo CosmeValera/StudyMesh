@@ -7,6 +7,7 @@ import { generateStudyPackWithAi } from '../../../../src/studyPack/ai'
 
 const createStudyPackDashboardsMock = vi.fn()
 let dashboardContextText = 'Dashboard notes about photosynthesis'
+let dashboardContextChunks: unknown[] = [{ text: dashboardContextText }]
 
 vi.mock('../../../../src/customHooks/useWorkspaceActions', () => ({
   __esModule: true,
@@ -58,7 +59,7 @@ vi.mock('../../../../src/components/Dasboard/DashboardProvider', () => ({
 
 vi.mock('../../../../src/dashboardChat/contextBuilder', () => ({
   __esModule: true,
-  buildDashboardChatContext: () => ({ chunks: [{}] }),
+  buildDashboardChatContext: () => ({ chunks: dashboardContextChunks }),
   formatDashboardChatContext: () => dashboardContextText,
 }))
 
@@ -158,6 +159,7 @@ const addCopiedMaterial = (text: string) => {
 describe('WorkspaceStudioShell Quick Create', () => {
   beforeEach(() => {
     dashboardContextText = 'Dashboard notes about photosynthesis'
+    dashboardContextChunks = [{ text: dashboardContextText }]
     Element.prototype.scrollIntoView = vi.fn()
     createStudyPackDashboardsMock.mockClear()
     createStudyPackDashboardsMock.mockReturnValue([
@@ -319,6 +321,7 @@ describe('WorkspaceStudioShell Quick Create', () => {
 
   it('routes empty-dashboard quick card clicks into Create from Material with the output preselected', () => {
     dashboardContextText = ''
+    dashboardContextChunks = []
 
     render(
       <WorkspaceStudioShell>
@@ -336,7 +339,58 @@ describe('WorkspaceStudioShell Quick Create', () => {
     expect(
       screen.getByRole('button', { name: /^Create Quiz$/i }),
     ).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Sources$/i })).toHaveClass(
+      'MuiButton-contained',
+    )
     expect(generateStudyPackWithAi).not.toHaveBeenCalled()
+  })
+
+  it('opens the Creation panel from a collapsed quick action and preselects material flow', () => {
+    dashboardContextText = ''
+    dashboardContextChunks = []
+
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation()
+    fireEvent.click(
+      screen.getByRole('button', { name: /Collapse Create panel/i }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Quick Create Quiz/i }))
+
+    expect(
+      screen.getByRole('heading', { name: /Create from Material/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Quiz selected/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Sources$/i })).toHaveClass(
+      'MuiButton-contained',
+    )
+    expect(generateStudyPackWithAi).not.toHaveBeenCalled()
+  })
+
+  it('keeps the Creation panel collapsed for collapsed quick actions with dashboard context', async () => {
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation()
+    fireEvent.click(
+      screen.getByRole('button', { name: /Collapse Create panel/i }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Quick Create Quiz/i }))
+
+    await waitFor(() => expect(generateStudyPackWithAi).toHaveBeenCalled())
+    expect(
+      screen.queryByRole('heading', { name: /Create from Material/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Open Create panel/i }),
+    ).toBeInTheDocument()
   })
 
   it('focuses the upload area when an empty-dashboard upload launcher opens Create from Material', async () => {
