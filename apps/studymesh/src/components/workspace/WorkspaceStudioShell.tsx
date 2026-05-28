@@ -3286,6 +3286,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                 borderColor: quickCreateAccents[resourceType],
                 bgcolor: alpha(quickCreateAccents[resourceType], 0.18),
               },
+              '& svg': {
+                margin: '0 -2px',
+              },
             }}
           >
             {quickCreateIcons[resourceType]}

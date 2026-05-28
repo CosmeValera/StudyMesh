@@ -259,6 +259,9 @@ export const WorkspaceDesktopLayout = ({
                     borderColor: 'primary.main',
                     bgcolor: alpha(theme.palette.primary.main, 0.18),
                   },
+                  '& svg': {
+                    margin: '0 -2px',
+                  },
                 }}
               >
                 <ViewSidebarIcon fontSize="small" />
@@ -329,6 +332,9 @@ export const WorkspaceDesktopLayout = ({
                 '&:hover': {
                   borderColor: 'primary.main',
                   bgcolor: alpha(theme.palette.primary.main, 0.18),
+                },
+                '& svg': {
+                  margin: '0 -2px',
                 },
                 marginTop: 0.3,
               }}
