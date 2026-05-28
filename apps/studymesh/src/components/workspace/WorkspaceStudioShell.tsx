@@ -2681,6 +2681,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const isCancelled = draft.status === 'cancelled'
                   const canRetry = isFailed || isCancelled
                   const opened = Boolean(draft.openedAt)
+                  const acknowledgedAtMs = draft.acknowledgedAt
+                    ? new Date(draft.acknowledgedAt).getTime()
+                    : 0
+                  const showAcknowledgedPulse =
+                    !opened &&
+                    Number.isFinite(acknowledgedAtMs) &&
+                    Date.now() - acknowledgedAtMs < 3200
                   const materialLabel = generationMaterialLabel(draft)
                   const createdAtMs = new Date(draft.createdAt).getTime()
                   const elapsed = isGenerating
@@ -2760,11 +2767,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         width: '100%',
                         p: 1,
                         border: 1,
-                        borderColor: isReady
-                          ? alpha(theme.palette.success.main, 0.45)
-                          : isFailed || isCancelled
-                            ? alpha(theme.palette.error.main, 0.35)
-                            : alpha(theme.palette.warning.main, 0.36),
+                        borderColor: showAcknowledgedPulse
+                          ? 'warning.main'
+                          : isReady
+                            ? alpha(theme.palette.success.main, 0.45)
+                            : isFailed || isCancelled
+                              ? alpha(theme.palette.error.main, 0.35)
+                              : alpha(theme.palette.warning.main, 0.36),
                         borderRadius: 2,
                         bgcolor: isReady
                           ? alpha(theme.palette.success.main, 0.075)
@@ -2777,6 +2786,23 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
+                        animation: showAcknowledgedPulse
+                          ? 'studymesh-acknowledged-pill-pulse 820ms ease-in-out 3'
+                          : 'none',
+                        '@keyframes studymesh-acknowledged-pill-pulse': {
+                          '0%, 100%': {
+                            boxShadow: `0 0 0 0 ${alpha(
+                              theme.palette.warning.main,
+                              0,
+                            )}`,
+                          },
+                          '50%': {
+                            boxShadow: `0 0 0 5px ${alpha(
+                              theme.palette.warning.main,
+                              0.3,
+                            )}`,
+                          },
+                        },
                         '&:hover': isReady
                           ? {
                               borderColor: 'success.main',
