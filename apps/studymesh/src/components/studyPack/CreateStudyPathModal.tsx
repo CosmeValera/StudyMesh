@@ -797,7 +797,7 @@ const CreateStudyPathModal: React.FC<CreateStudyPathModalProps> = ({
       }
 
       const nextDraft = await generateStudyPathWithAi({
-        provider: aiProvider,
+        strongProvider: aiProvider,
         apiToken: credentials.apiToken,
         model: credentials.model,
         title: 'Study Path',

@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -30,6 +31,7 @@ import {
   StudyPathDashboardItem,
 } from '../../state/store'
 import { getStudyPathDashboardProgress } from '../../studyPack/progress'
+import { StudyPathMasteryCheck } from '../../studyPathMastery'
 
 const STUDY_PATH_NAV_OPEN_STORAGE_KEY = 'studymesh-study-path-navigator-open-v2'
 const LEGACY_STUDY_PATH_NAV_OPEN_STORAGE_KEY =
@@ -693,6 +695,27 @@ const StudyPathWorkspaceView: React.FC<StudyPathWorkspaceViewProps> = ({
                 </Button>
               </Stack>
             </Stack>
+
+            <Divider />
+
+            <Box sx={{ px: { xs: 0.75, sm: 1 }, py: { xs: 0.5, sm: 0.75 } }}>
+              <StudyPathMasteryCheck
+                pathId={studyPath.pathId}
+                title={studyPath.title}
+                dashboards={studyPath.dashboards.map((d) => ({
+                  dashboardKey: d.dashboardKey,
+                  name: d.name,
+                  dashboardIndex: d.dashboardIndex,
+                }))}
+                activeDashboardKey={currentLesson?.dashboardKey}
+                onDashboardSelect={(key) => {
+                  const idx = studyPath.dashboards.findIndex((d) => d.dashboardKey === key)
+                  if (idx >= 0) {
+                    selectLesson(idx)
+                  }
+                }}
+              />
+            </Box>
 
             <Divider />
 
