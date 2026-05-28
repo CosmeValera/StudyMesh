@@ -257,6 +257,18 @@ describe('WorkspaceStudioShell Quick Create', () => {
     expect(generateStudyPackWithAi).not.toHaveBeenCalled()
   })
 
+  it('opens Study Path directly when the create hub event requests it', () => {
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation({ intent: 'study-path' })
+
+    expect(screen.getByTestId('create-study-path-modal')).toBeInTheDocument()
+  })
+
   it('output cards in Create from Material select output without generating immediately', () => {
     render(
       <WorkspaceStudioShell>

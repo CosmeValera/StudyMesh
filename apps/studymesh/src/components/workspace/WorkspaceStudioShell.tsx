@@ -667,6 +667,13 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       const customEvent = event as CustomEvent<OpenCreateHubDetail>
       const detail = customEvent.detail || {}
       setActiveMaterialDraftId(null)
+      if (detail.intent === 'study-path' && permissions.canCreateStudyPath) {
+        setSelectedIntent('study-path')
+        setQuickOptionsOpen(false)
+        createNewDraft('study-path')
+        return
+      }
+
       setSelectedIntent(detail.intent || null)
       if (detail.openQuickOptions) {
         setQuickOptionsOpen(true)
@@ -1098,6 +1105,31 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       current.filter(
         (draft) => draft.isPlaceholder || draft.status === 'editing',
       ),
+    )
+  }
+
+  const clearGenerationDraft = (draft: GenerationDraft) => {
+    generationAbortControllersRef.current[draft.id]?.abort()
+    delete generationAbortControllersRef.current[draft.id]
+    removeGenerationRetrySnapshot(draft.id)
+    const timerId = autoAcknowledgeTimersRef.current[draft.id]
+    if (timerId) {
+      window.clearTimeout(timerId)
+      delete autoAcknowledgeTimersRef.current[draft.id]
+    }
+    delete generationQueueItemRefs.current[draft.id]
+    setVisibleQueueJobIds((current) => {
+      const next = new Set(current)
+      next.delete(draft.id)
+      return next
+    })
+    setAutoAcknowledgingDraftIds((current) => {
+      const next = new Set(current)
+      next.delete(draft.id)
+      return next
+    })
+    setGenerationDrafts((current) =>
+      current.filter((existingDraft) => existingDraft.id !== draft.id),
     )
   }
 
@@ -3029,6 +3061,25 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           }}
                         >
                           Retry
+                        </Button>
+                      ) : null}
+                      {(isReady || isFailed || isCancelled) ? (
+                        <Button
+                          size="small"
+                          type="button"
+                          variant="text"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            clearGenerationDraft(draft)
+                          }}
+                          sx={{
+                            borderRadius: 999,
+                            textTransform: 'none',
+                            fontWeight: 900,
+                            flex: '0 0 auto',
+                          }}
+                        >
+                          Clear
                         </Button>
                       ) : null}
                     </Paper>

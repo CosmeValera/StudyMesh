@@ -318,6 +318,7 @@ const DashboardChatPanel = ({
                   key={suggestion}
                   variant="outlined"
                   size="small"
+                  disabled={!hasContext}
                   onClick={() => sendQuestion(suggestion)}
                   sx={{
                     justifyContent: 'flex-start',
@@ -475,7 +476,12 @@ const DashboardChatPanel = ({
           <TextField
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Ask about this dashboard…"
+            placeholder={
+              hasContext
+                ? 'Ask about this dashboard...'
+                : 'Add study material before chatting'
+            }
+            disabled={!hasContext}
             fullWidth
             multiline
             maxRows={4}
@@ -492,6 +498,9 @@ const DashboardChatPanel = ({
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
+                if (!hasContext) {
+                  return
+                }
                 sendQuestion(draft)
               }
             }}
@@ -499,17 +508,20 @@ const DashboardChatPanel = ({
           <IconButton
             color="primary"
             onClick={() => sendQuestion(draft)}
-            disabled={!draft.trim()}
+            disabled={!hasContext || !draft.trim()}
             aria-label="Send dashboard question"
             sx={{
               width: 42,
               height: 42,
-              bgcolor: draft.trim()
+              bgcolor: hasContext && draft.trim()
                 ? 'primary.main'
                 : 'action.disabledBackground',
-              color: draft.trim() ? 'primary.contrastText' : 'text.disabled',
+              color:
+                hasContext && draft.trim()
+                  ? 'primary.contrastText'
+                  : 'text.disabled',
               '&:hover': {
-                bgcolor: draft.trim()
+                bgcolor: hasContext && draft.trim()
                   ? 'primary.dark'
                   : 'action.disabledBackground',
               },
