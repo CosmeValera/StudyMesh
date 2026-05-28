@@ -75,14 +75,14 @@ const geminiDetailTargets: Record<
     long: '1800-2600 words',
   },
   flashcards: {
-    short: '6-10 flashcards',
-    medium: '12-18 flashcards',
-    long: '24-35 flashcards',
+    short: '20-30 flashcards',
+    medium: '40-50 flashcards',
+    long: '50-65 flashcards',
   },
   quiz: {
-    short: '5-7 questions',
-    medium: '8-12 questions',
-    long: '15-25 questions',
+    short: '20-30 multiple-choice questions',
+    medium: '40-50 multiple-choice questions',
+    long: '50-65 multiple-choice questions',
   },
 }
 
@@ -998,18 +998,30 @@ export const generateStudyPackWithAi = async ({
   const targetInstruction = `Create only these selected study material types when possible: ${formatGenerationTargets(
     effectiveTargets,
   )}. Treat selected targets as a hard UI contract.`
-  const amountInstruction = `Create ${practiceProfile.targetTotal} reviewable study items when possible, never fewer than ${practiceProfile.minTotal} if the notes contain usable facts. Keep the total within ${practiceProfile.minTotal}-${practiceProfile.maxTotal} items.`
+  const resourceTarget = resourceType
+    ? geminiDetailTargets[resourceType][detailLevel]
+    : null
+  const amountInstruction =
+    resourceType === 'flashcards'
+      ? `Create ${resourceTarget} when possible. Never create fewer than 40 flashcards at Medium or Long detail if the notes contain enough usable facts.`
+      : resourceType === 'quiz'
+        ? `Create ${resourceTarget} when possible. Never create fewer than 40 multiple-choice questions at Medium or Long detail if the notes contain enough usable facts.`
+        : `Create ${practiceProfile.targetTotal} reviewable study items when possible, never fewer than ${practiceProfile.minTotal} if the notes contain usable facts. Keep the total within ${practiceProfile.minTotal}-${practiceProfile.maxTotal} items.`
   const mixInstruction =
-    practiceProfile.enforceQuizzes || practiceProfile.enforceFlashcards
-      ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
-      : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
+    resourceType === 'flashcards'
+      ? 'All reviewable items must be flashcards. Do not create quizzes, short-answer practice, summaries, definitions, or support review objects.'
+      : resourceType === 'quiz'
+        ? 'All reviewable items must be multiple-choice quiz questions. Do not create short-answer questions, typed-answer questions, quizSingle items, flashcards, summaries, definitions, or support review objects.'
+        : practiceProfile.enforceQuizzes || practiceProfile.enforceFlashcards
+          ? `Use an active-practice mix: ${practiceProfile.targetQuizzes} quizzes, ${practiceProfile.targetFlashcards} flashcards, and about ${practiceProfile.targetSupport} summaries/definitions/review prompts. Quizzes should be 50-60% of the pack and flashcards 20-30%.`
+          : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
   const resourceInstruction =
     resourceType === 'improvedNotes'
       ? 'Selected resource type: Expand on this. Create one polished expanded note set from the source. Stay close to the provided content and preserve the same learner level, vocabulary difficulty, and topic depth as the original source. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless they are clearly needed to explain the source. Organize the notes into teachable sections such as: source summary, key concepts, examples, common mistakes or misconceptions, and compact takeaways. Use clear explanations, but keep the complexity appropriate to the source. Do not create a quiz, multiple choice questions, short answer practice, or flashcards. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
       : resourceType === 'flashcards'
         ? 'Selected resource type: Flashcards. Create only atomic flashcards from the source. Each flashcard must test one term, rule, contrast, formula step, exception, process step, or use case. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Use answer backs that teach briefly, not one-word fragments. Keep sourceSummary brief, leave conceptRecap sections empty, and leave practice.shortAnswer and practice.multipleChoice empty.'
         : resourceType === 'quiz'
-          ? 'Selected resource type: Quiz. Create only quiz questions from the source. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Prefer scenario, application, contrast, error-fixing, and why/how questions over simple recall. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
+          ? 'Selected resource type: Quiz. Create only multiple-choice quiz questions from the source. Fill practice.multipleChoice only. Leave practice.shortAnswer empty. Never create typed-answer, short-answer, quizSingle, or free-response questions. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Prefer scenario, application, contrast, error-fixing, and why/how questions over simple recall. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
           : 'Wrong Selected resource type.'
   const detailInstruction =
     detailLevel === 'short'
@@ -1067,6 +1079,7 @@ Rules:
 - Return strict valid JSON only: double-quoted property names and strings, comma-separated array/object entries, matching { } and [ ], no trailing commas, no comments, no Markdown fences, no prose before or after the JSON.
 - Do not output "objects", "kind", "quizMode", internal block names, widget names, or any StudyMesh renderer fields. StudyMesh decides widget types.
 - Fill only sourceSummary, conceptRecap, practice.shortAnswer, practice.multipleChoice, and flashcards.
+- When selected resource type is Quiz, practice.shortAnswer must be [] and every question must be in practice.multipleChoice with 3-4 real answer options.
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.

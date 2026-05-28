@@ -185,7 +185,9 @@ const markdownFromImprovedNotesDraft = (
 
   if (parts.length === 0 && draft.sourceSummary?.bullets.length) {
     parts.push(
-      `# ${draft.sourceSummary.title || fallbackTitle}\n${draft.sourceSummary.bullets
+      `# ${
+        draft.sourceSummary.title || fallbackTitle
+      }\n${draft.sourceSummary.bullets
         .map((bullet) => `- ${bullet}`)
         .join('\n')}`,
     )
@@ -251,7 +253,27 @@ export const applyStudyMaterialResourceTypeToDraft = (
       (object) => object.kind === 'qa' || object.kind === 'reveal',
     )
   } else {
-    objects = draft.objects.filter((object) => object.kind === 'quiz')
+    objects = draft.objects
+      .filter(
+        (object): object is Extract<StudyObject, { kind: 'quiz' }> =>
+          object.kind === 'quiz',
+      )
+      .map((object) =>
+        object.quizMode === 'multipleChoice'
+          ? object
+          : {
+              ...object,
+              quizMode: 'multipleChoice' as const,
+              options: [
+                object.answer,
+                'Not supported by the source notes',
+                'The opposite of the source explanation',
+              ].filter(Boolean),
+              correctIndex: 0,
+              explanation:
+                object.explanation || `Correct answer: ${object.answer}`,
+            },
+      )
   }
 
   const hasFilteredContent =
@@ -337,7 +359,9 @@ const normalizeMultipleChoice = (
   )
   if (correctOptionIndex < 0) {
     events.push(
-      `Dropped multipleChoice ${index + 1}: correct option was missing after repair.`,
+      `Dropped multipleChoice ${
+        index + 1
+      }: correct option was missing after repair.`,
     )
     return null
   }
@@ -498,7 +522,9 @@ export const filterStudyObjectsForDashboardRole = (
     }
 
     events.push(
-      `Dropped ${object.kind} object "${object.title || object.id}" at final mapping: forbidden for ${dashboardRole} dashboard.`,
+      `Dropped ${object.kind} object "${
+        object.title || object.id
+      }" at final mapping: forbidden for ${dashboardRole} dashboard.`,
     )
     return false
   })

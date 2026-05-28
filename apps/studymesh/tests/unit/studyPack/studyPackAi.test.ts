@@ -2719,7 +2719,20 @@ describe('Gemini study pack client', () => {
                             'Derivatives describe instantaneous rates.',
                         },
                       ],
-                      multipleChoice: [],
+                      multipleChoice: [
+                        {
+                          question:
+                            'Which derivative use best compares changing motion?',
+                          options: [
+                            'Compare instantaneous rates of change',
+                            'Count total objects only',
+                            'Ignore time completely',
+                          ],
+                          correctOptionIndex: 0,
+                          explanation:
+                            'Derivatives describe instantaneous rates.',
+                        },
+                      ],
                     },
                     flashcards: [
                       {
@@ -2753,7 +2766,17 @@ describe('Gemini study pack client', () => {
       'Selected resource type: Quiz',
     )
     expect(fetchMock.mock.calls[0][1].body).toContain('Detail level: Long')
-    expect(draft.objects.map((object) => object.kind)).toEqual(['quiz'])
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      '50-65 multiple-choice questions',
+    )
+    expect(fetchMock.mock.calls[0][1].body).toContain(
+      'Leave practice.shortAnswer empty',
+    )
+    expect(draft.objects.map((object) => object.kind)).toEqual(['quiz', 'quiz'])
+    expect(draft.objects).toEqual([
+      expect.objectContaining({ quizMode: 'multipleChoice' }),
+      expect.objectContaining({ quizMode: 'multipleChoice' }),
+    ])
     expect(draft.warnings).toContain(
       'Filtered generated content to the selected resource type.',
     )

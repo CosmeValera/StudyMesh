@@ -153,14 +153,14 @@ const detailLevelCountLimits: Record<
     long: { max: 2600 },
   },
   flashcards: {
-    short: { max: 10 },
-    medium: { max: 18 },
-    long: { max: 35 },
+    short: { max: 30 },
+    medium: { max: 50 },
+    long: { max: 65 },
   },
   quiz: {
-    short: { max: 7 },
-    medium: { max: 12 },
-    long: { max: 25 },
+    short: { max: 30 },
+    medium: { max: 50 },
+    long: { max: 65 },
   },
 }
 
@@ -214,7 +214,25 @@ const getReviewableObjects = (
     return filtered
   }
 
-  return filtered.slice(
+  const quizFiltered =
+    resourceType === 'quiz'
+      ? filtered.map((object) =>
+          object.kind === 'quiz' && object.quizMode === 'shortAnswer'
+            ? {
+                ...object,
+                quizMode: 'multipleChoice' as const,
+                options: [
+                  object.answer,
+                  'Not supported by the source notes',
+                  'The opposite of the source explanation',
+                ].filter(Boolean),
+                correctIndex: 0,
+              }
+            : object,
+        )
+      : filtered
+
+  return quizFiltered.slice(
     0,
     detailLevelCountLimits[resourceType][detailLevel].max,
   )
@@ -325,10 +343,10 @@ const sanitizePersistedGenerationDraft = (
     draft.status === 'generating'
       ? 'failed'
       : draft.status === 'ready' ||
-          draft.status === 'failed' ||
-          draft.status === 'cancelled'
-        ? draft.status
-        : null
+        draft.status === 'failed' ||
+        draft.status === 'cancelled'
+      ? draft.status
+      : null
 
   if (!status) {
     return null
@@ -880,10 +898,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             state === 'running'
               ? 'generating'
               : state === 'complete'
-                ? 'ready'
-                : state === 'error'
-                  ? 'failed'
-                  : 'editing'
+              ? 'ready'
+              : state === 'error'
+              ? 'failed'
+              : 'editing'
 
           return {
             ...draft,
@@ -950,14 +968,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
           queueReadyCount === 1 ? '' : 's'
         } ready`
       : queueGeneratingCount > 0
-        ? `${queueGeneratingCount} generation${
-            queueGeneratingCount === 1 ? '' : 's'
-          } running`
-        : queueFailedCount > 0
-          ? `${queueFailedCount} generation${
-              queueFailedCount === 1 ? '' : 's'
-            } failed`
-          : 'Creation queue'
+      ? `${queueGeneratingCount} generation${
+          queueGeneratingCount === 1 ? '' : 's'
+        } running`
+      : queueFailedCount > 0
+      ? `${queueFailedCount} generation${
+          queueFailedCount === 1 ? '' : 's'
+        } failed`
+      : 'Creation queue'
 
   useEffect(() => {
     if (
@@ -1233,23 +1251,23 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       storedSnapshot?.flow === 'from-notes'
         ? storedSnapshot
         : draft.flow === 'from-notes' &&
-            draft.retryResourceType &&
-            draft.retrySourceText &&
-            draft.retryTitle &&
-            draft.retrySourceMode
-          ? {
-              flow: 'from-notes' as const,
-              resourceType: draft.retryResourceType,
-              sourceText: draft.retrySourceText,
-              title: draft.retryTitle,
-              sourceMode: draft.retrySourceMode,
-              detailLevel:
-                (draft.detailLevel as StudyMaterialDetailLevel) ||
-                quickDetailLevel,
-              difficulty: draft.retryDifficulty || quickDifficulty,
-              provider: (draft.aiProvider as StudyPackAiProvider) || aiProvider,
-            }
-          : null
+          draft.retryResourceType &&
+          draft.retrySourceText &&
+          draft.retryTitle &&
+          draft.retrySourceMode
+        ? {
+            flow: 'from-notes' as const,
+            resourceType: draft.retryResourceType,
+            sourceText: draft.retrySourceText,
+            title: draft.retryTitle,
+            sourceMode: draft.retrySourceMode,
+            detailLevel:
+              (draft.detailLevel as StudyMaterialDetailLevel) ||
+              quickDetailLevel,
+            difficulty: draft.retryDifficulty || quickDifficulty,
+            provider: (draft.aiProvider as StudyPackAiProvider) || aiProvider,
+          }
+        : null
 
     if (draft.flow === 'from-notes' && fromNotesRetry) {
       void runDirectStudyPackCreate(
@@ -1337,8 +1355,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         quickCustomSourceCount === 1 ? '' : 's'
       }`
     : hasCurrentDashboardContext
-      ? currentDashboardTitle
-      : 'Sources required'
+    ? currentDashboardTitle
+    : 'Sources required'
   const selectedQuickCreateIntent =
     selectedIntent && selectedIntent !== 'study-path' ? selectedIntent : null
   const getNextQuickCreationIndex = (
@@ -2207,8 +2225,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                                   ? 0.2
                                   : 0.12
                                 : theme.palette.mode === 'dark'
-                                  ? 0.12
-                                  : 0.07,
+                                ? 0.12
+                                : 0.07,
                             ),
                             color: 'text.primary',
                             cursor: 'pointer',
@@ -2360,8 +2378,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               borderColor: quickHasCustomSources
                 ? alpha(theme.palette.primary.main, 0.45)
                 : hasCurrentDashboardContext
-                  ? 'divider'
-                  : alpha(theme.palette.warning.main, 0.65),
+                ? 'divider'
+                : alpha(theme.palette.warning.main, 0.65),
               borderRadius: 2.5,
               bgcolor: 'background.paper',
             }}
@@ -2903,11 +2921,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                     isGenerating && draft.flow === 'study-path'
                       ? 'Creating study path...'
                       : isGenerating
-                        ? `Generating ${materialLabel}...`
-                        : draft.title ||
-                          (draft.flow === 'study-path'
-                            ? 'Study Path'
-                            : resourceTypeTitle(draft.selectedResourceType))
+                      ? `Generating ${materialLabel}...`
+                      : draft.title ||
+                        (draft.flow === 'study-path'
+                          ? 'Study Path'
+                          : resourceTypeTitle(draft.selectedResourceType))
                   const generatingDetail =
                     draft.flow === 'study-path'
                       ? [
@@ -2927,12 +2945,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const detail = isCancelled
                     ? draft.error || 'Stopped - Retry'
                     : isFailed
-                      ? draft.error || 'Retry'
-                      : isReady
-                        ? opened
-                          ? 'Opened'
-                          : 'Ready - Open'
-                        : generatingDetail
+                    ? draft.error || 'Retry'
+                    : isReady
+                    ? opened
+                      ? 'Opened'
+                      : 'Ready - Open'
+                    : generatingDetail
                   const statusIcon =
                     isFailed || isCancelled ? (
                       <ErrorOutlineIcon fontSize="small" color="error" />
@@ -2983,16 +3001,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                         borderColor: showAcknowledgedPulse
                           ? 'warning.main'
                           : isReady
-                            ? alpha(theme.palette.success.main, 0.45)
-                            : isFailed || isCancelled
-                              ? alpha(theme.palette.error.main, 0.35)
-                              : alpha(theme.palette.warning.main, 0.36),
+                          ? alpha(theme.palette.success.main, 0.45)
+                          : isFailed || isCancelled
+                          ? alpha(theme.palette.error.main, 0.35)
+                          : alpha(theme.palette.warning.main, 0.36),
                         borderRadius: 2,
                         bgcolor: isReady
                           ? alpha(theme.palette.success.main, 0.075)
                           : isFailed || isCancelled
-                            ? alpha(theme.palette.error.main, 0.055)
-                            : alpha(theme.palette.warning.main, 0.07),
+                          ? alpha(theme.palette.error.main, 0.055)
+                          : alpha(theme.palette.warning.main, 0.07),
                         color: 'text.primary',
                         cursor: isReady ? 'pointer' : 'default',
                         textAlign: 'left',
@@ -3042,10 +3060,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                                 1,
                               )} generation failed`
                             : isCancelled
-                              ? `${materialLabel[0].toUpperCase()}${materialLabel.slice(
-                                  1,
-                                )} generation stopped`
-                              : label}
+                            ? `${materialLabel[0].toUpperCase()}${materialLabel.slice(
+                                1,
+                              )} generation stopped`
+                            : label}
                         </Typography>
                         <Typography
                           variant="caption"
@@ -3450,8 +3468,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               queueReadyCount > 0
                 ? 'success.main'
                 : queueFailedCount > 0 && queueGeneratingCount === 0
-                  ? 'error.main'
-                  : 'warning.main',
+                ? 'error.main'
+                : 'warning.main',
             flex: '0 0 auto',
             '&::after':
               queueGeneratingCount > 0
@@ -3619,14 +3637,14 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   queueReadyCount > 0
                     ? 'success.main'
                     : queueFailedCount > 0 && queueGeneratingCount === 0
-                      ? 'error.main'
-                      : 'warning.main',
+                    ? 'error.main'
+                    : 'warning.main',
                 boxShadow:
                   queueReadyCount > 0
                     ? statusMarkerGlow.complete
                     : queueFailedCount > 0 && queueGeneratingCount === 0
-                      ? statusMarkerGlow.error
-                      : statusMarkerGlow.running,
+                    ? statusMarkerGlow.error
+                    : statusMarkerGlow.running,
                 color:
                   queueReadyCount > 0
                     ? 'success.contrastText'

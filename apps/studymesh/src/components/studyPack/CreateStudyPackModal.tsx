@@ -235,14 +235,14 @@ const detailLevelCountLimits: Record<
     long: { min: 1800, max: 2600 },
   },
   flashcards: {
-    short: { min: 6, max: 10 },
-    medium: { min: 12, max: 18 },
-    long: { min: 24, max: 35 },
+    short: { min: 20, max: 30 },
+    medium: { min: 40, max: 50 },
+    long: { min: 50, max: 65 },
   },
   quiz: {
-    short: { min: 5, max: 7 },
-    medium: { min: 8, max: 12 },
-    long: { min: 15, max: 25 },
+    short: { min: 20, max: 30 },
+    medium: { min: 40, max: 50 },
+    long: { min: 50, max: 65 },
   },
 }
 
@@ -423,7 +423,31 @@ const limitReviewItemsForDetailLevel = (
     return items
   }
 
-  return items.slice(0, detailLevelCountLimits[resourceType][detailLevel].max)
+  const quizFiltered =
+    resourceType === 'quiz'
+      ? items.map((item) =>
+          item.object.kind === 'quiz' && item.object.quizMode === 'shortAnswer'
+            ? {
+                ...item,
+                object: {
+                  ...item.object,
+                  quizMode: 'multipleChoice' as const,
+                  options: [
+                    item.object.answer,
+                    'Not supported by the source notes',
+                    'The opposite of the source explanation',
+                  ].filter(Boolean),
+                  correctIndex: 0,
+                },
+              }
+            : item,
+        )
+      : items
+
+  return quizFiltered.slice(
+    0,
+    detailLevelCountLimits[resourceType][detailLevel].max,
+  )
 }
 
 const createPreviewWidgetGroups = (
@@ -516,12 +540,19 @@ const applyReviewItem = (item: ReviewItem): StudyObject | null => {
   }
 
   if (item.type === 'quiz') {
+    if (
+      item.object.kind === 'quiz' &&
+      item.object.quizMode === 'multipleChoice'
+    ) {
+      return { ...item.object, question: item.title }
+    }
+
     return {
       ...base,
       kind: 'quiz',
-      quizMode: 'shortAnswer',
+      quizMode: 'multipleChoice',
       question: item.title,
-      options: [],
+      options: [preview, 'Review the source notes', 'Not enough information'],
       correctIndex: 0,
       answer: preview,
       explanation: '',
@@ -685,10 +716,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           ? 'PDF'
           : 'slides'
         : imageFiles.length > 0
-          ? 'image notes'
-          : sourceText.trim() || copiedTextDraft.trim()
-            ? 'notes'
-            : 'sources'
+        ? 'image notes'
+        : sourceText.trim() || copiedTextDraft.trim()
+        ? 'notes'
+        : 'sources'
 
     onDraftMetaChange?.({
       title: packTitle,
@@ -696,8 +727,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         sourceMode === 'dashboard'
           ? `Current dashboard: ${currentDashboardTitle}`
           : sourceCount > 1
-            ? `${sourceCount} source files`
-            : sourceKind,
+          ? `${sourceCount} source files`
+          : sourceKind,
       resourceType,
       detailLevel,
     })
@@ -1172,8 +1203,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       aiProvider === 'local'
         ? 'Starting Google Local AI'
         : isStrongAiProvider(aiProvider)
-          ? `Connecting to ${aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'}`
-          : 'Preparing generation',
+        ? `Connecting to ${aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'}`
+        : 'Preparing generation',
     )
     setError('')
 
@@ -1184,8 +1215,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ? aiProvider === 'local'
               ? 'Asking Chrome Local AI for a compact outline'
               : isStrongAiProvider(aiProvider)
-                ? 'Reading notes and planning study sections'
-                : 'Parsing notes locally'
+              ? 'Reading notes and planning study sections'
+              : 'Parsing notes locally'
             : current,
         )
       }, 700)
@@ -1195,10 +1226,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ? aiProvider === 'local'
               ? 'Creating compact local study objects'
               : isStrongAiProvider(aiProvider)
-                ? `Creating ${resourceTypeLabels[resourceType]} with ${
-                    aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'
-                  }`
-                : `Creating ${resourceTypeLabels[resourceType]}`
+              ? `Creating ${resourceTypeLabels[resourceType]} with ${
+                  aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'
+                }`
+              : `Creating ${resourceTypeLabels[resourceType]}`
             : current,
         )
       }, 1800)
@@ -1332,8 +1363,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       aiProvider === 'gemini'
         ? 'Preparing AI extraction'
         : aiProvider === 'local'
-          ? 'Checking Local AI image support'
-          : 'Preparing OCR',
+        ? 'Checking Local AI image support'
+        : 'Preparing OCR',
     )
     setAiProgressLabel(
       aiProvider === 'gemini' ? 'Connecting to Gemini vision' : '',
@@ -1438,8 +1469,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         aiProvider === 'gemini'
           ? 'AI extraction complete'
           : aiProvider === 'local'
-            ? 'Image extraction complete'
-            : 'OCR complete',
+          ? 'Image extraction complete'
+          : 'OCR complete',
       )
     } catch (error) {
       if (
@@ -1649,8 +1680,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         resourceType === 'flashcards' || resourceType === 'quiz'
           ? 'tabs'
           : layoutMode !== 'orchestrator'
-            ? layoutMode
-            : 'tabs',
+          ? layoutMode
+          : 'tabs',
       folderName: quickCreateFolders[resourceType],
     })
     handleClose()
@@ -2257,8 +2288,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       resourceType
                         ? resourceTypeLabels[resourceType]
                         : sourceFormat === 'csv'
-                          ? 'Source table included'
-                          : 'Source notes included'
+                        ? 'Source table included'
+                        : 'Source notes included'
                     }
                   />
                   <Chip label={`${detailLevel} detail`} />
@@ -2350,8 +2381,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             {isGeneratingAi
               ? 'Creating...'
               : sourceInputType === 'image' && !imageTextExtracted
-                ? 'Extract notes'
-                : 'Continue'}
+              ? 'Extract notes'
+              : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>
