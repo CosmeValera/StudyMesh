@@ -1013,20 +1013,67 @@ const conceptQuestion = (
     : `How would you explain ${concept.concept} in your own words?`
 }
 
+const rotateOptions = (
+  options: string[],
+  correctAnswer: string,
+  index: number,
+): { options: string[]; correctIndex: number } => {
+  const uniqueOptions = uniqueByKey(options, (option) => option).slice(0, 4)
+  const correctIndex = uniqueOptions.findIndex(
+    (option) => normalizeKey(option) === normalizeKey(correctAnswer),
+  )
+  if (correctIndex < 0 || uniqueOptions.length < 3) {
+    return { options: [], correctIndex: 0 }
+  }
+
+  const offset = index % uniqueOptions.length
+  const rotated = [
+    ...uniqueOptions.slice(offset),
+    ...uniqueOptions.slice(0, offset),
+  ]
+
+  return {
+    options: rotated,
+    correctIndex: rotated.findIndex(
+      (option) => normalizeKey(option) === normalizeKey(correctAnswer),
+    ),
+  }
+}
+
 const conceptQuiz = (
   packId: string,
   concept: LocalConceptContract,
   index: number,
-): StudyObject => ({
-  ...createBase(packId, 'quiz', index, `${concept.concept} practice`),
-  kind: 'quiz',
-  quizMode: 'shortAnswer',
-  question: conceptQuestion(concept, index),
-  options: [],
-  correctIndex: 0,
-  answer: concept.keyFact || concept.definition,
-  explanation: concept.definition,
-})
+  concepts: LocalConceptContract[] = [],
+): StudyObject => {
+  const optionSet = rotateOptions(
+    [
+      concept.definition,
+      ...concepts
+        .filter(
+          (candidate) =>
+            normalizeKey(candidate.concept) !== normalizeKey(concept.concept),
+        )
+        .map((candidate) => candidate.definition),
+    ],
+    concept.definition,
+    index,
+  )
+  const useMultipleChoice = optionSet.options.length >= 3
+
+  return {
+    ...createBase(packId, 'quiz', index, `${concept.concept} practice`),
+    kind: 'quiz',
+    quizMode: useMultipleChoice ? 'multipleChoice' : 'shortAnswer',
+    question: useMultipleChoice
+      ? `In this material, what does "${concept.concept}" mean or do?`
+      : conceptQuestion(concept, index),
+    options: useMultipleChoice ? optionSet.options : [],
+    correctIndex: useMultipleChoice ? optionSet.correctIndex : 0,
+    answer: concept.keyFact || concept.definition,
+    explanation: concept.definition,
+  }
+}
 
 const conceptFlashcard = (
   packId: string,
@@ -1159,7 +1206,12 @@ const objectsFromContract = (
   ) {
     const index = objects.filter((object) => object.kind === 'quiz').length
     objects.push(
-      conceptQuiz(packId, usableConcepts[index % usableConcepts.length], index),
+      conceptQuiz(
+        packId,
+        usableConcepts[index % usableConcepts.length],
+        index,
+        usableConcepts,
+      ),
     )
     events.push('Augmented Local AI output: added concept quiz.')
   }
@@ -1327,12 +1379,12 @@ Rules: one markdown object only. No quizzes. No flashcards. ${localHardRule} ${
         ? `Create ${flashcardCount} flashcards. Allowed kind only: qa.
 Use this shape:
 {"title":"${title.replace(/"/g, '')}","objects":[{"kind":"qa","question":"...","answer":"..."}]}
-Rules: qa objects only. No markdown. No quizzes. Each flashcard has one atomic question and one answer. ${localHardRule}`
+Rules: qa objects only. No markdown. No quizzes. Each flashcard must test exactly one term, rule, formula step, contrast, exception, or use case. Answers must be self-contained and teach the idea, not one-word fragments. ${localHardRule}`
         : resourceType === 'quiz'
           ? `Create ${quizCount} quiz questions. Allowed kind only: quiz.
 Use this shape:
 {"title":"${title.replace(/"/g, '')}","objects":[{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"}]}
-Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders. ${localHardRule} ${quizStyleRule} Questions must be paraphrased, conceptual or applied, and include teaching explanations. Do not copy source sentences.`
+Rules: quiz objects only. No markdown. No flashcards. Options must be real choices, not placeholders. Never use A/B/C, option A, all of the above, duplicate choices, or source-sentence copies. ${localHardRule} ${quizStyleRule} Preferably don't copy source sentences.`
           : `Create exactly 6 simple study objects from the source.
 Allowed kinds only: markdown, qa, quiz, list.
 Use this shape:
@@ -1343,7 +1395,11 @@ Use this shape:
 
   return `Return JSON only. No prose. No markdown fences.
 ${resourceRules}
-Rules: No vague questions. No target rule, formation rule, What rule does, How do you form, What do the notes say. Do not copy exact source sentences into questions or answers. Use a mix of recall and reasoning questions. Prefer conceptual understanding, applied scenarios, comparison, cause/effect, inference, and common-mistake question styles where possible.
+Quality rules:
+- Extract real concepts first. Ignore headings like Goal, Example, Practice, Overview, Active, Target rule, Formation rule.
+- No vague questions. No "What do the notes say?", "Which statement matches the notes?", or copied source sentences.
+- Use concrete prompts grounded in the material. Prefer conceptual understanding, applied scenarios, comparison, cause/effect, inference, and common-mistake question styles where possible.
+- If source is thin, still create useful material from the strongest grounded facts instead of returning generic filler.
 Input: ${promptMode ? 'learning goal' : 'source notes'}
 ${compactNotes}`
 }

@@ -1005,12 +1005,12 @@ export const generateStudyPackWithAi = async ({
       : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
   const resourceInstruction =
     resourceType === 'improvedNotes'
-      ? 'Selected resource type: Improved notes. Create a clearer, better organized explanation from the source. Fill sourceSummary and conceptRecap. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
+      ? 'Selected resource type: Clear Notes. Create one polished note set from the source. Stay close to the provided content and preserve the same learner level, vocabulary difficulty, and topic depth as the original source. Do not introduce advanced terms, extra concepts, or deeper “rabbit holes” unless they are clearly needed to explain the source. Organize the notes into teachable sections such as: source summary, key concepts, examples, common mistakes or misconceptions, and compact takeaways. Use clear explanations, but keep the complexity appropriate to the source. Do not create a quiz, multiple choice questions, short answer practice, or flashcards. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
       : resourceType === 'flashcards'
-      ? 'Selected resource type: Flashcards. Create only atomic flashcards. Keep sourceSummary brief, leave conceptRecap sections empty, and leave all practice arrays empty.'
+      ? 'Selected resource type: Flashcards. Create only atomic flashcards from the source. Each flashcard must test one term, rule, contrast, formula step, exception, process step, or use case. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Use answer backs that teach briefly, not one-word fragments. Keep sourceSummary brief, leave conceptRecap sections empty, and leave practice.shortAnswer and practice.multipleChoice empty.'
       : resourceType === 'quiz'
-      ? 'Selected resource type: Quiz. Create only quiz questions. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
-      : 'Selected resource type: mixed Study Pack.'
+      ? 'Selected resource type: Quiz. Create only quiz questions from the source. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Prefer scenario, application, contrast, error-fixing, and why/how questions over simple recall. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
+      : 'Wrong Selected resource type.'
   const detailInstruction =
     detailLevel === 'short'
       ? 'Detail level: Short. Keep notes concise and generate a small focused set.'
@@ -1070,11 +1070,13 @@ Rules:
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
-- Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?"
+- Clear Notes must read like a useful student handout: headings, concise explanations, examples, contrasts, and common mistakes when grounded. Do not just summarize the input paragraph-by-paragraph.
+- Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?" Back sides must be self-contained and include enough context to learn from the card alone.
 - ${quizStyleInstruction}
 - Quiz and flashcard prompts must paraphrase the source. Do not copy exact source sentences as questions, answers, or distractors.
 - Quiz questions must test conceptual understanding and application, not only memorization. Mix recall and reasoning questions: definitions/facts, applied scenarios, comparisons, cause/effect, inference, identifying common mistakes, and fixing errors.
 - Distractors must be plausible but clearly wrong. Avoid answers that are too short, vague, repeated, or obvious because they reuse exact source wording.
+- Never use placeholder options like A, B, C, option A, choice B, "all of the above", or near-duplicate options.
 - Avoid "According to the text..." style questions unless strictly necessary.
 - Every quiz explanation must teach why the correct answer is correct.
 - Quizzes must test application, usage, contrast, formation, exceptions, or common mistakes with a concrete expected answer. Do not ask "Which statement best explains X?", "Which statement matches the notes?", "What does X help you understand or do?", "What is the core idea behind X?", or questions about what the notes say.

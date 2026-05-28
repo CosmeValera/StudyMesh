@@ -557,6 +557,48 @@ describe('local AI helpers', () => {
     )
   })
 
+  it('builds usable multiple-choice quizzes from Local AI concepts when quiz output is missing', () => {
+    const draft = normalizeLocalAiStudyPackDraft(
+      {
+        title: 'Cell transport',
+        summary: 'Cells move material across membranes in different ways.',
+        concepts: [
+          {
+            concept: 'Diffusion',
+            definition:
+              'Particles move from higher concentration to lower concentration.',
+          },
+          {
+            concept: 'Osmosis',
+            definition:
+              'Water moves across a selectively permeable membrane.',
+          },
+          {
+            concept: 'Active transport',
+            definition:
+              'Cells use energy to move substances against a concentration gradient.',
+          },
+        ],
+      },
+      'cell-transport',
+      { resourceType: 'quiz', detailLevel: 'short' },
+    )
+
+    const quizzes = draft.objects.filter((object) => object.kind === 'quiz')
+    expect(quizzes.length).toBeGreaterThanOrEqual(3)
+    expect(quizzes[0]).toEqual(
+      expect.objectContaining({
+        quizMode: 'multipleChoice',
+        options: expect.arrayContaining([
+          'Particles move from higher concentration to lower concentration.',
+          'Water moves across a selectively permeable membrane.',
+          'Cells use energy to move substances against a concentration gradient.',
+        ]),
+      }),
+    )
+    expect(JSON.stringify(quizzes)).not.toMatch(/"A"|"B"|"C"/)
+  })
+
   it('keeps local Study Path dashboards useful when fields drift', async () => {
     const destroy = vi.fn()
     const prompt = vi
