@@ -300,7 +300,7 @@ const estimateQueueDuration = (draft: GenerationDraft) => {
       return 'est. 15-20m'
     }
 
-    return 'est. 2m'
+    return 'est. 2m-10m'
   }
 
   if (draft.aiProvider === 'gemini') {

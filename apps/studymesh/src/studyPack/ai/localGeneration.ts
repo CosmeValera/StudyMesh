@@ -100,6 +100,7 @@ const LOCAL_STUDY_PATH_PLANNER_TIMEOUT_MS = 180 * 1000
 const LOCAL_STUDY_PATH_NOTES_TIMEOUT_MS = 300 * 1000
 const LOCAL_STUDY_PATH_PRACTICE_TIMEOUT_MS = 240 * 1000
 const LOCAL_STUDY_PATH_DASHBOARD_MAX_ATTEMPTS = 3
+const LOCAL_STUDY_PACK_MAX_ATTEMPTS = 3
 const LOCAL_AI_RETRY_COOLDOWN_MS = 8500
 const LOCAL_DEEP_BLOCKED_MESSAGE =
   'Deep Study Path is not available with Local AI. Use Average, Compact, Super small, or switch to Own Gemini token.'
@@ -1664,36 +1665,67 @@ export const generateStudyPackWithLocalAi = async (
   options: GenerateStudyPackWithAiOptions,
   localOptions: LocalGenerationOptions = {},
 ): Promise<AiStudyPackDraft> => {
-  const text = await callLocalLanguageModel(localStudyPackPrompt(options), {
-    timeoutMs: LOCAL_STUDY_PACK_TIMEOUT_MS,
-    onProgress: localOptions.onProgress,
-    progressLabel: 'Estimated Local AI generation time',
-    signal: localOptions.signal,
-    promptType: 'study-pack',
-    stepLabel: options.title,
-  })
-  const parsed = parseLocalAiJson(text)
-  const draft = applyStudyMaterialResourceTypeToDraft(
-    normalizeLocalAiStudyPackDraft(parsed, options.packId, {
-      rawNotes: options.rawNotes,
-      rawAiResponse: text,
-      resourceType: options.resourceType,
-      detailLevel: options.detailLevel,
-    }),
-    options.packId,
-    options.resourceType,
-  )
-  const limits = getLocalResourceLimits({
-    resourceType: options.resourceType,
-    detailLevel: options.detailLevel,
-  })
+  const prompt = localStudyPackPrompt(options)
+  let lastError: unknown
 
-  return {
-    ...draft,
-    objects: limits ? draft.objects.slice(0, limits.max) : draft.objects,
-    title: draft.title || options.title,
-    sourceFormat: draft.sourceFormat || 'text',
+  for (
+    let attempt = 1;
+    attempt <= LOCAL_STUDY_PACK_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const text = await callLocalLanguageModel(prompt, {
+        timeoutMs: LOCAL_STUDY_PACK_TIMEOUT_MS,
+        onProgress: localOptions.onProgress,
+        progressLabel:
+          attempt === 1
+            ? 'Estimated Local AI generation time'
+            : `Retrying Local AI generation (${attempt}/${LOCAL_STUDY_PACK_MAX_ATTEMPTS})`,
+        signal: localOptions.signal,
+        promptType: 'study-pack',
+        stepLabel: options.title,
+        attempt,
+        attemptCount: LOCAL_STUDY_PACK_MAX_ATTEMPTS,
+      })
+      const parsed = parseLocalAiJson(text)
+      const draft = applyStudyMaterialResourceTypeToDraft(
+        normalizeLocalAiStudyPackDraft(parsed, options.packId, {
+          rawNotes: options.rawNotes,
+          rawAiResponse: text,
+          resourceType: options.resourceType,
+          detailLevel: options.detailLevel,
+        }),
+        options.packId,
+        options.resourceType,
+      )
+      const limits = getLocalResourceLimits({
+        resourceType: options.resourceType,
+        detailLevel: options.detailLevel,
+      })
+
+      return {
+        ...draft,
+        objects: limits ? draft.objects.slice(0, limits.max) : draft.objects,
+        title: draft.title || options.title,
+        sourceFormat: draft.sourceFormat || 'text',
+      }
+    } catch (error) {
+      lastError = error
+      if (
+        localOptions.signal?.aborted ||
+        attempt === LOCAL_STUDY_PACK_MAX_ATTEMPTS ||
+        !localAiStudyPackFailureIsRetryable(error)
+      ) {
+        break
+      }
+
+      await waitForLocalAiRetryCooldownIfNeeded(error)
+    }
   }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Google Local AI failed before returning a response.')
 }
 
 const firstMarkdownObject = (objects: StudyObject[]): StudyObject | undefined =>
@@ -2619,10 +2651,27 @@ const localAiStudyPathFailureIsRetryable = (
   error.code === 'noUsableObjects' ||
   error.code === 'timeout'
 
+const localAiStudyPackFailureIsRetryable = (error: unknown): boolean =>
+  /invalid JSON|Unexpected|truncated JSON|timed out|timeout|cooling down/i.test(
+    errorMessage(error),
+  )
+
 const waitForLocalAiRetryCooldown = async (
   error: LocalAiGenerationError,
 ): Promise<void> => {
   if (error.code !== 'timeout') {
+    return
+  }
+
+  await new Promise((resolve) =>
+    window.setTimeout(resolve, LOCAL_AI_RETRY_COOLDOWN_MS),
+  )
+}
+
+const waitForLocalAiRetryCooldownIfNeeded = async (
+  error: unknown,
+): Promise<void> => {
+  if (!/timed out|timeout|cooling down/i.test(errorMessage(error))) {
     return
   }
 

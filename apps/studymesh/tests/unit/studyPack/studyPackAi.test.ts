@@ -1090,10 +1090,35 @@ describe('local AI helpers', () => {
     const rejection = expect(request).rejects.toThrow(/choose a smaller path/i)
 
     await vi.advanceTimersByTimeAsync(4 * 60 * 1000)
+    await vi.waitFor(() =>
+      expect(events.filter((event) => event.phase === 'timeout')).toHaveLength(
+        1,
+      ),
+    )
+    await vi.advanceTimersByTimeAsync(8500)
+    await vi.waitFor(() =>
+      expect(
+        events.filter((event) => event.phase === 'generation').length,
+      ).toBe(2),
+    )
+    await vi.advanceTimersByTimeAsync(4 * 60 * 1000)
+    await vi.waitFor(() =>
+      expect(events.filter((event) => event.phase === 'timeout')).toHaveLength(
+        2,
+      ),
+    )
+    await vi.advanceTimersByTimeAsync(8500)
+    await vi.waitFor(() =>
+      expect(
+        events.filter((event) => event.phase === 'generation').length,
+      ).toBe(3),
+    )
+    await vi.advanceTimersByTimeAsync(4 * 60 * 1000)
     await rejection
     expect(events.find((event) => event.phase === 'generation')).toMatchObject({
       timeoutMs: 4 * 60 * 1000,
     })
+    expect(events.filter((event) => event.phase === 'timeout')).toHaveLength(3)
     expect(events.at(-1)).toMatchObject({ phase: 'timeout', percent: 100 })
   })
 
@@ -1139,6 +1164,44 @@ describe('local AI helpers', () => {
 
     expect(prompt.mock.calls[0][0]).toContain('Allowed kind only: qa')
     expect(prompt.mock.calls[0][0]).toContain('Create 3-4 flashcards')
+    expect(draft.objects.map((object) => object.kind)).toEqual(['qa'])
+  })
+
+  it('retries Local AI Study Pack generation when JSON is invalid', async () => {
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('not json')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          title: 'Atomic theories',
+          objects: [
+            {
+              kind: 'qa',
+              question: 'What did Dalton propose about matter?',
+              answer: 'Matter is made of atoms.',
+            },
+          ],
+        }),
+      )
+    vi.stubGlobal('LanguageModel', {
+      availability: vi.fn().mockResolvedValue('available'),
+      create: vi.fn().mockResolvedValue({ prompt, destroy: vi.fn() }),
+    })
+
+    const draft = await generateStudyPackWithProvider({
+      provider: 'local',
+      apiToken: '',
+      model: '',
+      title: 'Atomic theories',
+      rawNotes: 'Dalton proposed that matter is made of atoms.',
+      packId: 'atomic-theories',
+      resourceType: 'flashcards',
+      detailLevel: 'short',
+      generationTargets: ['flashcards'],
+      generationAmount: 'few',
+    })
+
+    expect(prompt).toHaveBeenCalledTimes(2)
     expect(draft.objects.map((object) => object.kind)).toEqual(['qa'])
   })
 
