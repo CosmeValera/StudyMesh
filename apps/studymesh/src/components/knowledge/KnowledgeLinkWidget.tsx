@@ -40,7 +40,6 @@ import {
   OPEN_KNOWLEDGE_REFERENCE_EVENT,
   OPEN_STUDY_LINK_PICKER_EVENT,
   RESET_DEFAULT_EMPTY_DASHBOARD_EVENT,
-  SAVE_KNOWLEDGE_LINK_DASHBOARD_AS_DEFAULT_EVENT,
   UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT,
 } from '../../knowledgeReferences'
 import {
@@ -137,12 +136,6 @@ const openCreateHub = (
       },
 ) => {
   window.dispatchEvent(new CustomEvent(OPEN_CREATE_HUB_EVENT, { detail }))
-}
-
-const saveAsDefaultEmptyDashboard = () => {
-  window.dispatchEvent(
-    new CustomEvent(SAVE_KNOWLEDGE_LINK_DASHBOARD_AS_DEFAULT_EVENT),
-  )
 }
 
 const resetDefaultEmptyDashboard = () => {
@@ -845,14 +838,6 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
 
         {editMode && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button
-              size="small"
-              variant="contained"
-              onClick={saveAsDefaultEmptyDashboard}
-              sx={{ textTransform: 'none', fontWeight: 800 }}
-            >
-              Use for new dashboards
-            </Button>
             <Button
               size="small"
               variant="outlined"

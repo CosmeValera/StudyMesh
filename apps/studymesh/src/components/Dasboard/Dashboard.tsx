@@ -89,7 +89,6 @@ import {
   getUniqueDashboardName,
   type SavedDashboard,
 } from './dashboardStorage'
-import { DEFAULT_DASHBOARD as BLANK_DASHBOARD_TEMPLATE } from './fixture'
 import {
   addKnowledgeReferencesToLayout,
   appendKnowledgeLinkWidgetToLayout,
@@ -764,7 +763,9 @@ const Dashboards = () => {
   const createStudyLinksHomeDashboard = (openPicker = false) => {
     const savedTemplate = getSavedStudyLinksTemplate()
     if (savedTemplate) {
+      DashboardStorage.setDefaultEmptyDashboard(savedTemplate.id)
       openSavedDashboardInWorkspace(savedTemplate)
+      loadDashboardOptions()
       return
     }
 
@@ -943,14 +944,10 @@ const Dashboards = () => {
     DashboardStorage.clearDefaultEmptyDashboard()
     const current = openDashboards[selectedDashboard]
     if (current?.layout && layoutHasStudyLinksWidget(current.layout)) {
-      const nextDashboardId = replaceDashboard(selectedDashboard, {
-        name: BLANK_DASHBOARD_TEMPLATE.name,
-        layout: cloneLayout(BLANK_DASHBOARD_TEMPLATE.layout),
-      })
+      closeAllDashboards()
       setStudyLinksEditModes((currentModes) => {
         const nextModes = { ...currentModes }
         delete nextModes[current.id]
-        delete nextModes[nextDashboardId]
         return nextModes
       })
     }

@@ -55,6 +55,10 @@ describe('KnowledgeLinkWidget', () => {
 
     render(<KnowledgeLinkWidget references={[]} editMode />)
 
+    expect(
+      screen.queryByRole('button', { name: /use for new dashboards/i }),
+    ).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: /compact cards/i }))
     expect(listener.mock.calls[0][0].detail.options).toEqual({
       cardSize: 'compact',

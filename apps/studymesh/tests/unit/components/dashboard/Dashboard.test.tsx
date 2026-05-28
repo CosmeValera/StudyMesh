@@ -333,6 +333,10 @@ describe('Dashboards', () => {
         name: 'My Study Links',
       }),
     )
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'studymesh-default-empty-dashboard-id',
+      'custom-empty-1',
+    )
     expect(updateDashboardLayout).not.toHaveBeenCalled()
     expect(
       screen.queryByRole('dialog', {
@@ -493,11 +497,9 @@ describe('Dashboards', () => {
   })
 
   it('restores the blank empty dashboard view immediately from a Study Links dashboard', () => {
-    const updateDashboardLayout = vi.fn()
-    const renameDashboard = vi.fn()
+    const closeAllDashboards = vi.fn()
     mockDashboardProvider({
-      updateDashboardLayout,
-      renameDashboard,
+      closeAllDashboards,
       openDashboards: [
         {
           id: 'dash1',
@@ -538,12 +540,7 @@ describe('Dashboards', () => {
     expect(localStorage.removeItem).toHaveBeenCalledWith(
       'studymesh-default-empty-dashboard-id',
     )
-    expect(updateDashboardLayout).toHaveBeenCalledWith(0, {
-      type: 'row',
-      weight: 100,
-      children: [],
-    })
-    expect(renameDashboard).toHaveBeenCalledWith('dash1', 'New Dashboard')
+    expect(closeAllDashboards).toHaveBeenCalledTimes(1)
   })
 
   it('opens the Study Path modal when the primary empty workspace action is used', () => {
