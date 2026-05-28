@@ -173,6 +173,75 @@ const Dashboards = () => {
     setDashboardLibraryInitialSearchKey,
   ] = useState(0)
   const dashboardEditorTitleCancelRef = useRef(false)
+  const dashboardPanelRefs = useRef<Record<string, HTMLElement | null>>({})
+  const dashboardScrollPositionsRef = useRef<
+    Record<string, Array<{ top: number; left: number }>>
+  >({})
+  const pendingScrollRestoreDashboardIdRef = useRef<string | null>(null)
+
+  const getDashboardScrollableElements = (root: HTMLElement) => {
+    const descendants = Array.from(root.querySelectorAll<HTMLElement>('*'))
+    return [root, ...descendants].filter((element) => {
+      const style = window.getComputedStyle(element)
+      const canScrollY =
+        (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+        element.scrollHeight > element.clientHeight
+      const canScrollX =
+        (style.overflowX === 'auto' || style.overflowX === 'scroll') &&
+        element.scrollWidth > element.clientWidth
+
+      return canScrollY || canScrollX || element.scrollTop > 0
+    })
+  }
+
+  const saveDashboardScrollPosition = (dashboardId?: string) => {
+    if (!dashboardId) {
+      return
+    }
+
+    const panel = dashboardPanelRefs.current[dashboardId]
+    if (!panel) {
+      return
+    }
+
+    dashboardScrollPositionsRef.current[dashboardId] =
+      getDashboardScrollableElements(panel).map((element) => ({
+        top: element.scrollTop,
+        left: element.scrollLeft,
+      }))
+  }
+
+  const restoreDashboardScrollPosition = (dashboardId?: string) => {
+    if (!dashboardId) {
+      return
+    }
+
+    pendingScrollRestoreDashboardIdRef.current = dashboardId
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (pendingScrollRestoreDashboardIdRef.current !== dashboardId) {
+          return
+        }
+
+        const panel = dashboardPanelRefs.current[dashboardId]
+        const positions = dashboardScrollPositionsRef.current[dashboardId]
+        if (!panel || !positions?.length) {
+          return
+        }
+
+        getDashboardScrollableElements(panel).forEach((element, index) => {
+          const position = positions[index]
+          if (position) {
+            element.scrollTo({
+              top: position.top,
+              left: position.left,
+              behavior: 'auto',
+            })
+          }
+        })
+      })
+    })
+  }
 
   useEffect(() => {
     const openDashboardChat = () => {
@@ -262,6 +331,14 @@ const Dashboards = () => {
   const selectedDashboardIsEmpty =
     !selectedDashboardIsStudyPath &&
     !hasDashboardContent(currentDashboard?.layout)
+
+  const selectDashboardAndRestoreScroll = (index: number) => {
+    const currentDashboardId = openDashboards[selectedDashboard]?.id
+    const nextDashboardId = openDashboards[index]?.id
+    saveDashboardScrollPosition(currentDashboardId)
+    setSelectedDashboard(index)
+    restoreDashboardScrollPosition(nextDashboardId)
+  }
   const dashboardEditorIndex = dashboardEditorId
     ? openDashboards.findIndex(
         (dashboard) => dashboard.id === dashboardEditorId,
@@ -1490,7 +1567,7 @@ const Dashboards = () => {
         isAdmin,
         isMobileDashboardView,
         variant: 'mobile-list',
-        onSelectDashboard: setSelectedDashboard,
+        onSelectDashboard: selectDashboardAndRestoreScroll,
         onCreateDashboard: createEmptyDashboardTab,
         onEditDashboard: editDashboardFromTabs,
         onRemoveDashboard: removeDashboard,
@@ -1511,7 +1588,7 @@ const Dashboards = () => {
       isAdmin={isAdmin}
       isMobileDashboardView={false}
       variant="workspace-header"
-      onSelectDashboard={setSelectedDashboard}
+      onSelectDashboard={selectDashboardAndRestoreScroll}
       onCreateDashboard={createEmptyDashboardTab}
       onEditDashboard={editDashboardFromTabs}
       onRemoveDashboard={removeDashboard}
@@ -1557,7 +1634,7 @@ const Dashboards = () => {
             isMobileDashboardView ? 'react-tabs--mobile-dashboard' : ''
           }`.trim()}
           selectedIndex={selectedDashboard}
-          onSelect={(index) => setSelectedDashboard(index)}
+          onSelect={(index) => selectDashboardAndRestoreScroll(index)}
           style={{ position: 'relative', height: '100%' }}
         >
           {dashboardTabsList}
@@ -1572,6 +1649,9 @@ const Dashboards = () => {
             return (
               <TabPanel key={dashboard.id} forceRender={isMobileDashboardView}>
                 <Box
+                  ref={(element: HTMLElement | null) => {
+                    dashboardPanelRefs.current[dashboard.id] = element
+                  }}
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',

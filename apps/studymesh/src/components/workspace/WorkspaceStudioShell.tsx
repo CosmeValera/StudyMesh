@@ -2922,8 +2922,9 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   return (
                     <Paper
                       key={draft.id}
-                      component={isReady ? 'button' : 'div'}
-                      type={isReady ? 'button' : undefined}
+                      component="div"
+                      role={isReady ? 'button' : undefined}
+                      tabIndex={isReady ? 0 : undefined}
                       data-draft-id={draft.id}
                       ref={(element: HTMLElement | null) => {
                         generationQueueItemRefs.current[draft.id] = element
@@ -2931,6 +2932,19 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       elevation={0}
                       onClick={
                         isReady ? () => openGeneratedDraft(draft) : undefined
+                      }
+                      onKeyDown={
+                        isReady
+                          ? (event) => {
+                              if (
+                                event.key === 'Enter' ||
+                                event.key === ' '
+                              ) {
+                                event.preventDefault()
+                                openGeneratedDraft(draft)
+                              }
+                            }
+                          : undefined
                       }
                       sx={{
                         width: '100%',
