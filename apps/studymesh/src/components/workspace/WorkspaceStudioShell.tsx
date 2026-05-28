@@ -552,6 +552,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const generationAbortControllersRef = useRef<Record<string, AbortController>>(
     {},
   )
+  const autoAcknowledgeTimersRef = useRef<Record<string, number>>({})
 
   const startStudioResize = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -928,6 +929,8 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   ).length
   const hasQueueMarker =
     queueReadyCount > 0 || queueGeneratingCount > 0 || queueFailedCount > 0
+  const isCreationPanelVisible =
+    isStudioOpen && (!isMobile || mobileSection === 'creation')
   const queueMarkerLabel =
     queueReadyCount > 0
       ? `${queueReadyCount} generated item${
@@ -945,6 +948,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const acknowledgeQueueAttention = () => {
     const acknowledgedAt = new Date().toISOString()
+    Object.values(autoAcknowledgeTimersRef.current).forEach((timerId) =>
+      window.clearTimeout(timerId),
+    )
+    autoAcknowledgeTimersRef.current = {}
     setGenerationDrafts((current) =>
       current.map((draft) =>
         (draft.status === 'ready' || draft.status === 'failed') &&
@@ -954,6 +961,63 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       ),
     )
   }
+
+  useEffect(() => {
+    if (!isCreationPanelVisible) {
+      return undefined
+    }
+
+    const pendingAcknowledgementIds = new Set(
+      generationDrafts
+        .filter(
+          (draft) =>
+            (draft.status === 'ready' || draft.status === 'failed') &&
+            !draft.acknowledgedAt,
+        )
+        .map((draft) => draft.id),
+    )
+
+    Object.entries(autoAcknowledgeTimersRef.current).forEach(
+      ([draftId, timerId]) => {
+        if (!pendingAcknowledgementIds.has(draftId)) {
+          window.clearTimeout(timerId)
+          delete autoAcknowledgeTimersRef.current[draftId]
+        }
+      },
+    )
+
+    pendingAcknowledgementIds.forEach((draftId) => {
+      if (autoAcknowledgeTimersRef.current[draftId]) {
+        return
+      }
+
+      autoAcknowledgeTimersRef.current[draftId] = window.setTimeout(() => {
+        const acknowledgedAt = new Date().toISOString()
+        setGenerationDrafts((current) =>
+          current.map((draft) =>
+            draft.id === draftId &&
+            (draft.status === 'ready' || draft.status === 'failed') &&
+            !draft.acknowledgedAt
+              ? { ...draft, acknowledgedAt }
+              : draft,
+          ),
+        )
+        delete autoAcknowledgeTimersRef.current[draftId]
+      }, 2600)
+    })
+
+    return undefined
+  }, [generationDrafts, isCreationPanelVisible])
+
+  useEffect(
+    () => () => {
+      Object.values(autoAcknowledgeTimersRef.current).forEach((timerId) =>
+        window.clearTimeout(timerId),
+      )
+      autoAcknowledgeTimersRef.current = {}
+    },
+    [],
+  )
 
   const clearGenerationQueue = () => {
     queueJobs.forEach((draft) => {
@@ -2684,10 +2748,21 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                   const acknowledgedAtMs = draft.acknowledgedAt
                     ? new Date(draft.acknowledgedAt).getTime()
                     : 0
+                  const completedAtMs = draft.completedAt
+                    ? new Date(draft.completedAt).getTime()
+                    : 0
+                  const acknowledgedAfterCompletionMs =
+                    acknowledgedAtMs - completedAtMs
                   const showAcknowledgedPulse =
                     !opened &&
-                    Number.isFinite(acknowledgedAtMs) &&
-                    Date.now() - acknowledgedAtMs < 3200
+                    ((Number.isFinite(acknowledgedAtMs) &&
+                      (!Number.isFinite(completedAtMs) ||
+                        acknowledgedAfterCompletionMs > 3200) &&
+                      Date.now() - acknowledgedAtMs < 3200) ||
+                      (!draft.acknowledgedAt &&
+                        isCreationPanelVisible &&
+                        Number.isFinite(completedAtMs) &&
+                        Date.now() - completedAtMs < 2600))
                   const materialLabel = generationMaterialLabel(draft)
                   const createdAtMs = new Date(draft.createdAt).getTime()
                   const elapsed = isGenerating
