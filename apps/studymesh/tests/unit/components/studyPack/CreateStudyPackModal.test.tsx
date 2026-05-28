@@ -71,6 +71,9 @@ vi.mock('../../../../src/studyPack/ai', () => ({
   extractRawNotesWithAi: vi.fn(),
   extractNotesFromImageWithLocalLanguageModel: vi.fn(),
   generateStudyPackWithAi: vi.fn(),
+  isStrongAiProvider: vi.fn((provider: string) =>
+    ['gemini', 'cerebras'].includes(provider),
+  ),
   readStudyPackAiSettings: vi.fn(() => ({
     provider: 'basic',
     apiToken: '',
@@ -371,6 +374,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
       expect.objectContaining({
         name: 'Notes Dashboard',
         layoutMode: 'tabs',
+        folderName: 'Quizzes',
       }),
     )
   })

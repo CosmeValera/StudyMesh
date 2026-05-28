@@ -90,6 +90,12 @@ export const quickCreateLabels: Record<StudyMaterialResourceType, string> = {
   improvedNotes: 'Clear Notes',
 }
 
+export const quickCreateFolders: Record<StudyMaterialResourceType, string> = {
+  quiz: 'Quizzes',
+  flashcards: 'Flashcards',
+  improvedNotes: 'Clear Notes',
+}
+
 export const quickCreateTargets: Record<StudyMaterialResourceType, string[]> = {
   quiz: ['quizzes'],
   flashcards: ['flashcards'],

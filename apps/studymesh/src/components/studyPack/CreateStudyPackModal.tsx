@@ -57,6 +57,7 @@ import {
   extractTextFromPptx,
 } from '../../studyPack/documentExtraction'
 import { WorkspaceCreationTaskState } from '../../workspaceCreationStatus'
+import { quickCreateFolders } from '../workspace/workspaceStudioModel'
 
 type ReviewType =
   | 'flashcard'
@@ -108,6 +109,7 @@ interface CreateStudyPackModalProps {
     name: string
     widgets: ReturnType<typeof createStudyPackWidgets>
     layoutMode?: StudyPackDashboardLayoutMode
+    folderName?: string
   }) => void
   presentation?: 'dialog' | 'embedded'
   onCollapse?: () => void
@@ -1649,6 +1651,7 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           : layoutMode !== 'orchestrator'
           ? layoutMode
           : 'tabs',
+      folderName: quickCreateFolders[resourceType],
     })
     handleClose()
   }
