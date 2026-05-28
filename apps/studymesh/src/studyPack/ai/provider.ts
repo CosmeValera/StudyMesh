@@ -10,7 +10,7 @@ import {
   GenerateStudyPackWithAiOptions,
   GenerateStudyPathWithAiOptions,
   AiStudyPathDraft,
-} from './gemini'
+} from './strongGeneration'
 import {
   generateStudyPackWithLocalAi,
   generateStudyPathWithBasicFallback,

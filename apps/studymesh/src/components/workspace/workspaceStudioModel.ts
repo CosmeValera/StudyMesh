@@ -87,13 +87,13 @@ export interface GeneratedMaterial {
 export const quickCreateLabels: Record<StudyMaterialResourceType, string> = {
   quiz: 'Quiz',
   flashcards: 'Flashcards',
-  improvedNotes: 'Clear Notes',
+  improvedNotes: 'Expand on this',
 }
 
 export const quickCreateFolders: Record<StudyMaterialResourceType, string> = {
   quiz: 'Quizzes',
   flashcards: 'Flashcards',
-  improvedNotes: 'Clear Notes',
+  improvedNotes: 'Expand on this',
 }
 
 export const quickCreateTargets: Record<StudyMaterialResourceType, string[]> = {
@@ -214,7 +214,7 @@ export const resourceTypeTitle = (resourceType?: string | null) => {
   }
 
   if (resourceType === 'improvedNotes') {
-    return 'Improved notes'
+    return 'Expand on this'
   }
 
   return 'Dashboard'

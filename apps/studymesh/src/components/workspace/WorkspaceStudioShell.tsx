@@ -230,7 +230,7 @@ const resourceTypeTitle = (resourceType?: string | null) => {
   }
 
   if (resourceType === 'improvedNotes') {
-    return 'Improved notes'
+    return 'Expand on this'
   }
 
   return 'Dashboard'
@@ -250,7 +250,7 @@ const generationMaterialLabel = (draft: GenerationDraft) => {
   }
 
   if (draft.selectedResourceType === 'improvedNotes') {
-    return 'clear notes'
+    return 'Expand on this'
   }
 
   return 'material'
@@ -1606,115 +1606,146 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     generationAbortControllersRef.current[draftId] = generationController
 
     try {
-      const credentials = isStrongAiProvider(effectiveProvider)
-        ? resolveStudyPackAiCredentials(effectiveProvider)
-        : resolveStudyPackAiCredentials()
-      const generated = await generateStudyPackWithAi({
-        provider: effectiveProvider,
-        apiToken: credentials.apiToken,
-        model: credentials.model,
-        title,
-        rawNotes: sourceText,
-        packId: getPackId(title),
-        generationTargets: quickCreateTargets[resourceType],
-        generationAmount: quickCreateDetailToAmount[effectiveDetailLevel],
-        resourceType,
-        detailLevel: effectiveDetailLevel,
-        quizQuestionStyle:
-          resourceType === 'quiz' && effectiveDifficulty === 'challenge'
-            ? 'advanced'
-            : 'mixed',
-        promptMode: false,
-        studyPathMode: false,
-        signal: generationController.signal,
-      })
+      const maxAttempts = 3
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          if (attempt > 1) {
+            updateDraft(draftId, {
+              status: 'generating',
+              error: `Attempt ${attempt - 1} failed. Retrying ${
+                quickCreateLabels[resourceType]
+              }...`,
+            })
+            dispatchWorkspaceCreationStatus({
+              task: 'from-notes',
+              state: 'running',
+              message: `Retrying ${quickCreateLabels[resourceType]} (${attempt}/${maxAttempts})...`,
+            })
+          }
 
-      if (generationController.signal.aborted) {
-        return
-      }
-
-      const nextTitle = title
-      const augmented = augmentStudyPackPracticeObjects(generated.objects, {
-        packId: getPackId(nextTitle),
-        title: nextTitle,
-        rawNotes: sourceText,
-        generationTargets: quickCreateTargets[resourceType],
-        generationAmount: quickCreateDetailToAmount[effectiveDetailLevel],
-      })
-      const objects = getReviewableObjects(
-        augmented.objects,
-        resourceType,
-        effectiveDetailLevel,
-      )
-
-      if (objects.length === 0) {
-        throw new Error(
-          'AI did not create any reviewable study material from these notes.',
-        )
-      }
-
-      const groups = [
-        {
-          name: nextTitle,
-          objects,
-        },
-      ]
-      const pack = {
-        id: getPackId(nextTitle),
-        title: nextTitle,
-        sourceFormat: generated.sourceFormat || 'text',
-        objects,
-        warnings: [],
-        sourceSummary: generated.sourceSummary || undefined,
-      }
-      const widgets = createStudyPackOrchestratorWidgets(pack, {
-        forceQuizBlockComponent: resourceType === 'quiz',
-        focusedResourceType:
-          resourceType === 'flashcards' || resourceType === 'quiz'
-            ? resourceType
-            : undefined,
-        includeSourceWidget: false,
-        includeSummaryChart: false,
-        rawSource: sourceText,
-        widgetGroups: groups,
-      })
-
-      const now = new Date().toISOString()
-      updateDraft(draftId, {
-        title: nextTitle,
-        status: 'ready',
-        completedAt: now,
-        generatedMaterial: {
-          id: `material-${draftId}`,
-          type: resourceType,
-          title: nextTitle,
-          sourceDashboardId:
-            sourceMode === 'dashboard' ? currentDashboard?.id : undefined,
-          sourceStudyPathId: currentDashboard?.studyPath?.pathId,
-          sourceLessonId: currentDashboard?.studyPath?.dashboardKey,
-          sourceLabel:
-            sourceMode === 'dashboard'
-              ? currentDashboardTitle
-              : quickSourceLabel,
-          createdAt: generationDraft.createdAt,
-          updatedAt: now,
-          content: {
-            widgets,
-            sourceSummary: generated.sourceSummary?.bullets?.join('\n'),
-          },
-          generationConfig: {
-            difficulty: effectiveDifficulty,
+          const credentials = isStrongAiProvider(effectiveProvider)
+            ? resolveStudyPackAiCredentials(effectiveProvider)
+            : resolveStudyPackAiCredentials()
+          const generated = await generateStudyPackWithAi({
+            provider: effectiveProvider,
+            apiToken: credentials.apiToken,
+            model: credentials.model,
+            title,
+            rawNotes: sourceText,
+            packId: getPackId(title),
+            generationTargets: quickCreateTargets[resourceType],
+            generationAmount: quickCreateDetailToAmount[effectiveDetailLevel],
+            resourceType,
             detailLevel: effectiveDetailLevel,
-            sourceMode,
-          },
-        },
-      })
-      removeGenerationRetrySnapshot(draftId)
-      dispatchWorkspaceCreationStatus({
-        task: 'from-notes',
-        state: 'complete',
-        message: `${quickCreateLabels[resourceType]} ready`,
-      })
+            quizQuestionStyle:
+              resourceType === 'quiz' && effectiveDifficulty === 'challenge'
+                ? 'advanced'
+                : 'mixed',
+            promptMode: false,
+            studyPathMode: false,
+            signal: generationController.signal,
+          })
+
+          if (generationController.signal.aborted) {
+            return
+          }
+
+          const nextTitle = title
+          const augmented = augmentStudyPackPracticeObjects(generated.objects, {
+            packId: getPackId(nextTitle),
+            title: nextTitle,
+            rawNotes: sourceText,
+            generationTargets: quickCreateTargets[resourceType],
+            generationAmount: quickCreateDetailToAmount[effectiveDetailLevel],
+          })
+          const objects = getReviewableObjects(
+            augmented.objects,
+            resourceType,
+            effectiveDetailLevel,
+          )
+
+          if (objects.length === 0) {
+            throw new Error(
+              'AI did not create any reviewable study material from these notes.',
+            )
+          }
+
+          const groups = [
+            {
+              name: nextTitle,
+              objects,
+            },
+          ]
+          const pack = {
+            id: getPackId(nextTitle),
+            title: nextTitle,
+            sourceFormat: generated.sourceFormat || 'text',
+            objects,
+            warnings: [],
+            sourceSummary: generated.sourceSummary || undefined,
+          }
+          const widgets = createStudyPackOrchestratorWidgets(pack, {
+            forceQuizBlockComponent: resourceType === 'quiz',
+            focusedResourceType:
+              resourceType === 'flashcards' || resourceType === 'quiz'
+                ? resourceType
+                : undefined,
+            includeSourceWidget: false,
+            includeSummaryChart: false,
+            rawSource: sourceText,
+            widgetGroups: groups,
+          })
+
+          const now = new Date().toISOString()
+          updateDraft(draftId, {
+            title: nextTitle,
+            status: 'ready',
+            error: undefined,
+            completedAt: now,
+            generatedMaterial: {
+              id: `material-${draftId}`,
+              type: resourceType,
+              title: nextTitle,
+              sourceDashboardId:
+                sourceMode === 'dashboard' ? currentDashboard?.id : undefined,
+              sourceStudyPathId: currentDashboard?.studyPath?.pathId,
+              sourceLessonId: currentDashboard?.studyPath?.dashboardKey,
+              sourceLabel:
+                sourceMode === 'dashboard'
+                  ? currentDashboardTitle
+                  : quickSourceLabel,
+              createdAt: generationDraft.createdAt,
+              updatedAt: now,
+              content: {
+                widgets,
+                sourceSummary: generated.sourceSummary?.bullets?.join('\n'),
+              },
+              generationConfig: {
+                difficulty: effectiveDifficulty,
+                detailLevel: effectiveDetailLevel,
+                sourceMode,
+              },
+            },
+          })
+          removeGenerationRetrySnapshot(draftId)
+          dispatchWorkspaceCreationStatus({
+            task: 'from-notes',
+            state: 'complete',
+            message: `${quickCreateLabels[resourceType]} ready`,
+          })
+          return
+        } catch (error) {
+          if (generationController.signal.aborted) {
+            return
+          }
+
+          if (attempt < maxAttempts) {
+            continue
+          }
+
+          throw error
+        }
+      }
     } catch (error) {
       if (generationController.signal.aborted) {
         return
@@ -2938,10 +2969,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       onKeyDown={
                         isReady
                           ? (event) => {
-                              if (
-                                event.key === 'Enter' ||
-                                event.key === ' '
-                              ) {
+                              if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault()
                                 openGeneratedDraft(draft)
                               }
@@ -3079,7 +3107,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                           Retry
                         </Button>
                       ) : null}
-                      {(isReady || isFailed || isCancelled) ? (
+                      {isReady || isFailed || isCancelled ? (
                         <Button
                           size="small"
                           type="button"

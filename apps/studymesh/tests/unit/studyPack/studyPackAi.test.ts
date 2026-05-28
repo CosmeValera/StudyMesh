@@ -430,7 +430,7 @@ describe('study pack AI normalizer', () => {
     expect(improvedNotes.objects).toEqual([
       expect.objectContaining({
         kind: 'markdown',
-        title: 'Improved notes',
+        title: 'Expand on this',
         markdown: expect.stringContaining('Subjunctive trigger: il faut que'),
       }),
     ])
@@ -570,8 +570,7 @@ describe('local AI helpers', () => {
           },
           {
             concept: 'Osmosis',
-            definition:
-              'Water moves across a selectively permeable membrane.',
+            definition: 'Water moves across a selectively permeable membrane.',
           },
           {
             concept: 'Active transport',
@@ -1282,7 +1281,7 @@ describe('local AI helpers', () => {
 
   it('passes image modality when extracting image notes locally', async () => {
     const destroy = vi.fn()
-    const prompt = vi.fn().mockResolvedValue('clean notes')
+    const prompt = vi.fn().mockResolvedValue('Expand on this notes')
     const availability = vi.fn().mockResolvedValue('available')
     const create = vi.fn().mockResolvedValue({ prompt, destroy })
     const image = new Blob(['image'], { type: 'image/png' })
@@ -1290,7 +1289,7 @@ describe('local AI helpers', () => {
 
     await expect(
       extractNotesFromImageWithLocalLanguageModel(image),
-    ).resolves.toBe('clean notes')
+    ).resolves.toBe('Expand on this notes')
     expect(availability).toHaveBeenCalledWith(
       expect.objectContaining({
         expectedInputs: [

@@ -213,7 +213,10 @@ const markdownFromImprovedNotesDraft = (
     parts.push(`# ${fallbackTitle}\n${draft.rawNotes}`)
   }
 
-  return parts.map((part) => part.trim()).filter(Boolean).join('\n\n')
+  return parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export const applyStudyMaterialResourceTypeToDraft = (
@@ -236,7 +239,7 @@ export const applyStudyMaterialResourceTypeToDraft = (
           {
             id: `${packId}-improved-notes-1`,
             kind: 'markdown',
-            title: 'Improved notes',
+            title: 'Expand on this',
             sourceLine: 1,
             tags: ['study-pack', 'ai-generated', 'improved-notes'],
             markdown,

@@ -212,6 +212,47 @@ describe('WorkspaceStudioShell Quick Create', () => {
     )
   })
 
+  it('automatically retries failed quick creation before showing the pill as failed', async () => {
+    vi.mocked(generateStudyPackWithAi)
+      .mockRejectedValueOnce(new Error('Temporary model failure'))
+      .mockResolvedValueOnce({
+        id: 'retry-pack',
+        title: 'Generated Dashboard',
+        sourceFormat: 'text',
+        objects: [
+          {
+            id: 'quiz-1',
+            kind: 'quiz',
+            question: 'What is photosynthesis?',
+            options: ['A plant process', 'A mineral', 'A planet'],
+            answer: 'A plant process',
+            correctIndex: 0,
+          },
+        ],
+        warnings: [],
+        sourceSummary: { title: 'Summary', bullets: [] },
+      })
+
+    render(
+      <WorkspaceStudioShell>
+        <div>Dashboard canvas</div>
+      </WorkspaceStudioShell>,
+    )
+
+    openCreation()
+    clickQuickCard('Quiz')
+
+    await waitFor(() =>
+      expect(generateStudyPackWithAi).toHaveBeenCalledTimes(2),
+    )
+    await waitFor(() =>
+      expect(screen.getByText(/Ready - Open/i)).toBeInTheDocument(),
+    )
+    expect(
+      screen.queryByText(/Temporary model failure/i),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens ready quick-created material inside the Creation panel', async () => {
     render(
       <WorkspaceStudioShell>

@@ -37,10 +37,10 @@ vi.mock('../../../../src/studyPack/ai', () => ({
             {
               id: `${packId}-improved-notes-1`,
               kind: 'markdown',
-              title: 'Improved notes',
+              title: 'Expand on this',
               sourceLine: 1,
               tags: [],
-              markdown: draft.rawNotes || 'Improved notes',
+              markdown: draft.rawNotes || 'Expand on this',
             },
           ],
         }
@@ -303,7 +303,7 @@ describe('CreateStudyPackModal create from notes flow', () => {
 
     expect(screen.getByText('Create from notes')).toBeInTheDocument()
     expect(screen.getByText('Choose resource')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /improved notes/i }))
+    expect(screen.getByRole('button', { name: /expand on this/i }))
     expect(screen.getByRole('button', { name: /flashcards/i }))
     expect(screen.getByRole('button', { name: /quiz/i }))
     expect(screen.getByRole('button', { name: /medium/i }))

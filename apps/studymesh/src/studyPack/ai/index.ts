@@ -25,7 +25,7 @@ export {
   STRONG_AI_PROVIDERS,
 } from './strongProviders'
 export type { StrongAiProviderId } from './strongProviders'
-export { normalizeStudyPathGenerationAmount } from './gemini'
+export { normalizeStudyPathGenerationAmount } from './strongGeneration'
 export type {
   AiStudyPathDashboardDraft,
   AiStudyPathDraft,
@@ -33,12 +33,12 @@ export type {
   GenerateStudyPackWithAiOptions,
   GenerateStudyPathWithAiOptions,
   StudyPathGenerationAmount,
-} from './gemini'
-export { extractRawNotesWithAi } from './gemini'
+} from './strongGeneration'
+export { extractRawNotesWithAi } from './strongGeneration'
 export {
   generateStudyPackWithAi as generateStudyPackWithGemini,
   generateStudyPathWithAi as generateStudyPathWithGemini,
-} from './gemini'
+} from './strongGeneration'
 export { generateStudyPackWithAi, generateStudyPathWithAi } from './provider'
 export {
   assertRoleObjectsAreClean,

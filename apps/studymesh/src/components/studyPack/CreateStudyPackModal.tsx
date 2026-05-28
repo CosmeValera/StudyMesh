@@ -171,7 +171,7 @@ const resourceTypeOptions: Array<{
 }> = [
   {
     value: 'improvedNotes',
-    label: 'Improved notes',
+    label: 'Expand on this',
     description: '',
   },
   {
@@ -220,7 +220,7 @@ const detailLevelToGenerationAmount: Record<
 }
 
 const resourceTypeLabels: Record<StudyMaterialResourceType, string> = {
-  improvedNotes: 'Improved notes',
+  improvedNotes: 'Expand on this',
   flashcards: 'Flashcards',
   quiz: 'Quiz',
 }
@@ -287,7 +287,7 @@ const getObjectTitle = (object: StudyObject) => {
 
   switch (object.kind) {
     case 'markdown':
-      return object.title || 'Improved notes'
+      return object.title || 'Expand on this'
     case 'term':
       return object.term
     case 'qa':
@@ -685,10 +685,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
           ? 'PDF'
           : 'slides'
         : imageFiles.length > 0
-        ? 'image notes'
-        : sourceText.trim() || copiedTextDraft.trim()
-        ? 'notes'
-        : 'sources'
+          ? 'image notes'
+          : sourceText.trim() || copiedTextDraft.trim()
+            ? 'notes'
+            : 'sources'
 
     onDraftMetaChange?.({
       title: packTitle,
@@ -696,8 +696,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         sourceMode === 'dashboard'
           ? `Current dashboard: ${currentDashboardTitle}`
           : sourceCount > 1
-          ? `${sourceCount} source files`
-          : sourceKind,
+            ? `${sourceCount} source files`
+            : sourceKind,
       resourceType,
       detailLevel,
     })
@@ -1172,8 +1172,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       aiProvider === 'local'
         ? 'Starting Google Local AI'
         : isStrongAiProvider(aiProvider)
-        ? `Connecting to ${aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'}`
-        : 'Preparing generation',
+          ? `Connecting to ${aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'}`
+          : 'Preparing generation',
     )
     setError('')
 
@@ -1184,8 +1184,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ? aiProvider === 'local'
               ? 'Asking Chrome Local AI for a compact outline'
               : isStrongAiProvider(aiProvider)
-              ? 'Reading notes and planning study sections'
-              : 'Parsing notes locally'
+                ? 'Reading notes and planning study sections'
+                : 'Parsing notes locally'
             : current,
         )
       }, 700)
@@ -1195,10 +1195,10 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             ? aiProvider === 'local'
               ? 'Creating compact local study objects'
               : isStrongAiProvider(aiProvider)
-              ? `Creating ${resourceTypeLabels[resourceType]} with ${
-                  aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'
-                }`
-              : `Creating ${resourceTypeLabels[resourceType]}`
+                ? `Creating ${resourceTypeLabels[resourceType]} with ${
+                    aiProvider === 'cerebras' ? 'Cerebras' : 'Gemini'
+                  }`
+                : `Creating ${resourceTypeLabels[resourceType]}`
             : current,
         )
       }, 1800)
@@ -1332,8 +1332,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
       aiProvider === 'gemini'
         ? 'Preparing AI extraction'
         : aiProvider === 'local'
-        ? 'Checking Local AI image support'
-        : 'Preparing OCR',
+          ? 'Checking Local AI image support'
+          : 'Preparing OCR',
     )
     setAiProgressLabel(
       aiProvider === 'gemini' ? 'Connecting to Gemini vision' : '',
@@ -1438,8 +1438,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         aiProvider === 'gemini'
           ? 'AI extraction complete'
           : aiProvider === 'local'
-          ? 'Image extraction complete'
-          : 'OCR complete',
+            ? 'Image extraction complete'
+            : 'OCR complete',
       )
     } catch (error) {
       if (
@@ -1649,8 +1649,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
         resourceType === 'flashcards' || resourceType === 'quiz'
           ? 'tabs'
           : layoutMode !== 'orchestrator'
-          ? layoutMode
-          : 'tabs',
+            ? layoutMode
+            : 'tabs',
       folderName: quickCreateFolders[resourceType],
     })
     handleClose()
@@ -2257,8 +2257,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
                       resourceType
                         ? resourceTypeLabels[resourceType]
                         : sourceFormat === 'csv'
-                        ? 'Source table included'
-                        : 'Source notes included'
+                          ? 'Source table included'
+                          : 'Source notes included'
                     }
                   />
                   <Chip label={`${detailLevel} detail`} />
@@ -2350,8 +2350,8 @@ const CreateStudyPackModal: React.FC<CreateStudyPackModalProps> = ({
             {isGeneratingAi
               ? 'Creating...'
               : sourceInputType === 'image' && !imageTextExtracted
-              ? 'Extract notes'
-              : 'Continue'}
+                ? 'Extract notes'
+                : 'Continue'}
           </Button>
         ) : (
           <Button variant="contained" onClick={createPack}>

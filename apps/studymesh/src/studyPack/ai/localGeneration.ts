@@ -27,7 +27,7 @@ import {
   GenerateStudyPathWithAiOptions,
   normalizeStudyPathGenerationAmount,
   StudyPathGenerationAmount,
-} from './gemini'
+} from './strongGeneration'
 
 type LocalObjectKind =
   | 'markdown'
@@ -1365,9 +1365,9 @@ const localStudyPackPrompt = ({
         : 'Style preference: Mixed. Balance recall with reasoning, conceptual understanding, applied scenarios, and common mistakes.'
   const resourceRules =
     resourceType === 'improvedNotes'
-      ? `Create one improved notes resource. Allowed kind only: markdown.
+      ? `Create one "Expand on this" resource. Allowed kind only: markdown.
 Use this shape:
-{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"markdown","title":"Improved notes","markdown":"Clear organized Markdown with headings and bullets"}]}
+{"title":"${title.replace(/"/g, '')}","objects":[{"kind":"markdown","title":"Expand on this","markdown":"Clear organized Markdown with headings and bullets"}]}
 Rules: one markdown object only. No quizzes. No flashcards. ${localHardRule} ${
           detailLevel === 'short'
             ? 'Keep it concise.'
@@ -1389,9 +1389,9 @@ Rules: quiz objects only. No markdown. No flashcards. Options must be real choic
 Allowed kinds only: markdown, qa, quiz, list.
 Use this shape:
 {"title":"${title.replace(
-          /"/g,
-          '',
-        )}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}`
+              /"/g,
+              '',
+            )}","objects":[{"kind":"markdown","title":"Explanation","markdown":"2-4 short sentences"},{"kind":"qa","question":"...","answer":"..."},{"kind":"qa","question":"...","answer":"..."},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"quiz","question":"...","quizMode":"multipleChoice","options":["A","B","C"],"correctIndex":0,"answer":"A","explanation":"why"},{"kind":"list","title":"Key points","items":["...","...","..."]}]}`
 
   return `Return JSON only. No prose. No markdown fences.
 ${resourceRules}

@@ -164,10 +164,10 @@ const getStudyPathDashboardCount = (
   return normalized === 'superSmall'
     ? 2
     : normalized === 'compact'
-    ? 3
-    : normalized === 'deep'
-    ? 7
-    : 5
+      ? 3
+      : normalized === 'deep'
+        ? 7
+        : 5
 }
 
 const getStudyPathStepNames = (
@@ -782,8 +782,8 @@ const buildFallbackObjectsForDashboardRole = ({
       concepts.length > 0
         ? concepts.map((concept) => `How would you apply ${concept}?`)
         : practiceSource
-        ? ['What is one key idea from the previous Study Path material?']
-        : []
+          ? ['What is one key idea from the previous Study Path material?']
+          : []
 
     return prompts.map((question, index) => ({
       ...createFallbackBase(
@@ -862,8 +862,8 @@ const getStudyPathVisiblePracticeTarget = (
     return normalized === 'superSmall' || normalized === 'compact'
       ? 10
       : normalized === 'deep'
-      ? 18
-      : 14
+        ? 18
+        : 14
   }
 
   return 0
@@ -1005,18 +1005,18 @@ export const generateStudyPackWithAi = async ({
       : 'Use the selected non-practice targets and still create the requested number of useful reviewable items.'
   const resourceInstruction =
     resourceType === 'improvedNotes'
-      ? 'Selected resource type: Clear Notes. Create one polished note set from the source. Stay close to the provided content and preserve the same learner level, vocabulary difficulty, and topic depth as the original source. Do not introduce advanced terms, extra concepts, or deeper “rabbit holes” unless they are clearly needed to explain the source. Organize the notes into teachable sections such as: source summary, key concepts, examples, common mistakes or misconceptions, and compact takeaways. Use clear explanations, but keep the complexity appropriate to the source. Do not create a quiz, multiple choice questions, short answer practice, or flashcards. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
+      ? 'Selected resource type: Expand on this. Create one polished expanded note set from the source. Stay close to the provided content and preserve the same learner level, vocabulary difficulty, and topic depth as the original source. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless they are clearly needed to explain the source. Organize the notes into teachable sections such as: source summary, key concepts, examples, common mistakes or misconceptions, and compact takeaways. Use clear explanations, but keep the complexity appropriate to the source. Do not create a quiz, multiple choice questions, short answer practice, or flashcards. Leave practice.shortAnswer, practice.multipleChoice, and flashcards empty.'
       : resourceType === 'flashcards'
-      ? 'Selected resource type: Flashcards. Create only atomic flashcards from the source. Each flashcard must test one term, rule, contrast, formula step, exception, process step, or use case. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Use answer backs that teach briefly, not one-word fragments. Keep sourceSummary brief, leave conceptRecap sections empty, and leave practice.shortAnswer and practice.multipleChoice empty.'
-      : resourceType === 'quiz'
-      ? 'Selected resource type: Quiz. Create only quiz questions from the source. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Prefer scenario, application, contrast, error-fixing, and why/how questions over simple recall. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
-      : 'Wrong Selected resource type.'
+        ? 'Selected resource type: Flashcards. Create only atomic flashcards from the source. Each flashcard must test one term, rule, contrast, formula step, exception, process step, or use case. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Use answer backs that teach briefly, not one-word fragments. Keep sourceSummary brief, leave conceptRecap sections empty, and leave practice.shortAnswer and practice.multipleChoice empty.'
+        : resourceType === 'quiz'
+          ? 'Selected resource type: Quiz. Create only quiz questions from the source. Match the source’s learner level, vocabulary difficulty, and topic depth. Do not introduce advanced terms, extra concepts, or deeper rabbit holes unless clearly needed. Prefer scenario, application, contrast, error-fixing, and why/how questions over simple recall. Keep sourceSummary brief, leave conceptRecap sections empty, and leave flashcards empty.'
+          : 'Wrong Selected resource type.'
   const detailInstruction =
     detailLevel === 'short'
       ? 'Detail level: Short. Keep notes concise and generate a small focused set.'
       : detailLevel === 'long'
-      ? 'Detail level: Long. Create deeper explanations or a larger practice set while staying grounded.'
-      : 'Detail level: Medium. Use balanced depth and amount.'
+        ? 'Detail level: Long. Create deeper explanations or a larger practice set while staying grounded.'
+        : 'Detail level: Medium. Use balanced depth and amount.'
   const hardDetailInstruction = resourceType
     ? `The selected detail level is a hard constraint. Target ${geminiDetailTargets[resourceType][detailLevel]}. Match the target length/count exactly or as close as possible. Do not ignore it.`
     : 'The selected detail level is a hard constraint. Match the requested amount as closely as possible. Do not ignore it.'
@@ -1024,8 +1024,8 @@ export const generateStudyPackWithAi = async ({
     quizQuestionStyle === 'conceptual'
       ? 'Quiz style preference: Conceptual. Prioritize why/how questions, comparisons, cause/effect, inference, and common misconceptions. Include only enough recall to anchor the reasoning.'
       : quizQuestionStyle === 'examLike'
-      ? 'Quiz style preference: Exam-like. Write assessment-style questions that require applying concepts under realistic test conditions. Mix multiple-choice and short-answer when appropriate, with clear plausible distractors.'
-      : 'Quiz style preference: Mixed. Use a balanced mix of recall and reasoning questions, including conceptual understanding, applied scenarios, comparisons, and common mistakes.'
+        ? 'Quiz style preference: Exam-like. Write assessment-style questions that require applying concepts under realistic test conditions. Mix multiple-choice and short-answer when appropriate, with clear plausible distractors.'
+        : 'Quiz style preference: Mixed. Use a balanced mix of recall and reasoning questions, including conceptual understanding, applied scenarios, comparisons, and common mistakes.'
   const sourceInstruction = promptMode
     ? 'The raw input is a learning prompt, not notes. Teach the requested topic from scratch. Because the input is not source notes, you may use accurate general knowledge for this topic. First create concise source notes/explanations, then generate practice grounded in those generated explanations. Include explanation/theory objects before exercises.'
     : 'The raw input is source notes. Stay grounded in those notes.'
@@ -1070,7 +1070,7 @@ Rules:
 - Use concrete rule labels in conceptRecap sections, such as "Subjunctive trigger: il faut que", not headings or sentence fragments.
 - Generate summaries, flashcards, and quizzes from learning concepts, not by copying first sentences, headings, examples, or dashboard instructions.
 - Never use weak standalone concepts such as Goal, Example, Active, It, Avoir, Etre, Quantity, or De. Do not create title-like, instruction-like, or very short fragments as study objects.
-- Clear Notes must read like a useful student handout: headings, concise explanations, examples, contrasts, and common mistakes when grounded. Do not just summarize the input paragraph-by-paragraph.
+- Expand on this must read like a useful student handout: headings, concise explanations, examples, contrasts, and common mistakes when grounded. Do not just summarize the input paragraph-by-paragraph.
 - Flashcards must be atomic and rule-specific, such as "How do you form the present subjunctive for most verbs?" Back sides must be self-contained and include enough context to learn from the card alone.
 - ${quizStyleInstruction}
 - Quiz and flashcard prompts must paraphrase the source. Do not copy exact source sentences as questions, answers, or distractors.
@@ -1277,7 +1277,7 @@ Rules:
 - Pick the layout from the lesson's teaching need, not from a fixed template: reading-heavy concepts can be focusLesson, explanation plus recall can be learnPracticeTabs, reference-heavy applied work can be splitReferenceExercise, and hands-on build steps can be multiWidgetLab.
 - SourceSummary, conceptRecap, practice, and flashcards are internal support material. The visible lesson comes mainly from rawNotes, so rawNotes must carry the actual lesson.
 - Do not make dashboards feel like random widget collections. Use the simplest layout that supports the learning goal.
-- Do not generate full quizzes or flashcards inside every lesson by default. StudyMesh has on-demand Quick Create for quiz, flashcards, clear notes, and exercises from each lesson.
+- Do not generate full quizzes or flashcards inside every lesson by default. StudyMesh has on-demand Quick Create for quiz, flashcards, Expand on this, and exercises from each lesson.
 - For most lessons, set practiceType to none and use suggestedPractice text to recommend useful follow-up actions. Add practice/flashcards only when the lesson is explicitly a checkpoint, review, remediation, or applied practice step.
 - Each dashboard must be useful by itself as teaching content, not as a container for many practice widgets.
 - Always return exactly ${stepNames.length} dashboards total.
@@ -1638,15 +1638,15 @@ ${prompt}`
         filledVisibleObjects && filledVisibleObjects.objects.length > 0
           ? filledVisibleObjects.objects
           : visibleRoleObjects.length > 0
-          ? visibleRoleObjects
-          : buildFallbackObjectsForDashboardRole({
-              packId,
-              dashboardTitle,
-              dashboardRole,
-              rawNotes: input.rawNotes,
-              sourceSummary: draft.sourceSummary,
-              accumulatedContentNotes,
-            })
+            ? visibleRoleObjects
+            : buildFallbackObjectsForDashboardRole({
+                packId,
+                dashboardTitle,
+                dashboardRole,
+                rawNotes: input.rawNotes,
+                sourceSummary: draft.sourceSummary,
+                accumulatedContentNotes,
+              })
       if (visibleRoleObjects.length === 0 && finalObjects.length > 0) {
         finalEvents.push(
           `Fallback used: created ${dashboardRole} object because role filtering left no visible study objects.`,

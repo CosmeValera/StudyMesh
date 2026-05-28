@@ -49,7 +49,7 @@ const quickActions: Array<{
   },
   {
     intent: 'improvedNotes',
-    label: 'Create Clean Notes',
+    label: 'Expand on this',
     icon: <AutoStoriesIcon fontSize="small" />,
     accent: '#18b992',
   },
@@ -137,7 +137,11 @@ const DashboardEmptyState = ({
               variant="caption"
               color="primary"
               fontWeight={900}
-              sx={{ textTransform: 'uppercase', letterSpacing: 0.8, fontSize: '0.56rem' }}
+              sx={{
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+                fontSize: '0.56rem',
+              }}
             >
               Start creating
             </Typography>
@@ -158,7 +162,7 @@ const DashboardEmptyState = ({
               sx={{ mt: 1, maxWidth: 620, fontSize: '0.72rem' }}
             >
               Create a guided Study Path, or add material to generate a quiz,
-              flashcards, or clean notes.
+              flashcards, or Expand on this.
             </Typography>
           </Box>
 
@@ -276,7 +280,6 @@ const DashboardEmptyState = ({
               Paste notes
             </Button>
           </Box>
-
         </Paper>
 
         <Paper
@@ -314,7 +317,11 @@ const DashboardEmptyState = ({
               <FolderOpenIcon sx={{ fontSize: 18 }} />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" fontWeight={900} sx={{ fontSize: '1rem' }}>
+              <Typography
+                variant="h6"
+                fontWeight={900}
+                sx={{ fontSize: '1rem' }}
+              >
                 Open study material
               </Typography>
             </Box>

@@ -230,7 +230,7 @@ describe('Dashboards', () => {
       screen.getByRole('button', { name: /create flashcards/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create clean notes/i }),
+      screen.getByRole('button', { name: /expand on this/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /open existing dashboard/i }),
@@ -319,7 +319,7 @@ describe('Dashboards', () => {
       quickSourceFocus: 'upload',
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /create clean notes/i }))
+    fireEvent.click(screen.getByRole('button', { name: /expand on this/i }))
     expect(
       createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
         .detail,
