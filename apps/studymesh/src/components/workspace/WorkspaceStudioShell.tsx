@@ -533,6 +533,12 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   const [activeMaterialDraftId, setActiveMaterialDraftId] = useState<
     string | null
   >(null)
+  const [visibleQueueJobIds, setVisibleQueueJobIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [autoAcknowledgingDraftIds, setAutoAcknowledgingDraftIds] = useState<
+    Set<string>
+  >(() => new Set())
   const [fullScreenWidgetPayload, setFullScreenWidgetPayload] = useState<{
     loadWidget?: CustomWidget
     initialEditMode?: boolean
@@ -553,6 +559,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     {},
   )
   const autoAcknowledgeTimersRef = useRef<Record<string, number>>({})
+  const generationQueueItemRefs = useRef<Record<string, HTMLElement | null>>({})
 
   const startStudioResize = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -651,7 +658,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const activateCreation = (flow: Exclude<StudioFlow, 'hub'>) => {
-      acknowledgeQueueAttention()
       createNewDraft(flow)
       if (isMobile) {
         setMobileSection('creation')
@@ -660,7 +666,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     const handleOpenCreateHub = (event: Event) => {
       const customEvent = event as CustomEvent<OpenCreateHubDetail>
       const detail = customEvent.detail || {}
-      acknowledgeQueueAttention()
       setActiveMaterialDraftId(null)
       setSelectedIntent(detail.intent || null)
       if (detail.openQuickOptions) {
@@ -946,21 +951,63 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
             } failed`
           : 'Creation queue'
 
-  const acknowledgeQueueAttention = () => {
-    const acknowledgedAt = new Date().toISOString()
-    Object.values(autoAcknowledgeTimersRef.current).forEach((timerId) =>
-      window.clearTimeout(timerId),
+  useEffect(() => {
+    if (
+      !isCreationPanelVisible ||
+      typeof window === 'undefined' ||
+      !('IntersectionObserver' in window)
+    ) {
+      setVisibleQueueJobIds(new Set())
+      return undefined
+    }
+
+    const pendingDraftIds = new Set(
+      generationDrafts
+        .filter(
+          (draft) =>
+            (draft.status === 'ready' || draft.status === 'failed') &&
+            !draft.acknowledgedAt,
+        )
+        .map((draft) => draft.id),
     )
-    autoAcknowledgeTimersRef.current = {}
-    setGenerationDrafts((current) =>
-      current.map((draft) =>
-        (draft.status === 'ready' || draft.status === 'failed') &&
-        !draft.acknowledgedAt
-          ? { ...draft, acknowledgedAt }
-          : draft,
-      ),
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setVisibleQueueJobIds((current) => {
+          const next = new Set(current)
+          entries.forEach((entry) => {
+            const draftId = (entry.target as HTMLElement).dataset.draftId
+            if (!draftId) {
+              return
+            }
+
+            if (
+              entry.isIntersecting &&
+              entry.intersectionRatio >= 0.98 &&
+              pendingDraftIds.has(draftId)
+            ) {
+              next.add(draftId)
+            } else {
+              next.delete(draftId)
+            }
+          })
+          return next
+        })
+      },
+      { threshold: [0, 0.98, 1] },
     )
-  }
+
+    pendingDraftIds.forEach((draftId) => {
+      const element = generationQueueItemRefs.current[draftId]
+      if (element) {
+        observer.observe(element)
+      }
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [generationDrafts, isCreationPanelVisible])
 
   useEffect(() => {
     if (!isCreationPanelVisible) {
@@ -976,6 +1023,11 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         )
         .map((draft) => draft.id),
     )
+    const visiblePendingAcknowledgementIds = new Set(
+      [...pendingAcknowledgementIds].filter((draftId) =>
+        visibleQueueJobIds.has(draftId),
+      ),
+    )
 
     Object.entries(autoAcknowledgeTimersRef.current).forEach(
       ([draftId, timerId]) => {
@@ -986,11 +1038,16 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       },
     )
 
-    pendingAcknowledgementIds.forEach((draftId) => {
+    visiblePendingAcknowledgementIds.forEach((draftId) => {
       if (autoAcknowledgeTimersRef.current[draftId]) {
         return
       }
 
+      setAutoAcknowledgingDraftIds((current) => {
+        const next = new Set(current)
+        next.add(draftId)
+        return next
+      })
       autoAcknowledgeTimersRef.current[draftId] = window.setTimeout(() => {
         const acknowledgedAt = new Date().toISOString()
         setGenerationDrafts((current) =>
@@ -1002,12 +1059,17 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
               : draft,
           ),
         )
+        setAutoAcknowledgingDraftIds((current) => {
+          const next = new Set(current)
+          next.delete(draftId)
+          return next
+        })
         delete autoAcknowledgeTimersRef.current[draftId]
       }, 2600)
     })
 
     return undefined
-  }, [generationDrafts, isCreationPanelVisible])
+  }, [generationDrafts, isCreationPanelVisible, visibleQueueJobIds])
 
   useEffect(
     () => () => {
@@ -1015,6 +1077,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
         window.clearTimeout(timerId),
       )
       autoAcknowledgeTimersRef.current = {}
+      generationQueueItemRefs.current = {}
     },
     [],
   )
@@ -1060,7 +1123,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
   }
 
   const openGenerationQueue = () => {
-    acknowledgeQueueAttention()
     setActiveMaterialDraftId(null)
     setSelectedIntent(null)
     setQuickOptionsOpen(false)
@@ -1727,7 +1789,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
     resourceType: StudyMaterialResourceType,
   ) => {
     if (!hasCurrentDashboardContext) {
-      acknowledgeQueueAttention()
       setActiveMaterialDraftId(null)
       setActiveFlow('hub')
       setIsStudioOpen(true)
@@ -2759,10 +2820,7 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       (!Number.isFinite(completedAtMs) ||
                         acknowledgedAfterCompletionMs > 3200) &&
                       Date.now() - acknowledgedAtMs < 3200) ||
-                      (!draft.acknowledgedAt &&
-                        isCreationPanelVisible &&
-                        Number.isFinite(completedAtMs) &&
-                        Date.now() - completedAtMs < 2600))
+                      autoAcknowledgingDraftIds.has(draft.id))
                   const materialLabel = generationMaterialLabel(draft)
                   const createdAtMs = new Date(draft.createdAt).getTime()
                   const elapsed = isGenerating
@@ -2834,6 +2892,10 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
                       key={draft.id}
                       component={isReady ? 'button' : 'div'}
                       type={isReady ? 'button' : undefined}
+                      data-draft-id={draft.id}
+                      ref={(element: HTMLElement | null) => {
+                        generationQueueItemRefs.current[draft.id] = element
+                      }}
                       elevation={0}
                       onClick={
                         isReady ? () => openGeneratedDraft(draft) : undefined
@@ -3161,7 +3223,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
 
   const openCreateHub = () => {
     if (isMobile && isStudioOpen && activeFlow === 'hub') {
-      acknowledgeQueueAttention()
       setActiveMaterialDraftId(null)
       setMobileSection('creation')
       return
@@ -3172,7 +3233,6 @@ const WorkspaceStudioShell = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    acknowledgeQueueAttention()
     setActiveMaterialDraftId(null)
     setSelectedIntent(null)
     setActiveFlow('hub')
