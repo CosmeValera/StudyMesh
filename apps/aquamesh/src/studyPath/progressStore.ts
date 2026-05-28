@@ -34,7 +34,11 @@ interface StudyPathStoreState {
 
   setActiveSection: (studyPathId: string, sectionId: string) => void
 
+  setGuidedMode: (studyPathId: string, enabled: boolean) => void
+
   resetProgress: (studyPathId: string) => void
+
+  resetAllProgress: () => void
 }
 
 export const useStudyPathProgressStore = create<StudyPathStoreState>()(
@@ -70,6 +74,7 @@ export const useStudyPathProgressStore = create<StudyPathStoreState>()(
               studyPathId,
               sections: sectionsProgress,
               activeSectionId: sections[0]?.id,
+              guidedMode: true,
               updatedAt: new Date().toISOString(),
             },
           },
@@ -136,14 +141,6 @@ export const useStudyPathProgressStore = create<StudyPathStoreState>()(
             return state
           }
 
-          const updatedSectionProgress: StudyPathSectionProgress = {
-            ...sectionProgress,
-            quizAttempts: sectionProgress.quizAttempts + 1,
-            lastScore: score,
-            bestScore: Math.max(score, sectionProgress.bestScore ?? 0),
-            lastReviewedAt: new Date().toISOString(),
-          }
-
           return {
             progressMap: {
               ...state.progressMap,
@@ -151,7 +148,13 @@ export const useStudyPathProgressStore = create<StudyPathStoreState>()(
                 ...progress,
                 sections: {
                   ...progress.sections,
-                  [sectionId]: updatedSectionProgress,
+                  [sectionId]: {
+                    ...sectionProgress,
+                    quizAttempts: sectionProgress.quizAttempts + 1,
+                    lastScore: score,
+                    bestScore: Math.max(score, sectionProgress.bestScore ?? 0),
+                    lastReviewedAt: new Date().toISOString(),
+                  },
                 },
                 updatedAt: new Date().toISOString(),
               },
@@ -217,11 +220,35 @@ export const useStudyPathProgressStore = create<StudyPathStoreState>()(
         })
       },
 
+      setGuidedMode: (studyPathId: string, enabled: boolean) => {
+        set(state => {
+          const progress = state.progressMap[studyPathId]
+          if (!progress) {
+            return state
+          }
+
+          return {
+            progressMap: {
+              ...state.progressMap,
+              [studyPathId]: {
+                ...progress,
+                guidedMode: enabled,
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          }
+        })
+      },
+
       resetProgress: (studyPathId: string) => {
         set(state => {
           const { [studyPathId]: _, ...rest } = state.progressMap
           return { progressMap: rest }
         })
+      },
+
+      resetAllProgress: () => {
+        set({ progressMap: {} })
       },
     }),
     {

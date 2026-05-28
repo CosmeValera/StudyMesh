@@ -11,6 +11,9 @@ import {
   LinearProgress,
   Paper,
   Divider,
+  Switch,
+  FormControlLabel,
+  Alert,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
@@ -19,6 +22,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import RateReviewIcon from '@mui/icons-material/RateReview'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import NavigateNextIcon from '@mui/icons-material/NavigateNext'
+import ListAltIcon from '@mui/icons-material/ListAlt'
+import InfoIcon from '@mui/icons-material/Info'
 import type {
   StudyPathSection,
   StudyPathProgress,
@@ -26,9 +32,15 @@ import type {
   StudyPathSectionMasteryStatus,
   QuizQuestion,
 } from './types'
+import { useStudyPathProgressStore } from './progressStore'
 import {
   isSectionUnlocked,
   getOverallMasteryPercent,
+  getReviewQueue,
+  getNextRecommendedStep,
+  scoreToStatus,
+  generateSelfCheckQuestions,
+  evaluateTeachBackLocally,
   MASTERYPASSINGSCORE,
 } from './types'
 
@@ -87,16 +99,25 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
   )
   const [showQuiz, setShowQuiz] = useState(false)
   const [showTeachBack, setShowTeachBack] = useState(false)
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, number | string>>({})
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({})
   const [teachBackText, setTeachBackText] = useState('')
   const [quizSubmitted, setQuizSubmitted] = useState(false)
   const [teachBackSubmitted, setTeachBackSubmitted] = useState(false)
+  const [teachBackFeedback, setTeachBackFeedback] = useState('')
 
   const activeSection = sections.find(s => s.id === activeSectionId)
   const activeProgress = activeSectionId
     ? progress.sections[activeSectionId]
     : undefined
   const masteryPercent = getOverallMasteryPercent(sections, progress)
+  const reviewQueue = getReviewQueue(sections, progress)
+  const nextStep = getNextRecommendedStep(sections, progress)
+
+  const quizQuestions = activeSection?.quizQuestions?.length
+    ? activeSection.quizQuestions
+    : activeSection
+      ? generateSelfCheckQuestions(activeSection)
+      : []
 
   const handleSectionClick = (section: StudyPathSection) => {
     const unlocked = isSectionUnlocked(section.id, sections, progress)
@@ -108,7 +129,15 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
     setShowTeachBack(false)
     setQuizSubmitted(false)
     setTeachBackSubmitted(false)
+    setQuizAnswers({})
+    setTeachBackText('')
+    setTeachBackFeedback('')
     onSectionSelect(section.id)
+  }
+
+  const handleGuidedModeToggle = (enabled: boolean) => {
+    const { setGuidedMode } = useStudyPathProgressStore.getState()
+    setGuidedMode(studyPathId, enabled)
   }
 
   const handleStartSection = () => {
@@ -130,38 +159,41 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
   }
 
   const handleQuizSubmit = () => {
-    if (!activeSection?.quizQuestions || !activeSectionId) {
+    if (!quizQuestions.length || !activeSectionId) {
       return
     }
 
     let correct = 0
-    activeSection.quizQuestions.forEach(q => {
-      if (quizAnswers[q.id] === q.correctAnswer) {
+    quizQuestions.forEach(q => {
+      const answer = quizAnswers[q.id]
+      if (answer !== undefined && answer === q.correctAnswer) {
         correct++
       }
     })
 
-    const score = Math.round(
-      (correct / activeSection.quizQuestions.length) * 100,
-    )
+    const score = Math.round((correct / quizQuestions.length) * 100)
+    const newStatus = scoreToStatus(score)
     onQuizSubmit(studyPathId, activeSectionId, score)
+    onStatusChange(studyPathId, activeSectionId, newStatus)
     setQuizSubmitted(true)
-
-    if (score >= MASTERYPASSINGSCORE) {
-      onStatusChange(studyPathId, activeSectionId, 'mastered')
-    } else {
-      onStatusChange(studyPathId, activeSectionId, 'needsReview')
-    }
   }
 
   const handleTeachBackSubmit = () => {
-    if (!teachBackText.trim() || !activeSectionId) {
+    if (!teachBackText.trim() || !activeSectionId || !activeSection) {
       return
     }
-    const feedback = `Your explanation: "${teachBackText.slice(0, 50)}..." - AI feedback pending. Keep explaining in your own words!`
+    const feedback = evaluateTeachBackLocally(teachBackText, activeSection)
+    setTeachBackFeedback(feedback)
     onTeachBackSubmit(studyPathId, activeSectionId, feedback)
     setTeachBackSubmitted(true)
-    onStatusChange(studyPathId, activeSectionId, 'mastered')
+
+    if (feedback.startsWith('Well explained')) {
+      onStatusChange(studyPathId, activeSectionId, 'mastered')
+    }
+  }
+
+  const handleUnlockSection = (sectionId: string) => {
+    onStatusChange(studyPathId, sectionId, 'notStarted')
   }
 
   return (
@@ -219,12 +251,84 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
 
       <Collapse in={expanded}>
         <Box sx={{ p: 1.5 }}>
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              {title}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" fontWeight={600}>
+                Guided Mode
+              </Typography>
+              <Switch
+                size="small"
+                checked={progress.guidedMode}
+                onClick={e => {
+                  e.stopPropagation()
+                  handleGuidedModeToggle(e.target.checked)
+                }}
+              />
+              <Typography variant="caption" color="text.secondary">
+                {progress.guidedMode ? 'On' : 'Off'}
+              </Typography>
+            </Box>
+          </Box>
+
+          {nextStep && (
+            <Alert
+              severity="info"
+              icon={<NavigateNextIcon />}
+              sx={{ mb: 1.5, py: 0.5 }}
+            >
+              <Typography variant="caption">{nextStep}</Typography>
+            </Alert>
+          )}
+
+          {reviewQueue.length > 0 && (
+            <Box
+              sx={{
+                mb: 1.5,
+                p: 1,
+                borderRadius: 1,
+                bgcolor: 'warning.light',
+                border: 1,
+                borderColor: 'warning.main',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                <ListAltIcon sx={{ fontSize: 14, color: 'warning.dark' }} />
+                <Typography variant="caption" fontWeight={700} color="warning.dark">
+                  Review Queue ({reviewQueue.length})
+                </Typography>
+              </Box>
+              <Stack spacing={0.25}>
+                {reviewQueue.map(section => (
+                  <Button
+                    key={section.id}
+                    size="small"
+                    variant="outlined"
+                    color="warning"
+                    onClick={() => handleSectionClick(section)}
+                    sx={{
+                      justifyContent: 'flex-start',
+                      textTransform: 'none',
+                      borderRadius: 1,
+                      py: 0.25,
+                      px: 1,
+                    }}
+                  >
+                    Review "{section.title}"
+                  </Button>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ mb: 1, display: 'block' }}
+            sx={{ mb: 1, display: 'block', fontWeight: 600 }}
           >
-            {title}
+            Sections
           </Typography>
 
           <Stack spacing={0.5} sx={{ mb: 2 }}>
@@ -245,7 +349,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                     borderRadius: 1,
                     bgcolor: isActive ? 'action.selected' : 'transparent',
                     cursor: unlocked ? 'pointer' : 'not-allowed',
-                    opacity: unlocked ? 1 : 0.5,
+                    opacity: unlocked ? 1 : 0.6,
                     border: isActive ? 1 : 0,
                     borderColor: 'primary.main',
                     '&:hover': unlocked
@@ -293,9 +397,22 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                 borderColor: 'divider',
               }}
             >
-              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-                {activeSection.title}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  {activeSection.title}
+                </Typography>
+                {!isSectionUnlocked(activeSection.id, sections, progress) && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    color="primary"
+                    onClick={() => handleUnlockSection(activeSection.id)}
+                    sx={{ ml: 'auto', py: 0.25 }}
+                  >
+                    Unlock
+                  </Button>
+                )}
+              </Box>
 
               <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
                 <Chip
@@ -305,7 +422,14 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                 />
                 {activeProgress.quizAttempts > 0 && (
                   <Chip
-                    label={`Quiz: ${activeProgress.bestScore}% best`}
+                    label={`Best: ${activeProgress.bestScore ?? 0}%`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+                {activeProgress.lastScore !== undefined && (
+                  <Chip
+                    label={`Last: ${activeProgress.lastScore}%`}
                     size="small"
                     variant="outlined"
                   />
@@ -323,42 +447,53 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
 
               {activeProgress.status === 'locked' ? (
                 <Typography variant="caption" color="text.secondary">
+                  <LockIcon sx={{ fontSize: 12, verticalAlign: 'middle', mr: 0.25 }} />
                   Complete the previous section to unlock.
                 </Typography>
               ) : (
                 <Stack spacing={0.75}>
-                  {activeProgress.status !== 'mastered' && (
+                  {activeProgress.status === 'notStarted' && (
                     <Button
                       size="small"
-                      variant="outlined"
+                      variant="contained"
                       startIcon={<PlayArrowIcon />}
                       onClick={handleStartSection}
-                      disabled={activeProgress.status === 'inProgress'}
                       sx={{ borderRadius: 1.5 }}
                     >
-                      {activeProgress.status === 'inProgress'
-                        ? 'In Progress'
-                        : 'Start Studying'}
+                      Start Section
                     </Button>
                   )}
 
-                  {activeSection.quizQuestions &&
-                    activeSection.quizQuestions.length > 0 && (
-                      <Button
-                        size="small"
-                        variant={showQuiz ? 'contained' : 'outlined'}
-                        startIcon={<RateReviewIcon />}
-                        onClick={() => {
-                          setShowQuiz(!showQuiz)
-                          setShowTeachBack(false)
-                        }}
-                        sx={{ borderRadius: 1.5 }}
-                      >
-                        Quick Check ({activeSection.quizQuestions.length} questions)
-                      </Button>
-                    )}
+                  {activeProgress.status === 'inProgress' && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      onClick={handleStartSection}
+                      sx={{ borderRadius: 1.5 }}
+                    >
+                      Continue Studying
+                    </Button>
+                  )}
 
-                  {!teachBackSubmitted && (
+                  {(activeProgress.status === 'inProgress' ||
+                    activeProgress.status === 'needsReview' ||
+                    activeProgress.status === 'notStarted') && (
+                    <Button
+                      size="small"
+                      variant={showQuiz ? 'contained' : 'outlined'}
+                      startIcon={<RateReviewIcon />}
+                      onClick={() => {
+                        setShowQuiz(!showQuiz)
+                        setShowTeachBack(false)
+                      }}
+                      sx={{ borderRadius: 1.5 }}
+                    >
+                      {quizQuestions.length > 0 ? `Self-Check (${quizQuestions.length})` : 'Self-Check'}
+                    </Button>
+                  )}
+
+                  {activeProgress.status !== 'mastered' && (
                     <Button
                       size="small"
                       variant={showTeachBack ? 'contained' : 'outlined'}
@@ -374,7 +509,8 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                   )}
 
                   {(activeProgress.status === 'mastered' ||
-                    activeProgress.status === 'needsReview') && (
+                    activeProgress.status === 'needsReview' ||
+                    activeProgress.status === 'inProgress') && (
                     <Stack direction="row" spacing={0.5}>
                       {activeProgress.status !== 'mastered' && (
                         <Button
@@ -393,7 +529,6 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                           size="small"
                           variant="outlined"
                           color="warning"
-                          startIcon={<RefreshIcon />}
                           onClick={handleMarkNeedsReview}
                           sx={{ borderRadius: 1.5 }}
                         >
@@ -405,15 +540,18 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                 </Stack>
               )}
 
-              {showQuiz && activeSection.quizQuestions && !quizSubmitted && (
+              {showQuiz && quizQuestions.length > 0 && !quizSubmitted && (
                 <Box sx={{ mt: 1.5 }}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="caption" fontWeight={700} sx={{ mb: 1, display: 'block' }}>
-                    Quick Check
-                  </Typography>
-                  {activeSection.quizQuestions.map((q, qIndex) => (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                    <InfoIcon sx={{ fontSize: 14, color: 'info.main' }} />
+                    <Typography variant="caption" color="info.main" fontWeight={600}>
+                      Self-check — no AI required
+                    </Typography>
+                  </Box>
+                  {quizQuestions.map((q, qIndex) => (
                     <Box key={q.id} sx={{ mb: 1.5 }}>
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <Typography variant="body2" sx={{ mb: 0.75 }}>
                         {qIndex + 1}. {q.question}
                       </Typography>
                       {q.options && (
@@ -426,7 +564,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                                 alignItems: 'center',
                                 gap: 0.5,
                                 cursor: 'pointer',
-                                p: 0.5,
+                                p: 0.75,
                                 borderRadius: 1,
                                 border: 1,
                                 borderColor:
@@ -436,7 +574,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                                 bgcolor:
                                   quizAnswers[q.id] === oIndex
                                     ? 'action.selected'
-                                    : 'transparent',
+                                    : 'background.paper',
                                 '&:hover': { bgcolor: 'action.hover' },
                               }}
                               onClick={() =>
@@ -446,7 +584,16 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                                 }))
                               }
                             >
-                              <Typography variant="caption">
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 600,
+                                  color:
+                                    quizAnswers[q.id] === oIndex
+                                      ? 'primary.main'
+                                      : 'text.secondary',
+                                }}
+                              >
                                 {String.fromCharCode(65 + oIndex)}.
                               </Typography>
                               <Typography variant="caption">{option}</Typography>
@@ -460,10 +607,12 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                     size="small"
                     variant="contained"
                     onClick={handleQuizSubmit}
-                    disabled={Object.keys(quizAnswers).length !== activeSection.quizQuestions?.length}
+                    disabled={
+                      Object.keys(quizAnswers).length < quizQuestions.length
+                    }
                     sx={{ borderRadius: 1.5, mt: 1 }}
                   >
-                    Submit Answers
+                    Submit Self-Check
                   </Button>
                 </Box>
               )}
@@ -471,13 +620,23 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
               {quizSubmitted && (
                 <Box sx={{ mt: 1.5 }}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="caption" color="success.main" fontWeight={700}>
-                    Quiz submitted! Score: {activeProgress.lastScore}%
-                    {activeProgress.lastScore !== undefined &&
-                      activeProgress.lastScore >= MASTERYPASSINGSCORE
-                        ? ' - Section Mastered!'
-                        : ' - Review and try again'}
-                  </Typography>
+                  <Alert
+                    severity={
+                      (activeProgress.lastScore ?? 0) >= MASTERYPASSINGSCORE
+                        ? 'success'
+                        : 'warning'
+                    }
+                  >
+                    <Typography variant="caption" fontWeight={700}>
+                      Score: {activeProgress.lastScore}%
+                      {(activeProgress.lastScore ?? 0) >= MASTERYPASSINGSCORE
+                        ? ' — Section Mastered!'
+                        : ' — Review and try again.'}
+                    </Typography>
+                    <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>
+                      Best score: {activeProgress.bestScore}%
+                    </Typography>
+                  </Alert>
                 </Box>
               )}
 
@@ -489,13 +648,14 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                     Teaching a concept is the best way to verify understanding.
+                    No AI required — this uses local evaluation.
                   </Typography>
                   <TextField
                     multiline
                     rows={3}
                     fullWidth
                     size="small"
-                    placeholder="Type your explanation here..."
+                    placeholder="Type your explanation here. Try to use your own words and include the main concepts..."
                     value={teachBackText}
                     onChange={e => setTeachBackText(e.target.value)}
                     sx={{ mb: 1 }}
@@ -512,12 +672,28 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                 </Box>
               )}
 
-              {teachBackSubmitted && (
+              {teachBackSubmitted && teachBackFeedback && (
                 <Box sx={{ mt: 1.5 }}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="caption" color="success.main" fontWeight={700}>
-                    Explanation submitted! Section marked as mastered.
-                  </Typography>
+                  <Alert
+                    severity={
+                      teachBackFeedback.startsWith('Well explained')
+                        ? 'success'
+                        : 'info'
+                    }
+                  >
+                    <Typography variant="caption" fontWeight={600}>
+                      Feedback:
+                    </Typography>
+                    <Typography variant="caption" display="block">
+                      {teachBackFeedback}
+                    </Typography>
+                    {teachBackFeedback.startsWith('Well explained') && (
+                      <Typography variant="caption" color="success.dark" display="block" sx={{ mt: 0.25 }}>
+                        Section marked as mastered!
+                      </Typography>
+                    )}
+                  </Alert>
                 </Box>
               )}
             </Box>
