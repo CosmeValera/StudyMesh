@@ -100,7 +100,9 @@ describe('KnowledgeLinkWidget', () => {
     const listener = vi.fn()
     window.addEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
 
-    render(<KnowledgeLinkWidget references={[]} editMode />)
+    const { rerender } = render(
+      <KnowledgeLinkWidget references={[]} editMode />,
+    )
 
     fireEvent.click(screen.getByText('Study links'))
     const titleInput = screen.getByRole('textbox', {
@@ -114,6 +116,15 @@ describe('KnowledgeLinkWidget', () => {
     expect(listener.mock.calls.at(-1)?.[0].detail.options).toEqual({
       title: 'My Exam Index',
     })
+
+    rerender(<KnowledgeLinkWidget references={[]} editMode />)
+    expect(screen.getByText('My Exam Index')).toBeInTheDocument()
+    expect(screen.queryByText('Study links')).not.toBeInTheDocument()
+
+    rerender(
+      <KnowledgeLinkWidget references={[]} editMode title="My Exam Index" />,
+    )
+    expect(screen.getByText('My Exam Index')).toBeInTheDocument()
 
     window.removeEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
   })

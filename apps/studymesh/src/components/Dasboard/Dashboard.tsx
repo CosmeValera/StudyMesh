@@ -187,6 +187,9 @@ const Dashboards = () => {
   const [studyLinksEditModes, setStudyLinksEditModes] = useState<
     Record<string, boolean | undefined>
   >({})
+  const [studyLinksTitleOverrides, setStudyLinksTitleOverrides] = useState<
+    Record<string, string | undefined>
+  >({})
   const [dashboardChatOpen, setDashboardChatOpen] = useState(false)
   const [workspaceTabsSlot, setWorkspaceTabsSlot] =
     useState<HTMLElement | null>(null)
@@ -705,6 +708,23 @@ const Dashboards = () => {
     return undefined
   }
 
+  const getStudyLinksLayoutVersion = (
+    layout: DashboardLayout | undefined,
+  ): string => {
+    if (!layout) {
+      return ''
+    }
+
+    if (layout.component === 'KnowledgeLinkWidget') {
+      return JSON.stringify(layout.config?.customProps || {})
+    }
+
+    return (layout.children || [])
+      .map((child) => getStudyLinksLayoutVersion(child))
+      .filter(Boolean)
+      .join('|')
+  }
+
   const saveStudyLinksTemplate = (
     name: string,
     layout: DashboardLayout,
@@ -876,7 +896,7 @@ const Dashboards = () => {
 
   const applyKnowledgeLinkWidgetRenderOptions = (
     layout: DashboardLayout | undefined,
-    options: { editMode: boolean },
+    options: { editMode: boolean; title?: string },
   ): DashboardLayout | undefined => {
     if (!layout) {
       return layout
@@ -885,6 +905,7 @@ const Dashboards = () => {
     if (layout.component === 'KnowledgeLinkWidget') {
       return {
         ...layout,
+        name: options.title || layout.name,
         className: 'studymesh-study-links-flex-tab',
         enableClose: false,
         enableDrag: false,
@@ -894,6 +915,7 @@ const Dashboards = () => {
           customProps: {
             ...(layout.config?.customProps || {}),
             editMode: options.editMode,
+            ...(options.title ? { title: options.title } : {}),
           },
         },
       }
@@ -1056,13 +1078,34 @@ const Dashboards = () => {
   }
 
   const openKnowledgeReferenceTarget = (target: KnowledgeReferenceTarget) => {
+    const sourceDashboard = openDashboards[selectedDashboard]
+    const shouldCloseSourceDashboard = Boolean(
+      sourceDashboard && layoutHasStudyLinksWidget(sourceDashboard.layout),
+    )
+
+    const selectOpenTargetAndCloseSource = (targetIndex: number) => {
+      if (
+        shouldCloseSourceDashboard &&
+        sourceDashboard &&
+        openDashboards[targetIndex]?.id !== sourceDashboard.id
+      ) {
+        const nextTargetIndex =
+          targetIndex > selectedDashboard ? targetIndex - 1 : targetIndex
+        removeDashboard(sourceDashboard.id)
+        setSelectedDashboard(Math.max(0, nextTargetIndex))
+        return
+      }
+
+      setSelectedDashboard(targetIndex)
+    }
+
     if (target.type === 'dashboard') {
       const openDashboardIndex = openDashboards.findIndex(
         (dashboard) => dashboard.id === target.id,
       )
 
       if (openDashboardIndex >= 0) {
-        setSelectedDashboard(openDashboardIndex)
+        selectOpenTargetAndCloseSource(openDashboardIndex)
         return
       }
 
@@ -1070,6 +1113,14 @@ const Dashboards = () => {
         (dashboard) => dashboard.id === target.id,
       )
       if (savedDashboard) {
+        if (shouldCloseSourceDashboard) {
+          replaceDashboard(selectedDashboard, {
+            name: savedDashboard.name,
+            layout: savedDashboard.layout,
+          })
+          return
+        }
+
         openSavedDashboardInWorkspace(savedDashboard)
       }
       return
@@ -1118,7 +1169,7 @@ const Dashboards = () => {
         openStudyPath.id,
         target.type === 'studyPathSection' ? target.id : undefined,
       )
-      setSelectedDashboard(openStudyPathIndex)
+      selectOpenTargetAndCloseSource(openStudyPathIndex)
       return
     }
 
@@ -1139,10 +1190,21 @@ const Dashboards = () => {
             (lesson) => lesson.dashboardKey === target.id,
           )
         : -1
-    addStudyPathContainer({
+    const studyPathToOpen = {
       ...studyPath,
       selectedIndex: sectionIndex >= 0 ? sectionIndex : 0,
-    })
+    }
+
+    if (shouldCloseSourceDashboard) {
+      replaceDashboard(selectedDashboard, {
+        name: studyPathToOpen.title || studyPathToOpen.folderName,
+        kind: 'studyPathContainer',
+        studyPath: studyPathToOpen,
+      })
+      return
+    }
+
+    addStudyPathContainer(studyPathToOpen)
   }
 
   const openSavedDashboardInWorkspace = (dashboard: SavedDashboard) => {
@@ -1585,7 +1647,7 @@ const Dashboards = () => {
         handleOpenKnowledgeReference,
       )
     }
-  }, [openDashboards])
+  }, [openDashboards, selectedDashboard])
 
   useEffect(() => {
     window.addEventListener(
@@ -1627,6 +1689,10 @@ const Dashboards = () => {
           result.layout,
         )
         if (customEvent.detail.options.title) {
+          setStudyLinksTitleOverrides((currentOverrides) => ({
+            ...currentOverrides,
+            [current.id]: customEvent.detail.options.title,
+          }))
           renameDashboard(current.id, customEvent.detail.options.title)
         }
       }
@@ -2389,12 +2455,19 @@ const Dashboards = () => {
             const studyLinksEditMode =
               studyLinksEditModes[dashboard.id] ??
               getStudyLinksEditModeFromLayout(dashboard.layout) === true
+            const studyLinksTitleOverride =
+              studyLinksTitleOverrides[dashboard.id]
             const renderLayout =
               isStudyLinksDashboard && !isStudyPathContainer
                 ? applyKnowledgeLinkWidgetRenderOptions(dashboard.layout, {
                     editMode: studyLinksEditMode,
+                    title: studyLinksTitleOverride,
                   })
                 : dashboard.layout
+            const dashboardLayoutRenderKey =
+              isStudyLinksDashboard && !isStudyPathContainer
+                ? `${dashboard.id}-${getStudyLinksLayoutVersion(renderLayout)}`
+                : dashboard.id
             return (
               <TabPanel key={dashboard.id} forceRender={isMobileDashboardView}>
                 <Box
@@ -2510,6 +2583,7 @@ const Dashboards = () => {
                       />
                     ) : (
                       <DashboardLayoutView
+                        key={dashboardLayoutRenderKey}
                         layout={renderLayout}
                         mobileView={isMobileDashboardView}
                         readOnly={isMobileDashboardView}

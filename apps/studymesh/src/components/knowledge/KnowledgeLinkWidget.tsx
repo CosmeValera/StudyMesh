@@ -227,6 +227,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
   const [editingTitle, setEditingTitle] = React.useState(false)
   const [displayTitle, setDisplayTitle] = React.useState(title)
   const [draftTitle, setDraftTitle] = React.useState(title)
+  const pendingCommittedTitleRef = React.useRef<string | null>(null)
   const [draggedSection, setDraggedSection] =
     React.useState<KnowledgeLinkWidgetSectionId | null>(null)
   const [draggedReferenceId, setDraggedReferenceId] = React.useState<
@@ -234,6 +235,17 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
   >(null)
 
   React.useEffect(() => {
+    if (
+      pendingCommittedTitleRef.current &&
+      title !== pendingCommittedTitleRef.current
+    ) {
+      return
+    }
+
+    if (title === pendingCommittedTitleRef.current) {
+      pendingCommittedTitleRef.current = null
+    }
+
     setDisplayTitle(title)
     setDraftTitle(title)
   }, [title])
@@ -262,6 +274,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
 
   const commitTitle = () => {
     const nextTitle = draftTitle.trim() || 'Study links'
+    pendingCommittedTitleRef.current = nextTitle
     setDisplayTitle(nextTitle)
     setDraftTitle(nextTitle)
     setEditingTitle(false)

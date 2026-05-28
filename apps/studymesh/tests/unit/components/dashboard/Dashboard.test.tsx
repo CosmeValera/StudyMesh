@@ -377,6 +377,81 @@ describe('Dashboards', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('closes the Study Links dashboard when opening one of its dashboard links', () => {
+    const removeDashboard = vi.fn()
+    const setSelectedDashboard = vi.fn()
+    mockDashboardProvider({
+      removeDashboard,
+      setSelectedDashboard,
+      openDashboards: [
+        {
+          id: 'index-dashboard',
+          name: 'My Index',
+          layout: {
+            type: 'row',
+            children: [
+              {
+                type: 'tabset',
+                children: [
+                  {
+                    type: 'tab',
+                    name: 'My Index',
+                    component: 'KnowledgeLinkWidget',
+                    config: {
+                      customProps: {
+                        title: 'My Index',
+                        references: [],
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          id: 'target-dashboard',
+          name: 'Exam Dashboard',
+          layout: {
+            type: 'row',
+            children: [
+              {
+                type: 'tabset',
+                children: [
+                  {
+                    type: 'tab',
+                    name: 'Notes',
+                    component: 'CustomWidget',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      selectedDashboard: 0,
+    })
+
+    render(<Dashboards />)
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('studymesh-open-knowledge-reference', {
+          detail: {
+            target: {
+              type: 'dashboard',
+              id: 'target-dashboard',
+              title: 'Exam Dashboard',
+            },
+          },
+        }),
+      )
+    })
+
+    expect(removeDashboard).toHaveBeenCalledWith('index-dashboard')
+    expect(setSelectedDashboard).toHaveBeenCalledWith(0)
+  })
+
   it('saves a Study Links dashboard as the default for new empty dashboards', () => {
     mockDashboardProvider({
       openDashboards: [

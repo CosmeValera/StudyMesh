@@ -37,7 +37,10 @@ interface DashboardContextType {
     dashboardId: string,
     updater: (studyPath: StudyPathContainerState) => StudyPathContainerState,
   ) => void
-  replaceDashboard: (index: number, dashboard: DefaultDashboard) => string
+  replaceDashboard: (
+    index: number,
+    dashboard: DefaultDashboard | Omit<StateDashboard, 'id'>,
+  ) => string
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
   renameDashboard: (id: string, newName: string) => void
@@ -304,7 +307,10 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     setDashboards(newOpenDashboards)
   }
 
-  const replaceDashboard = (index: number, dashboard: DefaultDashboard) => {
+  const replaceDashboard = (
+    index: number,
+    dashboard: DefaultDashboard | Omit<StateDashboard, 'id'>,
+  ) => {
     const currentDashboard = openDashboards[index]
     const id = nanoid()
     const newOpenDashboards = [...openDashboards]
@@ -317,7 +323,11 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
       setDashboardEditing(currentDashboard.id, false)
     }
 
-    setDashboardEditing(id, !hasDashboardContent(dashboard.layout))
+    setDashboardEditing(
+      id,
+      dashboard.kind !== 'studyPathContainer' &&
+        !hasDashboardContent(dashboard.layout),
+    )
 
     return id
   }
