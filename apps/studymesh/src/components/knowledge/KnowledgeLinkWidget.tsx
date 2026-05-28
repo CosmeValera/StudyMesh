@@ -180,6 +180,44 @@ const editToggleSx = (theme: import('@mui/material/styles').Theme) => ({
   },
 })
 
+const editIconButtonSx = (theme: import('@mui/material/styles').Theme) => ({
+  width: 30,
+  height: 30,
+  color: 'text.primary',
+  border: 1,
+  borderColor:
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.32)
+      : alpha(theme.palette.common.black, 0.28),
+  bgcolor:
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.12)
+      : alpha(theme.palette.common.white, 0.92),
+  boxShadow:
+    theme.palette.mode === 'dark'
+      ? `0 1px 0 ${alpha(theme.palette.common.white, 0.12)} inset`
+      : `0 1px 3px ${alpha(theme.palette.common.black, 0.12)}`,
+  '&:hover': {
+    color: 'primary.contrastText',
+    borderColor: 'primary.main',
+    bgcolor: 'primary.main',
+  },
+  '&.Mui-disabled': {
+    color:
+      theme.palette.mode === 'dark'
+        ? alpha(theme.palette.common.white, 0.34)
+        : alpha(theme.palette.common.black, 0.34),
+    borderColor:
+      theme.palette.mode === 'dark'
+        ? alpha(theme.palette.common.white, 0.14)
+        : alpha(theme.palette.common.black, 0.12),
+    bgcolor:
+      theme.palette.mode === 'dark'
+        ? alpha(theme.palette.common.white, 0.04)
+        : alpha(theme.palette.common.black, 0.04),
+  },
+})
+
 export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
   references = [],
   title = 'Study links',
@@ -194,6 +232,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
   const detailed = cardSize === 'detailed'
   const orderedSections = normalizeSectionOrder(sectionOrder)
   const [editingTitle, setEditingTitle] = React.useState(false)
+  const [displayTitle, setDisplayTitle] = React.useState(title)
   const [draftTitle, setDraftTitle] = React.useState(title)
   const [draggedSection, setDraggedSection] =
     React.useState<KnowledgeLinkWidgetSectionId | null>(null)
@@ -202,6 +241,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
   >(null)
 
   React.useEffect(() => {
+    setDisplayTitle(title)
     setDraftTitle(title)
   }, [title])
 
@@ -229,6 +269,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
 
   const commitTitle = () => {
     const nextTitle = draftTitle.trim() || 'Study links'
+    setDisplayTitle(nextTitle)
     setDraftTitle(nextTitle)
     setEditingTitle(false)
     if (nextTitle !== title) {
@@ -439,6 +480,157 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
       </Paper>
     ) : null
 
+  const renderReferenceCardContent = (
+    reference: KnowledgeReference,
+    referenceIndex: number,
+  ) => (
+    <Box
+      sx={(theme) => ({
+        p: compact ? 1 : 1.5,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+        bgcolor:
+          theme.palette.mode === 'dark'
+            ? alpha(theme.palette.common.white, 0.04)
+            : alpha(theme.palette.primary.main, 0.035),
+        transition: 'border-color 120ms ease, background 120ms ease',
+        '&:hover': {
+          borderColor: 'primary.main',
+          bgcolor: alpha(theme.palette.primary.main, 0.1),
+        },
+      })}
+    >
+      <Stack direction="row" spacing={1.25} alignItems="flex-start">
+        <Box
+          sx={{
+            width: compact ? 28 : 32,
+            height: compact ? 28 : 32,
+            borderRadius: 1,
+            display: 'grid',
+            placeItems: 'center',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            flex: '0 0 auto',
+          }}
+        >
+          {getIcon(reference.target.type)}
+        </Box>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            alignItems="center"
+            sx={{ mb: 0.5, minWidth: 0 }}
+          >
+            <Typography
+              variant="subtitle2"
+              fontWeight={800}
+              noWrap
+              sx={{ minWidth: 0, flex: 1 }}
+            >
+              {getKnowledgeReferenceTitle(reference)}
+            </Typography>
+            {!compact && !editMode && (
+              <OpenInNewIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary', flex: '0 0 auto' }}
+              />
+            )}
+          </Stack>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Chip
+              size="small"
+              label={getKnowledgeReferenceKindLabel(reference.target)}
+              sx={{ height: 22, fontWeight: 700 }}
+            />
+            {!compact && reference.target.subtitle && (
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {reference.target.subtitle}
+              </Typography>
+            )}
+          </Stack>
+          {detailed && reference.description && (
+            <Typography variant="body2" color="text.secondary">
+              {reference.description}
+            </Typography>
+          )}
+          {!compact && !editMode && (
+            <Typography
+              variant="caption"
+              color="primary"
+              fontWeight={800}
+              sx={{ display: 'block', mt: 0.75 }}
+            >
+              {getActionLabel(reference)}
+            </Typography>
+          )}
+          {editMode && (
+            <Stack direction="row" spacing={0.5} sx={{ mt: 1 }}>
+              <IconButton
+                size="small"
+                aria-label={`Move ${getKnowledgeReferenceTitle(
+                  reference,
+                )} left`}
+                disabled={referenceIndex === 0}
+                onClick={() =>
+                  moveReferenceByIndex(referenceIndex, referenceIndex - 1)
+                }
+                sx={editIconButtonSx}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                aria-label={`Move ${getKnowledgeReferenceTitle(
+                  reference,
+                )} right`}
+                disabled={referenceIndex === references.length - 1}
+                onClick={() =>
+                  moveReferenceByIndex(referenceIndex, referenceIndex + 1)
+                }
+                sx={editIconButtonSx}
+              >
+                <ArrowForwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                aria-label={`Remove ${getKnowledgeReferenceTitle(reference)}`}
+                onClick={() => removeReference(reference.id)}
+                sx={(theme) => ({
+                  ...editIconButtonSx(theme),
+                  '&:hover': {
+                    color: theme.palette.error.contrastText,
+                    borderColor: 'error.main',
+                    bgcolor: 'error.main',
+                  },
+                })}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          )}
+        </Box>
+      </Stack>
+    </Box>
+  )
+
+  const referenceDragProps = (referenceId: string) =>
+    editMode
+      ? {
+          draggable: true,
+          onDragStart: () => setDraggedReferenceId(referenceId),
+          onDragOver: (event: React.DragEvent) => {
+            event.preventDefault()
+          },
+          onDrop: () => {
+            moveReference(referenceId, draggedReferenceId)
+            setDraggedReferenceId(null)
+          },
+          onDragEnd: () => setDraggedReferenceId(null),
+        }
+      : {}
+
   const renderLinksSection = () => (
     <Box
       key="links"
@@ -551,176 +743,43 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
             mt: editMode ? 0.75 : 0,
           }}
         >
-          {references.map((reference, referenceIndex) => (
-            <ButtonBase
-              key={reference.id}
-              draggable={editMode}
-              onDragStart={() => setDraggedReferenceId(reference.id)}
-              onDragOver={(event) => {
-                if (editMode) {
-                  event.preventDefault()
-                }
-              }}
-              onDrop={() => {
-                if (editMode) {
-                  moveReference(reference.id, draggedReferenceId)
-                  setDraggedReferenceId(null)
-                }
-              }}
-              onDragEnd={() => setDraggedReferenceId(null)}
-              onClick={() => openReference(reference)}
-              sx={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                borderRadius: 1,
-                cursor: editMode ? 'grab' : 'pointer',
-                '&:focus-visible': {
-                  outline: '2px solid',
-                  outlineColor: 'primary.main',
-                  outlineOffset: 2,
-                },
-              }}
-            >
+          {references.map((reference, referenceIndex) =>
+            editMode ? (
               <Box
-                sx={(theme) => ({
-                  p: compact ? 1 : 1.5,
-                  border: 1,
-                  borderColor: 'divider',
+                key={reference.id}
+                data-testid={`study-link-card-${reference.id}`}
+                {...referenceDragProps(reference.id)}
+                sx={{
+                  width: '100%',
+                  minWidth: 0,
                   borderRadius: 1,
-                  bgcolor:
-                    theme.palette.mode === 'dark'
-                      ? alpha(theme.palette.common.white, 0.04)
-                      : alpha(theme.palette.primary.main, 0.035),
-                  transition: 'border-color 120ms ease, background 120ms ease',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  },
-                })}
+                  cursor: 'grab',
+                }}
               >
-                <Stack direction="row" spacing={1.25} alignItems="flex-start">
-                  <Box
-                    sx={{
-                      width: compact ? 28 : 32,
-                      height: compact ? 28 : 32,
-                      borderRadius: 1,
-                      display: 'grid',
-                      placeItems: 'center',
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
-                      flex: '0 0 auto',
-                    }}
-                  >
-                    {getIcon(reference.target.type)}
-                  </Box>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      alignItems="center"
-                      sx={{ mb: 0.5, minWidth: 0 }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        fontWeight={800}
-                        noWrap
-                        sx={{ minWidth: 0, flex: 1 }}
-                      >
-                        {getKnowledgeReferenceTitle(reference)}
-                      </Typography>
-                      {!compact && (
-                        <OpenInNewIcon
-                          fontSize="small"
-                          sx={{ color: 'text.secondary', flex: '0 0 auto' }}
-                        />
-                      )}
-                    </Stack>
-                    <Stack direction="row" spacing={0.75} alignItems="center">
-                      <Chip
-                        size="small"
-                        label={getKnowledgeReferenceKindLabel(reference.target)}
-                        sx={{ height: 22, fontWeight: 700 }}
-                      />
-                      {!compact && reference.target.subtitle && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                        >
-                          {reference.target.subtitle}
-                        </Typography>
-                      )}
-                    </Stack>
-                    {detailed && reference.description && (
-                      <Typography variant="body2" color="text.secondary">
-                        {reference.description}
-                      </Typography>
-                    )}
-                    {!compact && (
-                      <Typography
-                        variant="caption"
-                        color="primary"
-                        fontWeight={800}
-                        sx={{ display: 'block', mt: 0.75 }}
-                      >
-                        {getActionLabel(reference)}
-                      </Typography>
-                    )}
-                    {editMode && (
-                      <Stack
-                        direction="row"
-                        spacing={0.5}
-                        sx={{ mt: 1 }}
-                        onClick={(event) => event.stopPropagation()}
-                        onMouseDown={(event) => event.stopPropagation()}
-                      >
-                        <IconButton
-                          size="small"
-                          aria-label={`Move ${getKnowledgeReferenceTitle(
-                            reference,
-                          )} left`}
-                          disabled={referenceIndex === 0}
-                          onClick={() =>
-                            moveReferenceByIndex(
-                              referenceIndex,
-                              referenceIndex - 1,
-                            )
-                          }
-                        >
-                          <ArrowBackIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          aria-label={`Move ${getKnowledgeReferenceTitle(
-                            reference,
-                          )} right`}
-                          disabled={referenceIndex === references.length - 1}
-                          onClick={() =>
-                            moveReferenceByIndex(
-                              referenceIndex,
-                              referenceIndex + 1,
-                            )
-                          }
-                        >
-                          <ArrowForwardIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          aria-label={`Remove ${getKnowledgeReferenceTitle(
-                            reference,
-                          )}`}
-                          onClick={() => removeReference(reference.id)}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                    )}
-                  </Box>
-                </Stack>
+                {renderReferenceCardContent(reference, referenceIndex)}
               </Box>
-            </ButtonBase>
-          ))}
+            ) : (
+              <ButtonBase
+                key={reference.id}
+                data-testid={`study-link-card-${reference.id}`}
+                onClick={() => openReference(reference)}
+                sx={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  borderRadius: 1,
+                  cursor: 'pointer',
+                  '&:focus-visible': {
+                    outline: '2px solid',
+                    outlineColor: 'primary.main',
+                    outlineOffset: 2,
+                  },
+                }}
+              >
+                {renderReferenceCardContent(reference, referenceIndex)}
+              </ButtonBase>
+            ),
+          )}
         </Box>
       )}
     </Box>
@@ -778,7 +837,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
                 }}
                 sx={{ cursor: editMode ? 'text' : 'default' }}
               >
-                {title}
+                {displayTitle}
               </Typography>
             )}
           </Box>

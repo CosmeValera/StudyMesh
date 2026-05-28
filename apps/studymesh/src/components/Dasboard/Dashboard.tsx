@@ -89,6 +89,7 @@ import {
   getUniqueDashboardName,
   type SavedDashboard,
 } from './dashboardStorage'
+import { DEFAULT_DASHBOARD as BLANK_DASHBOARD_TEMPLATE } from './fixture'
 import {
   addKnowledgeReferencesToLayout,
   appendKnowledgeLinkWidgetToLayout,
@@ -679,6 +680,32 @@ const Dashboards = () => {
     return options
   }, [dashboardOptions, openDashboards, selectedDashboard])
 
+  const getStudyLinksTitleFromLayout = (
+    layout: DashboardLayout | undefined,
+  ): string | undefined => {
+    if (!layout) {
+      return undefined
+    }
+
+    if (layout.component === 'KnowledgeLinkWidget') {
+      const title = layout.config?.customProps?.title
+      if (typeof title === 'string' && title.trim()) {
+        return title.trim()
+      }
+
+      return layout.name
+    }
+
+    for (const child of layout.children || []) {
+      const childTitle = getStudyLinksTitleFromLayout(child)
+      if (childTitle) {
+        return childTitle
+      }
+    }
+
+    return undefined
+  }
+
   const saveStudyLinksTemplate = (
     name: string,
     layout: DashboardLayout,
@@ -687,9 +714,10 @@ const Dashboards = () => {
     const now = new Date().toISOString()
     const existingDefault = DashboardStorage.getDefaultEmptyDashboard()
     const existingTemplate = existingDefault || getSavedStudyLinksTemplate()
+    const titleFromLayout = getStudyLinksTitleFromLayout(layout)
     const savedDashboard: SavedDashboard = {
       id: existingTemplate?.id || `custom-empty-dashboard-${Date.now()}`,
-      name: name || 'Study links',
+      name: titleFromLayout || name || 'Study links',
       folder: CUSTOM_EMPTY_DASHBOARD_FOLDER,
       folderColor: DashboardStorage.getFolderColor(
         CUSTOM_EMPTY_DASHBOARD_FOLDER,
@@ -913,6 +941,19 @@ const Dashboards = () => {
 
   const resetDefaultEmptyDashboard = () => {
     DashboardStorage.clearDefaultEmptyDashboard()
+    const current = openDashboards[selectedDashboard]
+    if (current?.layout && layoutHasStudyLinksWidget(current.layout)) {
+      const nextDashboardId = replaceDashboard(selectedDashboard, {
+        name: BLANK_DASHBOARD_TEMPLATE.name,
+        layout: cloneLayout(BLANK_DASHBOARD_TEMPLATE.layout),
+      })
+      setStudyLinksEditModes((currentModes) => {
+        const nextModes = { ...currentModes }
+        delete nextModes[current.id]
+        delete nextModes[nextDashboardId]
+        return nextModes
+      })
+    }
     loadDashboardOptions()
   }
 
@@ -925,9 +966,14 @@ const Dashboards = () => {
     }
 
     if (layout.component === 'KnowledgeLinkWidget') {
+      const nextTitle =
+        typeof options.title === 'string' && options.title.trim()
+          ? options.title.trim()
+          : undefined
       return {
         layout: {
           ...layout,
+          name: nextTitle || layout.name,
           config: {
             ...layout.config,
             customProps: {
@@ -2461,6 +2507,9 @@ const Dashboards = () => {
                         onAddStudyLink={() =>
                           createStudyLinksHomeDashboard(true)
                         }
+                        hasIndexDashboard={Boolean(
+                          getSavedStudyLinksTemplate(),
+                        )}
                       />
                     ) : (
                       <DashboardLayoutView
@@ -2702,6 +2751,7 @@ const Dashboards = () => {
           onOpenDashboard={openSavedDashboardFromEmptyState}
           onOpenStudyGuide={openStudyGuideFromEmptyState}
           onAddStudyLink={() => createStudyLinksHomeDashboard(true)}
+          hasIndexDashboard={Boolean(getSavedStudyLinksTemplate())}
         />
       )}
 

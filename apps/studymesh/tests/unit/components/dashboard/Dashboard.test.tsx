@@ -211,7 +211,7 @@ describe('Dashboards', () => {
       screen.getByText(/use this dashboard as an index page/i),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add your first study link/i }),
+      screen.getByRole('button', { name: /build your index dashboard/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /create study path/i }),
@@ -246,7 +246,7 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     fireEvent.click(
-      screen.getByRole('button', { name: /add your first study link/i }),
+      screen.getByRole('button', { name: /build your index dashboard/i }),
     )
 
     expect(updateDashboardLayout).toHaveBeenCalledWith(
@@ -324,7 +324,7 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     fireEvent.click(
-      screen.getByRole('button', { name: /add your first study link/i }),
+      screen.getByRole('button', { name: /use your index dashboard/i }),
     )
 
     expect(replaceDashboard).toHaveBeenCalledWith(
@@ -419,6 +419,131 @@ describe('Dashboards', () => {
       'customDashboards',
       expect.stringContaining('Custom empty dashboards'),
     )
+  })
+
+  it('uses the edited Study Links title as the dashboard name', () => {
+    const updateDashboardLayout = vi.fn()
+    const renameDashboard = vi.fn()
+    mockDashboardProvider({
+      updateDashboardLayout,
+      renameDashboard,
+      openDashboards: [
+        {
+          id: 'dash1',
+          name: 'Dashboard',
+          layout: {
+            type: 'row',
+            children: [
+              {
+                type: 'tabset',
+                children: [
+                  {
+                    type: 'tab',
+                    name: 'Study links',
+                    component: 'KnowledgeLinkWidget',
+                    config: {
+                      customProps: {
+                        title: 'Study links',
+                        references: [],
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    render(<Dashboards />)
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('studymesh-update-knowledge-link-widget', {
+          detail: { options: { title: 'My Exam Index' } },
+        }),
+      )
+    })
+
+    expect(renameDashboard).toHaveBeenCalledWith('dash1', 'My Exam Index')
+    expect(updateDashboardLayout).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({
+        children: expect.arrayContaining([
+          expect.objectContaining({
+            children: expect.arrayContaining([
+              expect.objectContaining({
+                name: 'My Exam Index',
+                config: expect.objectContaining({
+                  customProps: expect.objectContaining({
+                    title: 'My Exam Index',
+                  }),
+                }),
+              }),
+            ]),
+          }),
+        ]),
+      }),
+    )
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'customDashboards',
+      expect.stringContaining('My Exam Index'),
+    )
+  })
+
+  it('restores the blank empty dashboard view immediately from a Study Links dashboard', () => {
+    const updateDashboardLayout = vi.fn()
+    const renameDashboard = vi.fn()
+    mockDashboardProvider({
+      updateDashboardLayout,
+      renameDashboard,
+      openDashboards: [
+        {
+          id: 'dash1',
+          name: 'My Exam Index',
+          layout: {
+            type: 'row',
+            children: [
+              {
+                type: 'tabset',
+                children: [
+                  {
+                    type: 'tab',
+                    name: 'My Exam Index',
+                    component: 'KnowledgeLinkWidget',
+                    config: {
+                      customProps: {
+                        title: 'My Exam Index',
+                        references: [],
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    render(<Dashboards />)
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('studymesh-reset-default-empty-dashboard'),
+      )
+    })
+
+    expect(localStorage.removeItem).toHaveBeenCalledWith(
+      'studymesh-default-empty-dashboard-id',
+    )
+    expect(updateDashboardLayout).toHaveBeenCalledWith(0, {
+      type: 'row',
+      weight: 100,
+      children: [],
+    })
+    expect(renameDashboard).toHaveBeenCalledWith('dash1', 'New Dashboard')
   })
 
   it('opens the Study Path modal when the primary empty workspace action is used', () => {
@@ -541,7 +666,7 @@ describe('Dashboards', () => {
       screen.getByRole('button', { name: /paste notes/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /add your first study link/i }),
+      screen.getByRole('button', { name: /build your index dashboard/i }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /advanced dashboard/i }),

@@ -92,6 +92,28 @@ describe('KnowledgeLinkWidget', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows the committed title immediately after renaming', () => {
+    const listener = vi.fn()
+    window.addEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
+
+    render(<KnowledgeLinkWidget references={[]} editMode />)
+
+    fireEvent.click(screen.getByText('Study links'))
+    const titleInput = screen.getByRole('textbox', {
+      name: /study links dashboard name/i,
+    })
+    fireEvent.change(titleInput, { target: { value: 'My Exam Index' } })
+    fireEvent.blur(titleInput)
+
+    expect(screen.getByText('My Exam Index')).toBeInTheDocument()
+    expect(screen.queryByText('Study links')).not.toBeInTheDocument()
+    expect(listener.mock.calls.at(-1)?.[0].detail.options).toEqual({
+      title: 'My Exam Index',
+    })
+
+    window.removeEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
+  })
+
   it('reorders study link cards in edit mode', () => {
     const listener = vi.fn()
     window.addEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
@@ -122,8 +144,8 @@ describe('KnowledgeLinkWidget', () => {
       />,
     )
 
-    fireEvent.dragStart(screen.getByRole('button', { name: /exam dashboard/i }))
-    fireEvent.drop(screen.getByRole('button', { name: /biology/i }))
+    fireEvent.dragStart(screen.getByTestId('study-link-card-ref-2'))
+    fireEvent.drop(screen.getByTestId('study-link-card-ref-1'))
 
     expect(listener).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -140,6 +162,51 @@ describe('KnowledgeLinkWidget', () => {
     expect(
       listener.mock.calls.at(-1)?.[0].detail.options.references[0].id,
     ).toBe('ref-2')
+
+    window.removeEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
+  })
+
+  it('moves and removes study links with edit controls', () => {
+    const listener = vi.fn()
+    window.addEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
+
+    render(
+      <KnowledgeLinkWidget
+        editMode
+        references={[
+          {
+            id: 'ref-1',
+            target: {
+              type: 'studyPath',
+              id: 'path-1',
+              title: 'Biology',
+            },
+            createdAt: '2026-05-28T10:00:00.000Z',
+          },
+          {
+            id: 'ref-2',
+            target: {
+              type: 'dashboard',
+              id: 'dashboard-1',
+              title: 'Exam dashboard',
+            },
+            createdAt: '2026-05-28T10:01:00.000Z',
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /move exam dashboard left/i }),
+    )
+    expect(
+      listener.mock.calls.at(-1)?.[0].detail.options.references[0].id,
+    ).toBe('ref-2')
+
+    fireEvent.click(screen.getByRole('button', { name: /remove biology/i }))
+    expect(listener.mock.calls.at(-1)?.[0].detail.options.references).toEqual([
+      expect.objectContaining({ id: 'ref-2' }),
+    ])
 
     window.removeEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
   })

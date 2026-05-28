@@ -29,6 +29,7 @@ interface DashboardEmptyStateProps {
   onOpenDashboard: (dashboard: SavedDashboard) => void
   onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
   onAddStudyLink: () => void
+  hasIndexDashboard?: boolean
 }
 
 const quickActions: Array<{
@@ -67,6 +68,7 @@ const DashboardEmptyState = ({
   onOpenDashboard,
   onOpenStudyGuide,
   onAddStudyLink,
+  hasIndexDashboard = false,
 }: DashboardEmptyStateProps) => {
   const dashboardsByFolder = dashboardOptions.reduce<
     Record<string, SavedDashboard[]>
@@ -180,7 +182,9 @@ const DashboardEmptyState = ({
               fontWeight: 900,
             }}
           >
-            Add your first study link
+            {hasIndexDashboard
+              ? 'Use your index dashboard'
+              : 'Build your index dashboard'}
           </Button>
 
           <Paper
