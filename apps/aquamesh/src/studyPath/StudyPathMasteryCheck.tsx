@@ -78,7 +78,7 @@ const STATUSCOLORS: Record<StudyPathSectionMasteryStatus, string> = {
 const STATUSLABELS: Record<StudyPathSectionMasteryStatus, string> = {
   notStarted: 'Not Started',
   inProgress: 'In Progress',
-  needsReview: 'Needs Review',
+  needsReview: 'Needs review',
   mastered: 'Mastered',
   locked: 'Locked',
 }
@@ -223,7 +223,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Typography variant="subtitle2" fontWeight={800}>
-            Study Path Progress
+            Mastery check
           </Typography>
           <Chip
             label={`${masteryPercent}%`}
@@ -257,7 +257,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="caption" fontWeight={600}>
-                Guided Mode
+                Guided mode
               </Typography>
               <Switch
                 size="small"
@@ -297,7 +297,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <ListAltIcon sx={{ fontSize: 14, color: 'warning.dark' }} />
                 <Typography variant="caption" fontWeight={700} color="warning.dark">
-                  Review Queue ({reviewQueue.length})
+                  Review queue ({reviewQueue.length})
                 </Typography>
               </Box>
               <Stack spacing={0.25}>
@@ -489,7 +489,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                       }}
                       sx={{ borderRadius: 1.5 }}
                     >
-                      {quizQuestions.length > 0 ? `Self-Check (${quizQuestions.length})` : 'Self-Check'}
+                      {quizQuestions.length > 0 ? `Mastery check (${quizQuestions.length})` : 'Mastery check'}
                     </Button>
                   )}
 
@@ -521,7 +521,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                           onClick={handleMarkMastered}
                           sx={{ borderRadius: 1.5 }}
                         >
-                          Mark Mastered
+                          Mark as mastered
                         </Button>
                       )}
                       {activeProgress.status === 'inProgress' && (
@@ -532,7 +532,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                           onClick={handleMarkNeedsReview}
                           sx={{ borderRadius: 1.5 }}
                         >
-                          Needs Review
+                          Needs review
                         </Button>
                       )}
                     </Stack>
@@ -546,7 +546,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
                     <InfoIcon sx={{ fontSize: 14, color: 'info.main' }} />
                     <Typography variant="caption" color="info.main" fontWeight={600}>
-                      Self-check — no AI required
+                      Mastery check — no AI required
                     </Typography>
                   </Box>
                   {quizQuestions.map((q, qIndex) => (
@@ -612,7 +612,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                     }
                     sx={{ borderRadius: 1.5, mt: 1 }}
                   >
-                    Submit Self-Check
+                    Submit mastery check
                   </Button>
                 </Box>
               )}
@@ -628,13 +628,15 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                     }
                   >
                     <Typography variant="caption" fontWeight={700}>
-                      Score: {activeProgress.lastScore}%
-                      {(activeProgress.lastScore ?? 0) >= MASTERYPASSINGSCORE
-                        ? ' — Section Mastered!'
-                        : ' — Review and try again.'}
+                      Your score: {activeProgress.lastScore}%
                     </Typography>
                     <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>
-                      Best score: {activeProgress.bestScore}%
+                      {(activeProgress.lastScore ?? 0) >= MASTERYPASSINGSCORE
+                        ? '🎉 Great job! This section is mastered!'
+                        : `💪 Keep going! Try a simpler explanation to master this section.`}
+                    </Typography>
+                    <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>
+                      Best: {activeProgress.bestScore}%
                     </Typography>
                   </Alert>
                 </Box>
@@ -644,10 +646,10 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                 <Box sx={{ mt: 1.5 }}>
                   <Divider sx={{ my: 1 }} />
                   <Typography variant="caption" fontWeight={700} sx={{ mb: 0.5, display: 'block' }}>
-                    Explain in your own words
+                    Teach it back
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                    Teaching a concept is the best way to verify understanding.
+                    Explaining something is the best way to know if you really understand it. Try it!
                     No AI required — this uses local evaluation.
                   </Typography>
                   <TextField
@@ -667,7 +669,7 @@ const StudyPathMasteryCheck: React.FC<StudyPathMasteryCheckProps> = ({
                     disabled={!teachBackText.trim()}
                     sx={{ borderRadius: 1.5 }}
                   >
-                    Submit Explanation
+                    Submit explanation
                   </Button>
                 </Box>
               )}

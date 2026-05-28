@@ -222,7 +222,7 @@ export const evaluateTeachBackLocally = (
   const trimmed = userText.trim()
 
   if (trimmed.length < TEACHBACKMINLENGTH) {
-    return `Your explanation is quite short (${trimmed.length} chars). Try to explain in at least ${TEACHBACKMINLENGTH} characters. Use your own words — describe what the concept is, how it works, and why it matters.`
+    return `Your explanation is a bit short (${trimmed.length} chars). Try to write at least ${TEACHBACKMINLENGTH} characters. Use your own words — explain what the concept is, how it works, and why it matters. This helps you really understand it!`
   }
 
   const sectionWords = new Set(
@@ -249,8 +249,8 @@ export const evaluateTeachBackLocally = (
     : 0
 
   if (keyTermOverlap < TEACHBACKKEYTERMTHRESHOLD) {
-    return `Good length, but try to use terms from the section title and content. You're explaining the concept in your own words — that's great! Keep going and make sure you cover the main idea.`
+    return `Good length! But try to use some of the key terms from the section title or content. Don't worry — explaining things in your own words is the hard part, and you're doing great!`
   }
 
-  return `Well explained! Your answer covers the key concepts and shows good understanding. Length: ${trimmed.length} chars, key term overlap: ${Math.round(keyTermOverlap * 100)}%.`
+  return `Amazing! You really understand this concept. Your explanation covers the key ideas and uses your own words — that's the best way to learn! Key terms used: ${Math.round(keyTermOverlap * 100)}%.`
 }
