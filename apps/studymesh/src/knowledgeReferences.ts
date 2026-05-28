@@ -123,6 +123,10 @@ export const createKnowledgeLinkWidgetLayout = (
   type: 'tab',
   name,
   component: 'KnowledgeLinkWidget',
+  className: 'studymesh-study-links-flex-tab',
+  enableClose: false,
+  enableDrag: false,
+  enableFloat: false,
   config: {
     customProps: {
       references,
@@ -143,11 +147,18 @@ export const appendKnowledgeLinkWidgetToLayout = (
     return {
       type: 'row',
       weight: 100,
+      enableDivide: false,
+      enableDrop: false,
       children: [
         {
           type: 'tabset',
           weight: 100,
           active: true,
+          classNameTabStrip: 'studymesh-study-links-flex-tabstrip',
+          enableDrop: false,
+          enableDivide: false,
+          enableMaximize: false,
+          enableClose: false,
           children: [tab],
         },
       ],
@@ -162,6 +173,11 @@ export const appendKnowledgeLinkWidgetToLayout = (
         type: 'tabset',
         weight: 100,
         active: true,
+        classNameTabStrip: 'studymesh-study-links-flex-tabstrip',
+        enableDrop: false,
+        enableDivide: false,
+        enableMaximize: false,
+        enableClose: false,
         children: [tab],
       },
     ],

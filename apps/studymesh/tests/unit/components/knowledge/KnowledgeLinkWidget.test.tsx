@@ -70,6 +70,11 @@ describe('KnowledgeLinkWidget', () => {
       showOpenStudyMaterial: true,
     })
 
+    fireEvent.click(screen.getByRole('button', { name: /3 columns per row/i }))
+    expect(listener.mock.calls[3][0].detail.options).toEqual({
+      columns: 3,
+    })
+
     window.removeEventListener(UPDATE_KNOWLEDGE_LINK_WIDGET_EVENT, listener)
   })
 

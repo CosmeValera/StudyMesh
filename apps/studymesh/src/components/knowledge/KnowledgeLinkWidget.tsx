@@ -6,6 +6,7 @@ import {
   Chip,
   Divider,
   FormControlLabel,
+  IconButton,
   Paper,
   Stack,
   Switch,
@@ -16,6 +17,8 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import AddLinkIcon from '@mui/icons-material/AddLink'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
@@ -25,6 +28,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import LinkIcon from '@mui/icons-material/Link'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import RouteIcon from '@mui/icons-material/Route'
+import CloseIcon from '@mui/icons-material/Close'
 import {
   getKnowledgeReferenceKindLabel,
   getKnowledgeReferenceTitle,
@@ -149,6 +153,33 @@ const openStudyLinkPicker = () => {
   window.dispatchEvent(new CustomEvent(OPEN_STUDY_LINK_PICKER_EVENT))
 }
 
+const editToggleSx = (theme: import('@mui/material/styles').Theme) => ({
+  '& .MuiToggleButton-root': {
+    color: 'text.primary',
+    borderColor: 'divider',
+    bgcolor:
+      theme.palette.mode === 'dark'
+        ? alpha(theme.palette.common.white, 0.08)
+        : alpha(theme.palette.common.black, 0.04),
+    fontWeight: 850,
+    textTransform: 'none',
+    '&:hover': {
+      bgcolor:
+        theme.palette.mode === 'dark'
+          ? alpha(theme.palette.common.white, 0.14)
+          : alpha(theme.palette.common.black, 0.08),
+    },
+    '&.Mui-selected': {
+      color: 'primary.contrastText',
+      bgcolor: 'primary.main',
+      borderColor: 'primary.dark',
+      '&:hover': {
+        bgcolor: 'primary.dark',
+      },
+    },
+  },
+})
+
 export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
   references = [],
   title = 'Study links',
@@ -249,6 +280,31 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
     )
     nextReferences.splice(Math.max(0, targetIndex), 0, sourceReference)
     updateWidgetOptions({ references: nextReferences })
+  }
+
+  const moveReferenceByIndex = (sourceIndex: number, targetIndex: number) => {
+    if (
+      sourceIndex < 0 ||
+      sourceIndex >= references.length ||
+      targetIndex < 0 ||
+      targetIndex >= references.length ||
+      sourceIndex === targetIndex
+    ) {
+      return
+    }
+
+    const nextReferences = [...references]
+    const [movedReference] = nextReferences.splice(sourceIndex, 1)
+    nextReferences.splice(targetIndex, 0, movedReference)
+    updateWidgetOptions({ references: nextReferences })
+  }
+
+  const removeReference = (referenceId: string) => {
+    updateWidgetOptions({
+      references: references.filter(
+        (reference) => reference.id !== referenceId,
+      ),
+    })
   }
 
   const sectionDragProps = (section: KnowledgeLinkWidgetSectionId) =>
@@ -410,52 +466,52 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
           >
             Add study link
           </Button>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={columns}
-            onChange={handleColumnsChange}
-            aria-label="Study link columns per row"
-            sx={(theme) => ({
-              alignSelf: { xs: 'stretch', sm: 'flex-start' },
-              '& .MuiToggleButton-root': {
-                color: 'text.primary',
-                borderColor: 'divider',
-                bgcolor:
-                  theme.palette.mode === 'dark'
-                    ? alpha(theme.palette.common.white, 0.08)
-                    : alpha(theme.palette.common.black, 0.04),
-                fontWeight: 850,
-                minWidth: 38,
-                '&:hover': {
-                  bgcolor:
-                    theme.palette.mode === 'dark'
-                      ? alpha(theme.palette.common.white, 0.14)
-                      : alpha(theme.palette.common.black, 0.08),
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={columns}
+              onChange={handleColumnsChange}
+              aria-label="Study link columns per row"
+              sx={(theme) => ({
+                ...editToggleSx(theme),
+                '& .MuiToggleButton-root': {
+                  ...editToggleSx(theme)['& .MuiToggleButton-root'],
+                  minWidth: 38,
                 },
-                '&.Mui-selected': {
-                  color: 'primary.contrastText',
-                  bgcolor: 'primary.main',
-                  borderColor: 'primary.dark',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  },
-                },
-              },
-            })}
-          >
-            {[1, 2, 3, 4].map((columnCount) => (
-              <ToggleButton
-                key={columnCount}
-                value={columnCount}
-                aria-label={`${columnCount} column${
-                  columnCount === 1 ? '' : 's'
-                } per row`}
-              >
-                {columnCount}
+              })}
+            >
+              {[1, 2, 3, 4].map((columnCount) => (
+                <ToggleButton
+                  key={columnCount}
+                  value={columnCount}
+                  aria-label={`${columnCount} column${
+                    columnCount === 1 ? '' : 's'
+                  } per row`}
+                >
+                  {columnCount}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={cardSize}
+              onChange={handleCardSizeChange}
+              aria-label="Study link card size"
+              sx={editToggleSx}
+            >
+              <ToggleButton value="compact" aria-label="Compact cards">
+                Compact
               </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+              <ToggleButton value="standard" aria-label="Standard cards">
+                Standard
+              </ToggleButton>
+              <ToggleButton value="detailed" aria-label="Detailed cards">
+                Detailed
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
         </Stack>
       )}
       {editMode && (
@@ -495,7 +551,7 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
             mt: editMode ? 0.75 : 0,
           }}
         >
-          {references.map((reference) => (
+          {references.map((reference, referenceIndex) => (
             <ButtonBase
               key={reference.id}
               draggable={editMode}
@@ -611,6 +667,55 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
                         {getActionLabel(reference)}
                       </Typography>
                     )}
+                    {editMode && (
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ mt: 1 }}
+                        onClick={(event) => event.stopPropagation()}
+                        onMouseDown={(event) => event.stopPropagation()}
+                      >
+                        <IconButton
+                          size="small"
+                          aria-label={`Move ${getKnowledgeReferenceTitle(
+                            reference,
+                          )} left`}
+                          disabled={referenceIndex === 0}
+                          onClick={() =>
+                            moveReferenceByIndex(
+                              referenceIndex,
+                              referenceIndex - 1,
+                            )
+                          }
+                        >
+                          <ArrowBackIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          aria-label={`Move ${getKnowledgeReferenceTitle(
+                            reference,
+                          )} right`}
+                          disabled={referenceIndex === references.length - 1}
+                          onClick={() =>
+                            moveReferenceByIndex(
+                              referenceIndex,
+                              referenceIndex + 1,
+                            )
+                          }
+                        >
+                          <ArrowForwardIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          aria-label={`Remove ${getKnowledgeReferenceTitle(
+                            reference,
+                          )}`}
+                          onClick={() => removeReference(reference.id)}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    )}
                   </Box>
                 </Stack>
               </Box>
@@ -677,51 +782,6 @@ export const KnowledgeLinkWidget: React.FC<KnowledgeLinkWidgetProps> = ({
               </Typography>
             )}
           </Box>
-          {editMode && (
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={cardSize}
-              onChange={handleCardSizeChange}
-              aria-label="Study link card size"
-              sx={(theme) => ({
-                '& .MuiToggleButton-root': {
-                  color: 'text.primary',
-                  borderColor: 'divider',
-                  bgcolor:
-                    theme.palette.mode === 'dark'
-                      ? alpha(theme.palette.common.white, 0.08)
-                      : alpha(theme.palette.common.black, 0.04),
-                  fontWeight: 800,
-                  textTransform: 'none',
-                  '&:hover': {
-                    bgcolor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.white, 0.14)
-                        : alpha(theme.palette.common.black, 0.08),
-                  },
-                  '&.Mui-selected': {
-                    color: 'primary.contrastText',
-                    bgcolor: 'primary.main',
-                    borderColor: 'primary.dark',
-                    '&:hover': {
-                      bgcolor: 'primary.dark',
-                    },
-                  },
-                },
-              })}
-            >
-              <ToggleButton value="compact" aria-label="Compact cards">
-                Compact
-              </ToggleButton>
-              <ToggleButton value="standard" aria-label="Standard cards">
-                Standard
-              </ToggleButton>
-              <ToggleButton value="detailed" aria-label="Detailed cards">
-                Detailed
-              </ToggleButton>
-            </ToggleButtonGroup>
-          )}
         </Stack>
 
         {editMode && (

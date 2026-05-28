@@ -84,7 +84,7 @@ const withDesktopTabMovementEnabled = (
     return {
       ...node,
       children,
-      enableDrag: true,
+      enableDrag: node.enableDrag === false ? false : true,
     } as DashboardLayout
   }
 
@@ -92,9 +92,9 @@ const withDesktopTabMovementEnabled = (
     return {
       ...node,
       children,
-      enableDrag: true,
-      enableDrop: true,
-      enableDivide: true,
+      enableDrag: node.enableDrag === false ? false : true,
+      enableDrop: node.enableDrop === false ? false : true,
+      enableDivide: node.enableDivide === false ? false : true,
     } as DashboardLayout
   }
 

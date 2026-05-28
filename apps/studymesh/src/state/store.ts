@@ -52,9 +52,14 @@ export interface DashboardLayout {
   active?: boolean
   selected?: number
   weight?: number
+  className?: string
+  classNameTabStrip?: string
   enableDrag?: boolean
+  enableClose?: boolean
   enableDrop?: boolean
   enableDivide?: boolean
+  enableMaximize?: boolean
+  enableFloat?: boolean
   children?: DashboardLayout[]
 }
 

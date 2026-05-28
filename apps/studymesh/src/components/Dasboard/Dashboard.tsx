@@ -33,7 +33,6 @@ import ExtensionIcon from '@mui/icons-material/Extension'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import OpenInBrowserIcon from '@mui/icons-material/OpenInBrowser'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
-import AddLinkIcon from '@mui/icons-material/AddLink'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import DashboardLayoutView from '../Layout/Layout'
 import { useLayout } from '../Layout/LayoutProvider'
@@ -857,6 +856,10 @@ const Dashboards = () => {
     if (layout.component === 'KnowledgeLinkWidget') {
       return {
         ...layout,
+        className: 'studymesh-study-links-flex-tab',
+        enableClose: false,
+        enableDrag: false,
+        enableFloat: false,
         config: {
           ...layout.config,
           customProps: {
@@ -871,8 +874,24 @@ const Dashboards = () => {
       return layout
     }
 
+    const containsStudyLinksWidget = layoutHasStudyLinksWidget(layout)
+
     return {
       ...layout,
+      classNameTabStrip:
+        containsStudyLinksWidget && layout.type === 'tabset'
+          ? 'studymesh-study-links-flex-tabstrip'
+          : layout.classNameTabStrip,
+      enableDrop: containsStudyLinksWidget ? false : layout.enableDrop,
+      enableDivide: containsStudyLinksWidget ? false : layout.enableDivide,
+      enableMaximize:
+        containsStudyLinksWidget && layout.type === 'tabset'
+          ? false
+          : layout.enableMaximize,
+      enableClose:
+        containsStudyLinksWidget && layout.type === 'tabset'
+          ? false
+          : layout.enableClose,
       children: layout.children.map(
         (child) =>
           applyKnowledgeLinkWidgetRenderOptions(child, options) || child,
@@ -2326,7 +2345,7 @@ const Dashboards = () => {
             )
             const studyLinksEditMode =
               studyLinksEditModes[dashboard.id] ??
-              (getStudyLinksEditModeFromLayout(dashboard.layout) === true)
+              getStudyLinksEditModeFromLayout(dashboard.layout) === true
             const renderLayout =
               isStudyLinksDashboard && !isStudyPathContainer
                 ? applyKnowledgeLinkWidgetRenderOptions(dashboard.layout, {
