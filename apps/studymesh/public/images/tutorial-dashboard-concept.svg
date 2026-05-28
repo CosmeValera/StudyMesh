@@ -1,0 +1,22 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="540" rx="36" fill="#F3FBF8"/>
+  <rect x="72" y="72" width="816" height="396" rx="28" fill="white" stroke="#007C66" stroke-width="6"/>
+  <rect x="112" y="112" width="736" height="48" rx="16" fill="#D9F5EC"/>
+  <circle cx="140" cy="136" r="10" fill="#007C66"/>
+  <circle cx="172" cy="136" r="10" fill="#26A69A"/>
+  <circle cx="204" cy="136" r="10" fill="#80CBC4"/>
+  <text x="250" y="145" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#005848">Dashboard canvas</text>
+  <rect x="112" y="196" width="334" height="216" rx="22" fill="#E8F7FF" stroke="#1E88E5" stroke-width="4"/>
+  <text x="146" y="246" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700" fill="#0D47A1">Widget</text>
+  <rect x="146" y="274" width="250" height="24" rx="12" fill="#90CAF9"/>
+  <rect x="146" y="318" width="190" height="24" rx="12" fill="#BBDEFB"/>
+  <rect x="146" y="362" width="120" height="24" rx="12" fill="#64B5F6"/>
+  <rect x="514" y="196" width="334" height="216" rx="22" fill="#FFF7E6" stroke="#FB8C00" stroke-width="4"/>
+  <text x="548" y="246" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700" fill="#E65100">Widget</text>
+  <circle cx="624" cy="334" r="58" fill="#FFB74D"/>
+  <path d="M624 276a58 58 0 0 1 50 88l-50-30V276Z" fill="#007C66"/>
+  <path d="M624 334l50 30a58 58 0 0 1-100 0l50-30Z" fill="#1E88E5"/>
+  <path d="M624 334v-58a58 58 0 0 0-50 88l50-30Z" fill="#FFCA28"/>
+  <path d="M456 304H504" stroke="#007C66" stroke-width="8" stroke-linecap="round" stroke-dasharray="4 18"/>
+  <text x="122" y="445" font-family="Inter, Arial, sans-serif" font-size="22" fill="#44635A">A dashboard is the page where multiple widgets live together.</text>
+</svg>

@@ -1,0 +1,538 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import SendIcon from '@mui/icons-material/Send'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import { StateDashboard } from '../../state/store'
+import {
+  buildDashboardChatContext,
+  formatDashboardChatContext,
+  selectDashboardChatChunks,
+} from '../../dashboardChat/contextBuilder'
+import { askDashboardSources } from '../../dashboardChat/askDashboard'
+import { readStudyPackAiSettings } from '../../studyPack/ai'
+import { renderMarkdown } from '../WidgetEditor/components/preview/StudyBlockView'
+
+export interface DashboardChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: number
+  sources?: string[]
+  pending?: boolean
+}
+
+interface DashboardChatPanelProps {
+  dashboard?: StateDashboard
+  messages: DashboardChatMessage[]
+  onMessagesChange: (messages: DashboardChatMessage[]) => void
+  onClose: () => void
+  showCloseButton?: boolean
+}
+
+const suggestions = [
+  'Summarize the key ideas',
+  'Explain this like I’m new',
+  'Generate exam-style questions',
+  'What should I review first?',
+]
+
+const makeMessageId = () =>
+  `dashboard-chat-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+const DashboardChatPanel = ({
+  dashboard,
+  messages,
+  onMessagesChange,
+  onClose,
+  showCloseButton = true,
+}: DashboardChatPanelProps) => {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState('')
+  const [activeStartedAt, setActiveStartedAt] = useState<number | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const messagesRef = useRef(messages)
+  const queueRef = useRef(Promise.resolve())
+  const settings = readStudyPackAiSettings()
+  const isLocalAi = settings.provider === 'local'
+  const context = useMemo(
+    () =>
+      buildDashboardChatContext(
+        dashboard,
+        isLocalAi
+          ? { sourceNotesOnly: true, studyPathScope: 'selected' }
+          : undefined,
+      ),
+    [dashboard, isLocalAi],
+  )
+  const hasContext = context.chunks.length > 0
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  useEffect(() => {
+    if (!activeStartedAt) {
+      setElapsedSeconds(0)
+      return undefined
+    }
+
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - activeStartedAt) / 1000))
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [activeStartedAt])
+
+  const updateMessage = (
+    messageId: string,
+    updater: (message: DashboardChatMessage) => DashboardChatMessage,
+  ) => {
+    const updated = messagesRef.current.map((message) =>
+      message.id === messageId ? updater(message) : message,
+    )
+    messagesRef.current = updated
+    onMessagesChange(updated)
+  }
+
+  const answerQuestion = async (
+    question: string,
+    pendingMessageId: string,
+    historyMessages: DashboardChatMessage[],
+  ) => {
+    setActiveStartedAt(Date.now())
+
+    if (!hasContext) {
+      updateMessage(pendingMessageId, (message) => ({
+        ...message,
+        content:
+          'This dashboard does not have enough source content to answer from yet. Add source notes or generated study material, then ask again.',
+        pending: false,
+      }))
+      setActiveStartedAt(null)
+      return
+    }
+
+    const sourceChunks = selectDashboardChatChunks(context, question)
+
+    try {
+      const result = await askDashboardSources({
+        dashboardTitle: context.dashboardTitle,
+        contextText: formatDashboardChatContext(context, sourceChunks),
+        question,
+        history: historyMessages.map(({ role, content }) => ({
+          role,
+          content,
+        })),
+        sourceChunks,
+      })
+      updateMessage(pendingMessageId, (message) => ({
+        ...message,
+        content: result.answer,
+        sources: result.sources,
+        pending: false,
+      }))
+    } catch (err) {
+      updateMessage(pendingMessageId, (message) => ({
+        ...message,
+        content: 'I could not answer from this dashboard yet.',
+        pending: false,
+      }))
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not answer from this dashboard.',
+      )
+    } finally {
+      setActiveStartedAt(null)
+    }
+  }
+
+  const sendQuestion = (question: string) => {
+    const trimmed = question.trim()
+    if (!trimmed) {
+      return
+    }
+
+    const userMessage: DashboardChatMessage = {
+      id: makeMessageId(),
+      role: 'user',
+      content: trimmed,
+      createdAt: Date.now(),
+    }
+    const pendingMessage: DashboardChatMessage = {
+      id: makeMessageId(),
+      role: 'assistant',
+      content: '',
+      createdAt: Date.now(),
+      pending: true,
+    }
+    const previousMessages = messagesRef.current
+    const nextMessages = [...previousMessages, userMessage, pendingMessage]
+    messagesRef.current = nextMessages
+    onMessagesChange(nextMessages)
+    setDraft('')
+    setError('')
+
+    queueRef.current = queueRef.current.then(() =>
+      answerQuestion(trimmed, pendingMessage.id, previousMessages),
+    )
+  }
+
+  const formatSeconds = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return minutes > 0
+      ? `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+      : `${remainingSeconds}s`
+  }
+
+  return (
+    <Box
+      sx={{
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          height: 48,
+          flex: '0 0 auto',
+          px: 1.25,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle2" fontWeight={900} noWrap>
+            AI Chat
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.5}>
+          {messages.length > 0 && (
+            <Tooltip title="Clear chat">
+              <IconButton
+                size="small"
+                onClick={() => onMessagesChange([])}
+                aria-label="Clear dashboard chat"
+              >
+                <DeleteOutlineIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {showCloseButton ? (
+            <Tooltip title="Close">
+              <IconButton
+                size="small"
+                onClick={onClose}
+                aria-label="Close AI Chat"
+                sx={{
+                  width: 30,
+                  height: 30,
+                  border: 1,
+                  borderColor: alpha(theme.palette.primary.main, 0.32),
+                  borderRadius: 1.25,
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  color: 'primary.main',
+                  flex: '0 0 auto',
+                  transition: theme.transitions.create(
+                    ['background-color', 'border-color'],
+                    {
+                      duration: theme.transitions.duration.shortest,
+                    },
+                  ),
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.18),
+                  },
+                }}
+              >
+                <ChatBubbleOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : null}
+        </Stack>
+      </Box>
+
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          p: 2,
+          bgcolor:
+            theme.palette.mode === 'dark'
+              ? 'rgba(2,6,23,0.18)'
+              : 'rgba(248,250,252,0.72)',
+        }}
+      >
+        {!hasContext ? (
+          <Alert severity="info">
+            This dashboard does not have enough source content to chat with yet.
+          </Alert>
+        ) : messages.length === 0 ? (
+          <Stack spacing={2.25}>
+            <Box
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'background.paper',
+              }}
+            >
+              <Typography variant="h6" fontWeight={900}>
+                What do you want to understand?
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Ask questions based on the sources and study material in this
+                dashboard. I’ll keep answers grounded in what’s here.
+              </Typography>
+            </Box>
+            <Stack spacing={1}>
+              {suggestions.map((suggestion) => (
+                <Button
+                  key={suggestion}
+                  variant="outlined"
+                  size="small"
+                  disabled={!hasContext}
+                  onClick={() => sendQuestion(suggestion)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1,
+                    px: 1.25,
+                    bgcolor: 'background.paper',
+                    borderColor: 'divider',
+                    color: 'text.primary',
+                    textTransform: 'none',
+                  }}
+                >
+                  {suggestion}
+                </Button>
+              ))}
+            </Stack>
+          </Stack>
+        ) : (
+          <Stack spacing={1.5}>
+            {messages.map((message) => (
+              <Box
+                key={message.id}
+                sx={{
+                  alignSelf:
+                    message.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '90%',
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 1.5,
+                    py: 1.1,
+                    borderRadius:
+                      message.role === 'user'
+                        ? '18px 18px 6px 18px'
+                        : '18px 18px 18px 6px',
+                    bgcolor:
+                      message.role === 'user'
+                        ? 'primary.main'
+                        : 'background.paper',
+                    color:
+                      message.role === 'user'
+                        ? 'primary.contrastText'
+                        : 'text.primary',
+                    border: message.role === 'assistant' ? 1 : 0,
+                    borderColor: 'divider',
+                    boxShadow:
+                      message.role === 'assistant'
+                        ? theme.palette.mode === 'dark'
+                          ? '0 10px 24px rgba(0,0,0,0.22)'
+                          : '0 10px 24px rgba(16,24,40,0.08)'
+                        : 'none',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {message.pending ? (
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        {[0, 1, 2].map((dot) => (
+                          <Box
+                            key={dot}
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              bgcolor: 'text.secondary',
+                              animation:
+                                'studymesh-chat-dot 1s infinite ease-in-out',
+                              animationDelay: `${dot * 140}ms`,
+                              '@keyframes studymesh-chat-dot': {
+                                '0%, 80%, 100%': {
+                                  opacity: 0.35,
+                                  transform: 'translateY(0)',
+                                },
+                                '40%': {
+                                  opacity: 1,
+                                  transform: 'translateY(-3px)',
+                                },
+                              },
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {activeStartedAt &&
+                        messages.findIndex(({ id }) => id === message.id) ===
+                          messages.findIndex(
+                            ({ role, pending }) =>
+                              role === 'assistant' && pending,
+                          )
+                          ? isLocalAi
+                            ? `Local AI is replying… ${formatSeconds(
+                                elapsedSeconds,
+                              )} elapsed. Estimate: about 1:30.`
+                            : `Replying… ${formatSeconds(
+                                elapsedSeconds,
+                              )} elapsed.`
+                          : 'Queued — I’ll answer this after the previous question.'}
+                      </Typography>
+                    </Stack>
+                  ) : message.role === 'assistant' ? (
+                    <Box
+                      sx={{
+                        '& p': { m: 0, mb: 1 },
+                        '& p:last-child': { mb: 0 },
+                        '& ul, & ol': { pl: 2.5, my: 0.75 },
+                        '& pre': { maxWidth: '100%' },
+                      }}
+                    >
+                      {renderMarkdown(message.content)}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2">{message.content}</Typography>
+                  )}
+                </Box>
+                {message.sources?.length ? (
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    flexWrap="wrap"
+                    sx={{ mt: 0.75 }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mr: 0.5 }}
+                    >
+                      Based on:
+                    </Typography>
+                    {message.sources.map((source) => (
+                      <Chip
+                        key={source}
+                        label={source}
+                        size="small"
+                        variant="outlined"
+                        sx={{ mb: 0.5 }}
+                      />
+                    ))}
+                  </Stack>
+                ) : null}
+              </Box>
+            ))}
+          </Stack>
+        )}
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
+      </Box>
+
+      <Box sx={{ borderTop: 1, borderColor: 'divider' }} />
+      <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
+        <Stack direction="row" spacing={1} alignItems="flex-end">
+          <TextField
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={
+              hasContext
+                ? 'Ask about this dashboard...'
+                : 'Add study material before chatting'
+            }
+            disabled={!hasContext}
+            fullWidth
+            multiline
+            maxRows={4}
+            size="small"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2.5,
+                bgcolor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(15,23,42,0.72)'
+                    : 'rgba(248,250,252,0.92)',
+              },
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                if (!hasContext) {
+                  return
+                }
+                sendQuestion(draft)
+              }
+            }}
+          />
+          <IconButton
+            color="primary"
+            onClick={() => sendQuestion(draft)}
+            disabled={!hasContext || !draft.trim()}
+            aria-label="Send dashboard question"
+            sx={{
+              width: 42,
+              height: 42,
+              bgcolor: hasContext && draft.trim()
+                ? 'primary.main'
+                : 'action.disabledBackground',
+              color:
+                hasContext && draft.trim()
+                  ? 'primary.contrastText'
+                  : 'text.disabled',
+              '&:hover': {
+                bgcolor: hasContext && draft.trim()
+                  ? 'primary.dark'
+                  : 'action.disabledBackground',
+              },
+            }}
+          >
+            <SendIcon />
+          </IconButton>
+        </Stack>
+      </Box>
+    </Box>
+  )
+}
+
+export default DashboardChatPanel

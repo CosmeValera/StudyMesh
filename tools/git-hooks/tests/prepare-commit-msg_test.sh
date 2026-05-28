@@ -12,22 +12,22 @@ function tear_down_after_script() {
   unset SCRIPT
 }
 
-function test_AquaMesh_lazy_approach() {
+function test_StudyMesh_lazy_approach() {
   export TEST_BRANCH="feature/feature-1"
-  assert_equals "AquaMesh:FEATURE-1 My commit message" "$($SCRIPT "My commit message")"
+  assert_equals "StudyMesh:FEATURE-1 My commit message" "$($SCRIPT "My commit message")"
 }
 
-function test_ignore_all_when_using_AquaMesh_full_approach() {
+function test_ignore_all_when_using_StudyMesh_full_approach() {
   export TEST_BRANCH="feature/feature-2"
-  assert_equals "" "$($SCRIPT "AquaMesh:FEATURE-2 My commit message")"
+  assert_equals "" "$($SCRIPT "StudyMesh:FEATURE-2 My commit message")"
 }
 
-function test_AquaMesh_lazy_approach_dev_branch() {
+function test_StudyMesh_lazy_approach_dev_branch() {
   export TEST_BRANCH="dev"
-  assert_equals "AquaMesh:DEV My commit message" "$($SCRIPT "My commit message")"
+  assert_equals "StudyMesh:DEV My commit message" "$($SCRIPT "My commit message")"
 }
 
-function test_AquaMesh_lazy_approach_main_branch() {
+function test_StudyMesh_lazy_approach_main_branch() {
   export TEST_BRANCH="main"
-  assert_equals "AquaMesh:MAIN My commit message" "$($SCRIPT "My commit message")"
+  assert_equals "StudyMesh:MAIN My commit message" "$($SCRIPT "My commit message")"
 }

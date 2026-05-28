@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd apps/aquamesh && npm install && npm run build",
-  "outputDirectory": "apps/aquamesh/dist",
+  "buildCommand": "cd apps/studymesh && npm install && npm run build",
+  "outputDirectory": "apps/studymesh/dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],

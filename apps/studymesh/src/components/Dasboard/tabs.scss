@@ -1,0 +1,239 @@
+.react-tabs {
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  background-color: var(--background-bar-medium);
+
+  &__tab-list {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: flex-end;
+    align-self: stretch;
+    gap: 2px;
+
+    padding: 0 4px;
+    margin: 0;
+    overflow-x: auto;
+
+    &::-webkit-scrollbar {
+      height: 4px; /* Controls the scrollbar thickness */
+    }
+
+    & .react-tabs__tab {
+      background-color: var(--background-paper);
+      border: 1px solid var(--surface-border, var(--other-divider));
+      border-bottom: 0;
+
+      &.react-tabs__tab--selected {
+        background-color: var(--background-medium);
+        color: var(--foreground-primary);
+        border-color: var(--primary-main);
+      }
+    }
+
+    .react-tabs--empty-selected & .react-tabs__tab--selected {
+      box-shadow: inset 0 -1px 0 var(--primary-main);
+    }
+  }
+
+  &__tab {
+    width: 180px;
+    display: flex;
+    padding: 4px 4px 4px 8px;
+    align-items: center;
+    gap: 8px;
+
+    border-radius: 8px 8px 0px 0px;
+    color: var(--foreground-secondary);
+
+    transition: opacity 0.25s ease;
+
+    cursor: pointer;
+    user-select: none;
+
+    &[draggable='true'] {
+      cursor: grab;
+    }
+
+    &[draggable='true']:active {
+      cursor: grabbing;
+    }
+
+    .close {
+      cursor: pointer;
+    }
+
+    &:not(&--selected) {
+      // REVIEW does not match design (set Y offset to -16px instead of -8px and
+      // spread to 0px instead of -16px to actually see the shadow)
+      box-shadow: inset 0 -8px 8px rgba(0, 0, 0, 0.12);
+      opacity: 0.78;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+
+    &--selected {
+      cursor: default;
+    }
+
+    &--disabled {
+      /* REVIEW add disabled styles */
+      color: GrayText;
+      cursor: default;
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  &__tab-panel {
+    position: relative;
+    background: var(--background-bar-medium, #f4f7f8);
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    display: none;
+
+    padding: 2px;
+
+    &--selected {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
+.react-tabs__tab-list--workspace-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.react-tabs__tab-list--workspace-header {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  padding: 0 20px 0 6px;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  position: relative;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .react-tabs__tab {
+    flex: 0 0 172px;
+    width: 172px;
+    max-width: 172px;
+    height: 36px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px 0 10px;
+    border-radius: 8px;
+    background-color: var(--background-paper, #fff);
+    border: 1px solid var(--surface-border, var(--other-divider));
+    color: var(--foreground-secondary);
+    font: inherit;
+    line-height: 1;
+    opacity: 1;
+    box-shadow: none;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease;
+
+    &:not(.react-tabs__tab--selected) {
+      box-shadow: none;
+      opacity: 1;
+
+      &:hover {
+        background-color: var(--background-medium, #f4f7f8);
+        border-color: var(--foreground-muted, var(--other-divider));
+        opacity: 1;
+      }
+    }
+
+    > span {
+      min-width: 0;
+      line-height: 1.2;
+    }
+
+    .MuiIconButton-root,
+    .close {
+      flex: 0 0 auto;
+    }
+  }
+
+  .react-tabs__tab--selected {
+    background-color: var(--background-paper, #fff);
+    color: var(--foreground-primary);
+    border-color: var(--primary-main);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+}
+
+.react-tabs--mobile-dashboard {
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  background-color: var(--background-default, #f4f7f8);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .react-tabs__tab-list {
+    display: none;
+  }
+
+  .react-tabs__tab {
+    width: auto;
+    min-width: min(72vw, 260px);
+    max-width: 82vw;
+    border: 1px solid var(--surface-border, var(--other-divider));
+    border-radius: 999px;
+    padding: 8px 10px 8px 12px;
+    scroll-snap-align: start;
+    box-shadow: none !important;
+  }
+
+  .react-tabs__tab--selected {
+    background: var(--primary-main, #00a878) !important;
+    color: var(--primary-contrast-text, #fff) !important;
+  }
+
+  .react-tabs__tab-panel {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    padding: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+}

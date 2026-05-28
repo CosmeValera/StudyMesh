@@ -1,4 +1,4 @@
-# AquaMesh Container Query System
+# StudyMesh Container Query System
 
 This system provides container-based responsive utilities for microfrontends, allowing them to adapt based on their container width rather than viewport width.
 
@@ -12,20 +12,20 @@ In a microfrontend architecture where multiple applications can be displayed sim
 
 ## Installation
 
-The container query system is already included in the AquaMesh theme. To use it in any microfrontend:
+The container query system is already included in the StudyMesh theme. To use it in any microfrontend:
 
 1. Import the theme in your microfrontend
 2. Import the React components from the shared directory
 
 ```typescript
 // Import the React components
-import { 
-  ContainerBreakpointProvider, 
-  ContainerVisible, 
-  CQ 
-} from 'style/shared';
+import {
+  ContainerBreakpointProvider,
+  ContainerVisible,
+  CQ,
+} from "style/shared";
 
-// The SCSS styles are automatically included when using the AquaMesh theme
+// The SCSS styles are automatically included when using the StudyMesh theme
 ```
 
 ## Usage
@@ -40,6 +40,7 @@ The system provides CSS utility classes prefixed with `cq-` that are triggered b
 ```
 
 Available breakpoints:
+
 - xs: < 576px
 - sm: ≥ 576px
 - md: ≥ 768px
@@ -95,7 +96,7 @@ Get the current container breakpoints:
 ```tsx
 const MyComponent = () => {
   const { breakpoints, containerWidth } = useContainerBreakpoints();
-  
+
   return (
     <div>
       Current container width: {containerWidth}px
@@ -112,12 +113,8 @@ Create your own container reference and get its breakpoints:
 ```tsx
 const MyComponent = () => {
   const { containerRef, breakpoints, containerWidth } = useContainerQueries();
-  
-  return (
-    <div ref={containerRef}>
-      {/* Content with container querying */}
-    </div>
-  );
+
+  return <div ref={containerRef}>{/* Content with container querying */}</div>;
 };
 ```
 
@@ -132,7 +129,11 @@ interface MyProps {
   containerWidth?: number;
 }
 
-const MyComponent = ({ title, containerBreakpoints, containerWidth }: MyProps) => {
+const MyComponent = ({
+  title,
+  containerBreakpoints,
+  containerWidth,
+}: MyProps) => {
   // Use containerBreakpoints and containerWidth
   return <div>{title}</div>;
 };
@@ -143,14 +144,18 @@ export default withContainerQueries(MyComponent);
 ## Example
 
 ```tsx
-import React from 'react';
-import { ContainerBreakpointProvider, ContainerVisible, CQ } from 'style/shared';
+import React from "react";
+import {
+  ContainerBreakpointProvider,
+  ContainerVisible,
+  CQ,
+} from "style/shared";
 
 const Dashboard = () => {
   return (
     <ContainerBreakpointProvider className="dashboard">
       <h1>Dashboard</h1>
-      
+
       <div className="grid">
         {/* Full width on xs, half width on md, third width on lg */}
         <div className={`${CQ.col12} ${CQ.md.col6} ${CQ.lg.col4}`}>
@@ -161,13 +166,13 @@ const Dashboard = () => {
             </ContainerVisible>
           </div>
         </div>
-        
+
         <div className={`${CQ.col12} ${CQ.md.col6} ${CQ.lg.col4}`}>
           <div className="card">
             <h2>Card 2</h2>
           </div>
         </div>
-        
+
         <div className={`${CQ.col12} ${CQ.lg.col4}`}>
           <div className="card">
             <h2>Card 3</h2>
@@ -193,4 +198,4 @@ The system provides these class types:
 3. **Flex Utilities**: Directional and wrap controls with breakpoint variants
 4. **Text Alignment**: Text alignment classes with breakpoint variants
 5. **Spacing**: Margin and padding utilities with breakpoint variants
-6. **Visibility**: Show/hide content based on container size 
+6. **Visibility**: Show/hide content based on container size

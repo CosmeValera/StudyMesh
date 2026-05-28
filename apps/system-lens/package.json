@@ -38,7 +38,9 @@
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.5.0",
     "@mui/material": "^6.1.2",
+    "@mui/x-date-pickers": "8.28.5",
     "chart.js": "^4.4.9",
     "material-react-table": "2.11.1",
     "primeflex": "^3.3.1",

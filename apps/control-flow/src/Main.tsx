@@ -1,16 +1,16 @@
-import React from 'react';
-import { PrimeReactProvider } from 'primereact/api';
+import React from "react";
+import { PrimeReactProvider } from "primereact/api";
 
-import '../../../style/themes/aquamesh-theme/theme.scss';
-import 'primereact/resources/themes/lara-dark-green/theme.css';
-import 'primereact/resources/primereact.css';
-import 'primeflex/primeflex.css';
-import 'primeicons/primeicons.css';
+import "../../../style/themes/aquamesh-theme/theme.scss";
+import "primereact/resources/themes/lara-dark-green/theme.css";
+import "primereact/resources/primereact.css";
+import "primeflex/primeflex.css";
+import "primeicons/primeicons.css";
 import "./hide-overlay.scss";
 
-import MifProvider from './provider/MifProvider';
-import { ControlFlowProvider } from './provider/ControlFlowProvider';
-import AquameshPage from './pages/AquaMeshPage';
+import MifProvider from "./provider/MifProvider";
+import { ControlFlowProvider } from "./provider/ControlFlowProvider";
+import AquameshPage from "./pages/AquaMeshPage";
 
 const Main = () => {
   return (

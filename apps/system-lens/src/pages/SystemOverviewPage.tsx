@@ -1,64 +1,64 @@
-import React from 'react'
-import { useSystemLens } from '../provider/SystemLensProvider'
-import { 
-  ContainerBreakpointProvider, 
-  ContainerVisible, 
-  CQ 
-} from '../components/ContainerResponsive'
-import ResourceCard from '../components/ResourceCard'
-import StatusBadge from '../components/StatusBadge'
-import SystemStatusCard from '../components/SystemStatusCard'
-import SystemCard from '../components/SystemCard'
-import SystemTable from '../components/SystemTable'
-import SystemResourceChart from '../components/SystemResourceChart'
+import React from "react";
+import { useSystemLens } from "../provider/SystemLensProvider";
+import {
+  ContainerBreakpointProvider,
+  ContainerVisible,
+  CQ,
+} from "../components/ContainerResponsive";
+import ResourceCard from "../components/ResourceCard";
+import StatusBadge from "../components/StatusBadge";
+import SystemStatusCard from "../components/SystemStatusCard";
+import SystemCard from "../components/SystemCard";
+import SystemTable from "../components/SystemTable";
+import SystemResourceChart from "../components/SystemResourceChart";
 
 const SystemOverviewPage: React.FC = () => {
-  const { 
-    systemData, 
-    loading, 
-    error, 
-    refreshData,
-    updateSystemStatus
-  } = useSystemLens()
+  const { systemData, loading, error, refreshData, updateSystemStatus } =
+    useSystemLens();
 
   // Calculate average usage values
-  const avgCpuUsage = (systemData.reduce((acc, curr) => acc + curr.cpu, 0) / systemData.length || 0).toFixed(1)
-  const avgMemoryUsage = (systemData.reduce((acc, curr) => acc + curr.memory, 0) / systemData.length || 0).toFixed(1)
+  const avgCpuUsage = (
+    systemData.reduce((acc, curr) => acc + curr.cpu, 0) / systemData.length || 0
+  ).toFixed(1);
+  const avgMemoryUsage = (
+    systemData.reduce((acc, curr) => acc + curr.memory, 0) /
+      systemData.length || 0
+  ).toFixed(1);
 
   // Action handlers
   const handleSystemAction = (id: number) => {
-    const system = systemData.find(sys => sys.id === id)
-    if (!system) return
-    
+    const system = systemData.find((sys) => sys.id === id);
+    if (!system) return;
+
     // For demo purposes, toggle the system status when the action button is clicked
-    let newStatus: string
-    
+    let newStatus: string;
+
     switch (system.status) {
-      case 'Online':
-        newStatus = 'Warning'
-        break
-      case 'Warning':
-        newStatus = 'Offline'
-        break
-      case 'Offline':
-        newStatus = 'Online'
-        break
+      case "Online":
+        newStatus = "Warning";
+        break;
+      case "Warning":
+        newStatus = "Offline";
+        break;
+      case "Offline":
+        newStatus = "Online";
+        break;
       default:
-        newStatus = 'Online'
+        newStatus = "Online";
     }
-    
-    updateSystemStatus(id, newStatus)
-  }
+
+    updateSystemStatus(id, newStatus);
+  };
 
   // Handle refresh button click
   const handleRefresh = () => {
-    refreshData()
-  }
+    refreshData();
+  };
 
   // Handle error display
   const renderErrorMessage = () => {
-    if (!error) return null
-    
+    if (!error) return null;
+
     return (
       <div className="p-3 bg-red-100 text-red-800 border border-red-200 rounded mb-4">
         <div className="flex align-items-center">
@@ -66,21 +66,23 @@ const SystemOverviewPage: React.FC = () => {
           <span>{error}</span>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <ContainerBreakpointProvider className="p-4 bg-teal-900">
       <div className="flex align-items-center justify-content-between mb-4">
         <h1 className="text-3xl font-bold text-primary m-0">System Overview</h1>
         <div className="flex align-items-center gap-2">
-          <button 
+          <button
             className="p-button p-button-outlined"
             onClick={handleRefresh}
             disabled={loading}
           >
-            <i className={`pi ${loading ? 'pi-spin pi-spinner' : 'pi-refresh'} mr-2`}></i>
-            {loading ? 'Refreshing...' : 'Refresh'}
+            <i
+              className={`pi ${loading ? "pi-spin pi-spinner" : "pi-refresh"} mr-2`}
+            ></i>
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
           <button className="p-button p-button-primary">
             <i className="pi pi-cog mr-2"></i>
@@ -88,10 +90,10 @@ const SystemOverviewPage: React.FC = () => {
           </button>
         </div>
       </div>
-      
+
       {/* Display error message if any */}
       {renderErrorMessage()}
-      
+
       <div className="grid">
         {/* Summary Cards */}
         <div className={`${CQ.col12} ${CQ.lg.col4}`}>
@@ -99,7 +101,7 @@ const SystemOverviewPage: React.FC = () => {
         </div>
 
         <div className={`${CQ.col12} ${CQ.lg.col4}`}>
-          <ResourceCard 
+          <ResourceCard
             title="CPU Usage"
             icon={<i className="pi pi-database"></i>}
             value={`${avgCpuUsage}%`}
@@ -110,7 +112,7 @@ const SystemOverviewPage: React.FC = () => {
         </div>
 
         <div className={`${CQ.col12} ${CQ.lg.col4}`}>
-          <ResourceCard 
+          <ResourceCard
             title="Memory Usage"
             icon={<i className="pi pi-microchip"></i>}
             value={`${avgMemoryUsage}%`}
@@ -138,7 +140,10 @@ const SystemOverviewPage: React.FC = () => {
               {loading ? (
                 <div className="flex align-items-center justify-content-center p-5">
                   <div className="p-progress-spinner mr-3">
-                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                    <i
+                      className="pi pi-spin pi-spinner"
+                      style={{ fontSize: "2rem" }}
+                    ></i>
                   </div>
                   <span className="text-lg">Loading system data...</span>
                 </div>
@@ -148,12 +153,14 @@ const SystemOverviewPage: React.FC = () => {
                   <ContainerVisible breakpoint="xs" condition="only">
                     <div className="p-3">
                       {systemData.length === 0 ? (
-                        <div className="text-center p-3">No system data available</div>
+                        <div className="text-center p-3">
+                          No system data available
+                        </div>
                       ) : (
-                        systemData.map(item => (
-                          <SystemCard 
-                            key={item.id} 
-                            system={item} 
+                        systemData.map((item) => (
+                          <SystemCard
+                            key={item.id}
+                            system={item}
                             onAction={() => handleSystemAction(item.id)}
                           />
                         ))
@@ -163,8 +170,8 @@ const SystemOverviewPage: React.FC = () => {
 
                   {/* Small Container View (compact table) */}
                   <ContainerVisible breakpoint="sm" condition="only">
-                    <SystemTable 
-                      systemData={systemData} 
+                    <SystemTable
+                      systemData={systemData}
                       isCompact={true}
                       onAction={handleSystemAction}
                     />
@@ -172,7 +179,7 @@ const SystemOverviewPage: React.FC = () => {
 
                   {/* Medium and up Container View (full table) */}
                   <ContainerVisible breakpoint="md" condition="up">
-                    <SystemTable 
+                    <SystemTable
                       systemData={systemData}
                       onAction={handleSystemAction}
                     />
@@ -189,7 +196,7 @@ const SystemOverviewPage: React.FC = () => {
         </div>
       </div>
     </ContainerBreakpointProvider>
-  )
-}
+  );
+};
 
-export default SystemOverviewPage 
+export default SystemOverviewPage;

@@ -1,0 +1,446 @@
+import React, { useMemo } from 'react'
+import {
+  Box,
+  Typography,
+  List,
+  ListSubheader,
+  Collapse,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+  Chip,
+} from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import TargetIcon from '@mui/icons-material/GpsFixed'
+import CloseIcon from '@mui/icons-material/Close'
+import { COMPONENT_TYPES } from '../../constants/componentTypes'
+import { ComponentType } from '../../types/types'
+import ComponentPaletteItem from './ComponentPaletteItem'
+
+// Interface for component props
+interface ComponentPaletteProps {
+  showTooltips?: boolean
+  showHelpText?: boolean
+  handleDragStart: (e: React.DragEvent<HTMLDivElement>, type: string) => void
+  showComponentPaletteHelp: boolean
+  handleDirectAdd?: (componentType: string) => void
+  activeContainerId?: string | null
+  setActiveContainerId?: (id: string | null) => void
+  widgetData?: any // To lookup container name
+}
+
+// Helper function to group components by category
+const groupByCategory = (components: ComponentType[]) => {
+  return components.reduce(
+    (acc, component) => {
+      const category = component.category || 'UI Components'
+      if (!acc[category]) {
+        acc[category] = []
+      }
+      acc[category].push(component)
+      return acc
+    },
+    {} as Record<string, ComponentType[]>,
+  )
+}
+
+// Define the component palette groups and expand state
+const PALETTE_GROUPS = [
+  'Layout Containers',
+  'Study Blocks',
+  'UI Components',
+  'Knowledge Blocks',
+  'Chart Components',
+]
+const MOBILE_CONTENT_LAYOUT_GROUP = 'Content and layout'
+const PALETTE_GROUP_LABELS: Record<string, string> = {
+  'Layout Containers': 'Layout Helpers',
+  'Study Blocks': 'Study Blocks',
+  'UI Components': 'Content and Controls',
+  'Knowledge Blocks': 'Knowledge Blocks',
+  'Chart Components': 'Charts',
+  [MOBILE_CONTENT_LAYOUT_GROUP]: 'Content and layout',
+}
+
+// Component palette component
+const ComponentPalette = ({
+  showTooltips = false,
+  showHelpText = true,
+  handleDragStart,
+  showComponentPaletteHelp,
+  handleDirectAdd,
+  activeContainerId,
+  setActiveContainerId,
+  widgetData,
+}: ComponentPaletteProps) => {
+  // Responsive width based on screen size
+  const theme = useTheme()
+  const isPhone = useMediaQuery(theme.breakpoints.down('sm'))
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'lg'))
+  const drawerWidth = isPhone ? '100%' : isTablet ? 220 : 250
+
+  // Group component types by category - memoized to prevent recalculation on each render
+  const groupedComponents = useMemo(() => groupByCategory(COMPONENT_TYPES), [])
+
+  // State for controlling which category is expanded
+  const [expandedCategories, setExpandedCategories] = React.useState<
+    Record<string, boolean>
+  >(() => {
+    // Start with all categories expanded
+    return PALETTE_GROUPS.reduce(
+      (acc, category) => {
+        acc[category] = true
+        return acc
+      },
+      { [MOBILE_CONTENT_LAYOUT_GROUP]: true } as Record<string, boolean>,
+    )
+  })
+
+  // Toggle category expansion
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }))
+  }
+
+  // Create a direct add handler if one wasn't provided
+  const onDirectAdd =
+    handleDirectAdd ||
+    ((componentType: string) => {
+      // If no handler was provided, dispatch a custom event to add the component
+      const customEvent = new CustomEvent('addComponentDirectly', {
+        detail: { componentType },
+      })
+      document.dispatchEvent(customEvent)
+    })
+
+  // Find active container name if we have an ID and widget data
+  const activeContainerInfo = React.useMemo(() => {
+    if (!activeContainerId || !widgetData || !widgetData.components) return null
+
+    // Recursive function to find a component by ID
+    const findComponentById = (id: string, components: any[]): any => {
+      for (const component of components) {
+        if (component.id === id) {
+          return component
+        }
+        if (component.children && component.children.length > 0) {
+          const found = findComponentById(id, component.children)
+          if (found) return found
+        }
+      }
+      return null
+    }
+
+    const container = findComponentById(
+      activeContainerId,
+      widgetData.components,
+    )
+    if (container) {
+      return {
+        name: container.type,
+        props: container.props,
+      }
+    }
+
+    return null
+  }, [activeContainerId, widgetData])
+
+  // Handle clearing the active container
+  const handleClearActiveContainer = () => {
+    if (setActiveContainerId) {
+      setActiveContainerId(null)
+    }
+  }
+
+  return (
+    <Box
+      sx={{
+        width: drawerWidth,
+        minWidth: isPhone ? 0 : drawerWidth,
+        maxWidth: drawerWidth,
+        flex: isPhone ? '0 0 auto' : `0 0 ${drawerWidth}px`,
+        bgcolor: 'background.paper',
+        borderRight: 0,
+        borderBottom: { xs: 1, sm: 0 },
+        borderColor: 'divider',
+        height: { xs: 'auto', sm: '100%' },
+        maxHeight: { xs: 236, sm: 'none' },
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      className="component-palette"
+      data-testid="component-palette"
+    >
+      <Typography
+        variant={isPhone ? 'subtitle2' : 'h6'}
+        sx={{
+          px: isPhone ? 1 : 2,
+          py: isPhone ? 0.75 : 1,
+          color: 'text.primary',
+          fontWeight: 'bold',
+          borderBottom: 1,
+          borderColor: 'divider',
+          fontSize: isPhone ? '0.875rem' : undefined,
+        }}
+      >
+        Edit Building Blocks
+      </Typography>
+
+      {/* Active container indicator for mobile */}
+      {activeContainerId && activeContainerInfo && (
+        <Box
+          sx={{
+            p: isPhone ? 0.75 : 1,
+            bgcolor: 'background.accentSurface',
+            borderBottom: 1,
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              mb: 0.5,
+              fontSize: isPhone ? '0.65rem' : undefined,
+            }}
+          >
+            Adding to:
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <TargetIcon
+              fontSize="small"
+              sx={{
+                color: 'primary.light',
+                fontSize: isPhone ? '0.875rem' : undefined,
+              }}
+            />
+            <Chip
+              label={activeContainerInfo.name}
+              size="small"
+              color="primary"
+              variant="outlined"
+              onDelete={handleClearActiveContainer}
+              deleteIcon={
+                <CloseIcon
+                  fontSize="small"
+                  sx={{ fontSize: isPhone ? '0.75rem' : undefined }}
+                />
+              }
+              sx={{
+                height: isPhone ? 20 : 24,
+                '& .MuiChip-label': {
+                  px: isPhone ? 0.5 : 1,
+                  fontSize: isPhone ? '0.65rem' : undefined,
+                },
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      <List
+        sx={{
+          width: '100%',
+          overflowY: 'auto',
+          flexGrow: 1,
+          pt: isPhone ? 0.5 : 0,
+          px: isPhone ? 0.75 : 0,
+          display: isPhone ? 'flex' : 'block',
+          gap: isPhone ? 0.75 : 0,
+          alignItems: isPhone ? 'flex-start' : 'stretch',
+          overflowX: 'hidden',
+          pb: isPhone ? 0.5 : 0,
+          '& .MuiListSubheader-root': {
+            py: isPhone ? 0.5 : 1,
+          },
+        }}
+      >
+        {(isPhone
+          ? [MOBILE_CONTENT_LAYOUT_GROUP, 'Chart Components']
+          : PALETTE_GROUPS
+        ).map((category) => {
+          const groupCategories =
+            isPhone && category === MOBILE_CONTENT_LAYOUT_GROUP
+              ? [
+                  'Layout Containers',
+                  'UI Components',
+                  'Study Blocks',
+                  'Knowledge Blocks',
+                ]
+              : [category]
+          const components = groupCategories.flatMap(
+            (groupCategory) => groupedComponents[groupCategory] || [],
+          )
+
+          if (components.length === 0) {
+            return null
+          }
+
+          return (
+            <Box
+              key={category}
+              sx={{
+                mb: isPhone ? 0 : 2,
+                flex: isPhone
+                  ? category === MOBILE_CONTENT_LAYOUT_GROUP
+                    ? '1 0 100%'
+                    : '1 1 0'
+                  : 'initial',
+                minWidth: isPhone ? 0 : undefined,
+                border: isPhone ? 1 : 0,
+                borderColor: 'divider',
+                borderRadius: isPhone ? 1 : 0,
+                overflow: 'hidden',
+              }}
+            >
+              <ListSubheader
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  bgcolor: 'background.default',
+                  color: 'foreground.contrastSecondary',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  py: isPhone ? 0.4 : 1,
+                  px: isPhone ? 0.5 : 2,
+                  minHeight: isPhone ? 30 : undefined,
+                  fontSize: isPhone ? '0.66rem' : undefined,
+                  lineHeight: isPhone ? 1.3 : undefined,
+                }}
+                onClick={() => toggleCategory(category)}
+              >
+                <Box component="span" sx={{ minWidth: 0, mr: 0.25 }}>
+                  {PALETTE_GROUP_LABELS[category] || category}
+                </Box>
+                <IconButton
+                  size="small"
+                  sx={{
+                    color: 'foreground.contrastSecondary',
+                    padding: isPhone ? 0.25 : '4px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {expandedCategories[category] ? (
+                    <ExpandLessIcon
+                      sx={{ fontSize: isPhone ? '0.9rem' : '1.25rem' }}
+                    />
+                  ) : (
+                    <ExpandMoreIcon
+                      sx={{ fontSize: isPhone ? '0.9rem' : '1.25rem' }}
+                    />
+                  )}
+                </IconButton>
+              </ListSubheader>
+
+              <Collapse in={expandedCategories[category]} timeout="auto">
+                <Box
+                  sx={{
+                    px: isPhone ? 0.5 : 1,
+                    pt: isPhone ? 0.5 : 1,
+                    pb: isPhone ? 0.5 : 0,
+                    display: isPhone ? 'flex' : 'block',
+                    gap: isPhone ? 0.75 : 0,
+                    overflowX: isPhone ? 'auto' : 'visible',
+                    scrollSnapType: isPhone ? 'x proximity' : 'none',
+                    WebkitOverflowScrolling: 'touch',
+                  }}
+                >
+                  {groupCategories.map((groupCategory, groupIndex) => {
+                    const groupComponents =
+                      groupedComponents[groupCategory] || []
+
+                    if (groupComponents.length === 0) {
+                      return null
+                    }
+
+                    return (
+                      <React.Fragment key={groupCategory}>
+                        {isPhone && groupIndex > 0 && (
+                          <Box
+                            sx={{
+                              flex: '0 0 22px',
+                              alignSelf: 'center',
+                              borderTop: '1px solid',
+                              borderColor: 'divider',
+                              opacity: 0.8,
+                            }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <Box
+                          sx={{
+                            display: isPhone ? 'flex' : 'block',
+                            gap: isPhone ? 0.75 : 0,
+                          }}
+                        >
+                          {groupComponents.map((component) => (
+                            <ComponentPaletteItem
+                              key={component.type}
+                              component={component}
+                              showTooltips={showTooltips}
+                              handleDragStart={handleDragStart}
+                              onDirectAdd={onDirectAdd}
+                            />
+                          ))}
+                        </Box>
+                      </React.Fragment>
+                    )
+                  })}
+                </Box>
+              </Collapse>
+            </Box>
+          )
+        })}
+      </List>
+
+      {/* Help text at bottom */}
+      {showComponentPaletteHelp && showHelpText && (
+        <Box
+          sx={{
+            p: isPhone ? 1 : 2,
+            borderTop: 1,
+            borderColor: 'divider',
+            fontSize: isPhone ? '0.5rem' : '0.65rem',
+          }}
+        >
+          <Typography
+            variant="caption"
+            color="foreground.contrastSecondary"
+            sx={{
+              display: 'block',
+              mb: 0.5,
+              fontSize: isPhone ? '0.5rem' : '0.65rem',
+            }}
+          >
+            {isPhone ? 'Tap a block to add it' : 'Drag blocks into your widget'}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="foreground.contrastSecondary"
+            sx={{
+              display: 'block',
+              fontSize: isPhone ? '0.5rem' : '0.65rem',
+            }}
+          >
+            {!showTooltips
+              ? 'Turn on helpful tips in settings for short explanations'
+              : isPhone
+                ? 'Long press blocks for short explanations'
+                : 'Hover over blocks for short explanations'}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+export default ComponentPalette

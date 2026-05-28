@@ -11,7 +11,9 @@ type ControlFlowContextType = {
   setTelemetryDataEnabled: (value: boolean) => void;
 };
 
-const ControlFlowContext = createContext<ControlFlowContextType | undefined>(undefined);
+const ControlFlowContext = createContext<ControlFlowContextType | undefined>(
+  undefined,
+);
 
 type ControlFlowProviderProps = {
   children: ReactNode;
@@ -20,8 +22,10 @@ type ControlFlowProviderProps = {
 export function ControlFlowProvider({ children }: ControlFlowProviderProps) {
   const [navSystemEnabled, setNavSystemEnabled] = useState<boolean>(false);
   const [sonarDataEnabled, setSonarDataEnabled] = useState<boolean>(false);
-  const [acousticDataEnabled, setAcousticDataEnabled] = useState<boolean>(false);
-  const [telemetryDataEnabled, setTelemetryDataEnabled] = useState<boolean>(false);
+  const [acousticDataEnabled, setAcousticDataEnabled] =
+    useState<boolean>(false);
+  const [telemetryDataEnabled, setTelemetryDataEnabled] =
+    useState<boolean>(false);
 
   const value: ControlFlowContextType = {
     navSystemEnabled,
@@ -47,4 +51,4 @@ export function useControlFlow() {
     throw new Error("useControlFlow must be used within a ControlFlowProvider");
   }
   return context;
-} 
+}

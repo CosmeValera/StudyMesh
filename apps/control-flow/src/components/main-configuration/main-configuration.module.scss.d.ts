@@ -1,7 +1,7 @@
 declare const styles: {
-  readonly 'cf-button': string;
-  readonly 'enhance': string;
-  readonly 'danger': string;
+  readonly "cf-button": string;
+  readonly enhance: string;
+  readonly danger: string;
 };
 
-export default styles; 
+export default styles;
