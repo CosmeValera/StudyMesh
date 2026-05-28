@@ -61,7 +61,6 @@ const DashboardEmptyState = ({
   onUploadMaterial,
   onPasteNotes,
   onQuickCreate,
-  onOpenSavedLibrary,
   dashboardOptions,
   onOpenDashboard,
   onOpenStudyGuide,
@@ -75,18 +74,7 @@ const DashboardEmptyState = ({
     return folders
   }, {})
   const folderEntries = Object.entries(dashboardsByFolder)
-  const hasStudyGuides = folderEntries.some(([, dashboards]) =>
-    Boolean(createStudyPathContainerState(dashboards)),
-  )
-  const hasStandaloneDashboards = folderEntries.some(
-    ([, dashboards]) => !createStudyPathContainerState(dashboards),
-  )
-  const openExistingLabel = hasStudyGuides
-    ? hasStandaloneDashboards
-      ? 'Open existing dashboard or study guide'
-      : 'Open existing study guide'
-    : 'Open existing dashboard'
-  const featuredFolders = folderEntries.slice(0, 4)
+  const featuredFolders = folderEntries.slice(0, 3)
 
   return (
     <Box
@@ -107,7 +95,7 @@ const DashboardEmptyState = ({
     >
       <Box
         sx={{
-          width: 'min(1240px, 100%)',
+          width: { xs: '100%', md: 'min(760px, 100%)' },
           maxWidth: '100%',
           minWidth: 0,
           boxSizing: 'border-box',
@@ -341,7 +329,7 @@ const DashboardEmptyState = ({
               Recent
             </Typography>
             {featuredFolders.length > 0 ? (
-              <Stack spacing={1}>
+              <Stack spacing={1} alignItems="flex-start">
                 {featuredFolders.map(([folderName, dashboards]) => {
                   const studyGuide = createStudyPathContainerState(dashboards)
                   const folderColor = normalizeFolderColor(
@@ -361,6 +349,7 @@ const DashboardEmptyState = ({
                           : firstDashboard && onOpenDashboard(firstDashboard)
                       }
                       sx={{
+                        width: { xs: '100%', md: 260 },
                         minHeight: { xs: 48, md: 58 },
                         justifyContent: 'flex-start',
                         textAlign: 'left',
@@ -437,23 +426,8 @@ const DashboardEmptyState = ({
 
           <Stack direction="row" gap={0.75} flexWrap="wrap">
             <Chip size="small" label="Study Paths" />
-            <Chip size="small" label="Study Packs" />
             <Chip size="small" label="Dashboards" />
           </Stack>
-          <Button
-            variant="outlined"
-            startIcon={<FolderOpenIcon />}
-            onClick={onOpenSavedLibrary}
-            sx={{
-              textTransform: 'none',
-              bgcolor: 'background.default',
-              borderRadius: 2,
-              fontWeight: 800,
-              fontSize: '0.8125rem',
-            }}
-          >
-            {openExistingLabel}
-          </Button>
         </Paper>
       </Box>
     </Box>
