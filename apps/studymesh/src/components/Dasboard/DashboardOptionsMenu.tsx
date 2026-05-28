@@ -18,6 +18,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import EditIcon from '@mui/icons-material/Edit'
 import AutoStoriesIcon from '@mui/icons-material/AutoStories'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import { DashboardLayout, StudyPathContainerState } from '../../state/store'
 import { useDashboards } from './DashboardProvider'
 import {
@@ -151,6 +152,8 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
   const isDarkMode = theme.palette.mode === 'dark'
   const studyPackHeaderColor = isDarkMode ? '#7FE3C4' : '#007C66'
   const studyPackHeaderBackground = isDarkMode ? '#007C6652' : '#007C6624'
+  const quickCreateHeaderColor = isDarkMode ? '#FFD166' : '#B26A00'
+  const quickCreateHeaderBackground = isDarkMode ? '#FFD16633' : '#B26A0024'
   const customDashboardHeaderColor = isDarkMode ? '#C5D0D6' : '#455A64'
   const customDashboardHeaderBackground = isDarkMode ? '#455A6466' : '#455A6420'
   const getFolderItemBackground = (folderColor: string) =>
@@ -722,18 +725,18 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
                 py: 0.7,
                 fontWeight: 800,
                 mt: 0.5,
-                color: studyPackHeaderColor,
+                color: quickCreateHeaderColor,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                bgcolor: studyPackHeaderBackground,
+                bgcolor: quickCreateHeaderBackground,
                 borderLeft: '4px solid',
-                borderLeftColor: studyPackHeaderColor,
+                borderLeftColor: quickCreateHeaderColor,
               }}
             >
-              <AutoStoriesIcon
+              <AutoAwesomeIcon
                 fontSize="small"
-                sx={{ color: studyPackHeaderColor }}
+                sx={{ color: quickCreateHeaderColor }}
               />
               <Box
                 component="span"
@@ -745,7 +748,7 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
                   whiteSpace: 'nowrap',
                 }}
               >
-                Study Paths
+                Quick Create Results
               </Box>
             </Typography>
             {studyPackFolders.map(([folderName, dashboards]) => {
@@ -788,7 +791,7 @@ const DashboardOptionsMenu: React.FC<DashboardOptionsMenuProps> = ({
                       },
                     }}
                   >
-                    <AutoStoriesIcon
+                    <AutoAwesomeIcon
                       fontSize="small"
                       sx={{
                         color: folderColor,
