@@ -4,6 +4,7 @@ import { useContext } from 'react'
 import { nanoid } from 'nanoid'
 
 import { DEFAULT_DASHBOARD, DefaultDashboard } from './fixture'
+import { DashboardStorage } from './dashboardStorage'
 
 import {
   useStore,
@@ -36,7 +37,10 @@ interface DashboardContextType {
     dashboardId: string,
     updater: (studyPath: StudyPathContainerState) => StudyPathContainerState,
   ) => void
-  replaceDashboard: (index: number, dashboard: DefaultDashboard) => string
+  replaceDashboard: (
+    index: number,
+    dashboard: DefaultDashboard | Omit<StateDashboard, 'id'>,
+  ) => string
   updateLayout: (model: Model) => void
   updateDashboardLayout: (index: number, layout: DashboardLayout) => void
   renameDashboard: (id: string, newName: string) => void
@@ -47,9 +51,25 @@ interface DashboardContextType {
 
 const DashboardContext = React.createContext<DashboardContextType | null>(null)
 
+const cloneLayout = (layout?: DashboardLayout): DashboardLayout | undefined =>
+  layout ? JSON.parse(JSON.stringify(layout)) : undefined
+
+const getEmptyDashboardTemplate = (): DefaultDashboard => {
+  const defaultEmptyDashboard = DashboardStorage.getDefaultEmptyDashboard()
+
+  if (!defaultEmptyDashboard) {
+    return DEFAULT_DASHBOARD
+  }
+
+  return {
+    name: defaultEmptyDashboard.name,
+    layout: cloneLayout(defaultEmptyDashboard.layout),
+  }
+}
+
 const createEmptyDashboard = (): StateDashboard => ({
   id: nanoid(),
-  ...DEFAULT_DASHBOARD,
+  ...getEmptyDashboardTemplate(),
 })
 
 const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
@@ -172,15 +192,18 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     setSelectedDashboard(toIndex)
   }
 
-  const addDashboard = (dashboard = DEFAULT_DASHBOARD) => {
+  const addDashboard = (dashboard?: DefaultDashboard) => {
+    const dashboardToAdd = dashboard || getEmptyDashboardTemplate()
     const id = nanoid()
-    const newDashboard = openDashboards.concat(Object.assign({ id }, dashboard))
+    const newDashboard = openDashboards.concat(
+      Object.assign({ id }, dashboardToAdd),
+    )
     const newSelectedDashboard = openDashboards.length
 
     setDashboards(newDashboard)
     setSelectedDashboard(newSelectedDashboard)
 
-    if (!hasDashboardContent(dashboard.layout)) {
+    if (!hasDashboardContent(dashboardToAdd.layout)) {
       setDashboardEditing(id, true)
     }
 
@@ -284,7 +307,10 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
     setDashboards(newOpenDashboards)
   }
 
-  const replaceDashboard = (index: number, dashboard: DefaultDashboard) => {
+  const replaceDashboard = (
+    index: number,
+    dashboard: DefaultDashboard | Omit<StateDashboard, 'id'>,
+  ) => {
     const currentDashboard = openDashboards[index]
     const id = nanoid()
     const newOpenDashboards = [...openDashboards]
@@ -297,7 +323,11 @@ const DashboardProvider: React.FC<DashboardProviderProps> = (props) => {
       setDashboardEditing(currentDashboard.id, false)
     }
 
-    setDashboardEditing(id, !hasDashboardContent(dashboard.layout))
+    setDashboardEditing(
+      id,
+      dashboard.kind !== 'studyPathContainer' &&
+        !hasDashboardContent(dashboard.layout),
+    )
 
     return id
   }

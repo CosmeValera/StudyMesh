@@ -125,6 +125,7 @@ const StateProbe = () => {
   const {
     openDashboards,
     selectedDashboard,
+    addDashboard,
     addStudyPathContainer,
     updateStudyPathContainer,
   } = useDashboards()
@@ -135,6 +136,7 @@ const StateProbe = () => {
       <button onClick={() => addStudyPathContainer(createStudyPath())}>
         open-study-path
       </button>
+      <button onClick={() => addDashboard()}>open-empty-dashboard</button>
       <button
         onClick={() => {
           const studyPathDashboard = openDashboards.find(
@@ -159,6 +161,9 @@ const StateProbe = () => {
       </output>
       <output data-testid="dashboard-names">
         {openDashboards.map((dashboard) => dashboard.name).join('|')}
+      </output>
+      <output data-testid="selected-component">
+        {selected?.layout?.children?.[0]?.children?.[0]?.component || 'none'}
       </output>
     </div>
   )
@@ -199,6 +204,54 @@ describe('Interactive Study Path UX', () => {
     expect(screen.getByTestId('selected-lesson')).toHaveTextContent('3')
   })
 
+  it('uses the saved custom empty dashboard when opening a new empty dashboard', () => {
+    const storage = createMemoryStorage()
+    storage.set(
+      'customDashboards',
+      JSON.stringify([
+        {
+          id: 'default-start-dashboard',
+          name: 'Study links start',
+          folder: 'Custom empty dashboards',
+          layout: {
+            type: 'row',
+            children: [
+              {
+                type: 'tabset',
+                children: [
+                  {
+                    type: 'tab',
+                    name: 'Study links',
+                    component: 'KnowledgeLinkWidget',
+                  },
+                ],
+              },
+            ],
+          },
+          createdAt: '2026-05-28T10:00:00.000Z',
+          updatedAt: '2026-05-28T10:00:00.000Z',
+        },
+      ]),
+    )
+    storage.set(
+      'studymesh-default-empty-dashboard-id',
+      'default-start-dashboard',
+    )
+
+    renderWithDashboardProvider(<StateProbe />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'open-empty-dashboard' }),
+    )
+
+    expect(screen.getByTestId('dashboard-names')).toHaveTextContent(
+      'Existing dashboard|Study links start',
+    )
+    expect(screen.getByTestId('selected-component')).toHaveTextContent(
+      'KnowledgeLinkWidget',
+    )
+  })
+
   it('uses a subtle floating navigator that overlays the dashboard and can be collapsed', () => {
     const onStudyPathChange = vi.fn()
 
@@ -236,8 +289,12 @@ describe('Interactive Study Path UX', () => {
     expect(screen.getByText('Course helper')).toBeInTheDocument()
     expect(screen.getByText('0/5 completed')).toBeInTheDocument()
     expect(screen.getByText('Lesson 1/5')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /dock left/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /dock right/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /dock left/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /dock right/i }),
+    ).toBeInTheDocument()
     expect(
       screen.getByTestId('mock-selected-widget-border'),
     ).toBeInTheDocument()
@@ -250,6 +307,26 @@ describe('Interactive Study Path UX', () => {
       screen.queryByTestId('study-path-navigator-panel'),
     ).not.toBeInTheDocument()
     expect(screen.getByTestId('study-path-navigator-pill')).toBeInTheDocument()
+  })
+
+  it('keeps Study Links out of the Course helper navigator', () => {
+    render(
+      <StudyPathWorkspaceView
+        studyPath={createStudyPath()}
+        onStudyPathChange={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /open course navigator/i }),
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /add to index dashboard/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /add section to index/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps Study Paths dropdown actions focused and opens lessons as standalone tabs', async () => {

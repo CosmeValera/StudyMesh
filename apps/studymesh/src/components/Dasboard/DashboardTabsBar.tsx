@@ -30,6 +30,18 @@ const isEmptyDashboard = (dashboard: StateDashboard) =>
   dashboard.kind !== 'studyPathContainer' &&
   !hasDashboardContent(dashboard.layout)
 
+const hasStudyLinksWidget = (layout: StateDashboard['layout']): boolean => {
+  if (!layout) {
+    return false
+  }
+
+  if (layout.component === 'KnowledgeLinkWidget') {
+    return true
+  }
+
+  return Boolean(layout.children?.some(hasStudyLinksWidget))
+}
+
 const DashboardTabLabel = ({ dashboard }: { dashboard: StateDashboard }) => (
   <TooltipStyled
     title={dashboard.name}
@@ -216,11 +228,12 @@ const DashboardTabsBar = ({
   const renderActions = (dashboard: StateDashboard, canEdit: boolean) => {
     const isOnlyEmptyDashboard =
       dashboards.length === 1 && isEmptyDashboard(dashboard)
+    const canEditDashboard = canEdit && !hasStudyLinksWidget(dashboard.layout)
 
     return (
       <DashboardTabActions
         dashboard={dashboard}
-        canEdit={canEdit}
+        canEdit={canEditDashboard}
         canClose={!isOnlyEmptyDashboard}
         onEditDashboard={onEditDashboard}
         onRemoveDashboard={onRemoveDashboard}

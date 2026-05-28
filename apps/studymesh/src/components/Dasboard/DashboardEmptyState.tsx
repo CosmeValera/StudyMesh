@@ -5,6 +5,7 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import AddLinkIcon from '@mui/icons-material/AddLink'
 import QuizIcon from '@mui/icons-material/Quiz'
 import RouteIcon from '@mui/icons-material/Route'
 import StyleIcon from '@mui/icons-material/Style'
@@ -27,6 +28,8 @@ interface DashboardEmptyStateProps {
   dashboardOptions: SavedDashboard[]
   onOpenDashboard: (dashboard: SavedDashboard) => void
   onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
+  onAddStudyLink: () => void
+  hasIndexDashboard?: boolean
 }
 
 const quickActions: Array<{
@@ -64,6 +67,8 @@ const DashboardEmptyState = ({
   dashboardOptions,
   onOpenDashboard,
   onOpenStudyGuide,
+  onAddStudyLink,
+  hasIndexDashboard = false,
 }: DashboardEmptyStateProps) => {
   const dashboardsByFolder = dashboardOptions.reduce<
     Record<string, SavedDashboard[]>
@@ -154,17 +159,33 @@ const DashboardEmptyState = ({
                 fontSize: { xs: '1.16rem', sm: '1.48rem', md: '1.76rem' },
               }}
             >
-              What do you want to build?
+              Build an index dashboard
             </Typography>
             <Typography
               variant="body2"
               color="text.secondary"
               sx={{ mt: 1, maxWidth: 620, fontSize: '0.72rem' }}
             >
-              Create a guided Study Path, or add material to generate a quiz,
-              flashcards, or Expand on this.
+              Use this dashboard as an index page for your learning.
             </Typography>
           </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<AddLinkIcon />}
+            onClick={onAddStudyLink}
+            sx={{
+              justifyContent: 'flex-start',
+              minHeight: 44,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 900,
+            }}
+          >
+            {hasIndexDashboard
+              ? 'Use your index dashboard'
+              : 'Build your index dashboard'}
+          </Button>
 
           <Paper
             component="button"
