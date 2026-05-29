@@ -85,6 +85,7 @@ import {
 import {
   DashboardStorage,
   DEFAULT_DASHBOARD_NAME,
+  SAVED_DASHBOARDS_CHANGED_EVENT,
   getUniqueDashboardName,
   type SavedDashboard,
 } from './dashboardStorage'
@@ -833,6 +834,20 @@ const Dashboards = () => {
 
   useEffect(() => {
     loadDashboardOptions()
+
+    window.addEventListener(
+      SAVED_DASHBOARDS_CHANGED_EVENT,
+      loadDashboardOptions,
+    )
+    window.addEventListener('focus', loadDashboardOptions)
+
+    return () => {
+      window.removeEventListener(
+        SAVED_DASHBOARDS_CHANGED_EVENT,
+        loadDashboardOptions,
+      )
+      window.removeEventListener('focus', loadDashboardOptions)
+    }
   }, [])
 
   useEffect(() => {

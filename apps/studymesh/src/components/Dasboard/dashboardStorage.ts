@@ -15,6 +15,14 @@ export interface SavedDashboard {
 }
 
 export const DEFAULT_DASHBOARD_NAME = 'New Dashboard'
+export const SAVED_DASHBOARDS_CHANGED_EVENT =
+  'studymesh-saved-dashboards-changed'
+
+const dispatchSavedDashboardsChanged = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(SAVED_DASHBOARDS_CHANGED_EVENT))
+  }
+}
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -87,6 +95,7 @@ export const DashboardStorage = {
       }
 
       localStorage.setItem('customDashboards', JSON.stringify(dashboards))
+      dispatchSavedDashboardsChanged()
       return dashboard
     } catch (error) {
       console.error('Failed to save dashboard', error)
@@ -104,6 +113,7 @@ export const DashboardStorage = {
         'customDashboards',
         JSON.stringify(filteredDashboards),
       )
+      dispatchSavedDashboardsChanged()
     } catch (error) {
       console.error('Failed to delete dashboard', error)
     }

@@ -252,20 +252,20 @@ describe('Dashboards', () => {
       screen.getByRole('button', { name: /paste notes/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /create quiz/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /create flashcards/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /expand on this/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /open existing dashboard/i }),
-    ).toBeInTheDocument()
-    expect(
       screen.getByRole('button', { name: /customize this page/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /create quiz/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /create flashcards/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /expand on this/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /open existing dashboard/i }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /advanced dashboard/i }),
     ).not.toBeInTheDocument()
@@ -328,36 +328,6 @@ describe('Dashboards', () => {
       intent: 'improvedNotes',
       openQuickOptions: true,
       quickSourceFocus: 'paste',
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /create quiz/i }))
-    expect(
-      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
-        .detail,
-    ).toEqual({
-      intent: 'quiz',
-      openQuickOptions: true,
-      quickSourceFocus: 'upload',
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /create flashcards/i }))
-    expect(
-      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
-        .detail,
-    ).toEqual({
-      intent: 'flashcards',
-      openQuickOptions: true,
-      quickSourceFocus: 'upload',
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /expand on this/i }))
-    expect(
-      createHubListener.mock.calls[createHubListener.mock.calls.length - 1][0]
-        .detail,
-    ).toEqual({
-      intent: 'improvedNotes',
-      openQuickOptions: true,
-      quickSourceFocus: 'upload',
     })
 
     window.removeEventListener('studymesh-open-create-hub', createHubListener)
@@ -427,7 +397,7 @@ describe('Dashboards', () => {
           showCreationBlock: true,
           studyMaterialMode: 'custom',
           studyMaterialLimit: 3,
-          customEntryIds: ['folder:biology'],
+          customEntryIds: ['dashboard:biology'],
         })
       }
 
@@ -446,6 +416,171 @@ describe('Dashboards', () => {
     expect(screen.queryByText('Algebra Intro')).not.toBeInTheDocument()
     expect(screen.queryByText('Chemistry Intro')).not.toBeInTheDocument()
     expect(screen.getByText('Custom')).toBeInTheDocument()
+  })
+
+  it('reorders and removes custom study material entries from the canvas', async () => {
+    const savedDashboards = [
+      createSavedDashboard('biology', 'Biology Intro', 'Biology'),
+      createSavedDashboard('chemistry', 'Chemistry Intro', 'Chemistry'),
+    ]
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(savedDashboards)
+      }
+
+      if (key === 'studymesh-empty-dashboard-settings-v1') {
+        return JSON.stringify({
+          blockOrder: ['creation', 'studyMaterial'],
+          showCreationBlock: true,
+          studyMaterialMode: 'custom',
+          studyMaterialLimit: 20,
+          studyMaterialColumns: 1,
+          customEntryIds: ['dashboard:biology', 'dashboard:chemistry'],
+        })
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /customize this page/i }),
+    )
+    expect(
+      screen.queryByRole('button', { name: /^add$/i }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText(/move chemistry intro up/i))
+    fireEvent.click(screen.getByLabelText(/remove biology intro/i))
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'studymesh-empty-dashboard-settings-v1',
+      expect.stringContaining('"customEntryIds":["dashboard:chemistry"]'),
+    )
+    await waitFor(() =>
+      expect(screen.getByText('Chemistry Intro')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('Biology Intro')).not.toBeInTheDocument()
+  })
+
+  it('adds custom study material immediately from the select and saves columns', async () => {
+    const savedDashboards = [
+      createSavedDashboard('biology', 'Biology Intro', 'Biology'),
+      createSavedDashboard('chemistry', 'Chemistry Intro', 'Chemistry'),
+    ]
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(savedDashboards)
+      }
+
+      if (key === 'studymesh-empty-dashboard-settings-v1') {
+        return JSON.stringify({
+          blockOrder: ['creation', 'studyMaterial'],
+          showCreationBlock: true,
+          studyMaterialMode: 'custom',
+          studyMaterialLimit: 20,
+          studyMaterialColumns: 1,
+          customEntryIds: ['dashboard:biology'],
+        })
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /customize this page/i }),
+    )
+    fireEvent.mouseDown(
+      screen.getByRole('combobox', {
+        name: /add study path or dashboard/i,
+      }),
+    )
+    fireEvent.click(screen.getByRole('option', { name: /chemistry intro/i }))
+    fireEvent.change(
+      screen.getByRole('slider', { name: /study material columns/i }),
+      {
+        target: { value: 2 },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'studymesh-empty-dashboard-settings-v1',
+      expect.stringContaining(
+        '"customEntryIds":["dashboard:biology","dashboard:chemistry"]',
+      ),
+    )
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'studymesh-empty-dashboard-settings-v1',
+      expect.stringContaining('"studyMaterialColumns":2'),
+    )
+  })
+
+  it('refreshes recent study material when saved dashboards change', async () => {
+    const savedDashboards = [createSavedDashboard('biology', 'Biology Intro')]
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(savedDashboards)
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    expect(screen.queryByText('Chemistry Intro')).not.toBeInTheDocument()
+
+    savedDashboards.push(createSavedDashboard('chemistry', 'Chemistry Intro'))
+
+    act(() => {
+      window.dispatchEvent(new Event('studymesh-saved-dashboards-changed'))
+    })
+
+    await waitFor(() =>
+      expect(screen.getByText('Chemistry Intro')).toBeInTheDocument(),
+    )
   })
 
   it('can hide creation and show six recent study material entries', async () => {
@@ -641,9 +776,6 @@ describe('Dashboards', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /paste notes/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /create quiz/i }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /advanced dashboard/i }),

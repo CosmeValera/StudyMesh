@@ -2,29 +2,31 @@ import React, { useState } from 'react'
 import {
   Box,
   Button,
-  Checkbox,
   Chip,
+  Divider,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
   MenuItem,
   Paper,
+  Slider,
   Stack,
   Switch,
   TextField,
   Typography,
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import CloseIcon from '@mui/icons-material/Close'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import TuneIcon from '@mui/icons-material/Tune'
-import AutoStoriesIcon from '@mui/icons-material/AutoStories'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
-import QuizIcon from '@mui/icons-material/Quiz'
 import RouteIcon from '@mui/icons-material/Route'
-import StyleIcon from '@mui/icons-material/Style'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 import { createStudyPathContainerState } from './studyPathContainer'
@@ -39,7 +41,8 @@ interface EmptyDashboardSettings {
   blockOrder: EmptyDashboardBlock[]
   showCreationBlock: boolean
   studyMaterialMode: EmptyDashboardStudyMaterialMode
-  studyMaterialLimit: 3 | 6
+  studyMaterialLimit: number
+  studyMaterialColumns: number
   customEntryIds: string[]
 }
 
@@ -50,6 +53,7 @@ interface StudyMaterialEntry {
   firstDashboard?: SavedDashboard
   title: string
   isStudyPath: boolean
+  colorSourceFolder: string
 }
 
 interface DashboardEmptyStateProps {
@@ -65,39 +69,15 @@ interface DashboardEmptyStateProps {
   onOpenStudyGuide: (dashboards: SavedDashboard[]) => void
 }
 
-const quickActions: Array<{
-  intent: EmptyDashboardQuickCreate
-  label: string
-  icon: React.ReactNode
-  accent: string
-}> = [
-  {
-    intent: 'quiz',
-    label: 'Create Quiz',
-    icon: <QuizIcon fontSize="small" />,
-    accent: '#5b9dff',
-  },
-  {
-    intent: 'flashcards',
-    label: 'Create Flashcards',
-    icon: <StyleIcon fontSize="small" />,
-    accent: '#b66cff',
-  },
-  {
-    intent: 'improvedNotes',
-    label: 'Expand on this',
-    icon: <AutoStoriesIcon fontSize="small" />,
-    accent: '#18b992',
-  },
-]
-
 const EMPTY_DASHBOARD_SETTINGS_KEY = 'studymesh-empty-dashboard-settings-v1'
+const MAX_STUDY_MATERIAL_ITEMS = 20
 
 const defaultEmptyDashboardSettings: EmptyDashboardSettings = {
   blockOrder: ['creation', 'studyMaterial'],
   showCreationBlock: true,
   studyMaterialMode: 'recent',
   studyMaterialLimit: 3,
+  studyMaterialColumns: 1,
   customEntryIds: [],
 }
 
@@ -128,7 +108,17 @@ const normalizeEmptyDashboardSettings = (
       value?.studyMaterialMode === 'custom'
         ? 'custom'
         : defaultEmptyDashboardSettings.studyMaterialMode,
-    studyMaterialLimit: value?.studyMaterialLimit === 6 ? 6 : 3,
+    studyMaterialLimit:
+      typeof value?.studyMaterialLimit === 'number'
+        ? Math.max(
+            0,
+            Math.min(MAX_STUDY_MATERIAL_ITEMS, value.studyMaterialLimit),
+          )
+        : defaultEmptyDashboardSettings.studyMaterialLimit,
+    studyMaterialColumns:
+      typeof value?.studyMaterialColumns === 'number'
+        ? Math.max(1, Math.min(6, Math.round(value.studyMaterialColumns)))
+        : defaultEmptyDashboardSettings.studyMaterialColumns,
     customEntryIds: Array.isArray(value?.customEntryIds)
       ? value.customEntryIds.filter(
           (entryId): entryId is string => typeof entryId === 'string',
@@ -166,16 +156,16 @@ const saveEmptyDashboardSettings = (settings: EmptyDashboardSettings) => {
   }
 }
 
-const getStudyMaterialEntryId = (folderName: string) =>
-  `folder:${folderName.trim().toLowerCase()}`
+const getStudyPathEntryId = (folderName: string) =>
+  `studyPath:${folderName.trim().toLowerCase()}`
+
+const getDashboardEntryId = (dashboardId: string) => `dashboard:${dashboardId}`
 
 const DashboardEmptyState = ({
   isAdmin,
   onCreateStudyPath,
   onUploadMaterial,
   onPasteNotes,
-  onQuickCreate,
-  onOpenSavedLibrary,
   dashboardOptions,
   onOpenDashboard,
   onOpenStudyGuide,
@@ -193,24 +183,47 @@ const DashboardEmptyState = ({
   }, {})
   const folderEntries: StudyMaterialEntry[] = Object.entries(
     dashboardsByFolder,
-  ).map(([folderName, dashboards]) => {
+  ).flatMap(([folderName, dashboards]) => {
     const studyGuide = createStudyPathContainerState(dashboards)
-    const firstDashboard = dashboards[0]
 
-    return {
-      id: getStudyMaterialEntryId(folderName),
-      folderName,
-      dashboards,
-      firstDashboard,
-      title: studyGuide?.title || firstDashboard?.name || folderName,
-      isStudyPath: Boolean(studyGuide),
+    if (studyGuide) {
+      return [
+        {
+          id: getStudyPathEntryId(folderName),
+          folderName,
+          dashboards,
+          firstDashboard: dashboards[0],
+          title: studyGuide.title,
+          isStudyPath: true,
+          colorSourceFolder: folderName,
+        },
+      ]
     }
+
+    return dashboards.map((dashboard) => ({
+      id: getDashboardEntryId(dashboard.id),
+      folderName: dashboard.folder?.trim() || 'Default',
+      dashboards: [dashboard],
+      firstDashboard: dashboard,
+      title: dashboard.name,
+      isStudyPath: false,
+      colorSourceFolder: dashboard.folder?.trim() || 'Default',
+    }))
   })
+  const entryById = new Map(folderEntries.map((entry) => [entry.id, entry]))
   const selectedCustomIds = new Set(settings.customEntryIds)
+  const draftCustomIds = new Set(draftSettings.customEntryIds)
+  const draftCustomEntries = draftSettings.customEntryIds
+    .map((entryId) => entryById.get(entryId))
+    .filter((entry): entry is StudyMaterialEntry => Boolean(entry))
+  const availableCustomEntries = folderEntries.filter(
+    (entry) => !draftCustomIds.has(entry.id),
+  )
   const visibleStudyMaterialEntries =
     settings.studyMaterialMode === 'custom'
-      ? folderEntries
-          .filter((entry) => selectedCustomIds.has(entry.id))
+      ? settings.customEntryIds
+          .map((entryId) => entryById.get(entryId))
+          .filter((entry): entry is StudyMaterialEntry => Boolean(entry))
           .slice(0, settings.studyMaterialLimit)
       : folderEntries.slice(0, settings.studyMaterialLimit)
   const isSingleBlock =
@@ -235,18 +248,52 @@ const DashboardEmptyState = ({
     setDraftSettings(defaultEmptyDashboardSettings)
   }
 
-  const toggleCustomEntry = (entryId: string) => {
+  const addCustomEntry = (entryId: string) => {
+    if (!entryId) {
+      return
+    }
+
     setDraftSettings((current) => {
-      const selectedIds = new Set(current.customEntryIds)
-      if (selectedIds.has(entryId)) {
-        selectedIds.delete(entryId)
-      } else {
-        selectedIds.add(entryId)
+      if (current.customEntryIds.includes(entryId)) {
+        return current
       }
 
       return {
         ...current,
-        customEntryIds: Array.from(selectedIds),
+        customEntryIds: [...current.customEntryIds, entryId],
+      }
+    })
+  }
+
+  const removeCustomEntry = (entryId: string) => {
+    setDraftSettings((current) => ({
+      ...current,
+      customEntryIds: current.customEntryIds.filter(
+        (customEntryId) => customEntryId !== entryId,
+      ),
+    }))
+  }
+
+  const moveCustomEntry = (entryId: string, direction: -1 | 1) => {
+    setDraftSettings((current) => {
+      const currentIndex = current.customEntryIds.indexOf(entryId)
+      const nextIndex = currentIndex + direction
+
+      if (
+        currentIndex < 0 ||
+        nextIndex < 0 ||
+        nextIndex >= current.customEntryIds.length
+      ) {
+        return current
+      }
+
+      const customEntryIds = [...current.customEntryIds]
+      const [movedEntryId] = customEntryIds.splice(currentIndex, 1)
+      customEntryIds.splice(nextIndex, 0, movedEntryId)
+
+      return {
+        ...current,
+        customEntryIds,
       }
     })
   }
@@ -438,34 +485,6 @@ const DashboardEmptyState = ({
           </Button>
         </Box>
       </Box>
-
-      <Stack direction="row" gap={0.75} flexWrap="wrap">
-        {quickActions.map((action) => (
-          <Button
-            key={action.intent}
-            variant="outlined"
-            startIcon={action.icon}
-            onClick={() => onQuickCreate(action.intent)}
-            disabled={!isAdmin}
-            sx={{
-              minHeight: 36,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 800,
-              fontSize: '0.75rem',
-              borderColor: alpha(action.accent, 0.42),
-              color: action.accent,
-              bgcolor: alpha(action.accent, 0.06),
-              '&:hover': {
-                borderColor: action.accent,
-                bgcolor: alpha(action.accent, 0.12),
-              },
-            }}
-          >
-            {action.label}
-          </Button>
-        ))}
-      </Stack>
     </Paper>
   ) : null
 
@@ -542,12 +561,21 @@ const DashboardEmptyState = ({
           {settings.studyMaterialMode === 'custom' ? 'Custom' : 'Recent'}
         </Typography>
         {visibleStudyMaterialEntries.length > 0 ? (
-          <Stack spacing={1} alignItems="flex-start">
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                md: `repeat(${settings.studyMaterialColumns}, minmax(0, 1fr))`,
+              },
+              gap: 1,
+            }}
+          >
             {visibleStudyMaterialEntries.map((entry) => {
               const folderColor = normalizeFolderColor(
                 entry.dashboards.find((dashboard) => dashboard.folderColor)
                   ?.folderColor ||
-                  DashboardStorage.getFolderColor(entry.folderName),
+                  DashboardStorage.getFolderColor(entry.colorSourceFolder),
               )
 
               return (
@@ -561,7 +589,7 @@ const DashboardEmptyState = ({
                         onOpenDashboard(entry.firstDashboard)
                   }
                   sx={{
-                    width: { xs: '100%', md: 260 },
+                    width: '100%',
                     minHeight: { xs: 48, md: 58 },
                     justifyContent: 'flex-start',
                     textAlign: 'left',
@@ -610,7 +638,7 @@ const DashboardEmptyState = ({
                 </Button>
               )
             })}
-          </Stack>
+          </Box>
         ) : (
           <Box
             sx={{
@@ -641,14 +669,6 @@ const DashboardEmptyState = ({
       <Stack direction="row" gap={0.75} flexWrap="wrap">
         <Chip size="small" label="Study Paths" />
         <Chip size="small" label="Dashboards" />
-        <Button
-          size="small"
-          variant="text"
-          onClick={onOpenSavedLibrary}
-          sx={{ textTransform: 'none', fontWeight: 800 }}
-        >
-          Open existing dashboard
-        </Button>
       </Stack>
     </Paper>
   )
@@ -684,7 +704,9 @@ const DashboardEmptyState = ({
             xs: '1fr',
             lg: isSingleBlock
               ? 'minmax(0, 760px)'
-              : 'minmax(0, 3fr) minmax(300px, 2fr)',
+              : settings.blockOrder[0] === 'studyMaterial'
+                ? 'minmax(300px, 2fr) minmax(0, 3fr)'
+                : 'minmax(0, 3fr) minmax(300px, 2fr)',
           },
           justifyContent: isSingleBlock ? 'center' : undefined,
           gap: { xs: 1.25, sm: 1.5, lg: 2 },
@@ -698,109 +720,335 @@ const DashboardEmptyState = ({
       <Dialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: 'hidden',
+            boxShadow: '0 28px 80px rgba(15,23,42,0.24)',
+          },
+        }}
       >
-        <DialogTitle>Customize empty dashboard</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.25} sx={{ pt: 1 }}>
-            <TextField
-              select
-              label="First block"
-              value={draftSettings.blockOrder[0]}
-              onChange={(event) =>
-                setFirstBlock(event.target.value as EmptyDashboardBlock)
-              }
-              fullWidth
+        <DialogTitle component="div" sx={{ px: 3, pt: 2.5, pb: 1 }}>
+          <Typography component="div" variant="h5" fontWeight={950}>
+            Customize empty dashboard
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Choose the home layout and the study material shown when no
+            dashboard is open.
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2 }}>
+          <Stack spacing={2}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.25,
+                bgcolor: 'background.default',
+              }}
             >
-              <MenuItem value="creation">Creation</MenuItem>
-              <MenuItem value="studyMaterial">Open study material</MenuItem>
-            </TextField>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={draftSettings.showCreationBlock}
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1.5}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+              >
+                <TextField
+                  select
+                  label="First block"
+                  value={draftSettings.blockOrder[0]}
                   onChange={(event) =>
-                    setDraftSettings((current) => ({
-                      ...current,
-                      showCreationBlock: event.target.checked,
-                    }))
+                    setFirstBlock(event.target.value as EmptyDashboardBlock)
                   }
+                  fullWidth
+                >
+                  <MenuItem value="creation">Creation</MenuItem>
+                  <MenuItem value="studyMaterial">Open study material</MenuItem>
+                </TextField>
+
+                <FormControlLabel
+                  sx={{
+                    minWidth: { sm: 210 },
+                    m: 0,
+                    px: 1.25,
+                    py: 0.75,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    bgcolor: 'background.paper',
+                  }}
+                  control={
+                    <Switch
+                      checked={draftSettings.showCreationBlock}
+                      onChange={(event) =>
+                        setDraftSettings((current) => ({
+                          ...current,
+                          showCreationBlock: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="Show Creation"
                 />
-              }
-              label="Show Creation block"
-            />
+              </Stack>
+            </Paper>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <TextField
-                select
-                label="Study material"
-                value={draftSettings.studyMaterialMode}
-                onChange={(event) =>
-                  setDraftSettings((current) => ({
-                    ...current,
-                    studyMaterialMode: event.target
-                      .value as EmptyDashboardStudyMaterialMode,
-                  }))
-                }
-                fullWidth
-              >
-                <MenuItem value="recent">Recent</MenuItem>
-                <MenuItem value="custom">Custom</MenuItem>
-              </TextField>
-              <TextField
-                select
-                label="Items"
-                value={draftSettings.studyMaterialLimit}
-                onChange={(event) =>
-                  setDraftSettings((current) => ({
-                    ...current,
-                    studyMaterialLimit:
-                      Number(event.target.value) === 6 ? 6 : 3,
-                  }))
-                }
-                fullWidth
-              >
-                <MenuItem value={3}>3</MenuItem>
-                <MenuItem value={6}>6</MenuItem>
-              </TextField>
-            </Stack>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2.25,
+                bgcolor: 'background.default',
+              }}
+            >
+              <Stack spacing={1.75}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                >
+                  <TextField
+                    select
+                    label="Study material"
+                    value={draftSettings.studyMaterialMode}
+                    onChange={(event) =>
+                      setDraftSettings((current) => ({
+                        ...current,
+                        studyMaterialMode: event.target
+                          .value as EmptyDashboardStudyMaterialMode,
+                      }))
+                    }
+                    fullWidth
+                  >
+                    <MenuItem value="recent">Recent</MenuItem>
+                    <MenuItem value="custom">Custom</MenuItem>
+                  </TextField>
 
-            {draftSettings.studyMaterialMode === 'custom' ? (
-              <Box>
-                <Typography variant="subtitle2" fontWeight={900} sx={{ mb: 1 }}>
-                  Custom Study entries
-                </Typography>
-                <Stack spacing={0.5}>
-                  {folderEntries.length > 0 ? (
-                    folderEntries.map((entry) => (
-                      <FormControlLabel
-                        key={entry.id}
-                        control={
-                          <Checkbox
-                            checked={draftSettings.customEntryIds.includes(
-                              entry.id,
-                            )}
-                            onChange={() => toggleCustomEntry(entry.id)}
-                          />
-                        }
-                        label={`${entry.title} (${entry.isStudyPath ? 'Study Path' : 'Dashboard'})`}
+                  <Box sx={{ width: '100%', minWidth: { sm: 260 } }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ mb: 0.25 }}
+                    >
+                      <Typography variant="caption" fontWeight={900}>
+                        Visible items
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={draftSettings.studyMaterialLimit}
+                        sx={{ fontWeight: 900 }}
                       />
-                    ))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Save Study Paths or dashboards before choosing custom
-                      entries.
-                    </Typography>
-                  )}
+                    </Stack>
+                    <Slider
+                      aria-label="Visible items"
+                      value={draftSettings.studyMaterialLimit}
+                      min={0}
+                      max={MAX_STUDY_MATERIAL_ITEMS}
+                      step={1}
+                      marks={[
+                        { value: 0, label: '0' },
+                        { value: 10, label: '10' },
+                        { value: 20, label: '20' },
+                      ]}
+                      onChange={(_, value) =>
+                        setDraftSettings((current) => ({
+                          ...current,
+                          studyMaterialLimit: Array.isArray(value)
+                            ? value[0]
+                            : value,
+                        }))
+                      }
+                    />
+                  </Box>
                 </Stack>
-              </Box>
-            ) : null}
+
+                <Box>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ mb: 0.25 }}
+                  >
+                    <Typography variant="caption" fontWeight={900}>
+                      Columns
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={draftSettings.studyMaterialColumns}
+                      sx={{ fontWeight: 900 }}
+                    />
+                  </Stack>
+                  <Slider
+                    aria-label="Study material columns"
+                    value={draftSettings.studyMaterialColumns}
+                    min={1}
+                    max={6}
+                    step={1}
+                    marks={[
+                      { value: 1, label: '1' },
+                      { value: 3, label: '3' },
+                      { value: 6, label: '6' },
+                    ]}
+                    onChange={(_, value) =>
+                      setDraftSettings((current) => ({
+                        ...current,
+                        studyMaterialColumns: Array.isArray(value)
+                          ? value[0]
+                          : value,
+                      }))
+                    }
+                  />
+                </Box>
+
+                {draftSettings.studyMaterialMode === 'custom' ? (
+                  <>
+                    <Divider />
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        fontWeight={950}
+                        sx={{ mb: 1 }}
+                      >
+                        Custom order
+                      </Typography>
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1}
+                        sx={{ mb: 1.25 }}
+                      >
+                        <TextField
+                          select
+                          label="Add Study Path or dashboard"
+                          value=""
+                          onChange={(event) =>
+                            addCustomEntry(event.target.value)
+                          }
+                          fullWidth
+                          disabled={availableCustomEntries.length === 0}
+                        >
+                          {availableCustomEntries.map((entry) => (
+                            <MenuItem key={entry.id} value={entry.id}>
+                              {entry.title} -{' '}
+                              {entry.isStudyPath ? 'Study Path' : 'Dashboard'}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Stack>
+
+                      <Box
+                        sx={{
+                          minHeight: 180,
+                          maxHeight: 320,
+                          overflowY: 'auto',
+                          p: 1,
+                          border: 1,
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          bgcolor: 'background.paper',
+                        }}
+                      >
+                        {draftCustomEntries.length > 0 ? (
+                          <Stack spacing={0.75}>
+                            {draftCustomEntries.map((entry, index) => (
+                              <Paper
+                                key={entry.id}
+                                elevation={0}
+                                sx={{
+                                  p: 1,
+                                  border: 1,
+                                  borderColor: 'divider',
+                                  borderRadius: 1.75,
+                                  display: 'grid',
+                                  gridTemplateColumns:
+                                    'minmax(0, 1fr) auto auto',
+                                  alignItems: 'center',
+                                  gap: 0.75,
+                                }}
+                              >
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={900}
+                                    noWrap
+                                  >
+                                    {entry.title}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {entry.isStudyPath
+                                      ? 'Study Path'
+                                      : 'Dashboard'}
+                                  </Typography>
+                                </Box>
+                                <Stack direction="row" spacing={0.25}>
+                                  <IconButton
+                                    aria-label={`Move ${entry.title} up`}
+                                    size="small"
+                                    onClick={() =>
+                                      moveCustomEntry(entry.id, -1)
+                                    }
+                                    disabled={index === 0}
+                                  >
+                                    <KeyboardArrowUpIcon fontSize="small" />
+                                  </IconButton>
+                                  <IconButton
+                                    aria-label={`Move ${entry.title} down`}
+                                    size="small"
+                                    onClick={() => moveCustomEntry(entry.id, 1)}
+                                    disabled={
+                                      index === draftCustomEntries.length - 1
+                                    }
+                                  >
+                                    <KeyboardArrowDownIcon fontSize="small" />
+                                  </IconButton>
+                                </Stack>
+                                <IconButton
+                                  aria-label={`Remove ${entry.title}`}
+                                  size="small"
+                                  onClick={() => removeCustomEntry(entry.id)}
+                                >
+                                  <CloseIcon fontSize="small" />
+                                </IconButton>
+                              </Paper>
+                            ))}
+                          </Stack>
+                        ) : (
+                          <Box
+                            sx={{
+                              minHeight: 160,
+                              display: 'grid',
+                              placeItems: 'center',
+                              textAlign: 'center',
+                              color: 'text.secondary',
+                              px: 2,
+                            }}
+                          >
+                            <Typography variant="body2" fontWeight={800}>
+                              Add Study Paths or standalone dashboards to build
+                              a custom list.
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  </>
+                ) : null}
+              </Stack>
+            </Paper>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={resetSettings}>Reset</Button>
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: 'background.default' }}>
+          <Button onClick={resetSettings} sx={{ mr: 'auto' }}>
+            Reset
+          </Button>
           <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={saveSettings}>
             Save
