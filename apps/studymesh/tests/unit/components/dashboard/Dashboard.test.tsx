@@ -107,6 +107,34 @@ const createStarterStudyPathDashboard = (index: number) => ({
   updatedAt: `2026-05-15T10:0${index}:00.000Z`,
 })
 
+const createSavedDashboard = (
+  id: string,
+  name: string,
+  folder = 'Default',
+) => ({
+  id,
+  name,
+  folder,
+  layout: {
+    type: 'row',
+    children: [
+      {
+        type: 'tabset',
+        children: [
+          {
+            type: 'tab',
+            name,
+            component: 'CustomWidget',
+          },
+        ],
+      },
+    ],
+  },
+  isPublic: true,
+  createdAt: '2026-05-15T10:00:00.000Z',
+  updatedAt: '2026-05-15T10:00:00.000Z',
+})
+
 const mockPhoneViewport = () => {
   vi.mocked(window.matchMedia).mockImplementation((query) => ({
     matches: query.includes('max-width'),
@@ -205,7 +233,7 @@ describe('Dashboards', () => {
     render(<Dashboards />)
 
     expect(
-      screen.getByRole('heading', { name: /what do you want to build/i }),
+      screen.getByRole('heading', { name: /what do you want to learn/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /create study path/i }),
@@ -234,6 +262,9 @@ describe('Dashboards', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /open existing dashboard/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /customize this page/i }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /advanced dashboard/i }),
@@ -330,6 +361,222 @@ describe('Dashboards', () => {
     })
 
     window.removeEventListener('studymesh-open-create-hub', createHubListener)
+  })
+
+  it('shows three recent study material entries by default', async () => {
+    const savedDashboards = [
+      createSavedDashboard('algebra', 'Algebra Intro', 'Algebra'),
+      createSavedDashboard('biology', 'Biology Intro', 'Biology'),
+      createSavedDashboard('chemistry', 'Chemistry Intro', 'Chemistry'),
+      createSavedDashboard('drama', 'Drama Intro', 'Drama'),
+    ]
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(savedDashboards)
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Drama Intro')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('Chemistry Intro')).toBeInTheDocument()
+    expect(screen.getByText('Biology Intro')).toBeInTheDocument()
+    expect(screen.queryByText('Algebra Intro')).not.toBeInTheDocument()
+  })
+
+  it('uses custom study material selections from empty dashboard settings', async () => {
+    const savedDashboards = [
+      createSavedDashboard('algebra', 'Algebra Intro', 'Algebra'),
+      createSavedDashboard('biology', 'Biology Intro', 'Biology'),
+      createSavedDashboard('chemistry', 'Chemistry Intro', 'Chemistry'),
+    ]
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(savedDashboards)
+      }
+
+      if (key === 'studymesh-empty-dashboard-settings-v1') {
+        return JSON.stringify({
+          blockOrder: ['creation', 'studyMaterial'],
+          showCreationBlock: true,
+          studyMaterialMode: 'custom',
+          studyMaterialLimit: 3,
+          customEntryIds: ['folder:biology'],
+        })
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Biology Intro')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('Algebra Intro')).not.toBeInTheDocument()
+    expect(screen.queryByText('Chemistry Intro')).not.toBeInTheDocument()
+    expect(screen.getByText('Custom')).toBeInTheDocument()
+  })
+
+  it('can hide creation and show six recent study material entries', async () => {
+    const savedDashboards = Array.from({ length: 6 }, (_, index) =>
+      createSavedDashboard(
+        `topic-${index + 1}`,
+        `Topic ${index + 1}`,
+        `Topic ${index + 1}`,
+      ),
+    )
+
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify(savedDashboards)
+      }
+
+      if (key === 'studymesh-empty-dashboard-settings-v1') {
+        return JSON.stringify({
+          blockOrder: ['creation', 'studyMaterial'],
+          showCreationBlock: false,
+          studyMaterialMode: 'recent',
+          studyMaterialLimit: 6,
+          customEntryIds: [],
+        })
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Topic 6').length).toBeGreaterThan(0),
+    )
+    expect(
+      screen.queryByRole('heading', { name: /what do you want to learn/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /customize this page/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('respects empty dashboard block order settings', () => {
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify([])
+      }
+
+      if (key === 'studymesh-empty-dashboard-settings-v1') {
+        return JSON.stringify({
+          blockOrder: ['studyMaterial', 'creation'],
+          showCreationBlock: true,
+          studyMaterialMode: 'recent',
+          studyMaterialLimit: 3,
+          customEntryIds: [],
+        })
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    const studyMaterialHeading = screen.getByRole('heading', {
+      name: /open study material/i,
+    })
+    const creationHeading = screen.getByRole('heading', {
+      name: /what do you want to learn/i,
+    })
+
+    expect(
+      studyMaterialHeading.compareDocumentPosition(creationHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('falls back to default empty dashboard settings when storage is malformed', () => {
+    localStorage.getItem.mockImplementation((key: string) => {
+      if (key === 'userData') {
+        return JSON.stringify({
+          id: 'admin',
+          name: 'Admin User',
+          role: 'ADMIN_ROLE',
+        })
+      }
+
+      if (key === 'customDashboards') {
+        return JSON.stringify([])
+      }
+
+      if (key === 'studymesh-empty-dashboard-settings-v1') {
+        return '{bad json'
+      }
+
+      return null
+    })
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    expect(
+      screen.getByRole('heading', { name: /what do you want to learn/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Recent')).toBeInTheDocument()
   })
 
   it('opens the default starter Study Path on first empty workspace load', async () => {
