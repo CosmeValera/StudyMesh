@@ -418,6 +418,80 @@ describe('Dashboards', () => {
     expect(screen.getByText('Custom')).toBeInTheDocument()
   })
 
+  it('opens and closes the empty dashboard customizer as a full-page modal', async () => {
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    const cardGrid = screen.getByTestId('empty-dashboard-card-grid')
+    expect(cardGrid).toHaveAttribute('data-max-width', '760px')
+    expect(
+      screen.queryByTestId('empty-dashboard-customizer-settings'),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /customize this page/i }),
+    )
+
+    expect(cardGrid).toHaveAttribute('data-max-width', '760px')
+    expect(cardGrid).toHaveAttribute(
+      'data-desktop-grid-template',
+      'minmax(0, 3fr) minmax(300px, 2fr)',
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('empty-dashboard-customizer-settings'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByTestId('empty-dashboard-customizer-preview'),
+    ).toHaveAttribute(
+      'data-desktop-grid-template',
+      'minmax(0, 3fr) minmax(300px, 2fr)',
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /close customize empty dashboard/i,
+      }),
+    )
+
+    expect(cardGrid).toHaveAttribute('data-max-width', '760px')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('keeps creation and study material proportions tied to card type when first block changes', () => {
+    mockDashboardProvider({
+      openDashboards: [],
+      selectedDashboard: -1,
+    })
+
+    render(<Dashboards />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /customize this page/i }),
+    )
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /first block/i }))
+    fireEvent.click(
+      screen.getByRole('option', { name: /open study material/i }),
+    )
+
+    expect(
+      screen.getByTestId('empty-dashboard-customizer-preview'),
+    ).toHaveAttribute(
+      'data-desktop-grid-template',
+      'minmax(300px, 2fr) minmax(0, 3fr)',
+    )
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'studymesh-empty-dashboard-settings-v1',
+      expect.stringContaining('"blockOrder":["studyMaterial","creation"]'),
+    )
+  })
+
   it('reorders and removes custom study material entries from the canvas', async () => {
     const savedDashboards = [
       createSavedDashboard('biology', 'Biology Intro', 'Biology'),
@@ -465,14 +539,13 @@ describe('Dashboards', () => {
     ).not.toBeInTheDocument()
     fireEvent.click(screen.getByLabelText(/move chemistry intro up/i))
     fireEvent.click(screen.getByLabelText(/remove biology intro/i))
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'studymesh-empty-dashboard-settings-v1',
       expect.stringContaining('"customEntryIds":["dashboard:chemistry"]'),
     )
     await waitFor(() =>
-      expect(screen.getByText('Chemistry Intro')).toBeInTheDocument(),
+      expect(screen.getAllByText('Chemistry Intro').length).toBeGreaterThan(0),
     )
     expect(screen.queryByText('Biology Intro')).not.toBeInTheDocument()
   })
@@ -531,7 +604,6 @@ describe('Dashboards', () => {
         target: { value: 2 },
       },
     )
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'studymesh-empty-dashboard-settings-v1',
